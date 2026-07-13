@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Settings - INTERNTRACK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="master-style.css"/>
+</head>
+<body class="page-body supervisor-page"  >
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="supervisor-dashboard.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="supervisor-assigned-interns.html" class="sidebar-link"><i class="fa fa-users"></i><span>Assigned Interns</span></a>
+    <a href="supervisor-attendance-validation.html" class="sidebar-link"><i class="fa fa-calendar-check"></i><span>Attendance Validation</span></a>
+    <a href="supervisor-journal-validation.html" class="sidebar-link"><i class="fa fa-book"></i><span>Journal Review</span></a>
+    <a href="supervisor-performance-evaluation.html" class="sidebar-link"><i class="fa fa-star"></i><span>Evaluations</span></a>
+    <a href="supervisor-notifications.html" class="sidebar-link"><i class="fa fa-bell"></i><span>Notifications</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="supervisor-settings.html" class="sidebar-link active"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-cog"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Settings</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Supervisor</span>
+    <div class="topbar-avatar" title="Supervisor profile">MS</div>
+  </div>
+</header>
+<main class="main-content">
+
+  <!-- Profile -->
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-user-circle"></i> Profile</div>
+    <div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div class="sp-avatar-upload" title="Click to change photo">DR</div>
+        <span class="it-inline-071">Click to upload</span>
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <div class="sp-field-row">
+          <div class="sp-field"><label>Full Name</label><input type="text" value="Mr. David Reyes" id="profileName"></div>
+          <div class="sp-field"><label>Role</label><input type="text" value="Company Supervisor" readonly></div>
+        </div>
+        <div class="sp-field-row">
+          <div class="sp-field"><label>Email Address</label><input type="email" value="david.reyes@techcorp.ph" id="profileEmail"></div>
+          <div class="sp-field"><label>Contact Number</label><input type="text" value="0917 987 6543"></div>
+        </div>
+        <div class="sp-field-row">
+          <div class="sp-field"><label>Company</label><input type="text" value="TechCorp PH"></div>
+          <div class="sp-field"><label>Department</label><input type="text" value="Software Engineering"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Preferences -->
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-bell"></i> Notification Preferences</div>
+    <div class="sp-toggle-row">
+      <div><div class="sp-toggle-label">New Journal Entries</div><div class="sp-toggle-sub">Get notified when interns submit journal entries</div></div>
+      <label class="sp-toggle"><input type="checkbox" checked><span class="sp-toggle-slider"></span></label>
+    </div>
+    <div class="sp-toggle-row">
+      <div><div class="sp-toggle-label">Pending Evaluations</div><div class="sp-toggle-sub">Reminders when evaluations are due</div></div>
+      <label class="sp-toggle"><input type="checkbox" checked><span class="sp-toggle-slider"></span></label>
+    </div>
+    <div class="sp-toggle-row">
+      <div><div class="sp-toggle-label">At-Risk Intern Alerts</div><div class="sp-toggle-sub">Alert when an intern falls below target hours</div></div>
+      <label class="sp-toggle"><input type="checkbox" checked><span class="sp-toggle-slider"></span></label>
+    </div>
+    <div class="sp-toggle-row">
+      <div><div class="sp-toggle-label">Attendance Anomalies</div><div class="sp-toggle-sub">Notify on absences or time-in discrepancies</div></div>
+      <label class="sp-toggle"><input type="checkbox"><span class="sp-toggle-slider"></span></label>
+    </div>
+    <div class="sp-toggle-row">
+      <div><div class="sp-toggle-label">Email Digest (Weekly)</div><div class="sp-toggle-sub">Receive a weekly summary email every Monday</div></div>
+      <label class="sp-toggle"><input type="checkbox" checked><span class="sp-toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <!-- Account Security -->
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-lock"></i> Account Security</div>
+    <div class="sp-field-row">
+      <div class="sp-field"><label>Current Password</label><input type="password" placeholder="Enter current password"></div>
+      <div class="sp-field"></div>
+    </div>
+    <div class="sp-field-row">
+      <div class="sp-field"><label>New Password</label><input type="password" placeholder="Enter new password" id="newPass"></div>
+      <div class="sp-field"><label>Confirm New Password</label><input type="password" placeholder="Re-enter new password" id="confPass"></div>
+    </div>
+    <button class="sp-btn sp-btn-blue" style="margin-top:4px;" onclick="changePassword()"><i class="fa fa-key"></i> Change Password</button>
+  </div>
+
+  <!-- Company / Internship Settings -->
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-building"></i> Internship Settings</div>
+    <div class="sp-field-row">
+      <div class="sp-field"><label>Required OJT Hours</label><input type="number" value="360" id="reqHours"></div>
+      <div class="sp-field"><label>Default Schedule</label><input type="text" value="Mon-Fri, 8:00 AM - 5:00 PM"></div>
+    </div>
+    <div class="sp-field-row">
+      <div class="sp-field"><label>Academic Year</label>
+        <select><option selected>AY 2024-2025</option><option>AY 2025-2026</option></select>
+      </div>
+      <div class="sp-field"><label>Semester</label>
+        <select><option>1st Semester</option><option selected>2nd Semester</option><option>Summer</option></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Co-Supervisors -->
+  <div class="sp-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div class="sp-card-title" style="margin-bottom:0;"><i class="fa fa-user-group"></i> Co-Supervisors</div>
+      <button class="sp-btn sp-btn-green" onclick="openInviteModal()"><i class="fa fa-user-plus"></i> Invite Co-Supervisor</button>
+    </div>
+    <div class="sp-table-wrap">
+      <table class="sp-table" id="cosupTable">
+        <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><span class="sp-name-primary">Mr. David Reyes</span></td><td>TechCorp PH</td><td>david.reyes@techcorp.ph</td><td><span class="sp-badge green">Active</span></td><td><button class="sp-btn sp-btn-gray it-inline-072" disabled>You</button></td></tr>
+          <tr><td><span class="sp-name-primary">Ms. Anna Cruz</span></td><td>DataSoft Inc.</td><td>anna.cruz@datasoft.ph</td><td><span class="sp-badge green">Active</span></td><td><button class="sp-btn sp-btn-red-outline it-inline-072" onclick="removeSupervisor(this,'Ms. Anna Cruz')"><i class="fa fa-trash"></i> Remove</button></td></tr>
+          <tr><td><span class="sp-name-primary">Mr. Rico Lim</span></td><td>NexaTech</td><td>rico.lim@nexatech.ph</td><td><span class="sp-badge amber">Pending</span></td><td><button class="sp-btn sp-btn-red-outline it-inline-072" onclick="removeSupervisor(this,'Mr. Rico Lim')"><i class="fa fa-trash"></i> Remove</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Activity Log -->
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-clock-rotate-left"></i> Recent Supervisor Actions</div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+        <div class="sp-activity-dot" style="margin-top:5px;"></div>
+        <div><div class="it-inline-080">Approved journal entry for <strong>Juan dela Cruz</strong></div><div class="it-inline-076">2 minutes ago</div></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+        <div class="sp-activity-dot" style="margin-top:5px;background:#3b82f6;"></div>
+        <div><div class="it-inline-080">Validated DTR for <strong>Maria Santos</strong></div><div class="it-inline-076">1 hour ago</div></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+        <div class="sp-activity-dot" style="margin-top:5px;background:#f59e0b;"></div>
+        <div><div class="it-inline-080">Submitted performance evaluation for <strong>Ana Lim</strong></div><div class="it-inline-076">3 hours ago</div></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6;">
+        <div class="sp-activity-dot" style="margin-top:5px;background:#7c3aed;"></div>
+        <div><div class="it-inline-080">Rejected attendance for <strong>Carlo Mendoza</strong> - flagged discrepancy</div><div class="it-inline-076">Yesterday, 4:30 PM</div></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;">
+        <div class="sp-activity-dot" style="margin-top:5px;background:#dc2626;"></div>
+        <div><div class="it-inline-080">Sent reminder to <strong>Pedro Reyes</strong> for missing journal entries</div><div class="it-inline-076">Yesterday, 2:15 PM</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save button -->
+  <div style="display:flex;justify-content:flex-end;padding-bottom:8px;">
+    <button class="sp-btn sp-btn-green it-inline-101" onclick="saveSettings()"><i class="fa fa-floppy-disk"></i> Save Changes</button>
+  </div>
+
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+</div>
+
+<!-- Invite Modal -->
+<div class="sp-modal-overlay" id="inviteModal">
+  <div class="sp-modal">
+    <div class="sp-modal-title"><i class="fa fa-user-plus" style="color:#2e7d47;margin-right:8px;"></i>Invite Co-Supervisor</div>
+    <div class="sp-field-row">
+      <div class="sp-field"><label>Full Name</label><input type="text" id="inviteName" placeholder="e.g. Ms. Grace Tan"></div>
+      <div class="sp-field"><label>Company</label><input type="text" id="inviteCompany" placeholder="Company name"></div>
+    </div>
+    <div class="sp-field"><label>Email Address</label><input type="email" id="inviteEmail" placeholder="email@company.ph" style="width:100%;margin-bottom:0;"></div>
+    <div class="sp-modal-actions">
+      <button class="sp-btn sp-btn-gray" onclick="closeInviteModal()">Cancel</button>
+      <button class="sp-btn sp-btn-green" onclick="sendInvite()"><i class="fa fa-paper-plane"></i> Send Invite</button>
+    </div>
+  </div>
+</div>
+
+<div id="sp-toast-stack"></div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){protectSupervisorRoute();initHamburger();});
+function saveSettings(){toast('Settings saved successfully!','green');}
+function changePassword(){
+  var np=document.getElementById('newPass').value,cp=document.getElementById('confPass').value;
+  if(!np){toast('Please enter a new password.','blue');return;}
+  if(np!==cp){toast('Passwords do not match.','red');return;}
+  document.getElementById('newPass').value='';document.getElementById('confPass').value='';
+  toast('Password changed successfully!','green');
+}
+function removeSupervisor(btn,name){
+  if(!confirm('Remove '+name+' from co-supervisors?'))return;
+  btn.closest('tr').remove();toast(name+' removed.','blue');
+}
+function openInviteModal(){document.getElementById('inviteModal').classList.add('open');}
+function closeInviteModal(){document.getElementById('inviteModal').classList.remove('open');}
+function sendInvite(){
+  var n=document.getElementById('inviteName').value.trim();
+  var c=document.getElementById('inviteCompany').value.trim();
+  var e=document.getElementById('inviteEmail').value.trim();
+  if(!n||!e){toast('Please fill in name and email.','blue');return;}
+  var tbody=document.querySelector('#cosupTable tbody');
+  var tr=document.createElement('tr');
+  tr.innerHTML='<td><span class="sp-name-primary">'+n+'</span></td><td>'+c+'</td><td>'+e+'</td>'
+    +'<td><span class="sp-badge amber">Pending</span></td>'
+    +'<td><button class="sp-btn sp-btn-red-outline it-inline-072" onclick="removeSupervisor(this,\''+n+'\')"><i class="fa fa-trash"></i> Remove</button></td>';
+  tbody.appendChild(tr);
+  closeInviteModal();toast('Invite sent to '+n+'!','green');
+}
+function initHamburger(){var btn=document.getElementById('spHamburger'),nav=document.getElementById('spNav'),ov=document.getElementById('spOverlay');if(!btn)return;btn.addEventListener('click',function(){nav.classList.toggle('open');ov.classList.toggle('open');});ov.addEventListener('click',function(){nav.classList.remove('open');ov.classList.remove('open');});}
+function toast(msg,type){var s=document.getElementById('sp-toast-stack');var el=document.createElement('div');el.className='sp-toast '+(type||'green');el.innerHTML='<i class="fa fa-circle-check"></i> '+msg;s.appendChild(el);setTimeout(function(){el.remove();},3000);}
+
+
+
+
+
+function openLogoutModal(e){if(e)e.preventDefault();document.getElementById('spLogoutModal').classList.add('open');}
+function closeLogoutModal(){document.getElementById('spLogoutModal').classList.remove('open');}
+function confirmLogout(){
+  var btn=document.querySelector('.sp-logout-btn-confirm');
+  if(btn){btn.disabled=true;btn.textContent='Logging out...';}
+  supervisorLogout();
+}
+(function(){
+  // Program completion bars - start at 0, animate to target
+  document.querySelectorAll('.sp-prog-fill').forEach(function(el){
+    var w = el.style.width;
+    el.style.width = '0';
+    setTimeout(function(){ el.style.width = w; }, 100);
+  });
+  // Table progress bars
+  document.querySelectorAll('.sp-bar-fill').forEach(function(el){
+    var w = el.style.width;
+    el.style.width = '0';
+    setTimeout(function(){ el.style.width = w; }, 150);
+  });
+})();
+
+// -- Bar animation: read target from style.width, start from 0, animate to target --
+(function() {
+  function animateBars() {
+    // Program completion bars (.sp-prog-fill)
+    document.querySelectorAll('.sp-prog-fill').forEach(function(el) {
+      var target = el.getAttribute('data-target');
+      if (!target) {
+        // Read current inline style width as the target, store it, reset to 0
+        target = el.style.width || '0%';
+        el.setAttribute('data-target', target);
+        el.style.width = '0';
+      }
+      // Trigger transition to target after a brief delay
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          el.style.width = target;
+        });
+      });
+    });
+
+    // Table / inline progress bars (.sp-bar-fill)
+    document.querySelectorAll('.sp-bar-fill').forEach(function(el) {
+      var target = el.getAttribute('data-target');
+      if (!target) {
+        target = el.style.width || '0%';
+        el.setAttribute('data-target', target);
+        el.style.width = '0';
+      }
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          el.style.width = target;
+        });
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', animateBars);
+  } else {
+    animateBars();
+  }
+})();
+</script>
+<!-- Logout modal -->
+<div class="sp-logout-overlay" id="spLogoutModal">
+  <div class="sp-logout-box">
+    <div class="sp-logout-icon-wrap">
+      <i class="fa fa-right-from-bracket"></i>
+    </div>
+    <div class="sp-logout-title">Log out of your account?</div>
+    <div class="sp-logout-sub">Are you sure you want to log out?</div>
+    <div class="sp-logout-btns">
+      <button class="sp-logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="sp-logout-btn-confirm" onclick="confirmLogout()">Log Out</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+
+
+

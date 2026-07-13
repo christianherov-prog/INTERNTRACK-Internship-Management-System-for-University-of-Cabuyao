@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Logbook Review - INTERNTRACK</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="styles.css"/>
+  
+</head>
+<body class="page-body coordinator-page logbook-review-page"  >
+
+<div class="page-progress" id="pageProgress" style="width:0;opacity:1"></div>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="coord-monitoring.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="coord-announcements.html" class="sidebar-link"><i class="fa fa-bullhorn"></i><span>Announcements</span></a>
+    <a href="coord-doc-approvals.html" class="sidebar-link"><i class="fa fa-file-circle-check"></i><span>Document Approvals</span></a>
+    <a href="coord-logbook-review.html" class="sidebar-link active"><i class="fa fa-book-open"></i><span>Logbook Review</span></a>
+    <a href="coord-records.html" class="sidebar-link"><i class="fa fa-folder-open"></i><span>Records</span></a>
+    <a href="coord-reports.html" class="sidebar-link"><i class="fa fa-chart-bar"></i><span>Reports</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="coord-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-book-open"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Logbook Review</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Coordinator</span>
+    <div class="topbar-avatar" title="Coordinator profile">CO</div>
+  </div>
+</header>
+
+
+
+<main class="main-content">
+  <div class="page-topbar-hero">
+    <div class="page-hero">
+      <div class="page-hero-left">
+        <div class="page-hero-icon"><i class="fa fa-book-open"></i></div>
+        <div>
+          <div class="page-hero-title">Logbook Review</div>
+          <div class="page-hero-sub">Approve, return, and comment on daily intern journal entries</div>
+        </div>
+      </div>
+      <div class="page-hero-right">
+        <div class="page-hero-badge is-alert"><i class="fa fa-inbox"></i><span id="heroPending">3</span> awaiting action</div>
+        <div class="page-hero-term-select" aria-label="Academic year and semester">
+          <i class="fa fa-calendar-alt" aria-hidden="true"></i>
+          <select>
+            <option selected>AY 2024-2025, Sem 2</option>
+            <option>AY 2024-2025, Sem 1</option>
+          </select>
+          <i class="fa fa-chevron-down" aria-hidden="true"></i>
+        </div>
+        <div class="page-hero-divider"></div>
+        <div class="page-hero-avatar">PS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-inner">
+
+
+    <!-- Stat cards -->
+    <section class="coord-stat-grid">
+      <article class="coord-stat-card">
+        <div class="coord-stat-icon"><i class="fa fa-inbox"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="reviewStatVisible">4</div>
+          <div class="coord-stat-label">Entries in Queue</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-amber">
+        <div class="coord-stat-icon"><i class="fa fa-clock"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="reviewStatPending">3</div>
+          <div class="coord-stat-label">Awaiting Action</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-blue">
+        <div class="coord-stat-icon"><i class="fa fa-circle-check"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="reviewStatApproved">1</div>
+          <div class="coord-stat-label">Approved</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-teal">
+        <div class="coord-stat-icon"><i class="fa fa-graduation-cap"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="reviewStatPrograms">3</div>
+          <div class="coord-stat-label">Programs Active</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="coord-section">
+      <div class="coord-toolbar review-toolbar-grid">
+        <div>
+          <div class="coord-section-title">Student logbook entries</div>
+          <div class="coord-section-sub">Search, filter, and act on daily submissions from a single coordinator queue.</div>
+        </div>
+        <div class="coord-toolbar-actions review-toolbar-actions">
+          <div class="coord-search-wrap">
+            <i class="fa fa-search coord-search-icon"></i>
+            <input id="reviewSearch" class="coord-search" type="text" placeholder="Search student, company, task, or skill" oninput="filterReviewEntries()">
+          </div>
+          <select id="reviewProgramFilter" class="coord-select" onchange="filterReviewEntries()">
+            <option value="all">All programs</option>
+            <option value="BSIT">BSIT</option>
+            <option value="BSCoE">BSCoE</option>
+            <option value="BSBA">BSBA</option>
+          </select>
+          <select id="reviewSort" class="coord-select" onchange="filterReviewEntries()">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="student">Student name</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Status tabs with * live count badges -->
+      <div class="review-status-tabs" id="reviewStatusTabs">
+        <button type="button" class="review-status-tab active" data-status="all">All<span class="tab-count" id="rtabAll">4</span></button>
+        <button type="button" class="review-status-tab" data-status="pending">Pending<span class="tab-count" id="rtabPending">3</span></button>
+        <button type="button" class="review-status-tab" data-status="approved">Approved<span class="tab-count" id="rtabApproved">1</span></button>
+        <button type="button" class="review-status-tab" data-status="returned">Returned<span class="tab-count" id="rtabReturned">0</span></button>
+      </div>
+
+      <!-- * Shortcut strip -->
+      <div class="shortcut-strip">
+        <span class="shortcut-item"><span class="shortcut-key">/</span>Search</span>
+        <span class="shortcut-item"><span class="shortcut-key">C</span>Collapse all</span>
+        <span class="shortcut-item"><span class="shortcut-key">E</span>Expand all</span>
+        <span class="shortcut-item"><span class="shortcut-key">Esc</span>Clear</span>
+      </div>
+
+      <div class="coord-inline-meta" style="display:flex;align-items:center;justify-content:space-between;gap:.5rem">
+        <span id="reviewResultsText">Showing 4 entries</span>
+        <div style="display:flex;gap:.45rem">
+          <button class="coord-btn-soft small" onclick="enhCollapseAll()"><i class="fa fa-minimize"></i>Collapse all</button>
+          <button class="coord-btn-soft small" onclick="enhExpandAll()"><i class="fa fa-maximize"></i>Expand all</button>
+        </div>
+      </div>
+
+      <div class="review-card-list" id="reviewCardList">
+
+        <!-- Card 1: Juan dela Cruz -->
+        <article class="review-card" data-status="pending" data-program="BSIT" data-date="2025-03-18" data-student="Juan dela Cruz" data-search="juan dela cruz bsit techcorp ph rest api debugging sprint planning team collaboration inventory system">
+          <div class="review-card-header">
+            <div class="review-person">
+              <div class="review-avatar" style="background:linear-gradient(135deg,#1a7a3f,#4bc97a)">JD</div>
+              <div>
+                <h3>Juan dela Cruz</h3>
+                <div class="review-person-meta">2021-00123  -  BSIT  -  TechCorp PH</div>
+              </div>
+            </div>
+            <div class="review-meta-group">
+              <span class="review-meta-pill"><i class="fa fa-calendar"></i>March 18, 2025</span>
+              <span class="review-meta-pill is-blue"><i class="fa fa-clock"></i>8 hrs</span>
+              <span class="review-status-pill pending" data-role="status-pill">Pending</span>
+              <!-- * collapse btn -->
+              <button class="enh-collapse-btn" onclick="enhToggleCollapse(this.closest('.review-card'))" title="Collapse / expand"><i class="fa fa-chevron-up"></i></button>
+            </div>
+          </div>
+          <div class="review-card-body">
+            <div class="review-card-main">
+              <div class="review-block-label">Tasks completed</div>
+              <p>Completed the integration of the REST API module for the company inventory system. Debugged three stock-update endpoints, coordinated backend testing, and joined the afternoon sprint-planning session.</p>
+            </div>
+            <aside class="review-card-side">
+              <div>
+                <div class="review-block-label">Skills applied</div>
+                <div class="review-skill-list">
+                  <span class="review-skill-chip">REST API</span>
+                  <span class="review-skill-chip">Debugging</span>
+                  <span class="review-skill-chip">Sprint Planning</span>
+                  <span class="review-skill-chip">Team Collaboration</span>
+                </div>
+              </div>
+              <div class="review-note-box">
+                <div class="review-block-label">Review note</div>
+                <p>Strong technical detail and clear output. Verify whether the logged hours align with the sprint-planning and testing timeline.</p>
+              </div>
+            </aside>
+
+
+          </div>
+          <div class="review-comment-box" hidden>
+            <textarea placeholder="Write feedback for the student..." maxlength="500" oninput="enhCommentCounter(this)"></textarea>
+            <div class="enh-comment-counter">0 / 500</div>
+            <div class="review-comment-actions">
+              <button type="button" class="coord-btn-soft small" onclick="toggleCommentBox(this.closest('.review-card'),false)">Cancel</button>
+              <button type="button" class="coord-btn-primary small" onclick="submitReviewComment(this.closest('.review-card'))"><i class="fa fa-paper-plane"></i>Send feedback</button>
+            </div>
+          </div>
+          <div class="review-card-footer">
+            <div class="review-footer-note" data-role="footer-note">Awaiting coordinator review</div>
+            <div class="review-actions" data-role="action-group">
+              <button type="button" class="coord-btn-soft small info" onclick="toggleCommentBox(this.closest('.review-card'),true)"><i class="fa fa-comment"></i>Add comment</button>
+              <button type="button" class="coord-btn-soft small danger" onclick="updateReviewStatus(this.closest('.review-card'),'returned')"><i class="fa fa-rotate-left"></i>Return</button>
+              <button type="button" class="coord-btn-primary small" onclick="updateReviewStatus(this.closest('.review-card'),'approved')"><i class="fa fa-check"></i>Approve</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 2: Mae Flores -->
+        <article class="review-card" data-status="pending" data-program="BSCoE" data-date="2025-03-18" data-student="Mae Flores" data-search="mae flores bscoe globe telecom embedded c iot sensors mqtt technical documentation gateway prototype">
+          <div class="review-card-header">
+            <div class="review-person">
+              <div class="review-avatar" style="background:linear-gradient(135deg,#0d8e80,#4bc97a)">MF</div>
+              <div>
+                <h3>Mae Flores</h3>
+                <div class="review-person-meta">2021-00145  -  BSCoE  -  Globe Telecom</div>
+              </div>
+            </div>
+            <div class="review-meta-group">
+              <span class="review-meta-pill"><i class="fa fa-calendar"></i>March 18, 2025</span>
+              <span class="review-meta-pill is-blue"><i class="fa fa-clock"></i>8 hrs</span>
+              <span class="review-status-pill pending" data-role="status-pill">Pending</span>
+              <button class="enh-collapse-btn" onclick="enhToggleCollapse(this.closest('.review-card'))" title="Collapse / expand"><i class="fa fa-chevron-up"></i></button>
+            </div>
+          </div>
+          <div class="review-card-body">
+            <div class="review-card-main">
+              <div class="review-block-label">Tasks completed</div>
+              <p>Assisted with calibrating embedded sensors for the IoT gateway prototype, wrote validation scripts in C for transmission accuracy, and joined a technical knowledge-transfer session on MQTT deployment.</p>
+            </div>
+            <aside class="review-card-side">
+              <div>
+                <div class="review-block-label">Skills applied</div>
+                <div class="review-skill-list">
+                  <span class="review-skill-chip">Embedded C</span>
+                  <span class="review-skill-chip">IoT Sensors</span>
+                  <span class="review-skill-chip">MQTT</span>
+                  <span class="review-skill-chip">Technical Documentation</span>
+                </div>
+              </div>
+              <div class="review-note-box">
+                <div class="review-block-label">Review note</div>
+                <p>Good technical detail. Ask whether validation scripts were committed or shared with the team repository.</p>
+              </div>
+            </aside>
+
+
+          </div>
+          <div class="review-comment-box" hidden>
+            <textarea placeholder="Write feedback for the student..." maxlength="500" oninput="enhCommentCounter(this)"></textarea>
+            <div class="enh-comment-counter">0 / 500</div>
+            <div class="review-comment-actions">
+              <button type="button" class="coord-btn-soft small" onclick="toggleCommentBox(this.closest('.review-card'),false)">Cancel</button>
+              <button type="button" class="coord-btn-primary small" onclick="submitReviewComment(this.closest('.review-card'))"><i class="fa fa-paper-plane"></i>Send feedback</button>
+            </div>
+          </div>
+          <div class="review-card-footer">
+            <div class="review-footer-note" data-role="footer-note">Awaiting coordinator review</div>
+            <div class="review-actions" data-role="action-group">
+              <button type="button" class="coord-btn-soft small info" onclick="toggleCommentBox(this.closest('.review-card'),true)"><i class="fa fa-comment"></i>Add comment</button>
+              <button type="button" class="coord-btn-soft small danger" onclick="updateReviewStatus(this.closest('.review-card'),'returned')"><i class="fa fa-rotate-left"></i>Return</button>
+              <button type="button" class="coord-btn-primary small" onclick="updateReviewStatus(this.closest('.review-card'),'approved')"><i class="fa fa-check"></i>Approve</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 3: Luis Garcia -->
+        <article class="review-card" data-status="pending" data-program="BSBA" data-date="2025-03-18" data-student="Luis Garcia" data-search="luis garcia bsba sm digital excel pivottables financial reporting data analysis presentation monthly sales variance">
+          <div class="review-card-header">
+            <div class="review-person">
+              <div class="review-avatar" style="background:linear-gradient(135deg,#d4a017,#f0c040)">LG</div>
+              <div>
+                <h3>Luis Garcia</h3>
+                <div class="review-person-meta">2021-00188  -  BSBA  -  SM Digital</div>
+              </div>
+            </div>
+            <div class="review-meta-group">
+              <span class="review-meta-pill"><i class="fa fa-calendar"></i>March 18, 2025</span>
+              <span class="review-meta-pill is-blue"><i class="fa fa-clock"></i>8 hrs</span>
+              <span class="review-status-pill pending" data-role="status-pill">Pending</span>
+              <button class="enh-collapse-btn" onclick="enhToggleCollapse(this.closest('.review-card'))" title="Collapse / expand"><i class="fa fa-chevron-up"></i></button>
+            </div>
+          </div>
+          <div class="review-card-body">
+            <div class="review-card-main">
+              <div class="review-block-label">Tasks completed</div>
+              <p>Prepared a monthly sales variance report using Excel PivotTables, supported Q1 data organization, and presented the summary to the department head during the afternoon review.</p>
+            </div>
+            <aside class="review-card-side">
+              <div>
+                <div class="review-block-label">Skills applied</div>
+                <div class="review-skill-list">
+                  <span class="review-skill-chip">Excel PivotTables</span>
+                  <span class="review-skill-chip">Financial Reporting</span>
+                  <span class="review-skill-chip">Data Analysis</span>
+                  <span class="review-skill-chip">Presentation</span>
+                </div>
+              </div>
+              <div class="review-note-box">
+                <div class="review-block-label">Review note</div>
+                <p>Looks complete. Confirm the exact report owner or recipient to make the task record more specific.</p>
+              </div>
+            </aside>
+
+
+          </div>
+          <div class="review-comment-box" hidden>
+            <textarea placeholder="Write feedback for the student..." maxlength="500" oninput="enhCommentCounter(this)"></textarea>
+            <div class="enh-comment-counter">0 / 500</div>
+            <div class="review-comment-actions">
+              <button type="button" class="coord-btn-soft small" onclick="toggleCommentBox(this.closest('.review-card'),false)">Cancel</button>
+              <button type="button" class="coord-btn-primary small" onclick="submitReviewComment(this.closest('.review-card'))"><i class="fa fa-paper-plane"></i>Send feedback</button>
+            </div>
+          </div>
+          <div class="review-card-footer">
+            <div class="review-footer-note" data-role="footer-note">Awaiting coordinator review</div>
+            <div class="review-actions" data-role="action-group">
+              <button type="button" class="coord-btn-soft small info" onclick="toggleCommentBox(this.closest('.review-card'),true)"><i class="fa fa-comment"></i>Add comment</button>
+              <button type="button" class="coord-btn-soft small danger" onclick="updateReviewStatus(this.closest('.review-card'),'returned')"><i class="fa fa-rotate-left"></i>Return</button>
+              <button type="button" class="coord-btn-primary small" onclick="updateReviewStatus(this.closest('.review-card'),'approved')"><i class="fa fa-check"></i>Approve</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- Card 4: Pia Santos -->
+        <article class="review-card" data-status="approved" data-program="BSIT" data-date="2025-03-17" data-student="Pia Santos" data-search="pia santos bsit accenture ph figma ui design accessibility client presentation wireframes">
+          <div class="review-card-header">
+            <div class="review-person">
+              <div class="review-avatar" style="background:linear-gradient(135deg,#1a73e8,#4bc97a)">PS</div>
+              <div>
+                <h3>Pia Santos</h3>
+                <div class="review-person-meta">2021-00167  -  BSIT  -  Accenture PH</div>
+              </div>
+            </div>
+            <div class="review-meta-group">
+              <span class="review-meta-pill"><i class="fa fa-calendar"></i>March 17, 2025</span>
+              <span class="review-meta-pill is-blue"><i class="fa fa-clock"></i>8 hrs</span>
+              <span class="review-status-pill approved" data-role="status-pill">Approved</span>
+              <button class="enh-collapse-btn" onclick="enhToggleCollapse(this.closest('.review-card'))" title="Collapse / expand"><i class="fa fa-chevron-up"></i></button>
+            </div>
+          </div>
+          <div class="review-card-body">
+            <div class="review-card-main">
+              <div class="review-block-label">Tasks completed</div>
+              <p>Created high-fidelity wireframes for the client mobile app redesign, presented layout options to the UX lead, incorporated accessibility feedback, and documented the review checklist for core screens.</p>
+            </div>
+            <aside class="review-card-side">
+              <div>
+                <div class="review-block-label">Skills applied</div>
+                <div class="review-skill-list">
+                  <span class="review-skill-chip">Figma</span>
+                  <span class="review-skill-chip">UI Design</span>
+                  <span class="review-skill-chip">Accessibility</span>
+                  <span class="review-skill-chip">Client Presentation</span>
+                </div>
+              </div>
+              <div class="review-note-box">
+                <div class="review-block-label">Review note</div>
+                <p>Approved. Clear deliverables and client-facing communication were documented well.</p>
+              </div>
+            </aside>
+
+
+          </div>
+          <div class="review-comment-box" hidden>
+            <textarea placeholder="Write feedback for the student..." maxlength="500" oninput="enhCommentCounter(this)"></textarea>
+            <div class="enh-comment-counter">0 / 500</div>
+            <div class="review-comment-actions">
+              <button type="button" class="coord-btn-soft small" onclick="toggleCommentBox(this.closest('.review-card'),false)">Cancel</button>
+              <button type="button" class="coord-btn-primary small" onclick="submitReviewComment(this.closest('.review-card'))"><i class="fa fa-paper-plane"></i>Send feedback</button>
+            </div>
+          </div>
+          <div class="review-card-footer">
+            <div class="review-footer-note approved" data-role="footer-note"><i class="fa fa-circle-check"></i>Approved by Maria Santos  -  March 17</div>
+            <div class="review-actions" data-role="action-group">
+              <button type="button" class="coord-btn-soft small info" onclick="toggleCommentBox(this.closest('.review-card'),true)"><i class="fa fa-comment"></i>Add comment</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="coord-empty-state" id="reviewEmptyState" hidden>
+        <i class="fa fa-book-open"></i>
+        <h3>No logbook entries match this filter</h3>
+        <p>Change the status, program, or search keyword to bring cards back into view.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+
+<!-- * Toast stack -->
+<div class="enh-toast-stack" id="enhToastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+<script>
+/* -- Page progress -- */
+(()=>{const p=document.getElementById('pageProgress');setTimeout(()=>{p.style.width='70%';},40);setTimeout(()=>{p.style.width='100%';p.style.opacity='0';},580);})();
+
+let activeReviewStatus='all';
+
+/* -- Original logic (unchanged) -- */
+document.querySelectorAll('#reviewStatusTabs .review-status-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('#reviewStatusTabs .review-status-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active'); activeReviewStatus=tab.dataset.status; filterReviewEntries();
+  });
+});
+
+function toggleCommentBox(card,show){
+  const box=card.querySelector('.review-comment-box');if(!box)return;
+  box.hidden=!show; if(show)box.querySelector('textarea').focus();
+}
+function submitReviewComment(card){
+  const t=card.querySelector('.review-comment-box textarea');
+  if(!t.value.trim()){showToast('Write a comment first.','error');return;}
+  toggleCommentBox(card,false); t.value=''; showToast('Comment sent to student.','success');
+}
+function updateReviewStatus(card,status){
+  card.dataset.status=status;
+  const pill=card.querySelector('[data-role="status-pill"]');
+  const note=card.querySelector('[data-role="footer-note"]');
+  const acts=card.querySelector('[data-role="action-group"]');
+  pill.className=`review-status-pill ${status}`;
+  pill.textContent=status.charAt(0).toUpperCase()+status.slice(1);
+  const addBtn='<button type="button" class="coord-btn-soft small info" onclick="toggleCommentBox(this.closest(\'.review-card\'),true)"><i class="fa fa-comment"></i>Add comment</button>';
+  if(status==='approved'){note.className='review-footer-note approved';note.innerHTML='<i class="fa fa-circle-check"></i>Approved just now';acts.innerHTML=addBtn;showToast('Logbook entry approved.','success');}
+  else{note.className='review-footer-note returned';note.innerHTML='<i class="fa fa-rotate-left"></i>Returned for revision just now';acts.innerHTML=addBtn;showToast('Entry returned to student.','info');}
+  enhUpdateTabCounts(); filterReviewEntries();
+}
+function filterReviewEntries(){
+  const search=document.getElementById('reviewSearch').value.trim().toLowerCase();
+  const program=document.getElementById('reviewProgramFilter').value;
+  const sort=document.getElementById('reviewSort').value;
+  const list=document.getElementById('reviewCardList'), cards=Array.from(list.querySelectorAll('.review-card'));
+  cards.sort((a,b)=>sort==='student'?a.dataset.student.localeCompare(b.dataset.student):sort==='oldest'?a.dataset.date.localeCompare(b.dataset.date):b.dataset.date.localeCompare(a.dataset.date)).forEach(c=>list.appendChild(c));
+  let visible=0; const vp=new Set();
+  cards.forEach(c=>{const show=(activeReviewStatus==='all'||c.dataset.status===activeReviewStatus)&&(program==='all'||c.dataset.program===program)&&(!search||c.dataset.search.includes(search));c.hidden=!show;if(show){visible++;vp.add(c.dataset.program);}});
+  document.getElementById('reviewResultsText').textContent=`Showing ${visible} entr${visible===1?'y':'ies'}`;
+  document.getElementById('reviewStatVisible').textContent=visible;
+  document.getElementById('reviewStatPending').textContent=cards.filter(c=>c.dataset.status==='pending').length;
+  document.getElementById('reviewStatApproved').textContent=cards.filter(c=>c.dataset.status==='approved').length;
+  document.getElementById('reviewStatPrograms').textContent=vp.size||0;
+  document.getElementById('reviewEmptyState').hidden=visible!==0;
+  enhUpdateTabCounts();
+}
+
+/* -- * Enhancement functions -- */
+function enhUpdateTabCounts(){
+  const cards=Array.from(document.querySelectorAll('.review-card'));
+  document.getElementById('rtabAll').textContent=cards.length;
+  document.getElementById('rtabPending').textContent=cards.filter(c=>c.dataset.status==='pending').length;
+  document.getElementById('rtabApproved').textContent=cards.filter(c=>c.dataset.status==='approved').length;
+  document.getElementById('rtabReturned').textContent=cards.filter(c=>c.dataset.status==='returned').length;
+  document.getElementById('heroPending').textContent=cards.filter(c=>c.dataset.status==='pending').length;
+}
+
+// Collapse / expand using max-height on review-card-body
+function enhToggleCollapse(card){
+  const body=card.querySelector('.review-card-body');
+  const isCollapsed=card.classList.contains('enh-collapsed');
+  const icon=card.querySelector('.enh-collapse-btn i');
+  if(isCollapsed){
+    card.classList.remove('enh-collapsed');
+    body.style.maxHeight=body.scrollHeight+'px';
+    icon.className='fa fa-chevron-up';
+  } else {
+    body.style.maxHeight=body.scrollHeight+'px'; // set explicit px first
+    requestAnimationFrame(()=>{
+      card.classList.add('enh-collapsed');
+      body.style.maxHeight='0';
+      icon.className='fa fa-chevron-down';
+    });
+  }
+}
+// Init body max-heights so CSS transition has a concrete value
+document.querySelectorAll('.review-card-body').forEach(b=>{b.style.maxHeight=b.scrollHeight+'px';});
+
+function enhCollapseAll(){
+  document.querySelectorAll('.review-card:not([hidden])').forEach(c=>{
+    if(!c.classList.contains('enh-collapsed')) enhToggleCollapse(c);
+  });
+}
+function enhExpandAll(){
+  document.querySelectorAll('.review-card:not([hidden])').forEach(c=>{
+    if(c.classList.contains('enh-collapsed')) enhToggleCollapse(c);
+  });
+}
+
+// Comment counter
+function enhCommentCounter(ta){
+  const v=ta.value.length;
+  const el=ta.parentElement.querySelector('.enh-comment-counter');
+  el.textContent=`${v} / 500`;
+  el.className='enh-comment-counter'+(v>420?' warn':'')+(v>=500?' over':'');
+}
+
+// Toast
+function showToast(msg,type='info'){
+  const stack=document.getElementById('enhToastStack');
+  const icons={success:'fa-circle-check',error:'fa-circle-xmark',info:'fa-circle-info'};
+  const t=document.createElement('div');
+  t.className=`enh-toast is-${type}`;
+  t.innerHTML=`<i class="fa ${icons[type]||icons.info} enh-toast-icon"></i><span>${msg}</span><button class="enh-toast-close" onclick="this.parentElement.classList.add('is-out');setTimeout(()=>this.parentElement.remove(),220)"><i class="fa fa-xmark"></i></button>`;
+  stack.appendChild(t);
+  setTimeout(()=>{t.classList.add('is-out');setTimeout(()=>t.remove(),220);},3800);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select'))return;
+  if(e.key==='/')       {e.preventDefault();document.getElementById('reviewSearch').focus();}
+  if(e.key==='c'||e.key==='C') enhCollapseAll();
+  if(e.key==='e'||e.key==='E') enhExpandAll();
+  if(e.key==='Escape')  {document.getElementById('reviewSearch').value='';filterReviewEntries();}
+});
+
+enhUpdateTabCounts(); filterReviewEntries();
+</script>
+</body>
+</html>
+
+
+
+
+

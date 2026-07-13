@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Feedback - INTERNTRACK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="master-style.css"/>
+</head>
+<body class="page-body faculty-page"  >
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="faculty-dashboard.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="faculty-assigned-students.html" class="sidebar-link"><i class="fa fa-users"></i><span>Assigned Students</span></a>
+    <div class="nav-section-label">MANAGEMENT</div>
+    <a href="faculty-journals.html" class="sidebar-link"><i class="fa fa-book"></i><span>Journals</span></a>
+    <a href="faculty-evaluations.html" class="sidebar-link"><i class="fa fa-star"></i><span>Evaluations</span></a>
+    <a href="faculty-feedback.html" class="sidebar-link active"><i class="fa fa-comment-dots"></i><span>Feedback</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="faculty-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-comment-dots"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Feedback</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Faculty</span>
+    <div class="topbar-avatar" title="Faculty profile">FS</div>
+  </div>
+</header>
+<main class="main-content">
+
+<!-- Tabs -->
+<div class="f-tab-bar">
+  <div class="f-tab active" onclick="switchTab('compose',this)"><i class="fa fa-pen"></i> Compose Feedback</div>
+  <div class="f-tab" onclick="switchTab('history',this)"><i class="fa fa-clock-rotate-left"></i> Sent History</div>
+  <div class="f-tab" onclick="switchTab('notes',this)"><i class="fa fa-lock"></i> Private Notes</div>
+</div>
+
+<!-- Compose Tab -->
+<div class="f-tab-panel active" id="tab-compose">
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-paper-plane"></i> Compose New Feedback</div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Select Student <span class="it-inline-036">*</span></label>
+        <select class="sp-select" id="fbStudent" style="width:100%;" onchange="updateFbPreview()">
+          <option value="">-- Choose a student --</option>
+          <option value="Juan dela Cruz">Juan dela Cruz</option>
+          <option value="Maria Santos">Maria Santos</option>
+          <option value="Pedro Reyes">Pedro Reyes</option>
+          <option value="Ana Lim">Ana Lim</option>
+          <option value="Carlo Mendoza">Carlo Mendoza</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Subject Line <span class="it-inline-036">*</span></label>
+        <input type="text" class="sp-input" id="fbSubject" placeholder="e.g. Midterm Progress Feedback" style="width:100%;">
+      </div>
+      <div class="col-12">
+        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Message <span class="it-inline-036">*</span></label>
+        <textarea class="sp-textarea it-inline-095" id="fbMessage" placeholder="Write your feedback message to the student..."></textarea>
+      </div>
+      <div class="col-12">
+        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Recommendations <span class="it-inline-085">(optional)</span></label>
+        <div id="recsContainer">
+          <div class="rec-row" style="display:flex;gap:8px;margin-bottom:8px;">
+            <input type="text" class="sp-input it-inline-055" placeholder="e.g. Improve documentation skills">
+            <button class="sp-btn-icon it-inline-038" title="Remove" onclick="removeRec(this)"><i class="fa fa-xmark"></i></button>
+          </div>
+        </div>
+        <button class="sp-btn sp-btn-gray it-inline-073" onclick="addRec()"><i class="fa fa-plus"></i> Add Recommendation</button>
+      </div>
+      <div class="col-12">
+        <div style="display:flex;gap:10px;">
+          <button class="sp-btn sp-btn-green" onclick="sendFeedback()"><i class="fa fa-paper-plane"></i> Send Feedback</button>
+          <button class="sp-btn sp-btn-gray" onclick="saveFbDraft()"><i class="fa fa-floppy-disk"></i> Save Draft</button>
+          <button class="sp-btn sp-btn-gray" onclick="clearForm()"><i class="fa fa-rotate-left"></i> Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sent History Tab -->
+<div class="f-tab-panel" id="tab-history">
+  <div class="sp-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div class="sp-card-title" style="margin-bottom:0;"><i class="fa fa-clock-rotate-left"></i> Sent Feedback History</div>
+      <div class="sp-toolbar" style="margin-bottom:0;">
+        <input type="text" class="sp-input sp-input-sm" id="histSearch" placeholder="Filter by student..." oninput="filterHistory()">
+        <select class="sp-select" id="histStudent" onchange="filterHistory()">
+          <option value="">All Students</option>
+          <option value="Juan dela Cruz">Juan dela Cruz</option>
+          <option value="Maria Santos">Maria Santos</option>
+          <option value="Pedro Reyes">Pedro Reyes</option>
+          <option value="Carlo Mendoza">Carlo Mendoza</option>
+        </select>
+      </div>
+    </div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<!-- Private Notes Tab -->
+<div class="f-tab-panel" id="tab-notes">
+  <div class="sp-two-col">
+    <div class="sp-card">
+      <div class="sp-card-title"><i class="fa fa-lock"></i> Add Private Note</div>
+      <p style="font-size:12px;color:#9ca3af;margin-bottom:14px;">Private notes are visible only to you. Use them to track observations, concerns, or reminders about a student.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Student</label>
+          <select class="sp-select" id="noteStudent" style="width:100%;">
+            <option value="">-- Select student --</option>
+            <option value="Juan dela Cruz">Juan dela Cruz</option>
+            <option value="Maria Santos">Maria Santos</option>
+            <option value="Pedro Reyes">Pedro Reyes</option>
+            <option value="Ana Lim">Ana Lim</option>
+            <option value="Carlo Mendoza">Carlo Mendoza</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Note</label>
+          <textarea class="sp-textarea it-inline-094" id="noteText" placeholder="Add a private observation or reminder about this student..."></textarea>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Tag</label>
+          <select class="sp-select" id="noteTag" style="width:100%;">
+            <option value="General">General</option>
+            <option value="Concern">Concern</option>
+            <option value="Commendation">Commendation</option>
+            <option value="Reminder">Reminder</option>
+          </select>
+        </div>
+        <button class="sp-btn sp-btn-green" onclick="saveNote()"><i class="fa fa-lock"></i> Save Private Note</button>
+      </div>
+    </div>
+    <div class="sp-card">
+      <div class="sp-card-title"><i class="fa fa-note-sticky"></i> Saved Notes</div>
+      <div id="notesList"></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:right;">AY 2024&#8211;2025, Sem 2 &copy; INTERNTRACK Faculty Portal</div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+<div class="sp-logout-overlay" id="spLogoutModal">
+  <div class="sp-logout-box">
+    <div class="sp-logout-icon-wrap"><i class="fa fa-right-from-bracket"></i></div>
+    <div class="sp-logout-title">Log out of your account?</div>
+    <div class="sp-logout-sub">Are you sure you want to log out?</div>
+    <div class="sp-logout-btns">
+      <button class="sp-logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="sp-logout-btn-confirm" onclick="confirmLogout()"><i class="fa fa-right-from-bracket"></i> Yes, Log Out</button>
+    </div>
+  </div>
+</div>
+
+<div id="f-toast-stack" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:6px;"></div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  if(typeof protectFacultyRoute==='function') protectFacultyRoute();
+
+  if(typeof initSidebarState==='function') initSidebarState();
+
+  // -- Tab switching --
+  function switchTab(id, el){
+    document.querySelectorAll('.f-tab').forEach(function(t){t.classList.remove('active');});
+    document.querySelectorAll('.f-tab-panel').forEach(function(p){p.classList.remove('active');});
+    el.classList.add('active');
+    document.getElementById('tab-'+id).classList.add('active');
+  }
+
+  // -- Recommendations --
+  function addRec(){
+    var div=document.createElement('div');
+    div.className='rec-row';
+    div.style.cssText='display:flex;gap:8px;margin-bottom:8px;';
+    div.innerHTML='<input type="text" class="sp-input it-inline-055" placeholder="e.g. Work on time management"><button class="sp-btn-icon it-inline-038" title="Remove" onclick="removeRec(this)"><i class="fa fa-xmark"></i></button>';
+    document.getElementById('recsContainer').appendChild(div);
+  }
+  function removeRec(btn){var row=btn.closest('.rec-row');if(row)row.remove();}
+
+  // -- Send Feedback --
+  var sentHistory = [
+    {student:'Juan dela Cruz',subject:'Week 3 Progress Check-in',date:'May 20, 2026',message:'Great progress on your database project. Keep maintaining your journal entries regularly and make sure to log all your hours accurately. I am very pleased with your initiative in asking clarifying questions from your supervisor.',recs:['Continue daily journal logging','Ask more follow-up questions']},
+    {student:'Maria Santos',subject:'Attendance Concern',date:'May 18, 2026',message:'I noticed you have had two absences this week without prior notice. Please make sure to inform your company supervisor and update your attendance log accordingly. Consistent attendance is critical for your evaluation.',recs:['Notify supervisor at least 1 day in advance','Submit make-up hour documentation']},
+    {student:'Pedro Reyes',subject:'Excellent API Work',date:'May 15, 2026',message:'Your backend API integration work has been commended by your industry supervisor. Keep up the excellent work and continue documenting your learning in your journals.',recs:[]},
+    {student:'Carlo Mendoza',subject:'Missing Journal Entries',date:'May 12, 2026',message:'You have not submitted journal entries for the past 3 days. Please catch up immediately as this affects your overall internship grade. Reach out if you are having difficulties.',recs:['Submit 3 overdue journal entries','Schedule a check-in call with me']}
+  ];
+
+  function renderHistory(list){
+    var el=document.getElementById('historyList');
+    if(!list.length){el.innerHTML='<div class="it-inline-107"><i class="fa fa-inbox" style="font-size:22px;display:block;margin-bottom:8px;"></i>No feedback sent yet.</div>';return;}
+    el.innerHTML=list.map(function(fb,i){
+      var recs=fb.recs.length?'<div style="margin-top:8px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:5px;">Recommendations</div><ul style="margin:0;padding-left:16px;">'+fb.recs.map(function(r){return '<li class="it-inline-075">'+r+'</li>';}).join('')+'</ul></div>':'';
+      return '<div class="f-feedback-item"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;"><div><div class="it-inline-088">'+fb.subject+'</div><div style="font-size:12px;color:#6b7280;margin-top:2px;"><i class="fa fa-user it-inline-032"></i> '+fb.student+' &nbsp; - &nbsp; <i class="fa fa-calendar"></i> '+fb.date+'</div></div><button class="sp-btn-icon" onclick="this.closest('.f-feedback-item').querySelector('.fb-body').style.display=this.closest('.f-feedback-item').querySelector('.fb-body').style.display==='none'?'':'none'"><i class="fa fa-chevron-down"></i></button></div><div class="fb-body" style="display:none;"><div style="font-size:13px;color:#374151;line-height:1.65;background:#f9fafb;border-radius:8px;padding:12px;border-left:3px solid #2e7d47;">'+fb.message+'</div>'+recs+'</div></div>';
+    }).join('');
+  }
+  renderHistory(sentHistory);
+
+  function filterHistory(){
+    var q=document.getElementById('histSearch').value.toLowerCase();
+    var st=document.getElementById('histStudent').value;
+    renderHistory(sentHistory.filter(function(fb){
+      return(!q||fb.student.toLowerCase().includes(q)||fb.subject.toLowerCase().includes(q))&&(!st||fb.student===st);
+    }));
+  }
+
+  function sendFeedback(){
+    var student=document.getElementById('fbStudent').value;
+    var subject=document.getElementById('fbSubject').value.trim();
+    var message=document.getElementById('fbMessage').value.trim();
+    if(!student){fToast('Please select a student.','red');return;}
+    if(!subject){fToast('Please enter a subject line.','red');return;}
+    if(!message){fToast('Please write a message.','red');return;}
+    var recs=[];
+    document.querySelectorAll('.rec-row input').forEach(function(inp){if(inp.value.trim())recs.push(inp.value.trim());});
+    var now=new Date();
+    var dateStr=now.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+    sentHistory.unshift({student:student,subject:subject,date:dateStr,message:message,recs:recs});
+    clearForm();
+    fToast('Feedback sent to '+student+'!','green');
+    // Switch to history tab
+    document.querySelectorAll('.f-tab')[1].click();
+    renderHistory(sentHistory);
+  }
+
+  function clearForm(){
+    document.getElementById('fbStudent').value='';
+    document.getElementById('fbSubject').value='';
+    document.getElementById('fbMessage').value='';
+    document.getElementById('recsContainer').innerHTML='<div class="rec-row" style="display:flex;gap:8px;margin-bottom:8px;"><input type="text" class="sp-input it-inline-055" placeholder="e.g. Improve documentation skills"><button class="sp-btn-icon it-inline-038" title="Remove" onclick="removeRec(this)"><i class="fa fa-xmark"></i></button></div>';
+  }
+
+  function saveFbDraft(){
+    var student=document.getElementById('fbStudent').value;
+    if(!student){fToast('Select a student before saving draft.','blue');return;}
+    fToast('Draft saved for '+student+'.','blue');
+  }
+
+  // -- Private Notes --
+  var privateNotes = [
+    {student:'Maria Santos',note:'Showing signs of disengagement. Will monitor closely over the next two weeks and follow up with her industry supervisor.',tag:'Concern',date:'May 19, 2026'},
+    {student:'Carlo Mendoza',note:'Seems to be struggling with time management. Consider scheduling a one-on-one check-in call.',tag:'Reminder',date:'May 16, 2026'},
+    {student:'Ana Lim',note:'Outstanding performance - should be highlighted as a model intern for the final report.',tag:'Commendation',date:'May 14, 2026'}
+  ];
+
+  var NOTE_TAG_COLORS = {
+    'General':'gray','Concern':'red','Commendation':'green','Reminder':'amber'
+  };
+
+  function renderNotes(){
+    var el=document.getElementById('notesList');
+    if(!privateNotes.length){el.innerHTML='<div class="it-inline-105"><i class="fa fa-note-sticky" style="font-size:20px;display:block;margin-bottom:8px;"></i>No private notes yet.</div>';return;}
+    el.innerHTML=privateNotes.map(function(n,i){
+      var tc=NOTE_TAG_COLORS[n.tag]||'gray';
+      return '<div class="f-note-item"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;"><div><div class="it-inline-090">'+n.student+'</div><div class="it-inline-071">'+n.date+'</div></div><div style="display:flex;gap:6px;align-items:center;"><span class="sp-badge '+tc+'">'+n.tag+'</span><button class="sp-btn-icon it-inline-039" onclick="deleteNote('+i+')"><i class="fa fa-trash"></i></button></div></div><div class="it-inline-079">'+n.note+'</div></div>';
+    }).join('');
+  }
+  renderNotes();
+
+  function saveNote(){
+    var student=document.getElementById('noteStudent').value;
+    var note=document.getElementById('noteText').value.trim();
+    var tag=document.getElementById('noteTag').value;
+    if(!student){fToast('Please select a student.','red');return;}
+    if(!note){fToast('Please enter a note.','red');return;}
+    var now=new Date();
+    var dateStr=now.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+    privateNotes.unshift({student:student,note:note,tag:tag,date:dateStr});
+    document.getElementById('noteStudent').value='';
+    document.getElementById('noteText').value='';
+    document.getElementById('noteTag').value='General';
+    renderNotes();
+    fToast('Private note saved.','green');
+  }
+
+  function deleteNote(idx){
+    if(!confirm('Delete this private note?'))return;
+    privateNotes.splice(idx,1);
+    renderNotes();
+    fToast('Note deleted.','blue');
+  }
+
+});
+
+function openLogoutModal(){var m=document.getElementById('spLogoutModal');if(m)m.classList.add('open');}
+function closeLogoutModal(){var m=document.getElementById('spLogoutModal');if(m)m.classList.remove('open');}
+function confirmLogout(){closeLogoutModal();supervisorLogout();}
+
+function fToast(msg,type){
+  var s=document.getElementById('f-toast-stack');
+  if(!s){s=document.createElement('div');s.id='f-toast-stack';s.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:6px;';document.body.appendChild(s);}
+  var t=document.createElement('div');t.className='sp-toast '+(type||'green');
+  t.innerHTML='<i class="fa fa-circle-check"></i> '+msg;
+  s.appendChild(t);setTimeout(function(){t.remove();},3000);
+}
+
+function supervisorLogout(){
+  sessionStorage.removeItem('faculty_logged_in');
+  sessionStorage.removeItem('supervisor_logged_in');
+  sessionStorage.clear();
+  window.location.href='index.html';
+}
+</script>
+</body>
+</html>
+
+
+

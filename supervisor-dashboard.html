@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dashboard - INTERNTRACK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="master-style.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="page-body supervisor-page"  >
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="supervisor-dashboard.html" class="sidebar-link active"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="supervisor-assigned-interns.html" class="sidebar-link"><i class="fa fa-users"></i><span>Assigned Interns</span></a>
+    <a href="supervisor-attendance-validation.html" class="sidebar-link"><i class="fa fa-calendar-check"></i><span>Attendance Validation</span></a>
+    <a href="supervisor-journal-validation.html" class="sidebar-link"><i class="fa fa-book"></i><span>Journal Review</span></a>
+    <a href="supervisor-performance-evaluation.html" class="sidebar-link"><i class="fa fa-star"></i><span>Evaluations</span></a>
+    <a href="supervisor-notifications.html" class="sidebar-link"><i class="fa fa-bell"></i><span>Notifications</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="supervisor-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-chart-line"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Progress Monitoring & Supervision</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Supervisor</span>
+    <div class="topbar-avatar" title="Supervisor profile">MS</div>
+  </div>
+</header>
+<main class="main-content">
+  <!-- Stat cards -->
+  <div class="sp-stat-grid sp-stat-grid-4">
+    <div class="sp-stat-card" style="border-left:4px solid #2e7d47;">
+      <div style="color:#2e7d47;font-size:20px;margin-bottom:10px;"><i class="fa fa-users"></i></div>
+      <div class="sp-stat-val">192</div><div class="sp-stat-label">Active Interns</div>
+    </div>
+    <div class="sp-stat-card" style="border-left:4px solid #3b82f6;">
+      <div style="color:#3b82f6;font-size:20px;margin-bottom:10px;"><i class="fa fa-clock"></i></div>
+      <div class="sp-stat-val">62%</div><div class="sp-stat-label">Avg. Hours Completion</div>
+    </div>
+    <div class="sp-stat-card" style="border-left:4px solid #f59e0b;cursor:pointer;" onclick="location.href='supervisor-assigned-interns.html'">
+      <div style="color:#f59e0b;font-size:20px;margin-bottom:10px;"><i class="fa fa-triangle-exclamation"></i></div>
+      <div class="sp-stat-val it-inline-035">14</div><div class="sp-stat-label">At-Risk Students</div>
+    </div>
+    <div class="sp-stat-card" style="border-left:4px solid #7c3aed;">
+      <div style="color:#7c3aed;font-size:20px;margin-bottom:10px;"><i class="fa fa-circle-check"></i></div>
+      <div class="sp-stat-val it-inline-034">18</div><div class="sp-stat-label">Fully Completed</div>
+    </div>
+  </div>
+
+  <!-- Chart + Programs -->
+  <div class="sp-two-col">
+    <div class="sp-card">
+      <div class="sp-card-title"><i class="fa fa-chart-line"></i> Weekly OJT Hours - Juan dela Cruz</div>
+      <canvas id="hoursChart" height="155"></canvas>
+    </div>
+    <div class="sp-card">
+      <div class="sp-card-title"><i class="fa fa-graduation-cap"></i> Completion by Program</div>
+      <div class="sp-program-list">
+        <div><div class="sp-program-row"><span>BS IT</span><span>68%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-green" style="width:68%"></div></div></div>
+        <div><div class="sp-program-row"><span>BS CS</span><span>75%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-green" style="width:75%"></div></div></div>
+        <div><div class="sp-program-row"><span>BS Business Admin</span><span>55%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-amber" style="width:55%"></div></div></div>
+        <div><div class="sp-program-row"><span>BS Nursing</span><span>82%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-blue" style="width:82%"></div></div></div>
+        <div><div class="sp-program-row"><span>BS Engineering</span><span>71%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-green" style="width:71%"></div></div></div>
+        <div><div class="sp-program-row"><span>BS Psychology</span><span>64%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-purple" style="width:64%"></div></div></div>
+        <div><div class="sp-program-row"><span>BS Accountancy</span><span>79%</span></div><div class="sp-prog-bar"><div class="sp-prog-fill fill-teal" style="width:79%"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Co-supervisors widget -->
+  <div class="sp-card" style="margin-bottom:20px;">
+    <div class="sp-card-title"><i class="fa fa-user-group"></i> Co-Supervisors Online</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:8px;padding:10px 14px;border:1px solid #e5e7eb;">
+        <div style="width:36px;height:36px;border-radius:50%;background:#2e7d47;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">DR</div>
+        <div><div class="it-inline-087">Mr. David Reyes</div><div class="it-inline-070">TechCorp PH</div></div>
+        <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:4px;" title="Online"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:8px;padding:10px 14px;border:1px solid #e5e7eb;">
+        <div style="width:36px;height:36px;border-radius:50%;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">AC</div>
+        <div><div class="it-inline-087">Ms. Anna Cruz</div><div class="it-inline-070">DataSoft Inc.</div></div>
+        <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;margin-left:4px;" title="Online"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;background:#f9fafb;border-radius:8px;padding:10px 14px;border:1px solid #e5e7eb;">
+        <div style="width:36px;height:36px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">RL</div>
+        <div><div class="it-inline-087">Mr. Rico Lim</div><div class="it-inline-070">NexaTech</div></div>
+        <span style="width:8px;height:8px;border-radius:50%;background:#9ca3af;margin-left:4px;" title="Away"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supervision Status table -->
+  <div class="sp-card">
+    <div class="sp-card-title"><i class="fa fa-table-cells"></i> Supervision Status</div>
+    <div class="sp-table-wrap">
+      <table class="sp-table">
+        <thead><tr>
+          <th>Student</th><th>Company Supervisor</th><th>Last Visit</th>
+          <th>Hours This Week</th><th>Journal</th><th>Docs</th><th>Overall</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="sp-name-primary it-inline-054" onclick="location.href='supervisor-assigned-interns.html'">Juan dela Cruz</div><div class="sp-name-secondary">BS Information Technology</div></td>
+            <td>Mr. David Reyes</td><td>May 19</td><td>42 hrs</td>
+            <td><span class="sp-badge green">Up to date</span></td>
+            <td><span class="sp-badge green">Complete</span></td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="sp-bar" style="width:80px;"><div class="sp-bar-fill" style="width:78%"></div></div><span class="it-inline-077">78%</span></div></td>
+          </tr>
+          <tr>
+            <td><div class="sp-name-primary it-inline-054" onclick="location.href='supervisor-assigned-interns.html'">Maria Santos</div><div class="sp-name-secondary">BS Computer Science</div></td>
+            <td>Mr. David Reyes</td><td>May 18</td><td>35 hrs</td>
+            <td><span class="sp-badge gray">Pending</span></td>
+            <td><span class="sp-badge amber">2 Missing</span></td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="sp-bar" style="width:80px;"><div class="sp-bar-fill amber" style="width:52%"></div></div><span class="it-inline-077">52%</span></div></td>
+          </tr>
+          <tr>
+            <td><div class="sp-name-primary it-inline-054" onclick="location.href='supervisor-assigned-interns.html'">Pedro Reyes</div><div class="sp-name-secondary">BS Business Administration</div></td>
+            <td>Mr. David Reyes</td><td>May 20</td><td>40 hrs</td>
+            <td><span class="sp-badge green">Up to date</span></td>
+            <td><span class="sp-badge green">Complete</span></td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="sp-bar" style="width:80px;"><div class="sp-bar-fill" style="width:85%"></div></div><span class="it-inline-077">85%</span></div></td>
+          </tr>
+          <tr>
+            <td><div class="sp-name-primary it-inline-054" onclick="location.href='supervisor-assigned-interns.html'">Ana Lim</div><div class="sp-name-secondary">BS Information Technology</div></td>
+            <td>Mr. David Reyes</td><td>May 21</td><td>38 hrs</td>
+            <td><span class="sp-badge green">Up to date</span></td>
+            <td><span class="sp-badge green">Complete</span></td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="sp-bar" style="width:80px;"><div class="sp-bar-fill" style="width:100%"></div></div><span class="it-inline-077">100%</span></div></td>
+          </tr>
+          <tr>
+            <td><div class="sp-name-primary it-inline-054" onclick="location.href='supervisor-assigned-interns.html'">Carlo Mendoza</div><div class="sp-name-secondary">BS Computer Science</div></td>
+            <td>Mr. David Reyes</td><td>May 15</td><td>28 hrs</td>
+            <td><span class="sp-badge gray">Pending</span></td>
+            <td><span class="sp-badge amber">1 Missing</span></td>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="sp-bar" style="width:80px;"><div class="sp-bar-fill amber" style="width:38%"></div></div><span class="it-inline-077">38%</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+</div>
+<div id="sp-toast-stack"></div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  protectSupervisorRoute();
+  initHamburger();
+  updateNotificationBadge();
+  buildChart();
+});
+function buildChart(){
+  var ctx=document.getElementById('hoursChart').getContext('2d');
+  new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5','Wk 6','Wk 7','Wk 8'],
+      datasets:[{label:'Hours',data:[19,22,21,23,24,29,26,30],
+        borderColor:'#2e7d47',backgroundColor:'rgba(46,125,71,0.08)',
+        pointBackgroundColor:'#fff',pointBorderColor:'#2e7d47',
+        pointBorderWidth:2,pointRadius:5,tension:.35,fill:true,borderWidth:2}]
+    },
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{
+        y:{min:0,max:35,ticks:{stepSize:7,color:'#9ca3af',font:{size:11}},grid:{color:'#f3f4f6'},border:{display:false}},
+        x:{ticks:{color:'#9ca3af',font:{size:11}},grid:{display:false},border:{display:false}}
+      }
+    }
+  });
+}
+function initHamburger(){
+  var btn=document.getElementById('spHamburger'),nav=document.getElementById('spNav'),ov=document.getElementById('spOverlay');
+  if(!btn)return;
+  btn.addEventListener('click',function(){nav.classList.toggle('open');ov.classList.toggle('open');});
+  ov.addEventListener('click',function(){nav.classList.remove('open');ov.classList.remove('open');});
+}
+
+
+
+
+
+function openLogoutModal(e){if(e)e.preventDefault();document.getElementById('spLogoutModal').classList.add('open');}
+function closeLogoutModal(){document.getElementById('spLogoutModal').classList.remove('open');}
+function confirmLogout(){
+  var btn=document.querySelector('.sp-logout-btn-confirm');
+  if(btn){btn.disabled=true;btn.textContent='Logging out...';}
+  supervisorLogout();
+}
+(function(){
+  // Program completion bars - start at 0, animate to target
+  document.querySelectorAll('.sp-prog-fill').forEach(function(el){
+    var w = el.style.width;
+    el.style.width = '0';
+    setTimeout(function(){ el.style.width = w; }, 100);
+  });
+  // Table progress bars
+  document.querySelectorAll('.sp-bar-fill').forEach(function(el){
+    var w = el.style.width;
+    el.style.width = '0';
+    setTimeout(function(){ el.style.width = w; }, 150);
+  });
+})();
+
+// -- Bar animation: read target from style.width, start from 0, animate to target --
+(function() {
+  function animateBars() {
+    // Program completion bars (.sp-prog-fill)
+    document.querySelectorAll('.sp-prog-fill').forEach(function(el) {
+      var target = el.getAttribute('data-target');
+      if (!target) {
+        // Read current inline style width as the target, store it, reset to 0
+        target = el.style.width || '0%';
+        el.setAttribute('data-target', target);
+        el.style.width = '0';
+      }
+      // Trigger transition to target after a brief delay
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          el.style.width = target;
+        });
+      });
+    });
+
+    // Table / inline progress bars (.sp-bar-fill)
+    document.querySelectorAll('.sp-bar-fill').forEach(function(el) {
+      var target = el.getAttribute('data-target');
+      if (!target) {
+        target = el.style.width || '0%';
+        el.setAttribute('data-target', target);
+        el.style.width = '0';
+      }
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          el.style.width = target;
+        });
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', animateBars);
+  } else {
+    animateBars();
+  }
+})();
+</script>
+<!-- Logout modal -->
+<div class="sp-logout-overlay" id="spLogoutModal">
+  <div class="sp-logout-box">
+    <div class="sp-logout-icon-wrap">
+      <i class="fa fa-right-from-bracket"></i>
+    </div>
+    <div class="sp-logout-title">Log out of your account?</div>
+    <div class="sp-logout-sub">Are you sure you want to log out?</div>
+    <div class="sp-logout-btns">
+      <button class="sp-logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="sp-logout-btn-confirm" onclick="confirmLogout()">Log Out</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+
+
+

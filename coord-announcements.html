@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Announcements - INTERNTRACK</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="master-style.css"/>
+</head>
+<body class="page-body coordinator-page announcements-page"  >
+<div class="page-progress" id="pageProgress" style="width:0;opacity:1"></div>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="coord-monitoring.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="coord-announcements.html" class="sidebar-link active"><i class="fa fa-bullhorn"></i><span>Announcements</span></a>
+    <a href="coord-doc-approvals.html" class="sidebar-link"><i class="fa fa-file-circle-check"></i><span>Document Approvals</span></a>
+    <a href="coord-logbook-review.html" class="sidebar-link"><i class="fa fa-book-open"></i><span>Logbook Review</span></a>
+    <a href="coord-records.html" class="sidebar-link"><i class="fa fa-folder-open"></i><span>Records</span></a>
+    <a href="coord-reports.html" class="sidebar-link"><i class="fa fa-chart-bar"></i><span>Reports</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="coord-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-bullhorn"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Announcements</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Coordinator</span>
+    <div class="topbar-avatar" title="Coordinator profile">CO</div>
+  </div>
+</header>
+
+
+
+<main class="main-content">
+  <div class="page-topbar-hero">
+    <div class="page-hero">
+      <div class="page-hero-left">
+        <div class="page-hero-icon"><i class="fa fa-bullhorn"></i></div>
+        <div>
+          <div class="page-hero-title">Announcements</div>
+          <div class="page-hero-sub">Compose, target, and manage posts for interns and companies</div>
+        </div>
+      </div>
+      <div class="page-hero-right">
+        <div class="page-hero-badge"><i class="fa fa-layer-group"></i><span id="topbarStatPub">4</span> published</div>
+        <div class="page-hero-badge is-alert" id="topbarUrgentBadge" style="display:none"><i class="fa fa-triangle-exclamation"></i><span id="topbarUrgentCount">0</span> urgent</div>
+        <div class="page-hero-term-select" aria-label="Academic year and semester">
+          <i class="fa fa-calendar-alt" aria-hidden="true"></i>
+          <select>
+            <option selected>AY 2024-2025, Sem 2</option>
+            <option>AY 2024-2025, Sem 1</option>
+          </select>
+          <i class="fa fa-chevron-down" aria-hidden="true"></i>
+        </div>
+        <div class="page-hero-divider"></div>
+        <div class="page-hero-avatar">PS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-inner">
+
+    <!-- Stat strip -->
+    <section class="coord-stat-grid">
+      <article class="coord-stat-card">
+        <div class="coord-stat-icon"><i class="fa fa-layer-group"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="annStatPublished">4</div>
+          <div class="coord-stat-label">Published</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-amber">
+        <div class="coord-stat-icon"><i class="fa fa-triangle-exclamation"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="annStatUrgent">1</div>
+          <div class="coord-stat-label">Needs Attention</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-blue">
+        <div class="coord-stat-icon"><i class="fa fa-bullseye"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="annStatTargeted">2</div>
+          <div class="coord-stat-label">Targeted Posts</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-teal">
+        <div class="coord-stat-icon"><i class="fa fa-eye"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="annStatReach">43</div>
+          <div class="coord-stat-label">Avg. Reach</div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Compose panel + tips -->
+    <section class="announcements-layout">
+      <article class="coord-section ann-compose-panel">
+        <div class="coord-section-head">
+          <div>
+            <h2><i class="fa fa-pen-to-square"></i>Compose announcement</h2>
+            <p>Keep the copy concise, pick the right audience, and publish from the same panel.</p>
+          </div>
+          <span class="ann-mode-badge" id="annModeText"><i class="fa fa-plus"></i>Create new</span>
+        </div>
+        <div class="ann-form-grid">
+          <div>
+            <label class="coord-label" for="annTitle">Title</label>
+            <input id="annTitle" class="coord-input" type="text" placeholder="e.g. Final DTR submission reminder" maxlength="100" oninput="enhTitleCounter()">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.26rem">
+              <span class="enh-char-counter" id="titleCounter">0 / 100</span>
+              <button type="button" class="enh-preview-toggle" onclick="enhTogglePreview()">Show preview</button>
+            </div>
+          </div>
+          <div>
+            <label class="coord-label" for="annType">Type</label>
+            <select id="annType" class="coord-select" onchange="enhUpdatePreview()">
+              <option value="general">General</option>
+              <option value="reminder">Reminder</option>
+              <option value="urgent">Urgent</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
+          <div class="ann-form-span">
+            <label class="coord-label" for="annBody">Message</label>
+            <textarea id="annBody" class="coord-textarea" placeholder="State the update, required action, and exact deadline if needed." maxlength="600" oninput="enhBodyCounter()"></textarea>
+            <span class="enh-char-counter" id="bodyCounter" style="display:block">0 / 600</span>
+          </div>
+          <div class="ann-form-span" id="enhPreviewWrap" style="display:none">
+            <div class="enh-preview-box">
+              <h4 id="enhPrevTitle">-</h4>
+              <p id="enhPrevBody" class="it-inline-093">-</p>
+              <div style="margin-top:.48rem;font-size:.72rem;color:var(--text-light)">
+                <i class="fa fa-users"></i> <span id="enhPrevAudience">All Students</span>&nbsp; - &nbsp;<span id="enhPrevType">General</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ann-audience-wrap">
+          <label class="coord-label">Audience</label>
+          <div class="ann-audience-pills" id="annAudiencePills">
+            <button type="button" class="ann-audience-pill active" data-audience="All Students"><i class="fa fa-users"></i>All Students</button>
+            <button type="button" class="ann-audience-pill" data-audience="BSIT"><i class="fa fa-laptop-code"></i>BSIT</button>
+            <button type="button" class="ann-audience-pill" data-audience="BSCoE"><i class="fa fa-microchip"></i>BSCoE</button>
+            <button type="button" class="ann-audience-pill" data-audience="BSBA"><i class="fa fa-briefcase"></i>BSBA</button>
+            <button type="button" class="ann-audience-pill" data-audience="Companies"><i class="fa fa-building"></i>Companies</button>
+          </div>
+        </div>
+        <div class="ann-actions-row">
+          <button type="button" class="coord-btn-soft" onclick="resetAnnouncementForm()"><i class="fa fa-rotate-left"></i>Clear</button>
+          <button type="button" class="coord-btn-soft" onclick="enhSaveDraft()"><i class="fa fa-floppy-disk"></i>Save Draft</button>
+          <button type="button" class="coord-btn-primary" onclick="submitAnnouncement()"><i class="fa fa-paper-plane"></i><span id="annSubmitText">Publish</span></button>
+        </div>
+        <div class="enh-draft-note" id="enhDraftNote"><i class="fa fa-circle-check"></i> Draft saved locally</div>
+      </article>
+
+      <aside class="coord-section ann-side-panel">
+        <div class="coord-section-head">
+          <div>
+            <h2><i class="fa fa-circle-info"></i>Posting tips</h2>
+            <p>Small rules that keep posts readable on desktop and mobile.</p>
+          </div>
+        </div>
+        <div class="ann-guide-list">
+          <div class="ann-guide-item"><span>Title</span><strong>50-70 chars works best</strong></div>
+          <div class="ann-guide-item"><span>Audience</span><strong>Target specific groups first</strong></div>
+          <div class="ann-guide-item"><span>Urgent notices</span><strong>Include deadline and action</strong></div>
+          <div class="ann-guide-item"><span>Structure</span><strong>One task per announcement</strong></div>
+        </div>
+        <div style="margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--border-soft)">
+          <div style="font-family:'Montserrat',sans-serif;font-size:.72rem;font-weight:800;color:var(--green-dark);margin-bottom:.55rem;letter-spacing:.5px;text-transform:uppercase">Type breakdown</div>
+          <div class="enh-type-chart" id="enhTypeChart"></div>
+        </div>
+      </aside>
+
+
+    </section>
+
+    <!-- Posted announcements list -->
+    <section class="coord-section">
+      <div class="coord-toolbar">
+        <div>
+          <div class="coord-section-title">Posted announcements</div>
+          <div class="coord-section-sub">Search, filter, edit, or remove posts from the same queue.</div>
+        </div>
+        <div class="coord-toolbar-actions">
+          <div class="coord-search-wrap">
+            <i class="fa fa-search coord-search-icon"></i>
+            <input id="annSearch" class="coord-search" type="text" placeholder="Search title, audience, or message..." oninput="renderAnnouncements()">
+          </div>
+          <select id="annFilter" class="coord-select" onchange="renderAnnouncements()">
+            <option value="all">All types</option>
+            <option value="general">General</option>
+            <option value="reminder">Reminder</option>
+            <option value="urgent">Urgent</option>
+            <option value="info">Info</option>
+          </select>
+          <button type="button" class="coord-btn-soft" onclick="enhToggleSort(this)">
+            <i class="fa fa-arrow-down-short-wide enh-sort-icon" id="enhSortIcon"></i>Newest
+          </button>
+        </div>
+      </div>
+      <div class="shortcut-strip">
+        <span class="shortcut-item"><span class="shortcut-key">/</span>Search</span>
+        <span class="shortcut-item"><span class="shortcut-key">N</span>New post</span>
+        <span class="shortcut-item"><span class="shortcut-key">Esc</span>Clear</span>
+      </div>
+      <div class="coord-inline-meta"><span id="annResultsText">Showing 4 posts</span></div>
+      <div class="announcements-list" id="announcementsList"></div>
+      <div class="coord-empty-state" id="annEmptyState" hidden>
+        <i class="fa fa-bullhorn"></i>
+        <h3>No announcements match this view</h3>
+        <p>Try another filter or publish a new notice from the compose panel.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+
+<div class="enh-toast-stack" id="enhToastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+<script>
+// Page progress
+(()=>{const p=document.getElementById('pageProgress');setTimeout(()=>{p.style.width='70%';},40);setTimeout(()=>{p.style.width='100%';p.style.opacity='0';},580);})();
+
+const announcementData=[
+  {id:1,type:'reminder',title:'Final DTR submission deadline on Friday',body:'Submit your signed Daily Time Record on or before Friday, 5:00 PM. Late submissions will be tagged for coordinator follow-up.',audience:'All Students',timestamp:'Posted today  -  9:15 AM',views:58,author:'Maria Santos'},
+  {id:2,type:'general', title:'Site visit schedule for BSIT partner companies',body:'Coordinators will begin company visits next week. BSIT interns should keep attendance and weekly journals updated before the visit window.',audience:'BSIT',timestamp:'Posted yesterday  -  2:30 PM',views:42,author:'Maria Santos'},
+  {id:3,type:'urgent',  title:'Missing MOA signatures must be completed immediately',body:'Students with unsigned MOA pages must submit corrected copies within 24 hours to avoid delayed onboarding clearance.',audience:'Companies',timestamp:'Posted yesterday  -  10:00 AM',views:37,author:'Maria Santos'},
+  {id:4,type:'info',    title:'BSCoE orientation slides are now available',body:'The practicum orientation deck for BSCoE has been uploaded. Review the attendance policy, weekly logbook standards, and document checklist.',audience:'BSCoE',timestamp:'Posted Mar 16  -  4:20 PM',views:35,author:'Maria Santos'}
+];
+let editingAnnouncementId=null, selectedAudience='All Students', enhSortAsc=false;
+const typeMeta={
+  general:{icon:'fa-bullhorn',label:'General',className:'general'},
+  reminder:{icon:'fa-clock',label:'Reminder',className:'reminder'},
+  urgent:{icon:'fa-triangle-exclamation',label:'Urgent',className:'urgent'},
+  info:{icon:'fa-circle-info',label:'Info',className:'info'}
+};
+
+function bindAudiencePills(){
+  document.querySelectorAll('.ann-audience-pill').forEach(p=>p.addEventListener('click',()=>{
+    document.querySelectorAll('.ann-audience-pill').forEach(e=>e.classList.remove('active'));
+    p.classList.add('active'); selectedAudience=p.dataset.audience; enhUpdatePreview();
+  }));
+}
+function esc(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function renderAnnouncements(){
+  const list=document.getElementById('announcementsList');
+  const search=document.getElementById('annSearch').value.trim().toLowerCase();
+  const tf=document.getElementById('annFilter').value;
+  let visible=[...announcementData].filter(i=>(tf==='all'||i.type===tf)&&(!search||`${i.title} ${i.body} ${i.audience} ${i.author}`.toLowerCase().includes(search)));
+  if(enhSortAsc) visible.reverse();
+  list.innerHTML=visible.map((item,idx)=>{
+    const m=typeMeta[item.type];
+    return `<article class="announcement-card" style="animation:enh-sectionUp .32s ease ${idx*.04}s both">
+      <div class="announcement-icon ${m.className}"><i class="fa ${m.icon}"></i></div>
+      <div class="announcement-main">
+        <div class="announcement-title-row"><h3>${esc(item.title)}</h3><span class="announcement-type ${m.className}">${m.label}</span></div>
+        <p>${esc(item.body)}</p>
+        <div class="announcement-meta">
+          <span><i class="fa fa-users"></i>${esc(item.audience)}</span>
+          <span><i class="fa fa-clock"></i>${esc(item.timestamp)}</span>
+          <span><i class="fa fa-eye"></i>${item.views} views</span>
+          <span><i class="fa fa-user"></i>${esc(item.author)}</span>
+        </div>
+      </div>
+      <div class="announcement-actions">
+        <button type="button" class="coord-btn-soft small" onclick="editAnnouncement(${item.id})"><i class="fa fa-pen"></i>Edit</button>
+        <button type="button" class="coord-btn-soft small danger" onclick="enhConfirmDelete(${item.id},this)"><i class="fa fa-trash"></i>Delete</button>
+      </div>
+    </article>`;
+  }).join('');
+  document.getElementById('annResultsText').textContent=`Showing ${visible.length} post${visible.length===1?'':'s'}`;
+  document.getElementById('annEmptyState').hidden=visible.length!==0;
+  updateAnnouncementStats(); enhRenderTypeChart();
+}
+function updateAnnouncementStats(){
+  const t=announcementData.length,u=announcementData.filter(i=>i.type==='urgent').length;
+  const tg=announcementData.filter(i=>i.audience!=='All Students').length;
+  const avg=t?Math.round(announcementData.reduce((s,i)=>s+i.views,0)/t):0;
+  document.getElementById('annStatPublished').textContent=t;
+  document.getElementById('annStatUrgent').textContent=u;
+  document.getElementById('annStatTargeted').textContent=tg;
+  document.getElementById('annStatReach').textContent=avg;
+  // Topbar live counters
+  document.getElementById('topbarStatPub').textContent=t;
+  const ub=document.getElementById('topbarUrgentBadge');
+  document.getElementById('topbarUrgentCount').textContent=u;
+  ub.style.display=u>0?'flex':'none';
+}
+function resetAnnouncementForm(){
+  editingAnnouncementId=null;
+  ['annTitle','annBody'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('annType').value='general';
+  selectedAudience='All Students';
+  document.querySelectorAll('.ann-audience-pill').forEach(p=>p.classList.toggle('active',p.dataset.audience==='All Students'));
+  document.getElementById('annSubmitText').textContent='Publish';
+  document.getElementById('annModeText').innerHTML='<i class="fa fa-plus"></i>Create new';
+  document.getElementById('titleCounter').textContent='0 / 100';
+  document.getElementById('bodyCounter').textContent='0 / 600';
+  if(document.getElementById('enhPreviewWrap').style.display!=='none') enhTogglePreview();
+}
+function submitAnnouncement(){
+  const title=document.getElementById('annTitle').value.trim();
+  const type=document.getElementById('annType').value;
+  const body=document.getElementById('annBody').value.trim();
+  if(!title||!body){showToast('Enter a title and message first.','error');return;}
+  if(editingAnnouncementId!==null){
+    const item=announcementData.find(e=>e.id===editingAnnouncementId);
+    if(item){item.title=title;item.type=type;item.body=body;item.audience=selectedAudience;item.timestamp='Updated just now';}
+    showToast('Announcement updated.','success');
+  } else {
+    announcementData.unshift({id:Date.now(),type,title,body,audience:selectedAudience,timestamp:'Posted just now',views:0,author:'Maria Santos'});
+    showToast('Announcement published!','success');
+  }
+  resetAnnouncementForm(); renderAnnouncements();
+}
+function editAnnouncement(id){
+  const item=announcementData.find(e=>e.id===id);if(!item)return;
+  editingAnnouncementId=id;
+  document.getElementById('annTitle').value=item.title;
+  document.getElementById('annType').value=item.type;
+  document.getElementById('annBody').value=item.body;
+  selectedAudience=item.audience;
+  document.querySelectorAll('.ann-audience-pill').forEach(p=>p.classList.toggle('active',p.dataset.audience===item.audience));
+  document.getElementById('annSubmitText').textContent='Save changes';
+  document.getElementById('annModeText').innerHTML='<i class="fa fa-pen"></i>Editing post';
+  enhTitleCounter(); enhBodyCounter();
+  document.getElementById('annTitle').focus();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function deleteAnnouncement(id){
+  const idx=announcementData.findIndex(e=>e.id===id);if(idx===-1)return;
+  announcementData.splice(idx,1);
+  if(editingAnnouncementId===id)resetAnnouncementForm();
+  renderAnnouncements(); showToast('Announcement removed.','info');
+}
+// Enhancements
+function enhTitleCounter(){
+  const v=document.getElementById('annTitle').value.length,el=document.getElementById('titleCounter');
+  el.textContent=`${v} / 100`;el.className='enh-char-counter'+(v>84?' warn':'')+(v>=100?' over':'');
+  enhUpdatePreview();
+}
+function enhBodyCounter(){
+  const v=document.getElementById('annBody').value.length,el=document.getElementById('bodyCounter');
+  el.textContent=`${v} / 600`;el.className='enh-char-counter'+(v>500?' warn':'')+(v>=600?' over':'');
+  enhUpdatePreview();
+}
+let enhPreviewOpen=false;
+function enhTogglePreview(){
+  enhPreviewOpen=!enhPreviewOpen;
+  document.getElementById('enhPreviewWrap').style.display=enhPreviewOpen?'block':'none';
+  document.querySelector('.enh-preview-toggle').textContent=enhPreviewOpen?'Hide preview':'Show preview';
+  if(enhPreviewOpen)enhUpdatePreview();
+}
+function enhUpdatePreview(){
+  if(!enhPreviewOpen)return;
+  document.getElementById('enhPrevTitle').textContent=document.getElementById('annTitle').value||'-';
+  document.getElementById('enhPrevBody').textContent=document.getElementById('annBody').value||'-';
+  document.getElementById('enhPrevAudience').textContent=selectedAudience;
+  document.getElementById('enhPrevType').textContent=typeMeta[document.getElementById('annType').value].label;
+}
+function enhSaveDraft(){
+  const note=document.getElementById('enhDraftNote');
+  note.style.display='block'; setTimeout(()=>note.style.display='none',3500);
+  showToast('Draft saved.','info');
+}
+function enhToggleSort(btn){
+  enhSortAsc=!enhSortAsc;
+  document.getElementById('enhSortIcon').className='fa fa-arrow-down-short-wide enh-sort-icon'+(enhSortAsc?' asc':'');
+  btn.childNodes[btn.childNodes.length-1].textContent=enhSortAsc?'Oldest':'Newest';
+  renderAnnouncements();
+}
+function enhConfirmDelete(id,btn){
+  const card=btn.closest('.announcement-card');
+  if(card.querySelector('.enh-inline-confirm'))return;
+  const el=document.createElement('div');
+  el.className='enh-inline-confirm';
+  el.innerHTML=`<span class="enh-confirm-text"><i class="fa fa-circle-exclamation"></i> Remove this post?</span>
+    <button class="enh-confirm-btn yes" onclick="deleteAnnouncement(${id})">Delete</button>
+    <button class="enh-confirm-btn no" onclick="this.closest('.enh-inline-confirm').remove()">Cancel</button>`;
+  card.appendChild(el);
+}
+const typeColors={general:'var(--green-main)',reminder:'var(--color-blue)',urgent:'var(--color-error)',info:'var(--color-teal)'};
+function enhRenderTypeChart(){
+  const counts={general:0,reminder:0,urgent:0,info:0};
+  announcementData.forEach(i=>counts[i.type]++);
+  const total=announcementData.length||1;
+  document.getElementById('enhTypeChart').innerHTML=Object.entries(counts).map(([type,count])=>`
+    <div class="enh-type-row">
+      <span class="enh-type-label">${type}</span>
+      <div class="enh-type-bar-wrap"><div class="enh-type-bar" style="width:${Math.round(count/total*100)}%;background:${typeColors[type]}"></div></div>
+      <span class="enh-type-count">${count}</span>
+    </div>`).join('');
+}
+function showToast(msg,type='info'){
+  const stack=document.getElementById('enhToastStack');
+  const icons={success:'fa-circle-check',error:'fa-circle-xmark',info:'fa-circle-info'};
+  const t=document.createElement('div');
+  t.className=`enh-toast is-${type}`;
+  t.innerHTML=`<i class="fa ${icons[type]||icons.info} enh-toast-icon"></i><span>${msg}</span><button class="enh-toast-close" onclick="this.parentElement.classList.add('is-out');setTimeout(()=>this.parentElement.remove(),220)"><i class="fa fa-xmark"></i></button>`;
+  stack.appendChild(t);
+  setTimeout(()=>{t.classList.add('is-out');setTimeout(()=>t.remove(),220);},3800);
+}
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select'))return;
+  if(e.key==='/')       {e.preventDefault();document.getElementById('annSearch').focus();}
+  if(e.key==='n'||e.key==='N'){window.scrollTo({top:0,behavior:'smooth'});setTimeout(()=>document.getElementById('annTitle').focus(),350);}
+  if(e.key==='Escape') {document.getElementById('annSearch').value='';renderAnnouncements();}
+});
+bindAudiencePills(); renderAnnouncements();
+</script>
+</body>
+</html>
+
+
+
+
+

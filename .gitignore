@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Builds
+frontend/dist/
+
+# Environment secrets (examples are committed instead)
+backend/.env
+
+# OS / editor noise
+Thumbs.db
+.DS_Store

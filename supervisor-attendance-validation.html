@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Attendance Validation - INTERNTRACK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="master-style.css"/>
+</head>
+<body class="page-body supervisor-page"  >
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="supervisor-dashboard.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="supervisor-assigned-interns.html" class="sidebar-link"><i class="fa fa-users"></i><span>Assigned Interns</span></a>
+    <a href="supervisor-attendance-validation.html" class="sidebar-link active"><i class="fa fa-calendar-check"></i><span>Attendance Validation</span></a>
+    <a href="supervisor-journal-validation.html" class="sidebar-link"><i class="fa fa-book"></i><span>Journal Review</span></a>
+    <a href="supervisor-performance-evaluation.html" class="sidebar-link"><i class="fa fa-star"></i><span>Evaluations</span></a>
+    <a href="supervisor-notifications.html" class="sidebar-link"><i class="fa fa-bell"></i><span>Notifications</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="supervisor-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-calendar-check"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Attendance Validation</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Supervisor</span>
+    <div class="topbar-avatar" title="Supervisor profile">MS</div>
+  </div>
+</header>
+<main class="main-content">
+  <!-- Section A -->
+  <div class="sp-card">
+    <div class="sp-card-title"><span class="sp-section-badge">A</span> Approve Attendance</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="sp-btn sp-btn-green" onclick="bulkApprove()"><i class="fa fa-check-double"></i> Bulk Approve Selected</button>
+      <button class="sp-btn sp-btn-gray" onclick="exportCSV()"><i class="fa fa-download"></i> Export</button>
+    </div>
+    <div class="sp-table-wrap">
+      <table class="sp-table">
+        <thead><tr>
+          <th><input type="checkbox" id="selAll" onchange="toggleAll(this)" class="it-inline-002"></th>
+          <th>Intern Name</th><th>Date</th><th>Time In</th><th>Time Out</th><th>Total Hours</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="attBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Section B -->
+  <div class="sp-card">
+    <div class="sp-card-title"><span class="sp-section-badge">B</span> Validate DTR</div>
+    <div id="dtrContainer"></div>
+  </div>
+  <!-- Section C -->
+  <div class="sp-card">
+    <div class="sp-card-title"><span class="sp-section-badge">C</span> Confirm Hours</div>
+    <div class="sp-table-wrap">
+      <table class="sp-table">
+        <thead><tr><th>Intern Name</th><th>Scheduled Hrs</th><th>Rendered Hrs</th><th>Variance</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="hoursBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+</div>
+<div id="sp-toast-stack"></div>
+<script src="script.js"></script>
+<script>
+var DAYS=['Mon','Tue','Wed','Thu','Fri'];
+var DTR_PATTERN=['present','present','late','present','present','present','absent','present','present','late','present','present','present','present','absent','present','present','present','present','present','present','present','late','present','present'];
+var attData=[
+  {id:1,name:'Juan dela Cruz',date:'May 19, 2026',timeIn:'8:02 AM',timeOut:'5:05 PM',hrs:'9 hrs'},
+  {id:2,name:'Maria Santos',date:'May 19, 2026',timeIn:'8:15 AM',timeOut:'5:00 PM',hrs:'8.75 hrs'},
+  {id:3,name:'Pedro Reyes',date:'May 20, 2026',timeIn:'7:55 AM',timeOut:'5:10 PM',hrs:'9.25 hrs'}
+];
+var hoursData=[
+  {id:1,name:'Juan dela Cruz',scheduled:360,rendered:210},
+  {id:2,name:'Maria Santos',scheduled:360,rendered:145},
+  {id:3,name:'Pedro Reyes',scheduled:360,rendered:300},
+  {id:4,name:'Ana Lim',scheduled:360,rendered:360},
+  {id:5,name:'Carlo Mendoza',scheduled:360,rendered:90}
+];
+document.addEventListener('DOMContentLoaded',function(){
+  protectSupervisorRoute(); initHamburger(); updateNotificationBadge();
+  buildAttTable(); buildDTR(); buildHoursTable();
+});
+function buildAttTable(){
+  document.getElementById('attBody').innerHTML=attData.map(function(r){
+    return '<tr id="att-'+r.id+'">'
+      +'<td><input type="checkbox" class="att-cb it-inline-002"></td>'
+      +'<td><span class="sp-name-primary">'+r.name+'</span></td>'
+      +'<td>'+r.date+'</td><td>'+r.timeIn+'</td><td>'+r.timeOut+'</td><td>'+r.hrs+'</td>'
+      +'<td class="att-st-'+r.id+'"><span class="sp-badge amber">Pending</span></td>'
+      +'<td><div style="display:flex;gap:6px;">'
+      +'<button class="sp-btn sp-btn-green" onclick="approveAtt('+r.id+')"><i class="fa fa-check"></i> Approve</button>'
+      +'<button class="sp-btn sp-btn-red-outline" onclick="rejectAtt('+r.id+')"><i class="fa fa-xmark"></i> Reject</button>'
+      +'</div></td></tr>';
+  }).join('');
+}
+function approveAtt(id){
+  var row=document.getElementById('att-'+id);
+  row.querySelector('.att-st-'+id).innerHTML='<span class="sp-badge green">Approved</span>';
+  row.querySelectorAll('button').forEach(function(b){b.style.display='none';});
+  toast('Attendance approved!','green');
+}
+function rejectAtt(id){
+  var row=document.getElementById('att-'+id);
+  row.querySelector('.att-st-'+id).innerHTML='<span class="sp-badge red">Rejected</span>';
+  row.querySelectorAll('button').forEach(function(b){b.style.display='none';});
+  toast('Attendance rejected.','blue');
+}
+function toggleAll(cb){document.querySelectorAll('.att-cb').forEach(function(c){c.checked=cb.checked;});}
+function bulkApprove(){
+  document.querySelectorAll('.att-cb:checked').forEach(function(cb){
+    var row=cb.closest('tr'); var id=row.id.replace('att-','');
+    var sc=row.querySelector('.att-st-'+id);
+    if(sc&&sc.innerHTML.includes('Pending')){sc.innerHTML='<span class="sp-badge green">Approved</span>';row.querySelectorAll('button').forEach(function(b){b.style.display='none';});}
+  });
+  toast('Selected records approved!','green');
+}
+function buildDTR(){
+  var interns=[{id:1,name:'Juan dela Cruz',program:'BS Information Technology'},{id:2,name:'Maria Santos',program:'BS Computer Science'}];
+  document.getElementById('dtrContainer').innerHTML=interns.map(function(intern){
+    var hdr=DAYS.map(function(d){return '<div class="sp-dtr-col-header">'+d+'</div>';}).join('');
+    var cells=DTR_PATTERN.slice(0,25).map(function(t,i){return '<div class="sp-dtr-cell dtr-'+t+'">'+DAYS[i%5]+'</div>';}).join('');
+    return '<div class="sp-dtr-card" id="dtr-'+intern.id+'">'
+      +'<div class="sp-dtr-name">'+intern.name+' <span class="it-inline-086">'+intern.program+'</span></div>'
+      +'<div class="sp-dtr-grid">'+hdr+cells+'</div>'
+      +'<div class="sp-dtr-legend">'
+      +'<span><span class="sp-dtr-legend-dot it-inline-003"></span> Present</span>'
+      +'<span><span class="sp-dtr-legend-dot it-inline-006"></span> Absent</span>'
+      +'<span><span class="sp-dtr-legend-dot it-inline-007"></span> Late</span>'
+      +'<span><span class="sp-dtr-legend-dot it-inline-004"></span> Holiday</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;">'
+      +'<button class="sp-btn sp-btn-blue" onclick="validateDTR('+intern.id+',this)"><i class="fa fa-check-double"></i> Validate DTR</button>'
+      +'<button class="sp-btn sp-btn-amber" onclick="toast(\'Issue flagged.\',\'blue\')"><i class="fa fa-flag"></i> Flag Issue</button>'
+      +'</div></div>';
+  }).join('');
+}
+function validateDTR(id,btn){btn.innerHTML='<i class="fa fa-check"></i> Validated';btn.disabled=true;btn.style.background='#166534';toast('DTR validated!','green');}
+function buildHoursTable(){
+  document.getElementById('hoursBody').innerHTML=hoursData.map(function(r){
+    var expected=r.scheduled*0.6; var variance=r.rendered-expected;
+    var varStr=(variance>=0?'+':'')+Math.round(variance)+' hrs';
+    var varStyle=variance>=0?'color:#166534;font-weight:700;':'color:#991b1b;font-weight:700;';
+    var badge=r.rendered>=expected?'<span class="sp-badge green">Confirmed</span>':'<span class="sp-badge amber">Needs Review</span>';
+    return '<tr id="hrs-'+r.id+'"><td><span class="sp-name-primary">'+r.name+'</span></td>'
+      +'<td>'+r.scheduled+' hrs</td><td>'+r.rendered+' hrs</td>'
+      +'<td style="'+varStyle+'">'+varStr+'</td>'
+      +'<td class="hrs-st-'+r.id+'">'+badge+'</td>'
+      +'<td style="display:flex;align-items:center;gap:10px;">'
+      +'<button class="sp-btn sp-btn-green it-inline-078" onclick="confirmHrs('+r.id+',this)"><i class="fa fa-check"></i> Confirm</button>'
+      +'<a href="supervisor-attendance-validation.html" onclick="toast(\'Correction request sent.\',\'blue\');return false;" class="it-inline-074">Request Correction</a>'
+      +'</td></tr>';
+  }).join('');
+}
+function confirmHrs(id,btn){document.querySelector('.hrs-st-'+id).innerHTML='<span class="sp-badge green">Confirmed</span>';btn.style.display='none';toast('Hours confirmed!','green');}
+function exportCSV(){toast('Export started.','blue');}
+function initHamburger(){
+  var btn=document.getElementById('spHamburger'),nav=document.getElementById('spNav'),ov=document.getElementById('spOverlay');
+  if(!btn)return;
+  btn.addEventListener('click',function(){nav.classList.toggle('open');ov.classList.toggle('open');});
+  ov.addEventListener('click',function(){nav.classList.remove('open');ov.classList.remove('open');});
+}
+function toast(msg,type){var s=document.getElementById('sp-toast-stack');var el=document.createElement('div');el.className='sp-toast '+(type||'green');el.innerHTML='<i class="fa fa-circle-check"></i> '+msg;s.appendChild(el);setTimeout(function(){el.remove();},3000);}
+
+
+
+
+
+function openLogoutModal(e){if(e)e.preventDefault();document.getElementById('spLogoutModal').classList.add('open');}
+function closeLogoutModal(){document.getElementById('spLogoutModal').classList.remove('open');}
+function confirmLogout(){
+  var btn=document.querySelector('.sp-logout-btn-confirm');
+  if(btn){btn.disabled=true;btn.textContent='Logging out...';}
+  supervisorLogout();
+}
+(function(){
+  // Program completion bars - start at 0, animate to target
+  document.querySelectorAll('.sp-prog-fill').forEach(function(el){
+    var w = el.style.width;
+    el.style.width = '0';
+    setTimeout(function(){ el.style.width = w; }, 100);
+  });
+  // Table progress bars
+  document.querySelectorAll('.sp-bar-fill').forEach(function(el){
+    var w = el.style.width;
+    el.style.width = '0';
+    setTimeout(function(){ el.style.width = w; }, 150);
+  });
+})();
+
+// -- Bar animation: read target from style.width, start from 0, animate to target --
+(function() {
+  function animateBars() {
+    // Program completion bars (.sp-prog-fill)
+    document.querySelectorAll('.sp-prog-fill').forEach(function(el) {
+      var target = el.getAttribute('data-target');
+      if (!target) {
+        // Read current inline style width as the target, store it, reset to 0
+        target = el.style.width || '0%';
+        el.setAttribute('data-target', target);
+        el.style.width = '0';
+      }
+      // Trigger transition to target after a brief delay
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          el.style.width = target;
+        });
+      });
+    });
+
+    // Table / inline progress bars (.sp-bar-fill)
+    document.querySelectorAll('.sp-bar-fill').forEach(function(el) {
+      var target = el.getAttribute('data-target');
+      if (!target) {
+        target = el.style.width || '0%';
+        el.setAttribute('data-target', target);
+        el.style.width = '0';
+      }
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          el.style.width = target;
+        });
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', animateBars);
+  } else {
+    animateBars();
+  }
+})();
+</script>
+<!-- Logout modal -->
+<div class="sp-logout-overlay" id="spLogoutModal">
+  <div class="sp-logout-box">
+    <div class="sp-logout-icon-wrap">
+      <i class="fa fa-right-from-bracket"></i>
+    </div>
+    <div class="sp-logout-title">Log out of your account?</div>
+    <div class="sp-logout-sub">Are you sure you want to log out?</div>
+    <div class="sp-logout-btns">
+      <button class="sp-logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="sp-logout-btn-confirm" onclick="confirmLogout()">Log Out</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+
+
+

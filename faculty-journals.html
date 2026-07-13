@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Journals - INTERNTRACK</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="master-style.css"/>
+</head>
+<body class="page-body faculty-page"  >
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="faculty-dashboard.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="faculty-assigned-students.html" class="sidebar-link"><i class="fa fa-users"></i><span>Assigned Students</span></a>
+    <div class="nav-section-label">MANAGEMENT</div>
+    <a href="faculty-journals.html" class="sidebar-link active"><i class="fa fa-book"></i><span>Journals</span></a>
+    <a href="faculty-evaluations.html" class="sidebar-link"><i class="fa fa-star"></i><span>Evaluations</span></a>
+    <a href="faculty-feedback.html" class="sidebar-link"><i class="fa fa-comment-dots"></i><span>Feedback</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="faculty-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-book"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Journals</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Faculty</span>
+    <div class="topbar-avatar" title="Faculty profile">FS</div>
+  </div>
+</header>
+<main class="main-content">
+
+<div class="sp-card">
+  <!-- Toolbar -->
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+    <div class="sp-toolbar" style="margin-bottom:0;">
+      <input type="text" class="sp-input sp-input-sm" id="jSearch" placeholder="Search student name..." oninput="filterJournals()">
+      <select class="sp-select" id="jStatusFilter" onchange="filterJournals()">
+        <option value="">All Statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+      <input type="date" class="sp-input" id="jDateFrom" onchange="filterJournals()">
+      <input type="date" class="sp-input" id="jDateTo" onchange="filterJournals()">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="sp-btn sp-btn-green" onclick="bulkApproveJournals()"><i class="fa fa-check-double"></i> Bulk Approve Selected</button>
+    </div>
+  </div>
+  <div class="sp-table-wrap">
+    <table class="sp-table" id="journalTable">
+      <thead><tr>
+        <th><input type="checkbox" id="jSelectAll" onchange="toggleAllJournals(this)" class="it-inline-002"></th>
+        <th>Student Name</th><th>Date Submitted</th><th>Journal Entry Preview</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="journalBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:right;">AY 2024&#8211;2025, Sem 2 &copy; INTERNTRACK Faculty Portal</div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+<div class="sp-logout-overlay" id="spLogoutModal">
+  <div class="sp-logout-box">
+    <div class="sp-logout-icon-wrap"><i class="fa fa-right-from-bracket"></i></div>
+    <div class="sp-logout-title">Log out of your account?</div>
+    <div class="sp-logout-sub">Are you sure you want to log out?</div>
+    <div class="sp-logout-btns">
+      <button class="sp-logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+      <button class="sp-logout-btn-confirm" onclick="confirmLogout()"><i class="fa fa-right-from-bracket"></i> Yes, Log Out</button>
+    </div>
+  </div>
+</div>
+
+<!-- View / Approve / Reject modal -->
+<div class="f-modal-overlay" id="jModal">
+  <div class="f-modal">
+    <div class="f-modal-title"><i class="fa fa-book it-inline-032"></i> <span id="jModalTitle">Journal Entry</span></div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:6px;">Student</div>
+      <div id="jModalStudent" class="it-inline-081"></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:6px;">Full Entry</div>
+      <div id="jModalText" style="font-size:13px;color:#374151;line-height:1.7;background:#f9fafb;border-radius:8px;padding:12px 14px;border-left:3px solid #2e7d47;"></div>
+    </div>
+    <div id="jRejectSection" style="display:none;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:6px;">Reason for Rejection <span class="it-inline-036">*</span></div>
+      <textarea class="sp-textarea it-inline-096" id="jRejectComment" placeholder="Required: provide feedback so the student can revise their entry..."></textarea>
+    </div>
+    <div id="jModalStatus" style="margin-bottom:14px;"></div>
+    <div class="f-modal-actions" id="jModalActions">
+      <button class="sp-btn sp-btn-gray" onclick="closeJModal()">Close</button>
+      <button class="sp-btn sp-btn-red" id="jBtnReject" onclick="showRejectField()"><i class="fa fa-xmark"></i> Reject</button>
+      <button class="sp-btn sp-btn-green" id="jBtnApprove" onclick="approveJournal()"><i class="fa fa-check"></i> Approve</button>
+    </div>
+  </div>
+</div>
+
+<div id="f-toast-stack" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:6px;"></div>
+<script src="script.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  if(typeof protectFacultyRoute==='function') protectFacultyRoute();
+
+  if(typeof initSidebarState==='function') initSidebarState();
+
+  var journals=[
+    {id:1,name:'Juan dela Cruz',date:'May 19, 2026',status:'Pending',
+     preview:'Today I worked on the database migration project, writing SQL scripts to transfer data...',
+     full:'Today I worked on the company database migration project. I assisted in writing SQL scripts to transfer data from the old system to the new PostgreSQL database. The senior developer guided me through the process and explained normalization best practices. I learned how to use EXPLAIN ANALYZE to check query performance and optimize slow queries. Overall it was a productive and insightful day.'},
+    {id:2,name:'Maria Santos',date:'May 18, 2026',status:'Pending',
+     preview:'Attended a team meeting and was assigned to prepare the presentation slides for the upcoming...',
+     full:'Attended a team meeting where we discussed the upcoming product launch scheduled for next month. I was assigned to prepare the presentation slides for the stakeholder review. I used Figma to design the mockups and coordinated with the marketing team to align on branding guidelines. In the afternoon, I assisted in testing the new features and logging bugs in Jira.'},
+    {id:3,name:'Pedro Reyes',date:'May 20, 2026',status:'Approved',
+     preview:'Completed the backend API integration for the user authentication module, implemented JWT...',
+     full:'Completed the backend API integration for the user authentication module. Worked closely with the senior developer to understand REST principles and how JWT tokens are used for session management. I implemented the refresh token logic and wrote unit tests using Jest. The code review session was very helpful - I received constructive feedback on error handling patterns.'},
+    {id:4,name:'Carlo Mendoza',date:'May 17, 2026',status:'Rejected',
+     preview:'Did some tasks assigned by the supervisor. Finished most of them before lunch time...',
+     full:'Did some tasks assigned by the supervisor. Finished most of them before lunch time. In the afternoon helped out with minor office tasks. Not much to report today.'}
+  ];
+  var currentJournalId=null;
+  var rejectMode=false;
+
+  function renderJournals(list){
+    var b=document.getElementById('journalBody');
+    b.innerHTML=list.map(function(j){
+      var badge=j.status==='Approved'?'<span class="sp-badge green">Approved</span>':j.status==='Rejected'?'<span class="sp-badge red">Rejected</span>':'<span class="sp-badge amber">Pending</span>';
+      var p=j.preview.length>75?j.preview.substring(0,75)+'...':j.preview;
+      return '<tr id="jrow-'+j.id+'">'
+        +'<td><input type="checkbox" class="j-cb it-inline-002"></td>'
+        +'<td><span class="sp-name-primary">'+j.name+'</span></td>'
+        +'<td class="it-inline-108">'+j.date+'</td>'
+        +'<td style="max-width:200px;color:#6b7280;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p+'</td>'
+        +'<td class="jst-'+j.id+'">'+badge+'</td>'
+        +'<td><div style="display:flex;gap:6px;">'
+        +'<button class="sp-btn-icon" title="View Full Entry" onclick="openJModal('+j.id+')"><i class="fa fa-eye"></i></button>'
+        +'<button class="sp-btn-icon it-inline-033" title="Approve" onclick="quickApprove('+j.id+')"><i class="fa fa-check"></i></button>'
+        +'<button class="sp-btn-icon it-inline-037" title="Reject" onclick="openJModal('+j.id+',true)"><i class="fa fa-xmark"></i></button>'
+        +'</div></td></tr>';
+    }).join('');
+  }
+
+  renderJournals(journals);
+
+  function filterJournals(){
+    var q=document.getElementById('jSearch').value.toLowerCase();
+    var st=document.getElementById('jStatusFilter').value;
+    renderJournals(journals.filter(function(j){
+      return(!q||j.name.toLowerCase().includes(q))&&(!st||j.status===st);
+    }));
+  }
+
+  function toggleAllJournals(cb){document.querySelectorAll('.j-cb').forEach(function(c){c.checked=cb.checked;});}
+
+  function bulkApproveJournals(){
+    var checked=document.querySelectorAll('.j-cb:checked');
+    if(!checked.length){fToast('No entries selected.','blue');return;}
+    checked.forEach(function(cb){
+      var row=cb.closest('tr'); var id=parseInt(row.id.replace('jrow-',''));
+      journals.forEach(function(j){if(j.id===id)j.status='Approved';});
+      row.querySelector('.jst-'+id).innerHTML='<span class="sp-badge green">Approved</span>';
+    });
+    fToast('Selected entries approved!','green');
+  }
+
+  function openJModal(id, rejectNow){
+    var j=journals.find(function(x){return x.id===id;});
+    if(!j)return;
+    currentJournalId=id; rejectMode=false;
+    document.getElementById('jModalTitle').textContent='Journal Entry - '+j.date;
+    document.getElementById('jModalStudent').textContent=j.name;
+    document.getElementById('jModalText').textContent=j.full;
+    document.getElementById('jRejectSection').style.display='none';
+    document.getElementById('jRejectComment').value='';
+    var st=document.getElementById('jModalStatus');
+    st.innerHTML=j.status==='Approved'?'<span class="sp-badge green" style="margin-bottom:4px;">Approved</span>':j.status==='Rejected'?'<span class="sp-badge red" style="margin-bottom:4px;">Rejected</span>':'';
+    var acts=document.getElementById('jModalActions');
+    if(j.status!=='Pending'){
+      acts.innerHTML='<button class="sp-btn sp-btn-gray" onclick="closeJModal()">Close</button>';
+    } else {
+      acts.innerHTML='<button class="sp-btn sp-btn-gray" onclick="closeJModal()">Close</button><button class="sp-btn sp-btn-red" id="jBtnReject" onclick="showRejectField()"><i class="fa fa-xmark"></i> Reject</button><button class="sp-btn sp-btn-green" id="jBtnApprove" onclick="approveJournal()"><i class="fa fa-check"></i> Approve</button>';
+    }
+    document.getElementById('jModal').classList.add('open');
+    if(rejectNow) showRejectField();
+  }
+
+  function closeJModal(){document.getElementById('jModal').classList.remove('open');currentJournalId=null;rejectMode=false;}
+
+  function showRejectField(){
+    document.getElementById('jRejectSection').style.display='block';
+    rejectMode=true;
+    var acts=document.getElementById('jModalActions');
+    acts.innerHTML='<button class="sp-btn sp-btn-gray" onclick="closeJModal()">Cancel</button><button class="sp-btn sp-btn-red" onclick="submitReject()"><i class="fa fa-xmark"></i> Confirm Rejection</button>';
+  }
+
+  function approveJournal(){
+    journals.forEach(function(j){if(j.id===currentJournalId)j.status='Approved';});
+    var st=document.getElementById('jModalStatus');
+    st.innerHTML='<span class="sp-badge green">Approved</span>';
+    document.getElementById('jModalActions').innerHTML='<button class="sp-btn sp-btn-gray" onclick="closeJModal()">Close</button>';
+    var row=document.getElementById('jrow-'+currentJournalId);
+    if(row) row.querySelector('.jst-'+currentJournalId).innerHTML='<span class="sp-badge green">Approved</span>';
+    fToast('Journal entry approved!','green');
+  }
+
+  function quickApprove(id){
+    journals.forEach(function(j){if(j.id===id)j.status='Approved';});
+    var row=document.getElementById('jrow-'+id);
+    if(row) row.querySelector('.jst-'+id).innerHTML='<span class="sp-badge green">Approved</span>';
+    fToast('Journal approved!','green');
+  }
+
+  function submitReject(){
+    var comment=document.getElementById('jRejectComment').value.trim();
+    if(!comment){fToast('Please provide a reason for rejection.','red');document.getElementById('jRejectComment').focus();return;}
+    journals.forEach(function(j){if(j.id===currentJournalId)j.status='Rejected';});
+    var row=document.getElementById('jrow-'+currentJournalId);
+    if(row) row.querySelector('.jst-'+currentJournalId).innerHTML='<span class="sp-badge red">Rejected</span>';
+    closeJModal();
+    fToast('Journal rejected with comments sent.','blue');
+  }
+
+});
+
+function openLogoutModal(){var m=document.getElementById('spLogoutModal');if(m)m.classList.add('open');}
+function closeLogoutModal(){var m=document.getElementById('spLogoutModal');if(m)m.classList.remove('open');}
+function confirmLogout(){closeLogoutModal();supervisorLogout();}
+
+function fToast(msg,type){
+  var s=document.getElementById('f-toast-stack');
+  if(!s){s=document.createElement('div');s.id='f-toast-stack';s.style.cssText='position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:6px;';document.body.appendChild(s);}
+  var t=document.createElement('div');t.className='sp-toast '+(type||'green');
+  t.innerHTML='<i class="fa fa-circle-check"></i> '+msg;
+  s.appendChild(t);setTimeout(function(){t.remove();},3000);
+}
+
+function supervisorLogout(){
+  sessionStorage.removeItem('faculty_logged_in');
+  sessionStorage.removeItem('supervisor_logged_in');
+  sessionStorage.clear();
+  window.location.href='index.html';
+}
+</script>
+</body>
+</html>
+
+
+

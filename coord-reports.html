@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Reports & Analytics - INTERNTRACK</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <link rel="stylesheet" href="master-style.css"/>
+</head>
+<body class="page-body coordinator-page reports-page"  >
+
+<div class="page-progress" id="pageProgress" style="width:0;opacity:1"></div>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="app-logo">
+      <img src="logo.jpg" alt="Logo" class="app-logo-img">
+      <div class="app-logo-text">
+        <div class="app-logo-main">INTERNTRACK</div>
+        <div class="app-logo-sub">INTERNSHIP SYSTEM</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">MAIN</div>
+    <a href="coord-monitoring.html" class="sidebar-link"><i class="fa fa-chart-line"></i><span>Dashboard</span></a>
+    <a href="coord-announcements.html" class="sidebar-link"><i class="fa fa-bullhorn"></i><span>Announcements</span></a>
+    <a href="coord-doc-approvals.html" class="sidebar-link"><i class="fa fa-file-circle-check"></i><span>Document Approvals</span></a>
+    <a href="coord-logbook-review.html" class="sidebar-link"><i class="fa fa-book-open"></i><span>Logbook Review</span></a>
+    <a href="coord-records.html" class="sidebar-link"><i class="fa fa-folder-open"></i><span>Records</span></a>
+    <a href="coord-reports.html" class="sidebar-link active"><i class="fa fa-chart-bar"></i><span>Reports</span></a>
+    <div class="nav-section-label">ACCOUNT</div>
+    <a href="coord-settings.html" class="sidebar-link"><i class="fa fa-cog"></i><span>Settings</span></a>
+    <a href="index.html" class="sidebar-link logout-link"><i class="fa fa-sign-out-alt"></i><span>Logout</span></a>
+  </nav>
+</aside>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="btn-hamburger" id="sidebarToggle" aria-label="Open sidebar"><i class="fa fa-bars"></i></button>
+    <div class="topbar-page-icon"><i class="fa fa-chart-bar"></i></div>
+    <div class="topbar-title-group">
+      <div class="topbar-title">Reports</div>
+      <div class="topbar-subtitle">AY 2024-2025, Sem 2</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="role-badge"><i class="fa fa-user-shield"></i> Coordinator</span>
+    <div class="topbar-avatar" title="Coordinator profile">CO</div>
+  </div>
+</header>
+
+<main class="main-content">
+  <div class="page-topbar-hero">
+    <div class="page-hero">
+      <div class="page-hero-left">
+        <div class="page-hero-icon"><i class="fa fa-chart-bar"></i></div>
+        <div class="page-hero-heading"><div class="page-hero-title">Reports &amp; Analytics</div></div>
+      </div>
+      <div class="page-hero-right">
+        <div class="page-hero-badge"><i class="fa fa-rotate"></i>Updated <span id="enhLastRefresh">just now</span></div>
+        <div class="page-hero-term-select" aria-label="Academic year and semester">
+          <i class="fa fa-calendar-alt" aria-hidden="true"></i>
+          <select>
+            <option selected>AY 2024-2025, Sem 2</option>
+            <option>AY 2024-2025, Sem 1</option>
+          </select>
+          <i class="fa fa-chevron-down" aria-hidden="true"></i>
+        </div>
+        <div class="page-hero-avatar">PS</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-inner">
+
+
+    <!-- Stat cards - * data-target for count-up -->
+    <section class="coord-stat-grid">
+      <article class="coord-stat-card">
+        <div class="coord-stat-icon"><i class="fa fa-users"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="statInterns" data-target="64">0</div>
+          <div class="coord-stat-label">Active Interns</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-blue">
+        <div class="coord-stat-icon"><i class="fa fa-calendar-check"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="statAttendance" data-target="91" data-suffix="%">0%</div>
+          <div class="coord-stat-label">Avg. Attendance</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-amber">
+        <div class="coord-stat-icon"><i class="fa fa-hourglass-half"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="statHours" data-target="312">0</div>
+          <div class="coord-stat-label">Average Hours</div>
+        </div>
+      </article>
+      <article class="coord-stat-card is-teal">
+        <div class="coord-stat-icon"><i class="fa fa-building"></i></div>
+        <div class="coord-stat-body">
+          <div class="coord-stat-value" id="statCompanies" data-target="12">0</div>
+          <div class="coord-stat-label">Companies</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="coord-section">
+      <div class="coord-toolbar review-toolbar-grid">
+        <div>
+          <div class="coord-section-title">Analytics workspace</div>
+          <div class="coord-section-sub">Filter the dashboard by period and export the current summary.</div>
+        </div>
+        <div class="coord-toolbar-actions review-toolbar-actions">
+          <select class="coord-select" id="reportRange" onchange="enhRefreshCharts()">
+            <option>This semester</option>
+            <option>Last 30 days</option>
+            <option>Last 90 days</option>
+          </select>
+          <select class="coord-select" id="reportFocus" onchange="enhRefreshCharts()">
+            <option>All programs</option>
+            <option>BSIT only</option>
+            <option>BSCoE only</option>
+            <option>BSBA only</option>
+          </select>
+          <button type="button" class="coord-btn-soft" onclick="showToast('PDF export started.','info')"><i class="fa fa-file-pdf"></i>Export PDF</button>
+          <!-- * Refresh button -->
+          <button type="button" class="coord-btn-soft" onclick="enhRefreshCharts(true)"><i class="fa fa-rotate" id="enhRefreshIcon"></i>Refresh</button>
+        </div>
+      </div>
+
+      <div class="reports-grid">
+
+        <!-- Line chart - original structure preserved, * tooltip added -->
+        <article class="report-panel report-panel-wide">
+          <div class="coord-section-head compact">
+            <div>
+              <h2><i class="fa fa-chart-line"></i>Weekly hours logged</h2>
+              <p>Combined weekly hours across all active interns this semester.</p>
+            </div>
+            <span class="it-inline-061">
+              <strong class="it-inline-084">+5%</strong> vs last week
+            </span>
+          </div>
+          <div class="report-line-chart" id="lineChart">
+            <div class="report-line-grid"></div>
+            <div class="report-line-track"></div>
+            <!-- * tooltip -->
+            <div class="enh-chart-tooltip" id="enhChartTooltip"></div>
+          </div>
+          <div class="report-line-labels">
+            <span>Wk 1</span><span>Wk 2</span><span>Wk 3</span><span>Wk 4</span><span>Wk 5</span><span>Wk 6</span><span>Wk 7</span><span>Wk 8</span>
+          </div>
+        </article>
+
+        <!-- Bar chart - * bars start at 0 and animate in -->
+        <article class="report-panel">
+          <div class="coord-section-head compact">
+            <div>
+              <h2><i class="fa fa-building"></i>Interns per company</h2>
+              <p>Top partner organizations by intern count.</p>
+            </div>
+          </div>
+          <div class="report-bar-list">
+            <div class="report-bar-row"><span>TechCorp PH</span><div class="report-bar"><div class="enh-bar-fill" style="width:0" data-w="92%"></div></div><strong>12</strong></div>
+            <div class="report-bar-row"><span>Accenture PH</span><div class="report-bar"><div class="enh-bar-fill" style="width:0" data-w="84%"></div></div><strong>11</strong></div>
+            <div class="report-bar-row"><span>Globe Telecom</span><div class="report-bar"><div class="enh-bar-fill" style="width:0" data-w="68%"></div></div><strong>9</strong></div>
+            <div class="report-bar-row"><span>SM Digital</span><div class="report-bar"><div class="enh-bar-fill" style="width:0" data-w="60%"></div></div><strong>8</strong></div>
+            <div class="report-bar-row"><span>ING Hubs PH</span><div class="report-bar"><div class="enh-bar-fill" style="width:0" data-w="52%"></div></div><strong>7</strong></div>
+            <div class="report-bar-row"><span>Concentrix</span><div class="report-bar"><div class="enh-bar-fill" style="width:0" data-w="44%"></div></div><strong>6</strong></div>
+          </div>
+        </article>
+
+        <!-- Progress chart - * progress starts at 0 and animates -->
+        <article class="report-panel">
+          <div class="coord-section-head compact">
+            <div>
+              <h2><i class="fa fa-graduation-cap"></i>Completion by program</h2>
+              <p>Average required-hour completion by course.</p>
+            </div>
+          </div>
+          <div class="report-progress-list">
+            <div class="report-progress-row"><div><strong>BS Information Technology</strong><span>68%</span></div><div class="report-progress"><div class="enh-prog-fill" style="width:0" data-w="68%"></div></div></div>
+            <div class="report-progress-row"><div><strong>BS Computer Science</strong><span>75%</span></div><div class="report-progress"><div class="enh-prog-fill" style="width:0" data-w="75%"></div></div></div>
+            <div class="report-progress-row"><div><strong>BS Business Administration</strong><span>55%</span></div><div class="report-progress amber"><div class="enh-prog-fill" style="width:0" data-w="55%"></div></div></div>
+            <div class="report-progress-row"><div><strong>BS Nursing</strong><span>82%</span></div><div class="report-progress blue"><div class="enh-prog-fill" style="width:0" data-w="82%"></div></div></div>
+          </div>
+        </article>
+
+        <!-- At-risk table - original grid preserved, * hours col gets mini bar -->
+        <article class="report-panel report-panel-wide">
+          <div class="coord-section-head compact">
+            <div>
+              <h2><i class="fa fa-triangle-exclamation"></i>At-risk interns</h2>
+              <p>Students below the attendance or completion threshold.</p>
+            </div>
+            <!-- * quick action buttons -->
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <button class="coord-btn-soft small" onclick="showToast('Reminders sent to 4 flagged students.','success')"><i class="fa fa-bell"></i>Notify all</button>
+              <button class="coord-btn-soft small" onclick="showToast('At-risk list exported.','info')"><i class="fa fa-file-export"></i>Export</button>
+            </div>
+          </div>
+          <div class="report-risk-table">
+            <div class="report-risk-head"><span>Student</span><span>Program</span><span>Attendance</span><span>Hours</span><span>Status</span></div>
+            <div class="report-risk-row">
+              <span><strong>Carlo Reyes</strong></span>
+              <span>BSIT</span>
+              <span>65%</span>
+              <span>
+                <!-- * inline mini progress -->
+                <div class="enh-risk-hours-cell">
+                  <span class="enh-risk-hours-label it-inline-045">180 / 486h</span>
+                  <div class="enh-risk-hours-bar"><div class="enh-risk-hours-bar-fill" style="width:37%;background:var(--color-error)"></div></div>
+                </div>
+              </span>
+              <span><span class="risk-pill critical">Critical</span></span>
+            </div>
+            <div class="report-risk-row">
+              <span><strong>Mae Flores</strong></span>
+              <span>BSCoE</span>
+              <span>72%</span>
+              <span>
+                <div class="enh-risk-hours-cell">
+                  <span class="enh-risk-hours-label it-inline-043">240 / 486h</span>
+                  <div class="enh-risk-hours-bar"><div class="enh-risk-hours-bar-fill" style="width:49%;background:var(--color-amber)"></div></div>
+                </div>
+              </span>
+              <span><span class="risk-pill warning">Warning</span></span>
+            </div>
+            <div class="report-risk-row">
+              <span><strong>Luis Garcia</strong></span>
+              <span>BSBA</span>
+              <span>75%</span>
+              <span>
+                <div class="enh-risk-hours-cell">
+                  <span class="enh-risk-hours-label it-inline-043">210 / 486h</span>
+                  <div class="enh-risk-hours-bar"><div class="enh-risk-hours-bar-fill" style="width:43%;background:var(--color-amber)"></div></div>
+                </div>
+              </span>
+              <span><span class="risk-pill warning">Warning</span></span>
+            </div>
+            <div class="report-risk-row">
+              <span><strong>Anna Cruz</strong></span>
+              <span>BSBA</span>
+              <span>78%</span>
+              <span>
+                <div class="enh-risk-hours-cell">
+                  <span class="enh-risk-hours-label it-inline-043">226 / 486h</span>
+                  <div class="enh-risk-hours-bar"><div class="enh-risk-hours-bar-fill" style="width:46%;background:var(--color-amber)"></div></div>
+                </div>
+              </span>
+              <span><span class="risk-pill warning">Warning</span></span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="app-footer">&copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span></footer>
+</main>
+
+<!-- * Toast stack -->
+<div class="enh-toast-stack" id="enhToastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
+<script>
+/* -- Page progress -- */
+(()=>{const p=document.getElementById('pageProgress');setTimeout(()=>{p.style.width='70%';},40);setTimeout(()=>{p.style.width='100%';p.style.opacity='0';},580);})();
+
+/* -- * Count-up animation -- */
+function enhCountUp(el){
+  const target=parseInt(el.dataset.target), suffix=el.dataset.suffix||'';
+  let v=0; const dur=900, step=16, inc=target/(dur/step);
+  const t=setInterval(()=>{v=Math.min(v+inc,target);el.textContent=Math.round(v)+suffix;if(v>=target)clearInterval(t);},step);
+}
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){enhCountUp(e.target);obs.unobserve(e.target);}});
+},{threshold:.3});
+document.querySelectorAll('[data-target]').forEach(el=>obs.observe(el));
+
+/* -- * Animated bars -- */
+function enhAnimateBars(){
+  document.querySelectorAll('.enh-bar-fill').forEach((el,i)=>{
+    setTimeout(()=>{el.style.transition='width .6s cubic-bezier(.22,.85,.32,1)';el.style.width=el.dataset.w;},i*70);
+  });
+  document.querySelectorAll('.enh-prog-fill').forEach((el,i)=>{
+    setTimeout(()=>{el.style.transition='width .6s cubic-bezier(.22,.85,.32,1)';el.style.width=el.dataset.w;},180+i*90);
+  });
+}
+setTimeout(enhAnimateBars,280);
+
+/* -- Reports line chart restyled to match the provided reference -- */
+const lineValues=[300,450,200,400,520,610,620,650];
+(function buildChart(values){
+  const chart=document.getElementById('lineChart');
+  const track=chart.querySelector('.report-line-track');
+  const tooltip=document.getElementById('enhChartTooltip');
+  const width=760, height=260;
+  const pad={top:10,right:14,bottom:42,left:42};
+  const plotW=width-pad.left-pad.right;
+  const plotH=height-pad.top-pad.bottom;
+  const max=700;
+  const yTicks=[0,100,200,300,400,500,600,700];
+
+  const xFor=i=>pad.left+(i*(plotW/(values.length-1)));
+  const yFor=v=>pad.top+plotH-((v/max)*plotH);
+
+  const hGrid=yTicks.map(v=>{
+    const y=yFor(v);
+    return `<line x1="${pad.left}" y1="${y}" x2="${width-pad.right}" y2="${y}" class="enh-grid-line"></line>
+            <text x="${pad.left-10}" y="${y+4}" text-anchor="end" class="enh-axis-label">${v}</text>`;
+  }).join('');
+
+  const vGrid=values.map((_,i)=>{
+    const x=xFor(i);
+    return `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top+plotH}" class="enh-grid-line is-vertical"></line>`;
+  }).join('');
+
+  const linePoints=values.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' ');
+  const dots=values.map((v,i)=>{
+    const x=xFor(i), y=yFor(v);
+    return `<circle class="enhDot it-inline-053" cx="${x}" cy="${y}" r="4" fill="#0f7a3e" stroke="#ffffff" stroke-width="2.2" data-v="${v}" data-w="${i+1}"></circle>`;
+  }).join('');
+  const xLabels=values.map((_,i)=>`<text x="${xFor(i)}" y="${height-17}" text-anchor="middle" class="enh-x-label">Wk ${i+1}</text>`).join('');
+
+  track.innerHTML=`<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+    <rect x="${pad.left}" y="${pad.top}" width="${plotW}" height="${plotH}" class="enh-plot-frame"></rect>
+    ${hGrid}
+    ${vGrid}
+    <polyline fill="none" stroke="#1a7a3f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${linePoints}"></polyline>
+    ${dots}
+    ${xLabels}
+    <text x="${width/2}" y="${height-3}" text-anchor="middle" class="enh-axis-title">Week</text>
+  </svg>`;
+
+  track.querySelectorAll('.enhDot').forEach(dot=>{
+    dot.addEventListener('mouseenter',function(){
+      this.setAttribute('r','5.4');
+      const svgR=track.querySelector('svg').getBoundingClientRect();
+      const chartR=chart.getBoundingClientRect();
+      const cx=parseFloat(this.getAttribute('cx'));
+      const cy=parseFloat(this.getAttribute('cy'));
+      const x=(cx/width)*svgR.width+(svgR.left-chartR.left);
+      const y=(cy/height)*svgR.height+(svgR.top-chartR.top);
+      tooltip.textContent=`Wk ${this.dataset.w}: ${this.dataset.v} hrs`;
+      tooltip.style.left=x+'px';
+      tooltip.style.top=y+'px';
+      tooltip.style.opacity='1';
+    });
+    dot.addEventListener('mouseleave',function(){
+      this.setAttribute('r','4');
+      tooltip.style.opacity='0';
+    });
+  });
+})(lineValues);
+
+/* -- * Refresh -- */
+function enhRefreshCharts(manual=false){
+  const icon=document.getElementById('enhRefreshIcon');
+  icon.classList.add('enh-spinning');
+  setTimeout(()=>icon.classList.remove('enh-spinning'),700);
+  // reset bars and reanimate
+  document.querySelectorAll('.enh-bar-fill,.enh-prog-fill').forEach(el=>{el.style.transition='none';el.style.width='0';});
+  setTimeout(enhAnimateBars,100);
+  if(manual){
+    const now=new Date();
+    document.getElementById('enhLastRefresh').textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    showToast('Dashboard refreshed.','success');
+  }
+}
+
+/* -- Toast -- */
+function showToast(msg,type='info'){
+  const stack=document.getElementById('enhToastStack');
+  const icons={success:'fa-circle-check',error:'fa-circle-xmark',info:'fa-circle-info'};
+  const t=document.createElement('div');
+  t.className=`enh-toast is-${type}`;
+  t.innerHTML=`<i class="fa ${icons[type]||icons.info} enh-toast-icon"></i><span>${msg}</span><button class="enh-toast-close" onclick="this.parentElement.classList.add('is-out');setTimeout(()=>this.parentElement.remove(),220)"><i class="fa fa-xmark"></i></button>`;
+  stack.appendChild(t);
+  setTimeout(()=>{t.classList.add('is-out');setTimeout(()=>t.remove(),220);},3800);
+}
+</script>
+</body>
+</html>
+
+
+
+
