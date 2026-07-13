@@ -11,3 +11,15 @@ backend/.env
 # OS / editor noise
 Thumbs.db
 .DS_Store
+
+# Old static prototype (kept locally as design reference, not tracked on GitHub)
+/backup/
+/*.html
+/*.css
+/*.js
+/*.ps1
+/*.txt
+/*.jpg
+/*.png
+/*.md
+!/README.md
