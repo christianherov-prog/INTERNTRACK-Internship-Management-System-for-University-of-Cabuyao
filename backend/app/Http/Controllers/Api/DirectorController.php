@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Internship;
 use App\Models\Company;
 use App\Models\Evaluation;
+use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -54,6 +55,7 @@ class DirectorController extends Controller
             'moa_by_status'  => $moaByStatus,
             'top_companies'  => $topCompanies,
             'eval_breakdown' => $evalBreakdown,
+            'absorption'     => AbsorptionService::analytics(),
         ]);
     }
 
@@ -139,7 +141,10 @@ class DirectorController extends Controller
             'avg_hours' => $row->avg_hours,
         ])->values();
 
-        return response()->json(['by_program' => $programs]);
+        return response()->json([
+            'by_program' => $programs,
+            'absorption' => AbsorptionService::analytics(),
+        ]);
     }
 
     /**

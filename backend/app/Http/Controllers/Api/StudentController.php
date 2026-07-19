@@ -7,6 +7,7 @@ use App\Models\AttendanceLog;
 use App\Models\JournalEntry;
 use App\Models\Document;
 use App\Models\Announcement;
+use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -375,6 +376,33 @@ class StudentController extends Controller
         return response()->json([
             'profile' => $user->studentProfile,
         ] + ApiResponse::list($history)->getData(true));
+    }
+
+    /**
+     * POST /api/v1/student/absorption/declare
+     * Optional: student reports they were hired — stays pending until supervisor/coord confirms.
+     */
+    public function declareAbsorption(Request $request)
+    {
+        $request->validate([
+            'internship_id' => 'nullable|integer',
+            'notes'         => 'nullable|string|max:1000',
+        ]);
+
+        $query = $request->user()->internshipsAsStudent()->where('status', 'completed');
+        if ($request->internship_id) {
+            $query->where('id', $request->internship_id);
+        }
+        $internship = $query->latest('id')->firstOrFail();
+
+        $updated = AbsorptionService::studentDeclare($internship, $request->notes);
+
+        audit_log($request->user()->id, 'student_declare_hired', ['internship_id' => $internship->id]);
+
+        return response()->json([
+            'message' => 'Your hire declaration was submitted. It stays pending until your supervisor or coordinator confirms.',
+            'internship' => $updated,
+        ]);
     }
 
     /** GET /api/v1/student/announcements */

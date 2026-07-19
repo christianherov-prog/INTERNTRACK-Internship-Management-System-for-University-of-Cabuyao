@@ -10,6 +10,7 @@ use App\Models\JournalEntry;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\Company;
+use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -470,7 +471,48 @@ class CoordinatorController extends Controller
             'documents'          => ['approved' => $docsOk, 'pending' => $docsPending],
             'journals_submitted' => $journalsSubmitted,
             'attendance_pending' => $attendancePending,
+            'absorption'         => AbsorptionService::analytics(),
         ]);
+    }
+
+    /** GET /api/v1/coordinator/absorption — completed internships needing / with outcomes */
+    public function absorptionList(Request $request)
+    {
+        $items = Internship::where('status', 'completed')
+            ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile'])
+            ->orderByDesc('end_date')
+            ->get();
+
+        return response()->json(['internships' => $items]);
+    }
+
+    /** PATCH /api/v1/coordinator/internships/{id}/absorption */
+    public function recordAbsorption(Request $request, int $id)
+    {
+        $request->validate([
+            'absorption_status' => 'required|in:absorbed,not_hired',
+            'absorbed_at'       => 'nullable|date',
+            'job_title'         => 'nullable|string|max:255',
+            'absorption_notes'  => 'nullable|string|max:2000',
+        ]);
+
+        $internship = Internship::findOrFail($id);
+        $updated = AbsorptionService::recordOutcome(
+            $internship,
+            $request->user(),
+            'coordinator',
+            $request->absorption_status,
+            $request->absorbed_at,
+            $request->job_title,
+            $request->absorption_notes,
+        );
+
+        audit_log($request->user()->id, 'record_absorption', [
+            'internship_id' => $id,
+            'status'        => $request->absorption_status,
+        ]);
+
+        return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
     }
 
     /** GET /api/v1/coordinator/reports/student-summary */

@@ -66,6 +66,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/documents/upload',     [StudentController::class, 'uploadDocument']);
             Route::get('/evaluations',           [StudentController::class, 'evaluations']);
             Route::get('/records',               [StudentController::class, 'records']);
+            Route::post('/absorption/declare',   [StudentController::class, 'declareAbsorption']);
             Route::get('/announcements',         [StudentController::class, 'announcements']);
             Route::get('/certificates/completion', [CertificateController::class, 'completion']);
             
@@ -95,6 +96,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/feedback',                       [SupervisorController::class, 'feedback']);
             Route::post('/feedback/{internshipId}',       [SupervisorController::class, 'submitFeedback']);
             Route::get('/notifications',                  [SupervisorController::class, 'notifications']);
+            Route::get('/absorption',                     [SupervisorController::class, 'absorptionList']);
+            Route::patch('/internships/{id}/absorption',  [SupervisorController::class, 'recordAbsorption']);
         });
 
         // Faculty
@@ -133,6 +136,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
             Route::patch('/internships/{id}/status', [InternshipStatusController::class, 'update']);
             Route::get('/internships/{id}/certificate', [CertificateController::class, 'completion']);
+            Route::get('/absorption',                    [CoordinatorController::class, 'absorptionList']);
+            Route::patch('/internships/{id}/absorption', [CoordinatorController::class, 'recordAbsorption']);
             Route::get('/reports/overview',          [CoordinatorController::class, 'reportsOverview']);
             Route::get('/reports/student-summary',   [CoordinatorController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance',        [CoordinatorController::class, 'reportCompliance']);

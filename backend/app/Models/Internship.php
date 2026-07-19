@@ -15,14 +15,21 @@ class Internship extends Model
         'target_hours', 'total_hours_rendered', 'status', 'status_reason',
         'start_date', 'end_date', 'expected_end_date',
         'termination_reason', 'final_grade', 'final_remarks',
+        'absorption_status', 'absorbed_at', 'job_title', 'absorption_notes',
+        'absorption_recorded_by', 'absorption_recorded_at', 'absorption_recorded_by_role',
+        'student_declared_hired', 'student_declared_at', 'student_declaration_notes',
     ];
 
     protected $casts = [
-        'start_date'         => 'date',
-        'end_date'           => 'date',
-        'expected_end_date'  => 'date',
-        'total_hours_rendered' => 'decimal:2',
-        'final_grade'        => 'decimal:2',
+        'start_date'             => 'date',
+        'end_date'               => 'date',
+        'expected_end_date'      => 'date',
+        'absorbed_at'            => 'date',
+        'absorption_recorded_at' => 'datetime',
+        'student_declared_at'    => 'datetime',
+        'student_declared_hired' => 'boolean',
+        'total_hours_rendered'   => 'decimal:2',
+        'final_grade'            => 'decimal:2',
     ];
 
     // ─── Relationships ─────────────────────────────────────────────────────────

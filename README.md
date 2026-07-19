@@ -12,6 +12,7 @@ Stack: **React (Vite)** frontend · **Laravel Sanctum** REST API · **MySQL**
 - Coordinator placement, document stage routing (coordinator → faculty), supervisor QR approvals
 - Internship status tagging: active / completed / suspended / deferred / expelled (with reason + history)
 - Completion certificate PDF when an internship is marked completed
+- Post-completion absorption tracking: supervisor/coordinator hire outcomes + director analytics
 - Profile settings saved to the database + avatar upload
 
 ## Requirements

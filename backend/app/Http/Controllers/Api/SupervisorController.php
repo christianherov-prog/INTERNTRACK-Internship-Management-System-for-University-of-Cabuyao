@@ -7,6 +7,7 @@ use App\Models\Internship;
 use App\Models\Evaluation;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
 use Illuminate\Http\Request;
@@ -443,5 +444,47 @@ class SupervisorController extends Controller
         }
 
         return ApiResponse::list($notifications);
+    }
+
+    /** GET /api/v1/supervisor/absorption */
+    public function absorptionList(Request $request)
+    {
+        $items = Internship::where('supervisor_id', $request->user()->id)
+            ->where('status', 'completed')
+            ->with(['student.studentProfile', 'company'])
+            ->orderByDesc('end_date')
+            ->get();
+
+        return response()->json(['internships' => $items]);
+    }
+
+    /** PATCH /api/v1/supervisor/internships/{id}/absorption */
+    public function recordAbsorption(Request $request, int $id)
+    {
+        $request->validate([
+            'absorption_status' => 'required|in:absorbed,not_hired',
+            'absorbed_at'       => 'nullable|date',
+            'job_title'         => 'nullable|string|max:255',
+            'absorption_notes'  => 'nullable|string|max:2000',
+        ]);
+
+        $internship = Internship::where('supervisor_id', $request->user()->id)->findOrFail($id);
+
+        $updated = AbsorptionService::recordOutcome(
+            $internship,
+            $request->user(),
+            'supervisor',
+            $request->absorption_status,
+            $request->absorbed_at,
+            $request->job_title,
+            $request->absorption_notes,
+        );
+
+        audit_log($request->user()->id, 'record_absorption', [
+            'internship_id' => $id,
+            'status'        => $request->absorption_status,
+        ]);
+
+        return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
     }
 }

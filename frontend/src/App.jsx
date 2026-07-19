@@ -21,6 +21,7 @@ import SupervisorAssignedInterns from './pages/supervisor/SupervisorAssignedInte
 import SupervisorAttendanceValidation from './pages/supervisor/SupervisorAttendanceValidation'
 import SupervisorJournalValidation from './pages/supervisor/SupervisorJournalValidation'
 import SupervisorPerformanceEvaluation from './pages/supervisor/SupervisorPerformanceEvaluation'
+import SupervisorAbsorption from './pages/supervisor/SupervisorAbsorption'
 import SupervisorFeedback from './pages/supervisor/SupervisorFeedback'
 import SupervisorNotifications from './pages/supervisor/SupervisorNotifications'
 import SupervisorSettings from './pages/supervisor/SupervisorSettings'
@@ -76,6 +77,7 @@ function App() {
           <Route path="/supervisor/attendance-validation" element={<ProtectedRoute role="supervisor"><SupervisorAttendanceValidation /></ProtectedRoute>} />
           <Route path="/supervisor/journal-validation" element={<ProtectedRoute role="supervisor"><SupervisorJournalValidation /></ProtectedRoute>} />
           <Route path="/supervisor/performance-evaluation" element={<ProtectedRoute role="supervisor"><SupervisorPerformanceEvaluation /></ProtectedRoute>} />
+          <Route path="/supervisor/absorption" element={<ProtectedRoute role="supervisor"><SupervisorAbsorption /></ProtectedRoute>} />
           <Route path="/supervisor/feedback" element={<ProtectedRoute role="supervisor"><SupervisorFeedback /></ProtectedRoute>} />
           <Route path="/supervisor/notifications" element={<ProtectedRoute role="supervisor"><SupervisorNotifications /></ProtectedRoute>} />
           <Route path="/supervisor/settings" element={<ProtectedRoute role="supervisor"><SupervisorSettings /></ProtectedRoute>} />

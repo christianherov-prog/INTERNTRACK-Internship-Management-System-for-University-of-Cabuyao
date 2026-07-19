@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Internship;
 use App\Models\InternshipStatusHistory;
 use App\Models\Notification;
+use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
 use Illuminate\Http\Request;
@@ -89,6 +90,10 @@ class InternshipStatusController extends Controller
             'reason' => $reason,
             'changed_by' => $request->user()->id,
         ]);
+
+        if ($to === 'completed') {
+            AbsorptionService::initializePending($internship->fresh());
+        }
 
         if ($internship->student_id) {
             Notification::notify(

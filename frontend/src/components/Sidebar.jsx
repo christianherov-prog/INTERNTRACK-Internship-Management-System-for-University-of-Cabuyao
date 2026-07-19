@@ -32,6 +32,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/journal-validation', icon: 'fa-book', text: 'Journal Review' },
     { section: 'MAIN', to: '/supervisor/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
+    { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/supervisor/notifications', icon: 'fa-bell', text: 'Notifications' },
     { section: 'ACCOUNT', to: '/supervisor/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
