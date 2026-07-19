@@ -1,0 +1,152 @@
+--- [1] style='Normal' ---
+SYSTEM DEVELOPMENT PROGRESS REPORT
+
+--- [2] style='Normal' ---
+Group 4
+
+--- [3] style='Normal' ---
+
+
+--- [4] style='Normal' ---
+INTERNTRACK: INTERNSHIP MANAGEMENT SYSTEM FOR
+
+--- [5] style='Normal' ---
+UNIVERSITY OF CABUYAO
+
+--- [6] style='Normal' ---
+Group Members:
+
+--- [7] style='Normal' ---
+Monteralegre, Clarence D.
+
+--- [8] style='Normal' ---
+Taduran, Mark Joseph V.
+
+--- [9] style='Normal' ---
+Valinado, Christian Hero A.
+
+--- [10] style='Normal' ---
+
+
+--- [11] style='Normal' ---
+Date: July 19, 2026
+
+--- [12] style='Normal' ---
+
+
+--- [13] style='Normal' ---
+
+
+--- [14] style='Normal' ---
+
+
+--- [15] style='Normal' ---
+
+
+--- [16] style='Normal' ---
+
+
+--- [17] style='Normal' ---
+
+
+--- [18] style='Normal' ---
+
+
+--- [19] style='Normal' ---
+
+
+--- [20] style='Normal' ---
+
+
+--- [21] style='Normal' ---
+SYSTEM DEVELOPMENT PROGRESS TABLE
+
+--- [22] style='Normal' ---
+The table below presents the objectives and scope of the INTERNTRACK system, along with their corresponding development updates, percentage of completion, and explanations. Percentages reflect the current React (Vite) + Laravel Sanctum REST API + MySQL implementation (as of July 19, 2026), verified against the live codebase—not the earlier high-fidelity prototype phase.
+
+--- [23] style='Normal' ---
+
+
+--- [24] style='Normal' ---
+Computation of Overall Average:
+
+--- [25] style='Normal' ---
+(90% + 85% + 90% + 75% + 70% + 90% + 40% + 5%) ÷ 8 = 68.1%
+
+--- [26] style='Normal' ---
+Summary of Remaining / Follow-up Items:
+
+--- [27] style='Normal' ---
+The following remain unfinished or out of scope relative to the manuscript Scope/Objectives and are targeted before final testing and deployment (completed items previously listed here—profile DB save, Scope status tagging, document stage routing, and completion-certificate PDF—have been moved out of this list):
+
+--- [28] style='Normal' ---
+1. Dedicated internship status-history timeline UI (API/histories already exist).
+
+--- [29] style='Normal' ---
+2. Persist notification preference toggles to the database (currently localStorage-only).
+
+--- [30] style='Normal' ---
+3. True real-time updates (beyond ~60-second notification polling) and stronger at-risk monitoring automation.
+
+--- [31] style='Normal' ---
+4. Optional fuller use of advanced compliance-status labels; confirm portfolio opens reliably for status=active internships (known relation-gap follow-up).
+
+--- [32] style='Normal' ---
+5. Seeded Industry Supervisor demo account (supervisors currently onboard only via QR invite → register → coordinator approve).
+
+--- [33] style='Normal' ---
+6. Chat/messaging module and/or broader announcement delivery to all roles; no separate admin portal (out of current product scope).
+
+--- [34] style='Normal' ---
+7. Full institutional MISD / iEnroll integration beyond local mock provisioning.
+
+--- [35] style='Normal' ---
+8. Formal ISO/IEC 25010 end-user and IT-expert evaluation (research instruments; not an in-app feature).
+
+--- [36] style='Normal' ---
+
+
+--- [37] style='Normal' ---
+Demo / Seeded Accounts (for testing):
+
+--- [38] style='Normal' ---
+Password for all seeded accounts: interntrack123. Teammates should run: php artisan migrate:fresh --seed (StudentAccountsSeeder via DatabaseSeeder) after git pull so accounts exist locally.
+
+--- [39] style='Normal' ---
+• Student — 2300600 Christian Hero Valinado (4ITD); 2300592 Clarence Montealegre (4ITD)
+
+--- [40] style='Normal' ---
+• Faculty — FAC-1001; Coordinator — COR-1001; Director — DIR-1001
+
+--- [41] style='Normal' ---
+• Industry Supervisor — none seeded; use Student → Invite Supervisor (QR) → public register → Coordinator approve.
+
+--- [42] style='Normal' ---
+
+
+--- [43] style='Normal' ---
+Testing Notes (current stack):
+
+--- [44] style='Normal' ---
+Frontend: React (Vite). Backend: Laravel Sanctum REST API. Database: MySQL. Serve API (e.g. php artisan serve --host=127.0.0.1 --port=8001) and npm run dev for the UI; run php artisan storage:link for avatar URLs.
+
+--- [45] style='Normal' ---
+Key completed modules for demo: multi-role login; student attendance/logbook/documents/evaluations/portfolio/records/supervisor invite/settings; coordinator placement, doc routing, supervisor approvals, logbook review, announcements, reports, status change, certificate download; faculty document review/journals/evaluations; director companies/MOA/reports/internship roster; supervisor portal after invite approval; completion certificate PDF when status = completed.
+
+--- [46] style='Normal' ---
+
+
+TOTAL_PARAGRAPHS=46
+TOTAL_TABLES=1
+=== TABLE 1 (11 rows x 5 cols) ===
+  R1: Objectives / Scope (from Manuscript) || Development Update || % Done || Explanation / Notes || Progress Screenshots (to capture)
+  R2: Obj. 1.1 & 2.1–2.2 | Manages student profiles and records through centralized data storage and profile management; enables tagging internship status (active, completed, suspended, deferred, expelled) with a mandatory reason; protects access through role-based access control. || COMPLETED: Student profiles (student_profiles); Settings persist via PUT /auth/profile; avatar upload via POST /auth/avatar; change password; My Records (GET /student/records); Sanctum RBAC for Student, Faculty, Coordinator, Director, and Industry Supervisor. | COMPLETED: Internship status tagging (active, completed, suspended, deferred, expelled) with mandatory reason and internship_status_histories (Coordinator & Director UI). | PARTIAL: Status-history API exists; dedicated history timeline UI not yet built. Notification preference toggles remain localStorage-only. || 90% || Profile persistence, avatar, records, five-role RBAC, and Scope status tagging with mandatory reasons are operational. Remaining gaps are mainly UI polish (status-history timeline) and server-side notification preferences. || See Screenshot Checklist — Set A
+  R3: Obj. 1.2 | Supports internship lifecycle management, including placement, deployment, status tracking, and progress monitoring, with dedicated monitoring of MOA status with partner companies. || COMPLETED: Coordinator placement/deployment; supervisor QR invite → public register → coordinator approval; student attendance/hours; coordinator monitoring; Director companies CRUD, MOA monitoring, internship roster/status, and certificate download. | COMPLETED: Internship lifecycle status changes (active/completed/suspended/deferred/expelled) with mandatory reason for Coordinator and Director. | PARTIAL: Stronger automatic MOA/HTE deployment-blocking validation may still need tightening; no seeded Industry Supervisor account (must use invite flow). || 85% || Placement, progress monitoring, MOA views, and Scope status lifecycle work end-to-end. Follow-ups: invite-only supervisor onboarding and any remaining MOA gatekeeping rules. || See Screenshot Checklist — Set B
+  R4: Obj. 1.3 | Facilitates internship documentation, including digital journal submission/review and document compliance, submission, verification, and routing. || COMPLETED: Student weekly journal (logbook) submit with file upload; review by Industry Supervisor, Faculty, and Coordinator; student document upload (required types). | COMPLETED: Document stage routing (Coordinator → Faculty) with approve/reject and required rejection remarks; coordinator bulk approve supported. | PARTIAL: Some advanced/unused compliance-status labels may still be underutilized in UI. || 90% || Journal workflows and multi-stage document routing (coordinator then faculty) are functional. Remaining work is mostly compliance-status completeness rather than core routing. || See Screenshot Checklist — Set C
+  R5: Obj. 1.4 | Provides monitoring and supervision tools, such as dashboards, real-time status updates, notifications, and performance tracking. || COMPLETED: Role dashboards with live API data; shared GET /dashboard/summary (Director/Faculty/Coordinator); notification bell with ~60-second polling; hours/KPI tracking; competency-based performance evaluations. | PENDING: True real-time (WebSockets/push); stronger automated at-risk flagging; Industry Supervisor not on the shared summary endpoint; notification preference toggles still localStorage-only. || 75% || Dashboards and notifications use live data (not static mockups). Updates remain request/poll-based rather than push real-time. || See Screenshot Checklist — Set D
+  R6: Obj. 1.5 | Enables communication and coordination among student interns, PALD Director, internship coordinators, faculty supervisors, industry supervisors, and authorized academic personnel. || COMPLETED: Five working portals including Industry Supervisor (assigned interns, attendance/journal validation, evaluations, feedback, notifications, settings). Coordinator announcements; system notifications on key events; faculty journal feedback. | PENDING / OUT OF SCOPE: No chat/messaging module; no separate admin portal; announcements are mainly consumed by students in the UI. || 70% || Industry Supervisor is a first-class live role. Coordination is via announcements, notifications, and feedback—not real-time messaging. No admin portal is planned in-app. || See Screenshot Checklist — Set E
+  R7: Obj. 1.6 | Generates reports and outputs, including performance evaluations, completion certificates, and internship-related reports. || COMPLETED: Supervisor and Faculty performance evaluation submit/view; Student evaluation viewing; Coordinator and Director CSV/report exports; printable student portfolio. | COMPLETED: System-generated Completion Certificate PDF when internship status = completed (downloadable from Coordinator/Director internship views). | PARTIAL / KNOWN FOLLOW-UP: Portfolio may not open correctly for some status=active internships (relation gap)—flagged for fix before final demo if encountered. || 90% || Evaluations, internship reports/CSV, and automatic completion-certificate PDF issuance are working. Portfolio edge-case for active internships is a known follow-up. || See Screenshot Checklist — Set F
+  R8: Scope — System Integration (MISD Coordination) | Considers integration with the University's Management Information Systems Division (MISD) for data synchronization and interoperability. || PARTIAL: Local mock MISD / iEnroll-style endpoints support student/faculty login provisioning (MisdIntegrationService). Available in local environment only; not a live institutional MISD connection. || 40% || Mock MISD supports demo login/provisioning. Full institutional MISD interoperability remains pending coordination with MISD. || See Screenshot Checklist — Set G (optional)
+  R9: Obj. 2 & 3 — System Evaluation | Evaluate acceptability based on selected ISO/IEC 25010 characteristics with end users (functional suitability, usability, performance efficiency, reliability) and IT experts (functional suitability, reliability, performance efficiency, security). || NOT STARTED IN-APP / OUT OF SCOPE FOR MODULE BUILD: No ISO/IEC 25010 questionnaire or in-system survey module exists in the codebase. Internship performance evaluations (faculty/supervisor scoring students) are separate and must not be confused with Obj. 2 & 3. || 5% || Treat as a research-instrument / data-collection step outside the application once core modules are stable for formal evaluation. || [N/A — research instruments]
+  R10:  ||  ||  ||  || 
+  R11: TOTAL / OVERALL AVERAGE || Average of all eight (8) percentage cells in the table above. || 68.1% || Overall system development progress as of July 19, 2026. || —

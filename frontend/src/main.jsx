@@ -1,17 +1,13 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-// The prototype stylesheet (public/master-style.css) is loaded via a <link>
-// tag in index.html because its legacy CSS is not PostCSS-parseable.
-import App from './App.jsx';
-import { AuthProvider } from './context/AuthContext.jsx';
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './styles/master-style.css'
+import './styles/director-enhancements.css'
+import './styles/coordinator-fix.css'
+import './styles/styles.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
-  </React.StrictMode>
-);
+    <App />
+  </React.StrictMode>,
+)

@@ -2,13 +2,21 @@
 
 return [
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cross-Origin Resource Sharing (CORS) Configuration
+    |--------------------------------------------------------------------------
+    */
+
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter(
-        explode(',', env('FRONTEND_URL', 'http://localhost:5173,http://127.0.0.1:5173'))
-    ),
+    'allowed_origins' => [
+        'http://localhost:5173',  // Vite dev server
+        'http://localhost:3000',  // Alternative dev port
+        'http://127.0.0.1:5173',
+    ],
 
     'allowed_origins_patterns' => [],
 

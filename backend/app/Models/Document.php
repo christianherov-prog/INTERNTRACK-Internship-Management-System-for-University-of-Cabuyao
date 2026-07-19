@@ -3,37 +3,39 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Document extends Model
 {
-    /**
-     * Requirement checklist used to compute document compliance.
-     * Kept here (not in DB) because it is fixed per internship program.
-     */
-    public const REQUIRED_TYPES = [
-        'Endorsement Letter',
-        'Memorandum of Agreement',
-        'Medical Certificate',
-        'Parent Consent',
-        'Resume',
-        'Insurance',
-        'Training Plan',
-        'Waiver',
-        'Evaluation Form',
-    ];
+    use SoftDeletes;
 
     protected $fillable = [
-        'student_id',
-        'document_type',
-        'file_path',
-        'original_name',
-        'remarks',
-        'status',
+        'internship_id', 'document_type', 'file_path', 'file_name', 'file_size', 'mime_type',
+        'status', 'current_stage', 'remarks', 'reviewed_by', 'reviewed_at', 'submitted_at',
     ];
 
-    public function student(): BelongsTo
+    protected $casts = [
+        'reviewed_at' => 'datetime',
+        'submitted_at' => 'datetime',
+    ];
+
+    public function internship()
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Internship::class);
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(DocumentReview::class);
+    }
+
+    public function getFileUrlAttribute(): string
+    {
+        return asset('storage/'.$this->file_path);
     }
 }

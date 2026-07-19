@@ -1,0 +1,143 @@
+/* ============================================================
+   PORTFOLIO PRINT CSS
+   Handles both on-screen A4 preview and browser Print-to-PDF
+   ============================================================ */
+
+/* ── A4 page on screen ── */
+@media screen {
+  .a4-page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 20px auto;
+    background: #fff;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    padding: 20mm 18mm;
+    box-sizing: border-box;
+    position: relative;
+  }
+}
+
+/* ── Print rules ── */
+@media print {
+  /* Hide browser header and footer (URL, date, title) */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Reset everything */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  body, #root {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Hide UI chrome */
+  .no-print { display: none !important; }
+
+  /* Each a4-page becomes exactly one printed page */
+  .a4-page {
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: unset !important;
+    margin: 0 !important;
+    padding: 20mm 18mm !important; /* This compensates for the @page margin: 0 */
+    box-shadow: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+    position: relative !important;
+    background-size: cover !important;
+    background-position: center !important;
+  }
+
+  /* Last page: no page break after */
+  .a4-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+}
+
+/* ── Force page break helper ── */
+.page-break {
+  page-break-after: always;
+  break-after: page;
+}
+
+/* ── Portfolio document typography ── */
+.portfolio-document {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 11pt;
+  color: #000;
+  line-height: 1.6;
+}
+
+.portfolio-document p {
+  text-align: justify;
+  text-indent: 0.5in;
+  margin-bottom: 10px;
+}
+
+.portfolio-document h1,
+.portfolio-document h2,
+.portfolio-document h3,
+.portfolio-document h4,
+.portfolio-document h5 {
+  text-align: center;
+}
+
+/* ── Table of Contents ── */
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 6px;
+  font-size: 10.5pt;
+}
+
+.toc-list li span:first-child {
+  flex-grow: 1;
+  border-bottom: 1px dotted #555;
+  margin-right: 8px;
+  padding-bottom: 2px;
+}
+
+/* ── Page Numbers ── */
+body {
+  counter-reset: portfolio-page -3; /* i, ii, iii... then 1 */
+}
+
+.page-number {
+  position: absolute;
+  bottom: 15mm;
+  right: 18mm;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 11pt;
+}
+
+/* Keep Chapter III body clear of the absolute page number */
+.chapter3-content {
+  padding-bottom: 18mm;
+}
+.chapter3-section p {
+  margin-bottom: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.page-number::before {
+  counter-increment: portfolio-page;
+  content: counter(portfolio-page);
+}
+
+.page-number.roman::before {
+  content: counter(portfolio-page, lower-roman);
+}
