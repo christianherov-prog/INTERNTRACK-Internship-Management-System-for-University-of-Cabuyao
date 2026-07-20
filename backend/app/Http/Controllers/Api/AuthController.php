@@ -212,6 +212,34 @@ class AuthController extends Controller
     }
 
     /**
+     * PUT /api/v1/auth/notification-preferences — persist notification toggles on the user.
+     * Accepts any object of string => bool keys.
+     */
+    public function updateNotificationPreferences(Request $request)
+    {
+        $data = $request->validate([
+            'preferences' => 'required|array',
+            'preferences.*' => 'boolean',
+        ]);
+
+        $user = $request->user();
+        $prefs = [];
+        foreach ($data['preferences'] as $key => $value) {
+            $prefs[(string) $key] = (bool) $value;
+        }
+
+        $user->forceFill(['notification_preferences' => $prefs])->save();
+        audit_log($user->id, 'update_notification_preferences', ['keys' => array_keys($prefs)]);
+
+        $user->refresh()->load($this->userRelations());
+
+        return response()->json([
+            'message' => 'Notification preferences updated.',
+            'user' => $this->formatUser($user),
+        ]);
+    }
+
+    /**
      * Format student identity line: "4 - IT D | 2300600"
      * Uses section codes like "4ITD" (year + program + block), never a "BS" course prefix.
      */
@@ -361,6 +389,9 @@ class AuthController extends Controller
             'term'         => config('interntrack.current_term', 'AY 2024-2025, Sem 2'),
             'coordinator'  => $coord,
             'lastLoginAt'  => optional($user->last_login_at)?->toIso8601String(),
+            'notificationPreferences' => is_array($user->notification_preferences)
+                ? $user->notification_preferences
+                : [],
         ];
     }
 

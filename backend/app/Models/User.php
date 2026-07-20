@@ -14,13 +14,15 @@ class User extends Authenticatable
 
     protected $fillable = [
         'username', 'email', 'password', 'role', 'is_active', 'last_login_at', 'avatar_path',
+        'notification_preferences',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-        'is_active'     => 'boolean',
-        'last_login_at' => 'datetime',
+        'is_active'                 => 'boolean',
+        'last_login_at'             => 'datetime',
+        'notification_preferences'  => 'array',
     ];
 
     // ─── Profile Relationships ────────────────────────────────────────────────

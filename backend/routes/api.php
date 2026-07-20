@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
         Route::post('/auth/avatar',          [AuthController::class, 'uploadAvatar']);
         Route::put('/auth/profile',          [AuthController::class, 'updateProfile']);
+        Route::put('/auth/notification-preferences', [AuthController::class, 'updateNotificationPreferences']);
 
         // Role-aware dashboard summary (director / coordinator / faculty / student)
         Route::get('/dashboard/summary', [DashboardController::class, 'summary']);

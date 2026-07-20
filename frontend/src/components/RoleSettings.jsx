@@ -61,12 +61,18 @@ function RoleSettings({
   const [avatarError, setAvatarError] = useState(null)
 
   const [notifications, setNotifications] = useState(() => {
+    // Prefer server prefs; fall back to localStorage cache then defaults.
+    if (user?.notificationPreferences && typeof user.notificationPreferences === 'object') {
+      return { ...defaultNotifications, ...user.notificationPreferences }
+    }
     try {
       const saved = localStorage.getItem(storageKey)
       if (saved) return { ...defaultNotifications, ...JSON.parse(saved) }
     } catch { /* ignore */ }
     return { ...defaultNotifications }
   })
+  const [notifSaving, setNotifSaving] = useState(false)
+  const [notifMessage, setNotifMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
     setFormData({
@@ -79,8 +85,24 @@ function RoleSettings({
     })
   }, [user?.id, user?.name, user?.email, user?.program, user?.contact, user?.company, user?.position])
 
+  // Sync toggles when server prefs arrive (e.g. after refreshUser).
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(notifications))
+    if (user?.notificationPreferences && typeof user.notificationPreferences === 'object') {
+      setNotifications({ ...defaultNotifications, ...user.notificationPreferences })
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          ...defaultNotifications,
+          ...user.notificationPreferences,
+        }))
+      } catch { /* ignore */ }
+    }
+  }, [user?.id, user?.notificationPreferences]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cache locally only — server is source of truth.
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(notifications))
+    } catch { /* ignore */ }
   }, [notifications, storageKey])
 
   useEffect(() => {
@@ -106,8 +128,29 @@ function RoleSettings({
     setPasswords({ ...passwords, [e.target.name]: e.target.value })
   }
 
-  const handleNotificationChange = (key) => {
-    setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
+  const handleNotificationChange = async (key) => {
+    const next = { ...notifications, [key]: !notifications[key] }
+    setNotifications(next)
+    setNotifSaving(true)
+    setNotifMessage({ type: '', text: '' })
+    try {
+      const res = await api.put('/auth/notification-preferences', { preferences: next })
+      if (res.data?.user) {
+        updateUserLocal(res.data.user)
+      }
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next))
+      } catch { /* ignore */ }
+    } catch (err) {
+      // Revert optimistic update on failure.
+      setNotifications(notifications)
+      setNotifMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to save notification preferences.',
+      })
+    } finally {
+      setNotifSaving(false)
+    }
   }
 
   const handleSaveProfile = async () => {
@@ -393,6 +436,11 @@ function RoleSettings({
               <h6>Notifications</h6>
             </div>
             <div className="settings-section-intro">{notificationsIntro}</div>
+            {notifMessage.text && (
+              <div className={`alert alert-${notifMessage.type === 'error' ? 'danger' : 'success'} py-2 px-3 mb-3`} style={{ fontSize: '0.85rem' }}>
+                {notifMessage.text}
+              </div>
+            )}
             <div className="settings-toggle-list">
               {notificationDefs.map(item => (
                 <div className="settings-toggle-row settings-toggle-card" key={item.key}>
@@ -405,6 +453,7 @@ function RoleSettings({
                       className="form-check-input"
                       type="checkbox"
                       checked={Boolean(notifications[item.key])}
+                      disabled={notifSaving}
                       onChange={() => handleNotificationChange(item.key)}
                     />
                   </div>
