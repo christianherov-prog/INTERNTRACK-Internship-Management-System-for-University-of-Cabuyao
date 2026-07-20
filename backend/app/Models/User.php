@@ -64,7 +64,7 @@ class User extends Authenticatable
     public function portfolioInternship()
     {
         return $this->hasOne(Internship::class, 'student_id')
-                    ->whereIn('status', ['ongoing', 'placed', 'for_evaluation', 'completed'])
+                    ->whereIn('status', ['ongoing', 'placed', 'active', 'for_evaluation', 'completed'])
                     ->latest();
     }
 

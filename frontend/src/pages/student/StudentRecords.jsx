@@ -28,7 +28,9 @@ function StudentRecords() {
 
   useEffect(() => { load() }, [])
 
-  const active = history.find((h) => ['ongoing', 'placed', 'for_evaluation', 'pending_placement'].includes(h.status))
+  const active = history.find((h) =>
+    ['ongoing', 'placed', 'active', 'for_evaluation', 'pending_placement'].includes(h.status)
+  )
   const totalHours = history.reduce((sum, h) => sum + (Number(h.total_hours_rendered) || 0), 0)
   const totalDays = history.reduce((sum, h) => sum + (Number(h.validated_days) || 0), 0)
 
