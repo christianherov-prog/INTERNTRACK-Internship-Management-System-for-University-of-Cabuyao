@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
+import StatusHistoryModal from '../../components/StatusHistoryModal'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
@@ -10,6 +11,7 @@ function DirectorInternships() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [statusTarget, setStatusTarget] = useState(null)
+  const [historyTarget, setHistoryTarget] = useState(null)
   const [message, setMessage] = useState(null)
   const [certLoading, setCertLoading] = useState(null)
 
@@ -81,6 +83,15 @@ function DirectorInternships() {
         />
       )}
 
+      {historyTarget && (
+        <StatusHistoryModal
+          internshipId={historyTarget.id}
+          studentName={historyTarget.student?.name || 'Student'}
+          apiBase="director"
+          onClose={() => setHistoryTarget(null)}
+        />
+      )}
+
       <div className="content-card">
         <div className="content-card-header">
           <i className="fa fa-users"></i>
@@ -118,6 +129,9 @@ function DirectorInternships() {
                       <td className="text-center">
                         <button className="btn btn-sm btn-outline-primary me-1" onClick={() => setStatusTarget(r)}>
                           Change Status
+                        </button>
+                        <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => setHistoryTarget(r)}>
+                          History
                         </button>
                         {r.status === 'completed' && (
                           <button

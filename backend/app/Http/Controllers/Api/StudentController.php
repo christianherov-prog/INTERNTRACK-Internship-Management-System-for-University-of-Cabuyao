@@ -69,20 +69,7 @@ class StudentController extends Controller
     public function dashboard(Request $request)
     {
         $user       = $request->user()->load('studentProfile');
-        $internship = $request->user()
-            ->activeInternship()
-            ->with('company')
-            ->first();
-
-        if (!$internship) {
-            return response()->json([
-                'student'      => $this->studentSummary($user->studentProfile),
-                'stats'        => ['hours_rendered' => 0, 'days_present' => 0, 'journal_count' => 0, 'docs_submitted' => 0, 'docs_total' => 9, 'target_hours' => 360, 'progress_percent' => 0, 'evaluation_score' => null, 'doc_compliance' => 0],
-                'announcements'=> [],
-                'weekly_chart' => ['labels' => [], 'hours' => [], 'target' => []],
-                'internship'   => null,
-            ]);
-        }
+        $internship = $this->internship($request)->load('company');
 
         // Attendance stats
         $daysPresent     = $internship->attendance()->where('status', 'validated')->count();

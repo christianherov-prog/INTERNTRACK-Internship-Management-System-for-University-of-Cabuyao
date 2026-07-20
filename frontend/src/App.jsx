@@ -39,9 +39,11 @@ import CoordAnnouncements from './pages/coordinator/CoordAnnouncements'
 import CoordDocApprovals from './pages/coordinator/CoordDocApprovals'
 import CoordLogbookReview from './pages/coordinator/CoordLogbookReview'
 import CoordRecords from './pages/coordinator/CoordRecords'
+import CoordAbsorption from './pages/coordinator/CoordAbsorption'
 import CoordReports from './pages/coordinator/CoordReports'
 import CoordSettings from './pages/coordinator/CoordSettings'
 import CoordSupervisorApprovals from './pages/coordinator/CoordSupervisorApprovals'
+import DirectorAbsorption from './pages/director/DirectorAbsorption'
 import StudentSupervisorInvite from './pages/student/StudentSupervisorInvite'
 import SupervisorRegisterPage from './pages/public/SupervisorRegisterPage'
 
@@ -70,6 +72,7 @@ function App() {
           <Route path="/director/moa-monitoring" element={<ProtectedRoute role="director"><DirectorMOAMonitoring /></ProtectedRoute>} />
           <Route path="/director/reports" element={<ProtectedRoute role="director"><DirectorReports /></ProtectedRoute>} />
           <Route path="/director/internships" element={<ProtectedRoute role="director"><DirectorInternships /></ProtectedRoute>} />
+          <Route path="/director/absorption" element={<ProtectedRoute role="director"><DirectorAbsorption /></ProtectedRoute>} />
           <Route path="/director/settings" element={<ProtectedRoute role="director"><DirectorSettings /></ProtectedRoute>} />
           
           <Route path="/supervisor/dashboard" element={<ProtectedRoute role="supervisor"><SupervisorDashboard /></ProtectedRoute>} />
@@ -95,6 +98,7 @@ function App() {
           <Route path="/coordinator/doc-approvals" element={<ProtectedRoute role="coordinator"><CoordDocApprovals /></ProtectedRoute>} />
           <Route path="/coordinator/logbook-review" element={<ProtectedRoute role="coordinator"><CoordLogbookReview /></ProtectedRoute>} />
           <Route path="/coordinator/records" element={<ProtectedRoute role="coordinator"><CoordRecords /></ProtectedRoute>} />
+          <Route path="/coordinator/absorption" element={<ProtectedRoute role="coordinator"><CoordAbsorption /></ProtectedRoute>} />
           <Route path="/coordinator/reports" element={<ProtectedRoute role="coordinator"><CoordReports /></ProtectedRoute>} />
           <Route path="/coordinator/evaluations" element={<ProtectedRoute role="coordinator"><CoordEvaluations /></ProtectedRoute>} />
           <Route path="/coordinator/supervisor-approvals" element={<ProtectedRoute role="coordinator"><CoordSupervisorApprovals /></ProtectedRoute>} />

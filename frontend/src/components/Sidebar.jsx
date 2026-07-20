@@ -22,6 +22,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/director/moa-monitoring', icon: 'fa-file-signature', text: 'MOA Monitoring' },
     { section: 'MAIN', to: '/director/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'MAIN', to: '/director/internships', icon: 'fa-tags', text: 'Internship Status' },
+    { section: 'MAIN', to: '/director/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'ACCOUNT', to: '/director/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -54,6 +55,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/coordinator/logbook-review', icon: 'fa-book-open', text: 'Logbook Review' },
     { section: 'MAIN', to: '/coordinator/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
     { section: 'MAIN', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
+    { section: 'MAIN', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'MAIN', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'ACCOUNT', to: '/coordinator/settings', icon: 'fa-cog', text: 'Settings' },

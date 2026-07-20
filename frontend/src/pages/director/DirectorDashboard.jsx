@@ -120,6 +120,7 @@ function DirectorDashboard() {
   const moaByStatus = data?.moa_by_status ?? {}
   const topCompanies= data?.top_companies ?? []
   const evalBreak   = data?.eval_breakdown ?? null
+  const absorption  = data?.absorption    ?? {}
 
   return (
     <Layout title="Dashboard" subtitle="AY 2024-2025, Sem 2" icon="fa-chart-pie" bodyClass="director-page">
@@ -130,6 +131,35 @@ function DirectorDashboard() {
         <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
       ) : !error && (
         <>
+          <div className="content-card mb-4">
+            <div className="content-card-header">
+              <i className="fa fa-user-check"></i>
+              <h6>Absorption Summary</h6>
+            </div>
+            <div className="row g-3 p-3">
+              <div className="col-md-3 col-6">
+                <div className="text-muted small">Completed</div>
+                <div className="fw-bold" style={{ fontSize: '1.4rem' }}>{absorption.completed_internships ?? 0}</div>
+              </div>
+              <div className="col-md-3 col-6">
+                <div className="text-muted small">Absorbed</div>
+                <div className="fw-bold" style={{ fontSize: '1.4rem', color: '#16a34a' }}>{absorption.absorbed ?? 0}</div>
+              </div>
+              <div className="col-md-3 col-6">
+                <div className="text-muted small">Not Hired / Pending</div>
+                <div className="fw-bold" style={{ fontSize: '1.4rem' }}>
+                  {(absorption.not_hired ?? 0)} / {(absorption.pending ?? 0)}
+                </div>
+              </div>
+              <div className="col-md-3 col-6">
+                <div className="text-muted small">Absorption Rate</div>
+                <div className="fw-bold" style={{ fontSize: '1.4rem' }}>
+                  {absorption.absorption_rate != null ? `${absorption.absorption_rate}%` : '—'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="row g-3 mb-4">
             {/* Interns by Program */}
             <div className="col-lg-7">

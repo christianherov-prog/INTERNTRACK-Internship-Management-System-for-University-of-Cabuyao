@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
+import StatusHistoryModal from '../../components/StatusHistoryModal'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 
@@ -123,6 +124,7 @@ function CoordRecords() {
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(null)
   const [statusTarget, setStatusTarget] = useState(null)
+  const [historyTarget, setHistoryTarget] = useState(null)
   const [message, setMessage] = useState(null)
   const [certLoading, setCertLoading] = useState(null)
 
@@ -198,6 +200,15 @@ function CoordRecords() {
         />
       )}
 
+      {historyTarget && (
+        <StatusHistoryModal
+          internshipId={historyTarget.internshipId}
+          studentName={historyTarget.studentName}
+          apiBase="coordinator"
+          onClose={() => setHistoryTarget(null)}
+        />
+      )}
+
       <div className="content-card mb-4">
         <div className="content-card-header">
           <i className="fa fa-users"></i>
@@ -264,6 +275,15 @@ function CoordRecords() {
                                   })}
                                 >
                                   <i className="fa fa-tag me-1"></i> Status
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-secondary me-1"
+                                  onClick={() => setHistoryTarget({
+                                    internshipId: internship.id,
+                                    studentName: name,
+                                  })}
+                                >
+                                  <i className="fa fa-clock-rotate-left me-1"></i> History
                                 </button>
                                 {(st === 'completed') && (
                                   <button
