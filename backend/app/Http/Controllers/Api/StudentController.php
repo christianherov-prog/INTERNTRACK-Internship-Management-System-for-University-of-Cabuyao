@@ -25,7 +25,7 @@ class StudentController extends Controller
         if (!$internship) {
             $profile = $user->studentProfile;
             $ay = $profile?->academic_year ?: '2025-2026';
-            $sem = (int) ($profile?->semester ?: 1);
+            $sem = (int) ($profile?->semester ?: 2);
             $internship = $user->internshipsAsStudent()->create([
                 'status' => 'pending_placement',
                 'academic_year' => $ay,
