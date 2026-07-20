@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../contexts/ToastContext'
 import Layout from './Layout'
 import ImageCropModal from './ImageCropModal'
 import api from '../services/api'
@@ -22,6 +23,7 @@ function RoleSettings({
   defaultNotifications = {},
 }) {
   const { user, updateUserLocal, refreshUser } = useAuth()
+  const toast = useToast()
   const fileInputRef = useRef(null)
   const storageKey = user?.id
     ? `interntrack_notifications_${user.id}`
@@ -49,7 +51,6 @@ function RoleSettings({
   })
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' })
-  const [profileMessage, setProfileMessage] = useState({ type: '', text: '' })
   const [profileSaving, setProfileSaving] = useState(false)
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(() => {
     if (!user?.id) return false
@@ -164,7 +165,6 @@ function RoleSettings({
     if (accountExtraFields.some(f => f.name === 'position')) updates.position = formData.position
 
     setProfileSaving(true)
-    setProfileMessage({ type: '', text: '' })
     try {
       const res = await api.put('/auth/profile', updates)
       if (res.data?.user) {
@@ -173,12 +173,11 @@ function RoleSettings({
         updateUserLocal(updates)
       }
       await refreshUser()
-      setProfileMessage({ type: 'success', text: 'Profile saved to your account.' })
+      toast.success('Profile saved successfully')
     } catch (err) {
-      setProfileMessage({
-        type: 'error',
-        text: err.response?.data?.message || 'Failed to save profile. Changes were not persisted.',
-      })
+      toast.error(
+        err.response?.data?.message || 'Failed to save profile. Changes were not persisted.',
+      )
     } finally {
       setProfileSaving(false)
     }
@@ -193,7 +192,6 @@ function RoleSettings({
       company: user?.company || '',
       position: user?.position || '',
     })
-    setProfileMessage({ type: '', text: '' })
   }
 
   const handleUpdatePassword = async () => {
@@ -384,11 +382,6 @@ function RoleSettings({
               <h6>Account Settings</h6>
             </div>
             <div className="settings-section-intro">{accountIntro}</div>
-            {profileMessage.text && (
-              <div className={`alert alert-${profileMessage.type === 'error' ? 'danger' : 'success'} py-2 px-3 mb-3`} style={{ fontSize: '0.85rem' }}>
-                {profileMessage.text}
-              </div>
-            )}
             <div className="row g-3 g-lg-4">
               <div className="col-md-6">
                 <label className="form-label form-label-subtle">Full Name</label>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import StudentDashboard from './pages/student/StudentDashboard'
@@ -50,8 +51,9 @@ import SupervisorRegisterPage from './pages/public/SupervisorRegisterPage'
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />
           
@@ -106,7 +108,8 @@ function App() {
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   )
 }
