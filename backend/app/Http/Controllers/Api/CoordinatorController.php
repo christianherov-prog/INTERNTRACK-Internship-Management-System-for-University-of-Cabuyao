@@ -44,6 +44,7 @@ class CoordinatorController extends Controller
             ->with([
                 'student.studentProfile',
                 'supervisor.supervisorProfile',
+                'company',
                 'journals' => fn($q) => $q->latest('date')->limit(1),
                 'documents',
             ])
