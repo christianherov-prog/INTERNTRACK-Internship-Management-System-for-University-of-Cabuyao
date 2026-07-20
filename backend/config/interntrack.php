@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 
 return [
     // Single source of truth for the displayed academic term (dashboards, certificates, auth user.term).
-    // Override in .env without a code deploy: INTERNTRACK_CURRENT_TERM="AY 2025-2026, Sem 1"
-    'current_term'     => env('INTERNTRACK_CURRENT_TERM', 'AY 2025-2026, Sem 1'),
+    // Override in .env without a code deploy: INTERNTRACK_CURRENT_TERM="AY 2025-2026, Sem 2"
+    'current_term'     => env('INTERNTRACK_CURRENT_TERM', 'AY 2025-2026, Sem 2'),
     'default_password' => env('INTERNTRACK_DEFAULT_PASSWORD', 'interntrack123'),
     'upload_max_mb'    => env('INTERNTRACK_UPLOAD_MAX_MB', 10),
     'misd_use_mock'    => env('MISD_USE_MOCK', true),

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Database\Seeders;
 
@@ -44,7 +44,7 @@ class StudentAccountsSeeder extends Seeder
                     'year_level' => 4,
                     'section' => '4ITD',
                     'academic_year' => '2025-2026',
-                    'semester' => 1,
+                    'semester' => 2,
                     'enrollment_status' => 'Enrolled',
                 ],
             ],
@@ -67,7 +67,7 @@ class StudentAccountsSeeder extends Seeder
                     'year_level' => 4,
                     'section' => '4ITD',
                     'academic_year' => '2025-2026',
-                    'semester' => 1,
+                    'semester' => 2,
                     'enrollment_status' => 'Enrolled',
                 ],
             ],

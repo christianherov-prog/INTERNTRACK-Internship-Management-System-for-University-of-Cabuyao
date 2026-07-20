@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -27,7 +27,7 @@ class DashboardController extends Controller
             'name'            => $user->profile_name,
             'username'        => $user->username,
             'role_label'      => $this->roleLabel($user->role),
-            'current_term'    => config('interntrack.current_term', 'AY 2025-2026, Sem 1'),
+            'current_term'    => config('interntrack.current_term', 'AY 2025-2026, Sem 2'),
             'security_status' => 'Standard',
             'last_login_at'   => optional($user->last_login_at)?->toIso8601String(),
         ];

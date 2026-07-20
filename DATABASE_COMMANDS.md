@@ -1,4 +1,4 @@
-# InternTrack Database Commands
+﻿# InternTrack Database Commands
 
 ## Quick Commands Reference
 
@@ -63,7 +63,7 @@ After running the reset command, you'll have these accounts:
 ## Student Account Details
 
 Both student accounts (`2300600` Valinado, `2300592` Montealegre) start with:
-- ✅ **pending_placement** internship (AY 2025-2026, Sem 1) — company & coordinator null
+- ✅ **pending_placement** internship (AY 2025-2026, Sem 2) — company & coordinator null
 - ✅ **0 Progress** (no attendance / journals / documents yet)
 - ✅ **Fresh start** — same seed path for teammates after `migrate:fresh --seed`
 

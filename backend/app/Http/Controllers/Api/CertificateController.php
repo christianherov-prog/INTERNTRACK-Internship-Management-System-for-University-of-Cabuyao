@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -61,7 +61,7 @@ class CertificateController extends Controller
         $studentName = trim(($profile?->first_name ?? '').' '.($profile?->last_name ?? ''))
             ?: ($internship->student?->username ?? 'Student');
         $program = $profile?->program ?: ($profile?->course_name ?: '—');
-        $term = $internship->term ?: config('interntrack.current_term', 'AY 2025-2026, Sem 1');
+        $term = $internship->term ?: config('interntrack.current_term', 'AY 2025-2026, Sem 2');
         $company = $internship->company?->company_name ?: '—';
         $studentNo = $profile?->student_number ?: ($internship->student?->username ?? '—');
         $hours = (float) $internship->total_hours_rendered;
