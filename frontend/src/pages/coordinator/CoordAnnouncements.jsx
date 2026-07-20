@@ -4,6 +4,7 @@ import ConfirmModal from '../../components/modals/ConfirmModal'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 function CoordAnnouncements() {
   const [announcements, setAnnouncements] = useState([])
@@ -67,7 +68,7 @@ function CoordAnnouncements() {
   const roleBadge = { all: 'bg-secondary', student: 'bg-success', supervisor: 'bg-info', faculty: 'bg-warning', coordinator: 'bg-primary', director: 'bg-dark' }
 
   return (
-    <Layout title="Announcements" subtitle="AY 2024-2025, Sem 2" icon="fa-bullhorn" bodyClass="coordinator-page">
+    <Layout title="Announcements" subtitle={CURRENT_TERM} icon="fa-bullhorn" bodyClass="coordinator-page">
       {loadError && <PageError message={loadError} onRetry={fetchAnnouncements} />}
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 

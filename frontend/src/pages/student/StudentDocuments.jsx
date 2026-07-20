@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 const DOCUMENT_TYPES = [
   'Curriculum Vitae (PNC:AA-FO-27)',
@@ -78,7 +79,7 @@ function StudentDocuments() {
   const submitted = documents.filter(d => d.status !== 'not_submitted').length
 
   return (
-    <Layout title="Documents & Requirements" subtitle="AY 2024-2025, Sem 2" icon="fa-folder-open" bodyClass="student-page">
+    <Layout title="Documents & Requirements" subtitle={CURRENT_TERM} icon="fa-folder-open" bodyClass="student-page">
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
       {/* Hidden file input */}

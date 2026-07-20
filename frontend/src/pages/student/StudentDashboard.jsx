@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Layout from '../../components/Layout'
 import DashboardHeroBanner from '../../components/DashboardHeroBanner'
 import api from '../../services/api'
+import { CURRENT_TERM } from '../../config/term'
 
 function StudentDashboard() {
   const [data, setData]     = useState(null)
@@ -78,7 +79,7 @@ function StudentDashboard() {
                 : 'NO ACTIVE INTERNSHIP',
             variant: internship?.status === 'completed' ? 'term' : 'ongoing',
           },
-          { text: internship?.term ?? 'AY 2024-2025, SEM 2', variant: 'term' },
+          { text: internship?.term ?? CURRENT_TERM, variant: 'term' },
         ]}
       />
 

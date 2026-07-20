@@ -4,6 +4,7 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 function studentName(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
@@ -33,7 +34,7 @@ function FacultyAssignedStudents() {
   useEffect(() => { fetchStudents() }, [])
 
   return (
-    <Layout title="Assigned Students" subtitle="AY 2024-2025, Sem 2" icon="fa-users" bodyClass="faculty-page">
+    <Layout title="Assigned Students" subtitle={CURRENT_TERM} icon="fa-users" bodyClass="faculty-page">
       {error && <PageError message={error} onRetry={fetchStudents} />}
 
       <div className="content-card">

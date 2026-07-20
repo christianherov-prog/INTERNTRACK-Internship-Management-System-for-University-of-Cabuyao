@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { downloadCsv } from '../../utils/csv'
+import { CURRENT_TERM } from '../../config/term'
 
 const REPORT_TYPES = [
   {
@@ -226,7 +227,7 @@ function CoordReports() {
   }
 
   return (
-    <Layout title="Reports" subtitle="AY 2024-2025, Sem 2" icon="fa-chart-bar" bodyClass="coordinator-page reports-page">
+    <Layout title="Reports" subtitle={CURRENT_TERM} icon="fa-chart-bar" bodyClass="coordinator-page reports-page">
       {/* Report Type Selector */}
       <div className="row g-3 mb-4">
         {REPORT_TYPES.map(r => (
@@ -275,7 +276,7 @@ function CoordReports() {
           {/* Print Header */}
           <div className="d-none d-print-block p-3 mb-3 border-bottom">
             <h5 className="mb-0">INTERNTRACK — {REPORT_TYPES.find(r => r.key === activeReport)?.title}</h5>
-            <small className="text-muted">University of Cabuyao · AY 2024-2025 · Generated: {generatedAt}</small>
+            <small className="text-muted">{`University of Cabuyao · ${CURRENT_TERM} · Generated: ${generatedAt}`}</small>
           </div>
 
           <div className="p-3">

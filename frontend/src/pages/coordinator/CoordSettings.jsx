@@ -1,4 +1,5 @@
 import RoleSettings from '../../components/RoleSettings'
+import { CURRENT_TERM } from '../../config/term'
 
 function CoordSettings() {
   return (
@@ -12,7 +13,7 @@ function CoordSettings() {
       metaFields={[
         { label: 'Office / Department', key: 'program', fallback: 'CCS' },
         { label: 'Employee ID', key: 'username', fallback: 'N/A' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2024-2025, Sem 2' },
+        { label: 'Academic Term', key: 'term', fallback: CURRENT_TERM },
       ]}
       accountExtraFields={[
         { name: 'program', label: 'Office / Department' },

@@ -4,6 +4,7 @@ import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
+import { CURRENT_TERM } from '../../config/term'
 
 function FacultyDashboard() {
   const [data, setData]       = useState(null)
@@ -36,7 +37,7 @@ function FacultyDashboard() {
   }
 
   return (
-    <Layout title="Faculty Dashboard" subtitle="AY 2024-2025, Sem 2" icon="fa-chalkboard-teacher" bodyClass="faculty-page">
+    <Layout title="Faculty Dashboard" subtitle={CURRENT_TERM} icon="fa-chalkboard-teacher" bodyClass="faculty-page">
       <RoleSummaryPanel />
       {error && <PageError message={error} onRetry={load} />}
 

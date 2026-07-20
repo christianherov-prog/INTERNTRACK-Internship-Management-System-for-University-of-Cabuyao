@@ -386,7 +386,7 @@ class AuthController extends Controller
             'subtitle'    => $subtitleMap[$user->role] ?? $user->username,
             'roleLabel'   => $roleLabels[$user->role] ?? ucfirst($user->role),
             'dashRoute'   => $roleRoutes[$user->role] ?? '/',
-            'term'         => config('interntrack.current_term', 'AY 2024-2025, Sem 2'),
+            'term'         => config('interntrack.current_term', 'AY 2025-2026, Sem 1'),
             'coordinator'  => $coord,
             'lastLoginAt'  => optional($user->last_login_at)?->toIso8601String(),
             'notificationPreferences' => is_array($user->notification_preferences)

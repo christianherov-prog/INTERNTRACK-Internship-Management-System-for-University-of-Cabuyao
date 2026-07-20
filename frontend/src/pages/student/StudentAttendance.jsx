@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
+import { CURRENT_TERM } from '../../config/term'
 
 function StudentAttendance() {
   const [data, setData]       = useState(null)
@@ -51,7 +52,7 @@ function StudentAttendance() {
   }
 
   return (
-    <Layout title="Attendance & Time Log" subtitle="AY 2024-2025, Sem 2" icon="fa-clock" bodyClass="student-page">
+    <Layout title="Attendance & Time Log" subtitle={CURRENT_TERM} icon="fa-clock" bodyClass="student-page">
       {/* Clock In / Out Card */}
       <div className="content-card mb-4">
         <div className="content-card-header">

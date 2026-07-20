@@ -4,6 +4,7 @@ import StatusChangeModal from '../../components/StatusChangeModal'
 import StatusHistoryModal from '../../components/StatusHistoryModal'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 function AssignPlacementModal({ student, onClose, onAssigned }) {
   const [loading, setLoading] = useState(true)
@@ -166,7 +167,7 @@ function CoordRecords() {
   }
 
   return (
-    <Layout title="Records & Placement" subtitle="AY 2024-2025, Sem 2" icon="fa-folder-open" bodyClass="coordinator-page roster-page">
+    <Layout title="Records & Placement" subtitle={CURRENT_TERM} icon="fa-folder-open" bodyClass="coordinator-page roster-page">
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
           {message.text}

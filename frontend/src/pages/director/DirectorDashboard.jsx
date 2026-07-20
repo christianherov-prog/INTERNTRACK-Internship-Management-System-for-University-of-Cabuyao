@@ -3,6 +3,7 @@ import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
+import { CURRENT_TERM } from '../../config/term'
 
 const MOA_COLORS = {
   active:      { bg: '#dcfce7', color: '#166534', label: 'Active' },
@@ -123,7 +124,7 @@ function DirectorDashboard() {
   const absorption  = data?.absorption    ?? {}
 
   return (
-    <Layout title="Dashboard" subtitle="AY 2024-2025, Sem 2" icon="fa-chart-pie" bodyClass="director-page">
+    <Layout title="Dashboard" subtitle={CURRENT_TERM} icon="fa-chart-pie" bodyClass="director-page">
       <RoleSummaryPanel />
       {error && <PageError message={error} onRetry={load} />}
 

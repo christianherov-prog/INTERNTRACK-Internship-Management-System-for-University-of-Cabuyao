@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 const COMPETENCIES = [
   { key: 'technical_skills',       label: 'Technical Skills' },
@@ -137,7 +138,7 @@ function StudentEvaluations() {
     : null
 
   return (
-    <Layout title="Evaluations" subtitle="AY 2024-2025, Sem 2" icon="fa-star" bodyClass="student-page">
+    <Layout title="Evaluations" subtitle={CURRENT_TERM} icon="fa-star" bodyClass="student-page">
       {selected && <EvalDetailModal evaluation={selected} onClose={() => setSelected(null)} />}
 
       {loading ? (

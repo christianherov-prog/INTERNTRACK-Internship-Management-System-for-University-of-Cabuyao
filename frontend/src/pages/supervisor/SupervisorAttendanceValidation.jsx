@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 function SupervisorAttendanceValidation() {
   const [attendance, setAttendance] = useState([])
@@ -59,7 +60,7 @@ function SupervisorAttendanceValidation() {
   const openBulkRejectModal = () => { setRejectModal({ bulk: true }); setRemark('') }
 
   return (
-    <Layout title="Attendance Validation" subtitle="AY 2024-2025, Sem 2" icon="fa-user-check" bodyClass="supervisor-page">
+    <Layout title="Attendance Validation" subtitle={CURRENT_TERM} icon="fa-user-check" bodyClass="supervisor-page">
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
       {/* Reject Modal (single or bulk) */}

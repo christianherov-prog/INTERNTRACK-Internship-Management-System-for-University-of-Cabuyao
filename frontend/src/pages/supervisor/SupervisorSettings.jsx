@@ -1,4 +1,5 @@
 import RoleSettings from '../../components/RoleSettings'
+import { CURRENT_TERM } from '../../config/term'
 
 function SupervisorSettings() {
   return (
@@ -12,7 +13,7 @@ function SupervisorSettings() {
       metaFields={[
         { label: 'Host Company', key: 'company', fallback: 'Not assigned' },
         { label: 'Position', key: 'position', fallback: 'Company Supervisor' },
-        { label: 'Internship Term', key: 'term', fallback: 'AY 2024-2025, Sem 2' },
+        { label: 'Internship Term', key: 'term', fallback: CURRENT_TERM },
       ]}
       accountExtraFields={[
         { name: 'company', label: 'Host Company' },

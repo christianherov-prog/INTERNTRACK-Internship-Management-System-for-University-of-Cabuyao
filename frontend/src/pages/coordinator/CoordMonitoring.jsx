@@ -5,6 +5,7 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { downloadCsv } from '../../utils/csv'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 function CoordMonitoring() {
   const [data, setData]       = useState(null)
@@ -46,7 +47,7 @@ function CoordMonitoring() {
   }
 
   return (
-    <Layout title="Intern Monitoring" subtitle="AY 2024-2025, Sem 2" icon="fa-eye" bodyClass="coordinator-page">
+    <Layout title="Intern Monitoring" subtitle={CURRENT_TERM} icon="fa-eye" bodyClass="coordinator-page">
       <RoleSummaryPanel />
       {error && <PageError message={error} onRetry={load} />}
 

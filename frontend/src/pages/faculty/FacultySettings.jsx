@@ -1,4 +1,5 @@
 import RoleSettings from '../../components/RoleSettings'
+import { CURRENT_TERM } from '../../config/term'
 
 function FacultySettings() {
   return (
@@ -12,7 +13,7 @@ function FacultySettings() {
       metaFields={[
         { label: 'Department', key: 'program', fallback: 'CCS' },
         { label: 'Position', key: 'position', fallback: 'Faculty Adviser' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2024-2025, Sem 2' },
+        { label: 'Academic Term', key: 'term', fallback: CURRENT_TERM },
       ]}
       accountExtraFields={[
         { name: 'program', label: 'Department' },

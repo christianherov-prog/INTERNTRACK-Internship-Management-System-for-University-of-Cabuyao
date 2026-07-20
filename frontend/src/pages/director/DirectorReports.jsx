@@ -3,6 +3,7 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { downloadCsv } from '../../utils/csv'
+import { CURRENT_TERM } from '../../config/term'
 
 function DirectorReports() {
   const [data, setData] = useState(null)
@@ -54,7 +55,7 @@ function DirectorReports() {
   }
 
   return (
-    <Layout title="Reports" subtitle="AY 2024-2025, Sem 2" icon="fa-chart-bar" bodyClass="director-page">
+    <Layout title="Reports" subtitle={CURRENT_TERM} icon="fa-chart-bar" bodyClass="director-page">
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (

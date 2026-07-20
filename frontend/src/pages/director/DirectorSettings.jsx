@@ -1,4 +1,5 @@
 import RoleSettings from '../../components/RoleSettings'
+import { CURRENT_TERM } from '../../config/term'
 
 function DirectorSettings() {
   return (
@@ -12,7 +13,7 @@ function DirectorSettings() {
       metaFields={[
         { label: 'Office / Unit', key: 'program', fallback: 'PALD' },
         { label: 'Position', key: 'position', fallback: 'PALD Director' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2024-2025, Sem 2' },
+        { label: 'Academic Term', key: 'term', fallback: CURRENT_TERM },
       ]}
       accountExtraFields={[
         { name: 'program', label: 'Office / Unit' },

@@ -30,7 +30,7 @@ function Layout({ children, title, subtitle, icon, bodyClass = '' }) {
       <main className="main-content">
         {children}
         <footer className="app-footer">
-          &copy; 2024-2025 INTERNTRACK <span>AY 2024-2025 | 50m2</span>
+          &copy; 2025-2026 INTERNTRACK
         </footer>
       </main>
     </>

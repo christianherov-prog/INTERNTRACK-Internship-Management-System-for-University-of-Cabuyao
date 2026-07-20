@@ -1,4 +1,5 @@
 import RoleSettings from '../../components/RoleSettings'
+import { CURRENT_TERM } from '../../config/term'
 
 /**
  * Student settings — thin RoleSettings wrapper (same component as other roles).
@@ -15,7 +16,7 @@ function StudentSettings() {
       metaFields={[
         { label: 'Assigned Company', key: 'company', fallback: 'None' },
         { label: 'Coordinator', key: 'coordinator', fallback: 'N/A' },
-        { label: 'Internship Term', key: 'term', fallback: 'AY 2024-2025, Sem 2' },
+        { label: 'Internship Term', key: 'term', fallback: CURRENT_TERM },
       ]}
       accountExtraFields={[
         { name: 'program', label: 'Program / Course' },

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { CURRENT_TERM } from '../../config/term'
 
 const BACKEND_URL = 'http://127.0.0.1:8001'
 
@@ -126,7 +127,7 @@ function FacultyJournals() {
   }
 
   return (
-    <Layout title="Journals" subtitle="AY 2024-2025, Sem 2" icon="fa-book" bodyClass="faculty-page">
+    <Layout title="Journals" subtitle={CURRENT_TERM} icon="fa-book" bodyClass="faculty-page">
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
           {message.text}
