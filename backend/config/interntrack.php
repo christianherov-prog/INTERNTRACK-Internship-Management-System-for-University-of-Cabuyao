@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 return [
     // Single source of truth for the displayed academic term (dashboards, certificates, auth user.term).
