@@ -96,7 +96,7 @@ class StudentAccountsSeeder extends Seeder
             );
 
             $ay = $profile->academic_year ?: '2025-2026';
-            $sem = (int) ($profile->semester ?: 1);
+            $sem = (int) ($profile->semester ?: 2);
 
             // Same shape as StudentController::internship() lazy-create, but term
             // comes from the student profile (current AY/Sem for both accounts).
