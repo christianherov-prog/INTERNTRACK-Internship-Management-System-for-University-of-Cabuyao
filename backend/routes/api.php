@@ -35,14 +35,14 @@ Route::prefix('v1')->group(function () {
     }
 
     // ─── Public: Supervisor Self-Registration (QR Code Flow) ────────────────
-    Route::post('/supervisor-register/validate', [SupervisorRegistrationController::class, 'validateToken']);
-    Route::post('/supervisor-register',          [SupervisorRegistrationController::class, 'register']);
+    Route::post('/supervisor-register/validate', [SupervisorRegistrationController::class, 'validateToken'])->middleware('throttle:5,1');
+    Route::post('/supervisor-register',          [SupervisorRegistrationController::class, 'register'])->middleware('throttle:5,1');
 
     // ─── Protected Routes ────────────────────────────────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
 
-        Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
-        Route::post('/auth/avatar',          [AuthController::class, 'uploadAvatar']);
+        Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('throttle:5,1');
+        Route::post('/auth/avatar',          [AuthController::class, 'uploadAvatar'])->middleware('throttle:5,1');
         Route::put('/auth/profile',          [AuthController::class, 'updateProfile']);
         Route::put('/auth/notification-preferences', [AuthController::class, 'updateNotificationPreferences']);
 
