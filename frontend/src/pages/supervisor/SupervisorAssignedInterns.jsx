@@ -3,6 +3,7 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { DEFAULT_TARGET_HOURS } from '../../config/hours'
 
 function statusBadge(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -72,7 +73,7 @@ function SupervisorAssignedInterns() {
                     const profile = i.student?.student_profile || i.student?.studentProfile
                     const name = profile ? `${profile.first_name} ${profile.last_name}` : i.student?.username
                     const hours = parseFloat(i.total_hours_rendered || 0)
-                    const target = parseInt(i.target_hours || 360, 10)
+                    const target = parseInt(i.target_hours || DEFAULT_TARGET_HOURS, 10)
                     return (
                       <tr key={i.id}>
                         <td className="fw-semibold">{name}</td>

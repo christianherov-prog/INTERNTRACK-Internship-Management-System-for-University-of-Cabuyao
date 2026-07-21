@@ -126,6 +126,19 @@ function DirectorDashboard() {
   return (
     <Layout title="Dashboard" subtitle={CURRENT_TERM} icon="fa-chart-pie" bodyClass="director-page">
       <RoleSummaryPanel />
+
+      <div className="alert alert-light border mb-4" role="note">
+        <div className="d-flex gap-2 align-items-start">
+          <i className="fa fa-envelope mt-1 text-muted" aria-hidden="true"></i>
+          <div>
+            <strong>Direct messaging</strong> is not available for the PALD Director role.
+            Stakeholder chat is scoped to people linked on an internship (student, faculty,
+            industry supervisor, and coordinator). Directors continue to use dashboards,
+            reports, and system notifications for oversight.
+          </div>
+        </div>
+      </div>
+
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (

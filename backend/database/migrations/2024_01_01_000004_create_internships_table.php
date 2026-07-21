@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->tinyInteger('semester');
             $table->string('term')->comment('e.g. AY 2024-2025, Sem 2');
             $table->string('program')->nullable();
-            $table->integer('target_hours')->default(360);
+            $table->integer('target_hours')->default(500);
             $table->decimal('total_hours_rendered', 8, 2)->default(0);
 
             $table->enum('status', [

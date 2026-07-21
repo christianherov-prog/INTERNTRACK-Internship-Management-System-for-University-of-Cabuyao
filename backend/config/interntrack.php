@@ -4,6 +4,11 @@ return [
     // Single source of truth for the displayed academic term (dashboards, certificates, auth user.term).
     // Override in .env without a code deploy: INTERNTRACK_CURRENT_TERM="AY 2025-2026, Sem 2"
     'current_term'     => env('INTERNTRACK_CURRENT_TERM', 'AY 2025-2026, Sem 2'),
+
+    // CCS OJT requirement (BSIT / BSCS): uniform 500 hours — not per-program.
+    // Override: INTERNTRACK_TARGET_HOURS=500
+    'target_hours'     => (int) env('INTERNTRACK_TARGET_HOURS', 500),
+
     'default_password' => env('INTERNTRACK_DEFAULT_PASSWORD', 'interntrack123'),
     'upload_max_mb'    => env('INTERNTRACK_UPLOAD_MAX_MB', 10),
     'misd_use_mock'    => env('MISD_USE_MOCK', true),

@@ -69,6 +69,38 @@ class Internship extends Model
         return $this->hasMany(InternshipStatusHistory::class);
     }
 
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    /**
+     * User IDs linked on this internship row (source of truth for messaging).
+     * Includes student, industry supervisor, faculty, and coordinator when set.
+     * Does not include director — directors have no FK on internships.
+     *
+     * @return list<int>
+     */
+    public function participantUserIds(): array
+    {
+        return collect([
+            $this->student_id,
+            $this->supervisor_id,
+            $this->faculty_id,
+            $this->coordinator_id,
+        ])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function isParticipant(int $userId): bool
+    {
+        return in_array($userId, $this->participantUserIds(), true);
+    }
+
     // ─── Computed Helpers ──────────────────────────────────────────────────────
     public function getProgressPercentAttribute(): float
     {

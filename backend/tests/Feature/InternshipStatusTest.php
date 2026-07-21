@@ -33,7 +33,7 @@ class InternshipStatusTest extends TestCase
             'semester'       => 2,
             'term'           => 'AY 2024-2025, Sem 2',
             'status'         => 'active',
-            'target_hours'   => 360,
+            'target_hours'   => config('interntrack.target_hours', 500),
         ]);
     }
 

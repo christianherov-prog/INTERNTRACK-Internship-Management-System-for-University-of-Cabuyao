@@ -3,6 +3,7 @@ import Layout from '../../components/Layout'
 import DashboardHeroBanner from '../../components/DashboardHeroBanner'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
+import { DEFAULT_TARGET_HOURS } from '../../config/hours'
 
 function StudentDashboard() {
   const [data, setData]     = useState(null)
@@ -119,7 +120,7 @@ function StudentDashboard() {
           <div className="stat-card">
             <div className="stat-icon teal"><i className="fa fa-clock"></i></div>
             <div>
-              <div className="stat-value">{s.hours_rendered ?? 0}<span style={{fontSize:'0.7em',fontWeight:400}}>/{s.target_hours ?? 360}</span></div>
+              <div className="stat-value">{s.hours_rendered ?? 0}<span style={{fontSize:'0.7em',fontWeight:400}}>/{s.target_hours ?? DEFAULT_TARGET_HOURS}</span></div>
               <div className="stat-label">Hours Rendered</div>
             </div>
           </div>
@@ -166,13 +167,13 @@ function StudentDashboard() {
               <div className="overview-item mb-3">
                 <div className="overview-label">Completed Hours</div>
                 <div className="overview-value-row">
-                  <span className="overview-value">{s.hours_rendered ?? 0}/{s.target_hours ?? 360} hrs</span>
-                  <span className="overview-percent">{Math.round(((s.hours_rendered ?? 0) / (s.target_hours ?? 360)) * 100)}%</span>
+                  <span className="overview-value">{s.hours_rendered ?? 0}/{s.target_hours ?? DEFAULT_TARGET_HOURS} hrs</span>
+                  <span className="overview-percent">{Math.round(((s.hours_rendered ?? 0) / (s.target_hours ?? DEFAULT_TARGET_HOURS)) * 100)}%</span>
                 </div>
                 <div className="progress" style={{height:'10px',borderRadius:'6px',marginTop:'8px'}}>
                   <div
                     className="progress-bar"
-                    style={{width:`${Math.round(((s.hours_rendered ?? 0) / (s.target_hours ?? 360)) * 100)}%`, background:'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius:'6px'}}
+                    style={{width:`${Math.round(((s.hours_rendered ?? 0) / (s.target_hours ?? DEFAULT_TARGET_HOURS)) * 100)}%`, background:'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius:'6px'}}
                   ></div>
                 </div>
               </div>

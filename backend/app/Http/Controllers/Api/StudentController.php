@@ -32,7 +32,7 @@ class StudentController extends Controller
                 'semester' => $sem,
                 'term' => "AY {$ay}, Sem {$sem}",
                 'program' => $profile?->program ?: $profile?->course_name,
-                'target_hours' => 360,
+                'target_hours' => config('interntrack.target_hours', 500),
                 'total_hours_rendered' => 0
             ]);
             $internship->load(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
