@@ -37,4 +37,29 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json(['message' => 'Resource not found.'], 404);
             }
         });
+
+        // Context-aware 429 JSON for API (named limiters supply their own copy when possible).
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
+            if (!$request->is('api/*')) {
+                return null;
+            }
+
+            $retry = (int) ($e->getHeaders()['Retry-After'] ?? 60);
+
+            if ($request->is('api/v1/auth/login')) {
+                return response()->json([
+                    'message' => "Too many login attempts. Please try again in {$retry} seconds.",
+                ], 429, $e->getHeaders());
+            }
+
+            if ($request->is('api/v1/messages')) {
+                return response()->json([
+                    'message' => 'Too many messages sent. Please wait a moment before sending again.',
+                ], 429, $e->getHeaders());
+            }
+
+            return response()->json([
+                'message' => "Too many requests. Please try again in {$retry} seconds.",
+            ], 429, $e->getHeaders());
+        });
     })->create();

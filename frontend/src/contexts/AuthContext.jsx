@@ -44,10 +44,15 @@ export function AuthProvider({ children }) {
       return { success: true, user: data.user }
     } catch (err) {
       console.error("Login error:", err)
+      const apiMessage = err.response?.data?.message
       const message =
-        err.response?.data?.errors?.username?.[0] ||
-        err.response?.data?.message ||
-        'Login failed. Please check your credentials.'
+        err.response?.status === 429
+          ? (typeof apiMessage === 'string' && apiMessage
+              ? apiMessage
+              : 'Too many login attempts. Please try again in a moment.')
+          : (err.response?.data?.errors?.username?.[0] ||
+              apiMessage ||
+              'Login failed. Please check your credentials.')
       setError(message)
       return { success: false, error: message }
     }
