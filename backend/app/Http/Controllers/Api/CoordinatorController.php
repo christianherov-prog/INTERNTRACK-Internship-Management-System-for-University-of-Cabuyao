@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Company;
 use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
+use App\Support\InternshipStatuses;
 use Illuminate\Http\Request;
 
 class CoordinatorController extends Controller
@@ -26,21 +27,23 @@ class CoordinatorController extends Controller
     public function monitoring(Request $request)
     {
         $term = config('interntrack.current_term');
+        $live = InternshipStatuses::liveMonitoring();
 
-        $activeInterns    = Internship::where('status', 'ongoing')->count();
+        $activeInterns    = Internship::whereIn('status', $live)->count();
         $pendingPlacement = Internship::where('status', 'pending_placement')->count();
-        $avgHoursCompletion = Internship::where('status', 'ongoing')
-            ->selectRaw('AVG(total_hours_rendered / target_hours * 100) as avg_pct')
+        $avgHoursCompletion = Internship::whereIn('status', $live)
+            ->selectRaw('AVG(total_hours_rendered / NULLIF(target_hours, 0) * 100) as avg_pct')
             ->value('avg_pct') ?? 0;
 
-        // At-risk = below 30% completion with more than 4 weeks elapsed
-        $atRisk = Internship::where('status', 'ongoing')
+        // At-risk = below 30% completion
+        $atRisk = Internship::whereIn('status', $live)
+            ->where('target_hours', '>', 0)
             ->whereRaw('(total_hours_rendered / target_hours) < 0.30')
             ->count();
 
         $fullyCompleted = Internship::where('status', 'completed')->count();
 
-        $internships = Internship::whereIn('status', ['pending_placement', 'ongoing'])
+        $internships = Internship::whereIn('status', array_merge(['pending_placement'], $live))
             ->with([
                 'student.studentProfile',
                 'supervisor.supervisorProfile',

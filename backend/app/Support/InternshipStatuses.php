@@ -73,4 +73,13 @@ final class InternshipStatuses
             'expelled',
         ];
     }
+
+    /**
+     * Live / in-progress placements for coordinator monitoring counts & lists.
+     * Includes legacy `ongoing` (normalized alias of `active`).
+     */
+    public static function liveMonitoring(): array
+    {
+        return ['ongoing', 'active', 'placed', 'for_evaluation'];
+    }
 }
