@@ -17,6 +17,20 @@ use Illuminate\Http\Request;
 
 class CoordinatorController extends Controller
 {
+    /**
+     * Light ownership check using internship.coordinator_id.
+     * Null coordinator_id = unclaimed (any coordinator may act / claim).
+     */
+    private function assertCoordinatorOwns(?Internship $internship, int $actorId): void
+    {
+        if (!$internship) {
+            abort(404, 'Internship not found for this record.');
+        }
+        if ($internship->coordinator_id !== null && (int) $internship->coordinator_id !== $actorId) {
+            abort(403, 'Forbidden. You are not the assigned coordinator for this internship.');
+        }
+    }
+
     /** GET /api/v1/coordinator/dashboard */
     public function dashboard(Request $request)
     {
@@ -168,7 +182,10 @@ class CoordinatorController extends Controller
     {
         $doc = Document::where('current_stage', 'coordinator')
             ->whereIn('status', ['pending_review', 'resubmitted', 'under_review'])
+            ->with('internship')
             ->findOrFail($id);
+
+        $this->assertCoordinatorOwns($doc->internship, $request->user()->id);
 
         $from = $doc->status;
         $doc->update([
@@ -222,7 +239,10 @@ class CoordinatorController extends Controller
 
         $doc = Document::where('current_stage', 'coordinator')
             ->whereIn('status', ['pending_review', 'resubmitted', 'under_review'])
+            ->with('internship')
             ->findOrFail($id);
+
+        $this->assertCoordinatorOwns($doc->internship, $request->user()->id);
 
         $from = $doc->status;
         $doc->update([
@@ -419,6 +439,8 @@ class CoordinatorController extends Controller
 
         $internship = Internship::with('student.studentProfile')->findOrFail($id);
 
+        $this->assertCoordinatorOwns($internship, $request->user()->id);
+
         if ($internship->status !== 'pending_placement') {
             return response()->json(['message' => 'Student is already placed or cannot be placed at this time.'], 422);
         }
@@ -501,6 +523,7 @@ class CoordinatorController extends Controller
         ]);
 
         $internship = Internship::findOrFail($id);
+        $this->assertCoordinatorOwns($internship, $request->user()->id);
         $updated = AbsorptionService::recordOutcome(
             $internship,
             $request->user(),
