@@ -9,6 +9,33 @@ Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrac
 
 ---
 
+## New / Updated Functionalities
+
+- **In-app messaging** — students, faculty, industry supervisors, and coordinators exchange role-scoped messages on shared internships (inbox + archive for completed placements). Directors are out of scope by design. API: `/api/v1/messages/*` (send throttled at 30/min).
+- **500-hour OJT requirement** — CCS uniform target hours (was 360). Config: `INTERNTRACK_TARGET_HOURS` / `VITE_INTERNTRACK_TARGET_HOURS` (default **500**). Migration updates existing 360 → 500. Shown on student dashboard/records/portfolio, coordinator monitoring, and supervisor assigned-interns.
+- **Survey demo placements** — `SurveyPlacementSeeder` links students `2300600` / `2300592` to FAC-1001, SUP-1001, COR-1001, and an active MOA company (also called from `DatabaseSeeder`).
+- **Notification preference enforcement** — `Notification::notify()` checks the recipient’s stored Settings toggles and skips creating notifications the user opted out of.
+- **Coordinator monitoring filter** — live lists/counts include `active`, `ongoing`, `placed`, and `for_evaluation` (not `ongoing`-only).
+- **Login rate-limit copy** — throttled login returns JSON: `Too many login attempts. Please try again in X seconds.` (not the messaging 429 text).
+- **Dashboard query efficiency** — supervisor/faculty dashboard pending counts use aggregated `whereIn` queries instead of per-internship loops.
+- **React ErrorBoundary** — app-level fallback UI for unhandled render errors.
+- **Portfolio delete confirm** — uses shared `ConfirmModal` instead of `window.confirm`.
+- **Light ownership checks** — coordinator place / document approve-reject / absorption require matching `internship.coordinator_id` (403 otherwise).
+
+### Setup notes (new / updated)
+
+| Variable | Where | Purpose |
+|----------|--------|---------|
+| `INTERNTRACK_TARGET_HOURS=500` | `backend/.env` | OJT required hours |
+| `VITE_INTERNTRACK_TARGET_HOURS=500` | `frontend/.env` | FE fallback display |
+| `INTERNTRACK_CURRENT_TERM` | `backend/.env` | Academic term label |
+| `VITE_INTERNTRACK_CURRENT_TERM` | `frontend/.env` | Must match backend term |
+| `CACHE_STORE=file` or `database` | `backend/.env` | Required for rate limits under `artisan serve` (not `array`) |
+
+Optional for queues later: notifications are stored synchronously today — no queue worker required for messaging or in-app notification preference enforcement.
+
+---
+
 ## 🚀 Recent Updates
 
 - **Post-completion absorption tracking** — supervisors and coordinators record hire outcomes; directors view absorption analytics
@@ -20,9 +47,9 @@ Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrac
 - **Profile & settings** — profile fields persisted to the database; avatar upload; toast on successful save; notification preferences stored server-side
 - **Academic year / term config** — `INTERNTRACK_CURRENT_TERM` / `VITE_INTERNTRACK_CURRENT_TERM` (current: **AY 2025-2026, Sem 2**)
 - **Student demo accounts** — seeded students `2300600` and `2300592` via `StudentAccountsSeeder`
-- **API hardening** — rate limiting on login, supervisor registration, change-password, and avatar upload
-- **Performance** — database index on `internships.absorption_status`; eager-load company on coordinator monitoring (N+1 fix)
-- **Feature tests** — Auth, absorption flow, and internship status coverage
+- **API hardening** — rate limiting on login, supervisor registration, change-password, avatar upload, and messaging
+- **Performance** — database index on `internships.absorption_status`; eager-load / aggregated counts on coordinator monitoring and supervisor/faculty dashboards
+- **Feature tests** — Auth, absorption, internship status, messaging, notification preferences
 - **Docs & setup** — README / SETUP / DATABASE_COMMANDS aligned with MySQL + `migrate:fresh --seed`
 
 ---
@@ -34,7 +61,8 @@ Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrac
 - Portfolio and records missing **active** internships
 - Avatar / profile photo serving after `storage:link`
 - Logout and Sanctum token invalidation behavior
-- Coordinator monitoring **N+1** queries when loading company data
+- Coordinator monitoring excluding **`active`** internships (now includes live statuses)
+- Incorrect **429** copy on login when messaging throttle text leaked globally
 - Scratch / local noise files stopped from being tracked; `.gitignore` encoding fixed
 - Progress Report DOCX cleanup (keep Updated report; ignore future `.docx` adds)
 
@@ -125,8 +153,8 @@ Remaining work is mainly **minor refinements**, usability polish, documentation 
 - Optional Two-Factor Authentication (planned; not implemented)
 - Broader API/UI error handling consistency
 - Further shared-component and controller cleanup
-- Removal of unused UI helpers (e.g. unused StatCard)
-- Replace remaining `window.confirm` prompts with in-app dialogs
+- Real MISD integration (stub/service exists; not live)
+- End-user / IT-expert surveys (outside app for now)
 - Documentation and research packaging updates
 
 ---
@@ -134,12 +162,13 @@ Remaining work is mainly **minor refinements**, usability polish, documentation 
 ## Features (quick list)
 
 - Role-based portals: **Student**, **Faculty**, **Coordinator**, **Director**, **Industry Supervisor**
-- Student attendance, weekly logbook, documents, evaluations, portfolio
-- Coordinator placement, document stage routing (coordinator → faculty), supervisor QR approvals
+- Student attendance, weekly logbook, documents, evaluations, portfolio, **messages**
+- Coordinator placement (ownership-checked), document stage routing (coordinator → faculty), supervisor QR approvals
 - Internship status tagging: active / completed / suspended / deferred / expelled (with reason + history)
+- **500-hour** OJT progress tracking across role views
 - Completion certificate PDF when an internship is marked completed
 - Post-completion absorption tracking: supervisor/coordinator hire outcomes + director analytics
-- Profile settings saved to the database + avatar upload
+- Profile settings saved to the database + avatar upload + enforced notification preferences
 
 ## Requirements
 
@@ -181,6 +210,8 @@ DB_PASSWORD=
 
 APP_URL=http://127.0.0.1:8001
 INTERNTRACK_CURRENT_TERM="AY 2025-2026, Sem 2"
+INTERNTRACK_TARGET_HOURS=500
+CACHE_STORE=file
 ```
 
 Create the empty MySQL database `interntrack`, then:
