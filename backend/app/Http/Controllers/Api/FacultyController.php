@@ -18,13 +18,19 @@ class FacultyController extends Controller
             ->with('student.studentProfile')
             ->get();
 
-        $pendingJournals = $internships->sum(fn($i) => $i->journals()->where('status', 'submitted')->count());
-        $pendingEvals     = $internships->whereNotIn('id',
+        $internshipIds = $internships->pluck('id');
+
+        $pendingJournals = $internshipIds->isEmpty()
+            ? 0
+            : \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
+                ->where('status', 'submitted')
+                ->count();
+
+        $pendingEvals = $internships->whereNotIn('id',
             \App\Models\Evaluation::where('evaluator_type', 'faculty')->pluck('internship_id')->toArray()
         )->count();
 
         // Recent activity — last 5 journals or feedback the faculty has acted on
-        $internshipIds = $internships->pluck('id');
         $recentJournals = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
             ->whereIn('status', ['approved', 'needs_revision'])
             ->whereNotNull('faculty_reviewed_at')

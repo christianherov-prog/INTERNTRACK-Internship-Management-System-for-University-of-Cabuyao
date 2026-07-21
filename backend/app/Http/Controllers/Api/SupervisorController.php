@@ -26,14 +26,25 @@ class SupervisorController extends Controller
             ->with(['student.studentProfile', 'company'])
             ->get();
 
-        $pendingAttendance = $internships->sum(fn($i) => $i->attendance()->where('status', 'pending')->count());
-        $pendingJournals   = $internships->sum(fn($i) => $i->journals()->where('status', 'submitted')->count());
-        $pendingEvals      = $internships->whereNotIn('id',
+        $internshipIds = $internships->pluck('id');
+
+        $pendingAttendance = $internshipIds->isEmpty()
+            ? 0
+            : \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
+                ->where('status', 'pending')
+                ->count();
+
+        $pendingJournals = $internshipIds->isEmpty()
+            ? 0
+            : \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
+                ->where('status', 'submitted')
+                ->count();
+
+        $pendingEvals = $internships->whereNotIn('id',
             Evaluation::where('evaluator_type', 'supervisor')->pluck('internship_id')->toArray()
         )->count();
 
         // Get recent activity (last 5 validated attendance or approved journals)
-        $internshipIds = $internships->pluck('id');
         $recentAttendance = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
             ->where('status', 'validated')
             ->with(['internship.student.studentProfile'])
