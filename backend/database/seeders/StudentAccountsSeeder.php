@@ -111,7 +111,7 @@ class StudentAccountsSeeder extends Seeder
                     'supervisor_id' => null,
                     'faculty_id' => null,
                     'coordinator_id' => null,
-                    'target_hours' => 360,
+                    'target_hours' => config('interntrack.target_hours', 500),
                     'total_hours_rendered' => 0,
                 ]);
             }

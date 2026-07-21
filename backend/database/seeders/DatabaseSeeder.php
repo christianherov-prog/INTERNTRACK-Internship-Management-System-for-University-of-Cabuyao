@@ -77,11 +77,11 @@ class DatabaseSeeder extends Seeder
         Announcement::create(['created_by' => $coord->id, 'title' => 'Welcome to InternTrack!', 'content' => 'Get started by browsing available MOA companies and selecting a supervisor.', 'target_role' => 'student', 'is_pinned' => true]);
         Announcement::create(['created_by' => $coord->id, 'title' => 'Orientation Schedule', 'content' => 'Internship orientation will be held soon. Please wait for further announcements.', 'target_role' => 'all', 'is_pinned' => false]);
 
-        // StudentAccountsSeeder also creates a pending_placement internship per student
-        // (no company/coordinator). Attendance / journals / documents stay empty.
+        // Survey / demo messaging: place both students with faculty + supervisor + coordinator
+        $this->call(SurveyPlacementSeeder::class);
 
         $this->command->info('✅ INTERNTRACK database seeded successfully!');
         $this->command->info('   Students: 2300600 (Valinado), 2300592 (Montealegre) — password: interntrack123');
-        $this->command->info('   Staff: DIR-1001, COR-1001, FAC-1001 — password: interntrack123');
+        $this->command->info('   Staff: DIR-1001, COR-1001, FAC-1001, SUP-1001 — password: interntrack123');
     }
 }
