@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
+import ConfirmModal from '../../../components/modals/ConfirmModal'
 import api from '../../../services/api'
 
 /** Per-field limit for Chapter III so answers fit cleanly in the A4 PDF pages. */
@@ -32,6 +33,9 @@ function PortfolioBuilder() {
     recommendations: '',
     advice: ''
   })
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   const fetchPortfolio = () => {
     setLoading(true)
@@ -131,13 +135,23 @@ function PortfolioBuilder() {
     }
   }
 
-  const handleDeleteFile = async (id) => {
-    if (!window.confirm("Delete this file?")) return
+  const handleDeleteFile = (id) => {
+    setDeleteError(null)
+    setDeleteTargetId(id)
+  }
+
+  const confirmDeleteFile = async () => {
+    if (!deleteTargetId) return
+    setDeleting(true)
+    setDeleteError(null)
     try {
-      await api.delete(`/student/portfolio/photos/${id}`)
+      await api.delete(`/student/portfolio/photos/${deleteTargetId}`)
+      setDeleteTargetId(null)
       fetchPortfolio()
     } catch (err) {
-      alert("Failed to delete file.")
+      setDeleteError(err.response?.data?.message || 'Failed to delete file.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -456,6 +470,23 @@ function PortfolioBuilder() {
           </div>
         </section>
       </div>
+
+      <ConfirmModal
+        open={deleteTargetId != null}
+        title="Delete this file?"
+        message="This portfolio attachment will be permanently removed. This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleting}
+        error={deleteError}
+        onCancel={() => {
+          if (deleting) return
+          setDeleteTargetId(null)
+          setDeleteError(null)
+        }}
+        onConfirm={confirmDeleteFile}
+      />
     </Layout>
   )
 }

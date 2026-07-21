@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
+import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import StudentDashboard from './pages/student/StudentDashboard'
@@ -54,10 +55,11 @@ import CoordMessages from './pages/coordinator/CoordMessages'
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <Routes>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />
           
@@ -116,9 +118,10 @@ function App() {
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </BrowserRouter>
-      </ToastProvider>
-    </AuthProvider>
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 
