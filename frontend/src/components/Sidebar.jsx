@@ -13,6 +13,7 @@ const ROLE_NAV = {
     { section: 'TOOLS', to: '/student/supervisor-invite', icon: 'fa-qrcode', text: 'Invite Supervisor' },
     { section: 'TOOLS', to: '/student/portfolio', icon: 'fa-briefcase', text: 'Portfolio' },
     { section: 'TOOLS', to: '/student/records', icon: 'fa-folder-open', text: 'My Records' },
+    { section: 'TOOLS', to: '/student/messages', icon: 'fa-envelope', text: 'Messages' },
     { section: 'ACCOUNT', to: '/student/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -35,6 +36,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
     { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/supervisor/notifications', icon: 'fa-bell', text: 'Notifications' },
+    { section: 'MAIN', to: '/supervisor/messages', icon: 'fa-envelope', text: 'Messages' },
     { section: 'ACCOUNT', to: '/supervisor/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -45,6 +47,7 @@ const ROLE_NAV = {
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'TOOLS', to: '/faculty/documents', icon: 'fa-file-circle-check', text: 'Document Verification' },
+    { section: 'TOOLS', to: '/faculty/messages', icon: 'fa-envelope', text: 'Messages' },
     { section: 'ACCOUNT', to: '/faculty/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -58,6 +61,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'MAIN', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
+    { section: 'MAIN', to: '/coordinator/messages', icon: 'fa-envelope', text: 'Messages' },
     { section: 'ACCOUNT', to: '/coordinator/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ]

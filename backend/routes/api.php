@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\SupervisorRegistrationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InternshipStatusController;
 use App\Http\Controllers\Api\CertificateController;
+use App\Http\Controllers\Api\MessageController;
 
 // ─── Public: Auth ─────────────────────────────────────────────────────────────
 Route::prefix('v1')->group(function () {
@@ -53,6 +54,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/notifications',                [NotificationController::class, 'index']);
         Route::post('/notifications/mark-read',     [NotificationController::class, 'markAllRead']);
         Route::post('/notifications/{id}/read',     [NotificationController::class, 'markRead']);
+
+        // Messages — shared across roles; controller enforces internship participant checks
+        Route::get('/messages/conversations',                              [MessageController::class, 'conversations']);
+        Route::get('/messages/conversations/{internshipId}/{peerId}',      [MessageController::class, 'thread']);
+        Route::post('/messages',                                           [MessageController::class, 'send'])->middleware('throttle:messages');
+        Route::post('/messages/mark-read',                                 [MessageController::class, 'markRead']);
 
 
         // Student

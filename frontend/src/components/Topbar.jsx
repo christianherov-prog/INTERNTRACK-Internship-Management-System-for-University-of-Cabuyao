@@ -1,32 +1,32 @@
 import { useAuth } from '../contexts/AuthContext'
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
 import { getAvatarSrc } from '../utils/avatar'
 import { unwrapList } from '../utils/apiList'
 
 function NotificationBell() {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
-  const [unread, setUnread]               = useState(0)
-  const [open, setOpen]                   = useState(false)
-  const dropRef                           = useRef(null)
+  const [unread, setUnread] = useState(0)
+  const [open, setOpen] = useState(false)
+  const dropRef = useRef(null)
 
   const fetchNotifs = () => {
     api.get('/notifications')
-      .then(res => {
+      .then((res) => {
         setNotifications(unwrapList(res.data).items)
         setUnread(res.data.unread_count ?? 0)
       })
-      .catch(() => {}) // silent fail
+      .catch(() => {})
   }
 
   useEffect(() => {
     fetchNotifs()
-    // Poll every 60 seconds
     const interval = setInterval(fetchNotifs, 60000)
     return () => clearInterval(interval)
   }, [])
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleOutside = (e) => {
       if (dropRef.current && !dropRef.current.contains(e.target)) setOpen(false)
@@ -38,23 +38,38 @@ function NotificationBell() {
   const markAllRead = async () => {
     await api.post('/notifications/mark-read').catch(() => {})
     setUnread(0)
-    setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })))
+    setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })))
+  }
+
+  const openNotification = async (n) => {
+    if (!n.read_at) {
+      await api.post(`/notifications/${n.id}/read`).catch(() => {})
+      setNotifications((prev) => prev.map((item) => (
+        item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item
+      )))
+      setUnread((prev) => Math.max(0, prev - 1))
+    }
+    setOpen(false)
+    if (n.link) {
+      navigate(n.link)
+    }
   }
 
   const getIcon = (type) => {
     const map = {
       document_approved: 'fa-circle-check text-success',
       document_rejected: 'fa-triangle-exclamation text-danger',
-      journal_reviewed:  'fa-book text-primary',
+      journal_reviewed: 'fa-book text-primary',
+      new_message: 'fa-envelope text-success',
     }
     return map[type] ?? 'fa-bell text-secondary'
   }
 
   const timeAgo = (iso) => {
     const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
-    if (diff < 60)   return `${diff}s ago`
+    if (diff < 60) return `${diff}s ago`
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
     return `${Math.floor(diff / 86400)}d ago`
   }
 
@@ -63,7 +78,7 @@ function NotificationBell() {
       <button
         className="btn btn-link p-0 position-relative"
         style={{ fontSize: '1.1rem', color: '#64748b', textDecoration: 'none' }}
-        onClick={() => setOpen(prev => !prev)}
+        onClick={() => setOpen((prev) => !prev)}
         aria-label="Notifications"
       >
         <i className="fa fa-bell"></i>
@@ -85,7 +100,7 @@ function NotificationBell() {
           <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
             <span className="fw-semibold">Notifications</span>
             {unread > 0 && (
-              <button className="btn btn-link btn-sm p-0" style={{ fontSize: '0.78rem' }} onClick={markAllRead}>
+              <button type="button" className="btn btn-link btn-sm p-0" style={{ fontSize: '0.78rem' }} onClick={markAllRead}>
                 Mark all read
               </button>
             )}
@@ -96,11 +111,14 @@ function NotificationBell() {
               <i className="fa fa-check-circle d-block fa-2x mb-2 text-success"></i>
               All caught up!
             </div>
-          ) : notifications.map(n => (
-            <div
+          ) : notifications.map((n) => (
+            <button
+              type="button"
               key={n.id}
-              className="px-3 py-2 border-bottom"
-              style={{ background: n.read_at ? 'white' : '#f0f9ff', cursor: 'default' }}
+              className="px-3 py-2 border-bottom w-100 text-start border-0"
+              style={{ background: n.read_at ? 'white' : '#f0f9ff', cursor: n.link ? 'pointer' : 'default' }}
+              onClick={() => openNotification(n)}
+              aria-label={n.title}
             >
               <div className="d-flex align-items-start gap-2">
                 <i className={`fa ${getIcon(n.type)} mt-1`} style={{ fontSize: '0.9rem', minWidth: '16px' }}></i>
@@ -111,7 +129,7 @@ function NotificationBell() {
                 </div>
                 {!n.read_at && <span className="badge bg-primary" style={{ fontSize: '0.6rem', padding: '2px 5px' }}>New</span>}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -123,7 +141,7 @@ function Topbar({ title, subtitle, icon }) {
   const { user } = useAuth()
 
   useEffect(() => {
-    const toggle  = document.getElementById('sidebarToggle')
+    const toggle = document.getElementById('sidebarToggle')
     const overlay = document.querySelector('.sidebar-overlay')
 
     const handleToggle = () => {
@@ -136,7 +154,7 @@ function Topbar({ title, subtitle, icon }) {
       document.body.classList.remove('sidebar-open')
     }
 
-    if (toggle)  toggle.addEventListener('click', handleToggle)
+    if (toggle) toggle.addEventListener('click', handleToggle)
     if (overlay) overlay.addEventListener('click', closeSidebar)
 
     const handleEscape = (e) => { if (e.key === 'Escape') closeSidebar() }
@@ -146,7 +164,7 @@ function Topbar({ title, subtitle, icon }) {
     window.addEventListener('resize', handleResize)
 
     return () => {
-      if (toggle)  toggle.removeEventListener('click', handleToggle)
+      if (toggle) toggle.removeEventListener('click', handleToggle)
       if (overlay) overlay.removeEventListener('click', closeSidebar)
       document.removeEventListener('keydown', handleEscape)
       window.removeEventListener('resize', handleResize)
@@ -154,7 +172,7 @@ function Topbar({ title, subtitle, icon }) {
   }, [])
 
   const roleLabel = user?.roleLabel || 'User'
-  const avatar    = user?.avatar    || 'U'
+  const avatar = user?.avatar || 'U'
 
   return (
     <header className="topbar">

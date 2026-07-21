@@ -47,6 +47,10 @@ import CoordSupervisorApprovals from './pages/coordinator/CoordSupervisorApprova
 import DirectorAbsorption from './pages/director/DirectorAbsorption'
 import StudentSupervisorInvite from './pages/student/StudentSupervisorInvite'
 import SupervisorRegisterPage from './pages/public/SupervisorRegisterPage'
+import StudentMessages from './pages/student/StudentMessages'
+import SupervisorMessages from './pages/supervisor/SupervisorMessages'
+import FacultyMessages from './pages/faculty/FacultyMessages'
+import CoordMessages from './pages/coordinator/CoordMessages'
 
 function App() {
   return (
@@ -61,10 +65,11 @@ function App() {
           <Route path="/student/attendance" element={<ProtectedRoute role="student"><StudentAttendance /></ProtectedRoute>} />
           <Route path="/student/logbook" element={<ProtectedRoute role="student"><StudentLogbook /></ProtectedRoute>} />
           <Route path="/student/documents" element={<ProtectedRoute role="student"><StudentDocuments /></ProtectedRoute>} />
-          <Route path="/student/evaluations" element={<ProtectedRoute allowedRoles={['student']}><StudentEvaluations /></ProtectedRoute>} />
-          <Route path="/student/portfolio" element={<ProtectedRoute allowedRoles={['student']}><PortfolioBuilder /></ProtectedRoute>} />
-          <Route path="/student/portfolio/preview" element={<ProtectedRoute allowedRoles={['student']}><PortfolioPreview /></ProtectedRoute>} />
+          <Route path="/student/evaluations" element={<ProtectedRoute role="student"><StudentEvaluations /></ProtectedRoute>} />
+          <Route path="/student/portfolio" element={<ProtectedRoute role="student"><PortfolioBuilder /></ProtectedRoute>} />
+          <Route path="/student/portfolio/preview" element={<ProtectedRoute role="student"><PortfolioPreview /></ProtectedRoute>} />
           <Route path="/student/records" element={<ProtectedRoute role="student"><StudentRecords /></ProtectedRoute>} />
+          <Route path="/student/messages" element={<ProtectedRoute role="student"><StudentMessages /></ProtectedRoute>} />
           <Route path="/student/supervisor-invite" element={<ProtectedRoute role="student"><StudentSupervisorInvite /></ProtectedRoute>} />
           <Route path="/student/settings" element={<ProtectedRoute role="student"><StudentSettings /></ProtectedRoute>} />
           
@@ -85,6 +90,7 @@ function App() {
           <Route path="/supervisor/absorption" element={<ProtectedRoute role="supervisor"><SupervisorAbsorption /></ProtectedRoute>} />
           <Route path="/supervisor/feedback" element={<ProtectedRoute role="supervisor"><SupervisorFeedback /></ProtectedRoute>} />
           <Route path="/supervisor/notifications" element={<ProtectedRoute role="supervisor"><SupervisorNotifications /></ProtectedRoute>} />
+          <Route path="/supervisor/messages" element={<ProtectedRoute role="supervisor"><SupervisorMessages /></ProtectedRoute>} />
           <Route path="/supervisor/settings" element={<ProtectedRoute role="supervisor"><SupervisorSettings /></ProtectedRoute>} />
           
           <Route path="/faculty/dashboard" element={<ProtectedRoute role="faculty"><FacultyDashboard /></ProtectedRoute>} />
@@ -93,6 +99,7 @@ function App() {
           <Route path="/faculty/evaluations" element={<ProtectedRoute role="faculty"><FacultyEvaluations /></ProtectedRoute>} />
           <Route path="/faculty/feedback" element={<ProtectedRoute role="faculty"><FacultyFeedback /></ProtectedRoute>} />
           <Route path="/faculty/documents" element={<ProtectedRoute role="faculty"><FacultyDocuments /></ProtectedRoute>} />
+          <Route path="/faculty/messages" element={<ProtectedRoute role="faculty"><FacultyMessages /></ProtectedRoute>} />
           <Route path="/faculty/settings" element={<ProtectedRoute role="faculty"><FacultySettings /></ProtectedRoute>} />
           
           <Route path="/coordinator/monitoring" element={<ProtectedRoute role="coordinator"><CoordMonitoring /></ProtectedRoute>} />
@@ -103,6 +110,7 @@ function App() {
           <Route path="/coordinator/absorption" element={<ProtectedRoute role="coordinator"><CoordAbsorption /></ProtectedRoute>} />
           <Route path="/coordinator/reports" element={<ProtectedRoute role="coordinator"><CoordReports /></ProtectedRoute>} />
           <Route path="/coordinator/evaluations" element={<ProtectedRoute role="coordinator"><CoordEvaluations /></ProtectedRoute>} />
+          <Route path="/coordinator/messages" element={<ProtectedRoute role="coordinator"><CoordMessages /></ProtectedRoute>} />
           <Route path="/coordinator/supervisor-approvals" element={<ProtectedRoute role="coordinator"><CoordSupervisorApprovals /></ProtectedRoute>} />
           <Route path="/coordinator/settings" element={<ProtectedRoute role="coordinator"><CoordSettings /></ProtectedRoute>} />
           
