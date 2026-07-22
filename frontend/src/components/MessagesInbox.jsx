@@ -42,6 +42,36 @@ function initials(name) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
+/** Photo when available; initials fallback (and onError for broken URLs). */
+function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
+  const [broken, setBroken] = useState(false)
+  const label = peer?.avatar || initials(peer?.name)
+  const src = peer?.avatarUrl && !broken ? peer.avatarUrl : null
+
+  useEffect(() => {
+    setBroken(false)
+  }, [peer?.avatarUrl, peer?.id])
+
+  return (
+    <div
+      className={className}
+      style={{ width: size, height: size }}
+      aria-hidden="true"
+    >
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          className="msg-avatar-img"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        label
+      )}
+    </div>
+  )
+}
+
 function threadKey(internshipId, peerId) {
   return `${internshipId}-${peerId}`
 }
@@ -59,9 +89,7 @@ function ConversationRow({ thread, isActive, onSelect }) {
       aria-current={isActive ? 'true' : undefined}
       aria-label={`Conversation with ${thread.peer.name}, ${roleLabel(thread.peer.role)}`}
     >
-      <div className="msg-conv-avatar" aria-hidden="true">
-        {initials(thread.peer.name)}
-      </div>
+      <PeerAvatar peer={thread.peer} />
       <div className="msg-conv-body">
         <div className="msg-conv-top">
           <span className="msg-conv-name">{thread.peer.name}</span>
@@ -224,6 +252,15 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     })
     const chunk = res.data.messages || []
     setThreadMeta(res.data)
+    if (res.data.peer) {
+      setActive((prev) => (
+        prev
+        && prev.internship_id === internshipId
+        && prev.peer?.id === peerId
+          ? { ...prev, peer: { ...prev.peer, ...res.data.peer } }
+          : prev
+      ))
+    }
     setThreadPage(page)
     setMessages((prev) => {
       if (prepend) return [...chunk, ...prev]
@@ -522,6 +559,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                 {headerPeer
                   ? (
                     <>
+                      <PeerAvatar peer={headerPeer} className="msg-thread-avatar" size={32} />
                       <span className="msg-thread-name">{headerPeer.name || 'Conversation'}</span>
                       <span className="msg-thread-role">{roleLabel(headerPeer.role)}</span>
                     </>

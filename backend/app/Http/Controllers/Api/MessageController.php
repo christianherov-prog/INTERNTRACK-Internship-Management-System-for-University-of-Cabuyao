@@ -56,11 +56,34 @@ class MessageController extends Controller
         $user->loadMissing(['studentProfile', 'facultyProfile', 'supervisorProfile']);
 
         return [
-            'id'       => $user->id,
-            'username' => $user->username,
-            'role'     => $user->role,
-            'name'     => $user->profile_name,
+            'id'        => $user->id,
+            'username'  => $user->username,
+            'role'      => $user->role,
+            'name'      => $user->profile_name,
+            'avatar'    => $this->initialsFromName($user->profile_name),
+            'avatarUrl' => $this->resolveAvatarUrl($user->avatar_path),
         ];
+    }
+
+    /** Same host-aware URL construction as AuthController (request host + /storage/…). */
+    private function resolveAvatarUrl(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        $base = rtrim(request()->getSchemeAndHttpHost(), '/');
+
+        return $base.'/storage/'.ltrim($path, '/');
+    }
+
+    private function initialsFromName(?string $name): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $name)) ?: [];
+        $first = $parts[0] ?? 'U';
+        $last = end($parts) ?: '';
+
+        return strtoupper(substr($first, 0, 1).substr($last, 0, 1));
     }
 
     /** Messages belonging to a role-pair thread on an internship (either direction). */
