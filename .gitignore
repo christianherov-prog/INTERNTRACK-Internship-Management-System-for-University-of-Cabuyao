@@ -34,3 +34,6 @@ Thumbs.db
 _docx_extract.txt
 tinker_check.php
 **/tinker_check.php
+backend/storage/audit_discover.php
+backend/php-local.ini
+/logo.jpg
