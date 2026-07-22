@@ -6,5 +6,3 @@
 export const DEFAULT_TARGET_HOURS = Number(
   import.meta.env.VITE_INTERNTRACK_TARGET_HOURS || 500
 )
-
-export default DEFAULT_TARGET_HOURS

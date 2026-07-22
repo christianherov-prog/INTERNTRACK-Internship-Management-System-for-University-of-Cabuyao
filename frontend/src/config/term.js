@@ -4,5 +4,3 @@
  */
 export const CURRENT_TERM =
   import.meta.env.VITE_INTERNTRACK_CURRENT_TERM || 'AY 2025-2026, Sem 2'
-
-export default CURRENT_TERM
