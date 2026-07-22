@@ -112,55 +112,95 @@ class CoordinatorController extends Controller
             ->orderByDesc('is_pinned')
             ->orderByDesc('created_at')
             ->paginate(15);
+
+        $items->getCollection()->transform(fn (Announcement $a) => $a->toClientArray());
+
         return ApiResponse::list($items);
     }
 
-    /** POST /api/v1/coordinator/announcements */
+    /** POST /api/v1/coordinator/announcements — JSON or multipart with optional attachment. */
     public function createAnnouncement(Request $request)
     {
         $request->validate([
             'title'       => 'required|string|max:255',
             'content'     => 'required|string',
             'target_role' => 'required|string|in:all,student,supervisor,faculty,coordinator,director',
+            'category'    => 'nullable|string|in:'.implode(',', Announcement::CATEGORIES),
             'is_pinned'   => 'boolean',
             'expires_at'  => 'nullable|date|after:now',
-        ]);
+            'attachment'  => Announcement::attachmentValidationRules(),
+        ], Announcement::attachmentValidationMessages());
 
         $announcement = Announcement::create([
             'created_by'  => $request->user()->id,
             'title'       => $request->title,
             'content'     => $request->content,
             'target_role' => $request->target_role,
+            'category'    => $request->input('category', 'general') ?: 'general',
             'is_pinned'   => $request->boolean('is_pinned', false),
             'expires_at'  => $request->expires_at,
         ]);
 
-        audit_log($request->user()->id, 'create_announcement', ['title' => $request->title]);
+        if ($request->hasFile('attachment')) {
+            $announcement->storeUploadedAttachment($request->file('attachment'));
+            $announcement->save();
+        }
 
-        return response()->json(['message' => 'Announcement created.', 'announcement' => $announcement], 201);
+        audit_log($request->user()->id, 'create_announcement', [
+            'title'          => $request->title,
+            'has_attachment' => $announcement->hasAttachment(),
+        ]);
+
+        return response()->json([
+            'message'      => 'Announcement created.',
+            'announcement' => $announcement->fresh('author')->toClientArray(),
+        ], 201);
     }
 
-    /** PUT /api/v1/coordinator/announcements/{id} */
+    /**
+     * PUT|POST /api/v1/coordinator/announcements/{id}
+     * POST multipart is used when replacing/removing an attachment (PHP file uploads need POST).
+     */
     public function updateAnnouncement(Request $request, int $id)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
-            'content'     => 'required|string',
-            'target_role' => 'required|in:all,student,supervisor,faculty,coordinator,director',
-            'is_pinned'   => 'boolean',
-            'expires_at'  => 'nullable|date',
-        ]);
+            'title'             => 'required|string|max:255',
+            'content'           => 'required|string',
+            'target_role'       => 'required|in:all,student,supervisor,faculty,coordinator,director',
+            'category'          => 'nullable|string|in:'.implode(',', Announcement::CATEGORIES),
+            'is_pinned'         => 'boolean',
+            'expires_at'        => 'nullable|date',
+            'attachment'        => Announcement::attachmentValidationRules(),
+            'remove_attachment' => 'sometimes|boolean',
+        ], Announcement::attachmentValidationMessages());
 
         $announcement = Announcement::findOrFail($id);
-        $announcement->update($request->only(['title', 'content', 'target_role', 'is_pinned', 'expires_at']));
+        $announcement->fill($request->only(['title', 'content', 'target_role', 'expires_at']));
+        $announcement->category = $request->input('category', $announcement->category ?: 'general') ?: 'general';
+        $announcement->is_pinned = $request->boolean('is_pinned', false);
 
-        return response()->json(['message' => 'Announcement updated.', 'announcement' => $announcement]);
+        if ($request->boolean('remove_attachment') && !$request->hasFile('attachment')) {
+            $announcement->deleteStoredAttachment();
+            $announcement->clearAttachmentFields();
+        }
+
+        if ($request->hasFile('attachment')) {
+            $announcement->storeUploadedAttachment($request->file('attachment'));
+        }
+
+        $announcement->save();
+
+        return response()->json([
+            'message'      => 'Announcement updated.',
+            'announcement' => $announcement->fresh('author')->toClientArray(),
+        ]);
     }
 
     /** DELETE /api/v1/coordinator/announcements/{id} */
     public function deleteAnnouncement(Request $request, int $id)
     {
         $announcement = Announcement::findOrFail($id);
+        $announcement->deleteStoredAttachment();
         $announcement->delete();
         audit_log($request->user()->id, 'delete_announcement', ['id' => $id]);
         return response()->json(['message' => 'Announcement deleted.']);
@@ -403,15 +443,46 @@ class CoordinatorController extends Controller
     /** GET /api/v1/coordinator/records */
     public function records(Request $request)
     {
-        $students = User::where('role', 'student')
+        $query = User::where('role', 'student')
             ->with([
                 'studentProfile',
                 'activeInternship.company',
                 'internshipsAsStudent' => fn($q) => $q->withCount(['attendance as validated_days' => fn($a) => $a->where('status', 'validated')]),
-            ])
-            ->paginate(20);
+            ]);
 
-        return ApiResponse::list($students);
+        if ($request->boolean('archived')) {
+            $query->where('is_active', false);
+        } else {
+            $query->where('is_active', true);
+        }
+
+        return ApiResponse::list($query->paginate(20));
+    }
+
+    /**
+     * PATCH /api/v1/coordinator/students/{userId}/archive
+     * Body: { archived: true|false }
+     */
+    public function setStudentArchived(Request $request, int $userId)
+    {
+        $request->validate(['archived' => 'required|boolean']);
+
+        $student = User::where('role', 'student')->findOrFail($userId);
+        $student->is_active = !$request->boolean('archived');
+        $student->save();
+
+        audit_log($request->user()->id, $request->boolean('archived') ? 'archive_student' : 'unarchive_student', [
+            'student_id' => $userId,
+        ]);
+
+        return response()->json([
+            'message' => $request->boolean('archived') ? 'Student archived.' : 'Student restored to active.',
+            'student' => [
+                'id'        => $student->id,
+                'username'  => $student->username,
+                'is_active' => $student->is_active,
+            ],
+        ]);
     }
 
     /** GET /api/v1/coordinator/placement-options */
@@ -525,20 +596,24 @@ class CoordinatorController extends Controller
     /** GET /api/v1/coordinator/reports/student-summary */
     public function reportStudentSummary(Request $request)
     {
-        $students = Internship::with(['student.studentProfile', 'company'])
+        $query = Internship::with(['student.studentProfile', 'company'])
             ->selectRaw('
                 internships.*,
                 (SELECT COUNT(*) FROM attendance_logs WHERE internship_id = internships.id AND status = "validated") as validated_days,
                 (SELECT COUNT(*) FROM journal_entries WHERE internship_id = internships.id AND status = "approved") as approved_journals,
                 (SELECT COUNT(*) FROM documents WHERE internship_id = internships.id AND status = "approved") as approved_docs
-            ')
-            ->orderBy('status')
+            ');
+
+        $this->applyReportFilters($query, $request);
+
+        $students = $query->orderBy('status')
             ->get()
             ->map(fn($i) => [
                 'student_name'     => optional($i->student?->studentProfile)->first_name . ' ' . optional($i->student?->studentProfile)->last_name,
                 'student_number'   => $i->student?->username,
-                'program'          => $i->student?->studentProfile?->course_name ?? $i->program ?? '—',
+                'program'          => $i->student?->studentProfile?->course_name ?? $i->student?->studentProfile?->program ?? $i->program ?? '—',
                 'company'          => $i->company?->company_name ?? '—',
+                'industry'         => $i->company?->industry ?? '—',
                 'status'           => $i->status,
                 'hours_rendered'   => (float) $i->total_hours_rendered,
                 'target_hours'     => $i->target_hours,
@@ -551,13 +626,23 @@ class CoordinatorController extends Controller
                 'final_grade'      => $i->final_grade,
             ]);
 
-        return response()->json(['students' => $students, 'generated_at' => now()->toDateTimeString()]);
+        return response()->json([
+            'students'     => $students,
+            'filters'      => $this->reportFilterOptions(),
+            'applied'      => [
+                'program'  => $request->input('program'),
+                'industry' => $request->input('industry'),
+            ],
+            'generated_at' => now()->toDateTimeString(),
+        ]);
     }
 
     /** GET /api/v1/coordinator/reports/compliance */
     public function reportCompliance(Request $request)
     {
-        $internships = Internship::with(['student.studentProfile', 'documents'])->get();
+        $query = Internship::with(['student.studentProfile', 'documents', 'company']);
+        $this->applyReportFilters($query, $request);
+        $internships = $query->get();
 
         $requiredTypes = [
             'Endorsement Letter', 'Application Form', 'MOA Document',
@@ -568,21 +653,33 @@ class CoordinatorController extends Controller
 
         $rows = $internships->map(fn($i) => [
             'student_name'    => trim(optional($i->student?->studentProfile)->first_name . ' ' . optional($i->student?->studentProfile)->last_name),
-            'program'         => $i->student?->studentProfile?->course_name ?? '—',
+            'program'         => $i->student?->studentProfile?->course_name ?? $i->student?->studentProfile?->program ?? '—',
+            'industry'        => $i->company?->industry ?? '—',
             'approved_docs'   => $i->documents->where('status', 'approved')->count(),
             'required_docs'   => $requiredCount,
             'compliance_pct'  => round($i->documents->where('status', 'approved')->count() / $requiredCount * 100),
             'missing_docs'    => collect($requiredTypes)->diff($i->documents->where('status', 'approved')->pluck('document_type'))->values(),
         ]);
 
-        return response()->json(['rows' => $rows, 'required_types' => $requiredTypes, 'generated_at' => now()->toDateTimeString()]);
+        return response()->json([
+            'rows'           => $rows,
+            'required_types' => $requiredTypes,
+            'filters'        => $this->reportFilterOptions(),
+            'applied'        => [
+                'program'  => $request->input('program'),
+                'industry' => $request->input('industry'),
+            ],
+            'generated_at'   => now()->toDateTimeString(),
+        ]);
     }
 
     /** GET /api/v1/coordinator/reports/performance */
     public function reportPerformance(Request $request)
     {
-        $byProgram = Internship::with('student.studentProfile')
-            ->get()
+        $query = Internship::with(['student.studentProfile', 'company']);
+        $this->applyReportFilters($query, $request);
+
+        $byProgram = $query->get()
             ->groupBy(function (Internship $i) {
                 $p = $i->student?->studentProfile;
                 foreach ([$i->program, $p?->program, $p?->course_name] as $value) {
@@ -616,10 +713,64 @@ class CoordinatorController extends Controller
         ->get();
 
         return response()->json([
-            'by_program'   => $byProgram,
-            'eval_averages'=> $evalAvg,
-            'generated_at' => now()->toDateTimeString(),
+            'by_program'    => $byProgram,
+            'eval_averages' => $evalAvg,
+            'filters'       => $this->reportFilterOptions(),
+            'applied'       => [
+                'program'  => $request->input('program'),
+                'industry' => $request->input('industry'),
+            ],
+            'generated_at'  => now()->toDateTimeString(),
         ]);
+    }
+
+    /** Apply optional program / industry filters to internship report queries. */
+    private function applyReportFilters($query, Request $request): void
+    {
+        if ($request->filled('program')) {
+            $program = trim((string) $request->program);
+            $query->where(function ($q) use ($program) {
+                $q->where('internships.program', $program)
+                    ->orWhereHas('student.studentProfile', function ($p) use ($program) {
+                        $p->where('program', $program)->orWhere('course_name', $program);
+                    });
+            });
+        }
+
+        if ($request->filled('industry')) {
+            $industry = trim((string) $request->industry);
+            $query->whereHas('company', function ($c) use ($industry) {
+                $c->where('industry', $industry);
+            });
+        }
+    }
+
+    /** Distinct program / industry values for report filter dropdowns. */
+    private function reportFilterOptions(): array
+    {
+        $programs = Internship::query()
+            ->leftJoin('users', 'users.id', '=', 'internships.student_id')
+            ->leftJoin('student_profiles', 'student_profiles.user_id', '=', 'users.id')
+            ->selectRaw("DISTINCT COALESCE(NULLIF(TRIM(internships.program), ''), NULLIF(TRIM(student_profiles.program), ''), NULLIF(TRIM(student_profiles.course_name), '')) as program")
+            ->havingRaw('program IS NOT NULL AND program <> ""')
+            ->orderBy('program')
+            ->pluck('program')
+            ->values()
+            ->all();
+
+        $industries = Company::query()
+            ->whereNotNull('industry')
+            ->where('industry', '<>', '')
+            ->distinct()
+            ->orderBy('industry')
+            ->pluck('industry')
+            ->values()
+            ->all();
+
+        return [
+            'programs'   => $programs,
+            'industries' => $industries,
+        ];
     }
 
     /**

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Announcement;
 use App\Models\Internship;
 use App\Models\Notification;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -48,6 +50,19 @@ class FacultyController extends Controller
 
         $recentActivity = $recentJournals->sortByDesc('action_at')->take(5)->values();
 
+        $announcements = Announcement::where(function ($q) {
+                $q->where('target_role', 'all')->orWhere('target_role', 'faculty');
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->orderByDesc('is_pinned')
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(fn (Announcement $a) => $a->toClientArray())
+            ->values();
+
         return response()->json([
             'stats' => [
                 'assigned_students'   => $internships->count(),
@@ -55,15 +70,85 @@ class FacultyController extends Controller
                 'pending_evaluations' => $pendingEvals,
             ],
             'recent_activity' => $recentActivity,
+            'announcements'   => $announcements,
         ]);
     }
 
     public function assignedStudents(Request $request)
     {
-        $internships = Internship::where('faculty_id', $request->user()->id)
-            ->with(['student.studentProfile', 'company'])
-            ->paginate(20);
-        return ApiResponse::list($internships);
+        $query = Internship::where('faculty_id', $request->user()->id)
+            ->with(['student.studentProfile', 'company']);
+
+        if ($request->boolean('archived')) {
+            $query->whereHas('student', fn ($q) => $q->where('is_active', false));
+        } else {
+            $query->whereHas('student', fn ($q) => $q->where('is_active', true));
+        }
+
+        return ApiResponse::list($query->paginate(20));
+    }
+
+    /**
+     * PATCH /api/v1/faculty/students/{userId}/archive
+     * Body: { archived: true|false } — soft-archive via users.is_active.
+     */
+    public function setStudentArchived(Request $request, int $userId)
+    {
+        $request->validate(['archived' => 'required|boolean']);
+
+        $assigned = Internship::where('faculty_id', $request->user()->id)
+            ->where('student_id', $userId)
+            ->exists();
+
+        if (!$assigned) {
+            return response()->json(['message' => 'You can only archive students assigned to you.'], 403);
+        }
+
+        $student = User::where('role', 'student')->findOrFail($userId);
+        $student->is_active = !$request->boolean('archived');
+        $student->save();
+
+        audit_log($request->user()->id, $request->boolean('archived') ? 'archive_student' : 'unarchive_student', [
+            'student_id' => $userId,
+        ]);
+
+        return response()->json([
+            'message' => $request->boolean('archived') ? 'Student archived.' : 'Student restored to active.',
+            'student' => [
+                'id'        => $student->id,
+                'username'  => $student->username,
+                'is_active' => $student->is_active,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/faculty/attendance
+     * Read-only attendance monitoring for assigned students (not validation).
+     * Optional: status, internship_id query filters.
+     */
+    public function attendance(Request $request)
+    {
+        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
+
+        $query = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
+            ->with(['internship.student.studentProfile', 'internship.company'])
+            ->orderByDesc('date')
+            ->orderByDesc('id');
+
+        if ($request->filled('internship_id')) {
+            $internshipId = (int) $request->internship_id;
+            if (!$internshipIds->contains($internshipId)) {
+                return response()->json(['message' => 'Internship not assigned to you.'], 403);
+            }
+            $query->where('internship_id', $internshipId);
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        return ApiResponse::list($query->paginate(25));
     }
 
     public function journals(Request $request)

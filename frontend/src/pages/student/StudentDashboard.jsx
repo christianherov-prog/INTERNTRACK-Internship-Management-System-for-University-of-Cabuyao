@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Layout from '../../components/Layout'
 import DashboardHeroBanner from '../../components/DashboardHeroBanner'
+import { AnnouncementAttachmentView } from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import { DEFAULT_TARGET_HOURS } from '../../config/hours'
@@ -25,17 +26,23 @@ function StudentDashboard() {
 
     if (chartInstance.current) chartInstance.current.destroy()
 
-    const { labels, hours, target } = data.weekly_chart
+    const { labels, hours } = data.weekly_chart
     chartInstance.current = new window.Chart(chartRef.current, {
       type: 'bar',
       data: {
         labels,
         datasets: [
-          { label: 'Hours Rendered', data: hours,  backgroundColor: 'rgba(20,184,166,0.75)', borderRadius: 6 },
-          { label: 'Target/Week',    data: target, backgroundColor: 'rgba(99,102,241,0.3)',  borderRadius: 6, type: 'line', borderColor: 'rgba(99,102,241,0.8)', borderWidth: 2, pointBackgroundColor: '#6366f1', fill: false },
+          { label: 'Hours Logged', data: hours, backgroundColor: 'rgba(20,184,166,0.75)', borderRadius: 6 },
         ]
       },
-      options: { responsive: true, plugins: { legend: { display: true } }, scales: { y: { beginAtZero: true, title: { display: true, text: 'Hours' } } } }
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true },
+          title: { display: true, text: 'Weekly hours logged (no fixed weekly quota)' },
+        },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'Hours' } } },
+      }
     })
     return () => chartInstance.current?.destroy()
   }, [data])
@@ -224,8 +231,18 @@ function StudentDashboard() {
                       <i className={`fa ${a.is_pinned ? 'fa-thumbtack' : a.title.includes('Deadline') ? 'fa-file-alt' : a.title.includes('Evaluation') ? 'fa-exclamation-triangle' : 'fa-info-circle'}`}></i>
                     </div>
                     <div className="announcement-content">
-                      <div className="announcement-title">{a.title}</div>
+                      <div className="announcement-title">
+                        {a.title}
+                        {a.category === 'policy_update' && (
+                          <span className="badge bg-danger ms-2" style={{ fontSize: '0.65rem', verticalAlign: 'middle' }}>Policy Update</span>
+                        )}
+                      </div>
                       <div className="announcement-text">{a.content}</div>
+                      {a.attachment && (
+                        <div className="ann-attach-block">
+                          <AnnouncementAttachmentView attachment={a.attachment} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

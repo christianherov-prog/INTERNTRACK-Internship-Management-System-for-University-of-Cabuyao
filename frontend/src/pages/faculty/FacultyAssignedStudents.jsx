@@ -16,11 +16,14 @@ function FacultyAssignedStudents() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [archived, setArchived] = useState(false)
+  const [busyId, setBusyId] = useState(null)
+  const [message, setMessage] = useState(null)
 
   const fetchStudents = () => {
     setLoading(true)
     setError(null)
-    api.get('/faculty/assigned-students')
+    api.get('/faculty/assigned-students', { params: { archived: archived ? 1 : 0 } })
       .then((res) => {
         setRows(unwrapList(res.data).items)
       })
@@ -31,16 +34,46 @@ function FacultyAssignedStudents() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchStudents() }, [])
+  useEffect(() => { fetchStudents() }, [archived])
+
+  const toggleArchive = async (row) => {
+    const studentId = row.student?.id
+    if (!studentId) return
+    setBusyId(studentId)
+    setMessage(null)
+    try {
+      await api.patch(`/faculty/students/${studentId}/archive`, { archived: !archived })
+      setMessage({
+        type: 'success',
+        text: archived ? 'Student restored to Active.' : 'Student archived.',
+      })
+      fetchStudents()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Archive action failed.' })
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   return (
     <Layout title="Assigned Students" subtitle={CURRENT_TERM} icon="fa-users" bodyClass="faculty-page">
       {error && <PageError message={error} onRetry={fetchStudents} />}
+      {message && (
+        <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
+          {message.text}
+          <button className="btn-close" onClick={() => setMessage(null)}></button>
+        </div>
+      )}
+
+      <div className="btn-group mb-3" role="group" aria-label="Active or archived">
+        <button type="button" className={`btn btn-sm ${!archived ? 'btn-success' : 'btn-outline-success'}`} onClick={() => setArchived(false)}>Active</button>
+        <button type="button" className={`btn btn-sm ${archived ? 'btn-secondary' : 'btn-outline-secondary'}`} onClick={() => setArchived(true)}>Archived</button>
+      </div>
 
       <div className="content-card">
         <div className="content-card-header">
           <i className="fa fa-users"></i>
-          <h6>My Assigned Students</h6>
+          <h6>{archived ? 'Archived Students' : 'My Assigned Students'}</h6>
         </div>
         <div className="table-card">
           {loading ? (
@@ -61,7 +94,9 @@ function FacultyAssignedStudents() {
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center text-muted py-4">No assigned students yet.</td>
+                      <td colSpan={6} className="text-center text-muted py-4">
+                        {archived ? 'No archived students.' : 'No assigned students yet.'}
+                      </td>
                     </tr>
                   ) : rows.map((row) => {
                     const profile = row.student?.student_profile || row.student?.studentProfile
@@ -76,10 +111,19 @@ function FacultyAssignedStudents() {
                             {(row.status || '—').replace(/_/g, ' ')}
                           </span>
                         </td>
-                        <td>
+                        <td className="d-flex gap-1">
                           <Link to="/faculty/journals" className="btn btn-sm btn-outline-success" title="Review journals">
                             <i className="fa fa-eye"></i>
                           </Link>
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${archived ? 'btn-outline-success' : 'btn-outline-secondary'}`}
+                            title={archived ? 'Unarchive' : 'Archive'}
+                            disabled={busyId === row.student?.id}
+                            onClick={() => toggleArchive(row)}
+                          >
+                            <i className={`fa ${archived ? 'fa-box-open' : 'fa-box-archive'} ${busyId === row.student?.id ? 'fa-spin' : ''}`}></i>
+                          </button>
                         </td>
                       </tr>
                     )

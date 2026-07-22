@@ -183,19 +183,35 @@ function CoordReports() {
   const [reportData, setReportData]     = useState(null)
   const [loading, setLoading]           = useState(false)
   const [generatedAt, setGeneratedAt]   = useState(null)
+  const [programFilter, setProgramFilter] = useState('')
+  const [industryFilter, setIndustryFilter] = useState('')
+  const [filterOptions, setFilterOptions] = useState({ programs: [], industries: [] })
 
   const generateReport = async (key) => {
     setLoading(true)
     setActiveReport(key)
     setReportData(null)
     try {
-      const res = await api.get(`/coordinator/reports/${key}`)
+      const params = {}
+      if (programFilter) params.program = programFilter
+      if (industryFilter) params.industry = industryFilter
+      const res = await api.get(`/coordinator/reports/${key}`, { params })
       setReportData(res.data)
       setGeneratedAt(res.data.generated_at)
+      if (res.data.filters) setFilterOptions(res.data.filters)
     } catch (err) {
       console.error(err)
     } finally { setLoading(false) }
   }
+
+  // Prefetch filter options via student-summary (lightweight enough)
+  useEffect(() => {
+    api.get('/coordinator/reports/student-summary')
+      .then((res) => {
+        if (res.data.filters) setFilterOptions(res.data.filters)
+      })
+      .catch(() => {})
+  }, [])
 
   const handlePrint = () => {
     window.print()
@@ -207,13 +223,13 @@ function CoordReports() {
     if (activeReport === 'student-summary') {
       downloadCsv('student-summary-report', (reportData.students ?? []).map(r => ({
         Student: r.student_name, 'Student No.': r.student_number, Program: r.program, Company: r.company,
-        Status: r.status, 'Hours Rendered': r.hours_rendered, 'Target Hours': r.target_hours,
+        Industry: r.industry, Status: r.status, 'Hours Rendered': r.hours_rendered, 'Target Hours': r.target_hours,
         'Progress %': r.progress_pct, 'Validated Days': r.validated_days,
         'Approved Journals': r.approved_journals, 'Approved Docs': r.approved_docs,
       })))
     } else if (activeReport === 'compliance') {
       downloadCsv('document-compliance-report', (reportData.rows ?? []).map(r => ({
-        Student: r.student_name, Program: r.program, 'Compliance %': r.compliance_pct,
+        Student: r.student_name, Program: r.program, Industry: r.industry, 'Compliance %': r.compliance_pct,
         'Approved Docs': r.approved_docs, 'Required Docs': r.required_docs,
         'Missing Documents': (r.missing_docs ?? []).join('; '),
       })))
@@ -228,6 +244,49 @@ function CoordReports() {
 
   return (
     <Layout title="Reports" subtitle={CURRENT_TERM} icon="fa-chart-bar" bodyClass="coordinator-page reports-page">
+      <div className="content-card mb-3">
+        <div className="content-card-header"><i className="fa fa-filter"></i><h6>Report Filters</h6></div>
+        <div className="p-3 row g-3 align-items-end">
+          <div className="col-md-4">
+            <label className="form-label fw-semibold">Academic Program</label>
+            <select className="form-select" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
+              <option value="">All programs</option>
+              {(filterOptions.programs ?? []).map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-4">
+            <label className="form-label fw-semibold">Company Industry</label>
+            <select className="form-select" value={industryFilter} onChange={(e) => setIndustryFilter(e.target.value)}>
+              <option value="">All industries</option>
+              {(filterOptions.industries ?? []).map((ind) => (
+                <option key={ind} value={ind}>{ind}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-4">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => { setProgramFilter(''); setIndustryFilter('') }}
+            >
+              Clear filters
+            </button>
+            {activeReport && (
+              <button
+                type="button"
+                className="btn btn-outline-primary ms-2"
+                onClick={() => generateReport(activeReport)}
+                disabled={loading}
+              >
+                Re-apply
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Report Type Selector */}
       <div className="row g-3 mb-4">
         {REPORT_TYPES.map(r => (

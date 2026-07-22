@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import PageError from '../../components/PageError'
+import { AnnouncementAttachmentView } from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 
@@ -26,6 +27,7 @@ function FacultyDashboard() {
   useEffect(() => { load() }, [])
 
   const activity = data?.recent_activity ?? []
+  const announcements = data?.announcements ?? []
 
   const timeAgo = (iso) => {
     if (!iso) return '—'
@@ -137,6 +139,47 @@ function FacultyDashboard() {
                           <small className="text-muted flex-shrink-0">{timeAgo(a.action_at)}</small>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-12 mb-4">
+              <div className="content-card">
+                <div className="content-card-header bg-light">
+                  <i className="fa fa-bullhorn"></i>
+                  <h6 className="mb-0">Announcements</h6>
+                </div>
+                <div className="px-3 pb-3">
+                  {announcements.length > 0 ? (
+                    announcements.slice(0, 5).map((a) => (
+                      <div key={a.id} className="announcement-item">
+                        <div className="announcement-icon">
+                          <i className={`fa ${a.is_pinned ? 'fa-thumbtack' : 'fa-info-circle'}`}></i>
+                        </div>
+                        <div className="announcement-content">
+                          <div className="announcement-title">
+                            {a.title}
+                            {a.category === 'policy_update' && (
+                              <span className="badge bg-danger ms-2" style={{ fontSize: '0.65rem', verticalAlign: 'middle' }}>Policy Update</span>
+                            )}
+                          </div>
+                          <div className="announcement-text">{a.content}</div>
+                          {a.attachment && (
+                            <div className="ann-attach-block">
+                              <AnnouncementAttachmentView attachment={a.attachment} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted">
+                      <i className="fa fa-inbox fa-2x mb-2"></i>
+                      <p className="mb-0">No announcements at this time</p>
                     </div>
                   )}
                 </div>

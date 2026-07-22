@@ -128,10 +128,12 @@ function CoordRecords() {
   const [historyTarget, setHistoryTarget] = useState(null)
   const [message, setMessage] = useState(null)
   const [certLoading, setCertLoading] = useState(null)
+  const [archived, setArchived] = useState(false)
+  const [archiveBusy, setArchiveBusy] = useState(null)
 
   const fetchRecords = () => {
     setLoading(true)
-    api.get('/coordinator/records')
+    api.get('/coordinator/records', { params: { archived: archived ? 1 : 0 } })
       .then(res => setStudents(unwrapList(res.data).items))
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -139,7 +141,23 @@ function CoordRecords() {
 
   useEffect(() => {
     fetchRecords()
-  }, [])
+  }, [archived])
+
+  const toggleArchive = async (student) => {
+    setArchiveBusy(student.id)
+    try {
+      await api.patch(`/coordinator/students/${student.id}/archive`, { archived: !archived })
+      setMessage({
+        type: 'success',
+        text: archived ? 'Student restored to Active.' : 'Student archived.',
+      })
+      fetchRecords()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Archive action failed.' })
+    } finally {
+      setArchiveBusy(null)
+    }
+  }
 
   const downloadCertificate = async (internshipId) => {
     setCertLoading(internshipId)
@@ -210,10 +228,15 @@ function CoordRecords() {
         />
       )}
 
+      <div className="btn-group mb-3" role="group" aria-label="Active or archived">
+        <button type="button" className={`btn btn-sm ${!archived ? 'btn-success' : 'btn-outline-success'}`} onClick={() => setArchived(false)}>Active</button>
+        <button type="button" className={`btn btn-sm ${archived ? 'btn-secondary' : 'btn-outline-secondary'}`} onClick={() => setArchived(true)}>Archived</button>
+      </div>
+
       <div className="content-card mb-4">
         <div className="content-card-header">
           <i className="fa fa-users"></i>
-          <h6>Student Interns Roster</h6>
+          <h6>{archived ? 'Archived Students' : 'Student Interns Roster'}</h6>
         </div>
         <div className="table-card">
           <div className="table-responsive">
@@ -260,6 +283,15 @@ function CoordRecords() {
                             )}
                           </td>
                           <td className="text-center">
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${archived ? 'btn-outline-success' : 'btn-outline-secondary'} me-1`}
+                              title={archived ? 'Unarchive' : 'Archive'}
+                              disabled={archiveBusy === s.id}
+                              onClick={() => toggleArchive(s)}
+                            >
+                              <i className={`fa ${archived ? 'fa-box-open' : 'fa-box-archive'}`}></i>
+                            </button>
                             {st === 'pending_placement' ? (
                               <button className="btn btn-sm btn-primary me-1" onClick={() => setAssigning(s)}>
                                 <i className="fa fa-map-pin me-1"></i> Assign Placement

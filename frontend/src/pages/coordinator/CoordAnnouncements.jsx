@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Layout from '../../components/Layout'
 import ConfirmModal from '../../components/modals/ConfirmModal'
 import PageError from '../../components/PageError'
+import {
+  AnnouncementAttachmentView,
+  AnnouncementAttachPreview,
+  ATTACH_ACCEPT,
+  isImageFile,
+  validateAttachFile,
+} from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
@@ -16,7 +23,21 @@ function CoordAnnouncements() {
   const [message, setMessage]   = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editItem, setEditItem] = useState(null)
-  const [form, setForm] = useState({ title: '', content: '', target_role: 'all', is_pinned: false, expires_at: '' })
+  const [form, setForm] = useState({ title: '', content: '', target_role: 'all', category: 'general', is_pinned: false, expires_at: '' })
+  const [attachFile, setAttachFile] = useState(null)
+  const [attachPreviewUrl, setAttachPreviewUrl] = useState(null)
+  const [existingAttachment, setExistingAttachment] = useState(null)
+  const [removeExisting, setRemoveExisting] = useState(false)
+  const fileInputRef = useRef(null)
+
+  const clearLocalAttach = () => {
+    setAttachFile(null)
+    setAttachPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const fetchAnnouncements = () => {
     setLoading(true)
@@ -32,23 +53,99 @@ function CoordAnnouncements() {
 
   useEffect(() => { fetchAnnouncements() }, [])
 
-  const openCreate = () => { setEditItem(null); setForm({ title: '', content: '', target_role: 'all', is_pinned: false, expires_at: '' }); setShowForm(true) }
-  const openEdit   = (a)  => { setEditItem(a); setForm({ title: a.title, content: a.content, target_role: a.target_role, is_pinned: a.is_pinned, expires_at: a.expires_at?.split('T')[0] ?? '' }); setShowForm(true) }
+  const openCreate = () => {
+    setEditItem(null)
+    setForm({ title: '', content: '', target_role: 'all', category: 'general', is_pinned: false, expires_at: '' })
+    clearLocalAttach()
+    setExistingAttachment(null)
+    setRemoveExisting(false)
+    setShowForm(true)
+  }
+
+  const openEdit = (a) => {
+    setEditItem(a)
+    setForm({
+      title: a.title,
+      content: a.content,
+      target_role: a.target_role,
+      category: a.category || 'general',
+      is_pinned: a.is_pinned,
+      expires_at: a.expires_at?.split('T')[0] ?? '',
+    })
+    clearLocalAttach()
+    setExistingAttachment(a.attachment || null)
+    setRemoveExisting(false)
+    setShowForm(true)
+  }
+
+  const onPickFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const err = validateAttachFile(file)
+    if (err) {
+      setMessage({ type: 'danger', text: err })
+      e.target.value = ''
+      return
+    }
+    setMessage(null)
+    setAttachPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return isImageFile(file) ? URL.createObjectURL(file) : null
+    })
+    setAttachFile(file)
+    setRemoveExisting(false)
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setSaving(true); setMessage(null)
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
     try {
-      if (editItem) {
+      const needsMultipart = Boolean(attachFile) || (editItem && removeExisting)
+
+      if (needsMultipart) {
+        const fd = new FormData()
+        fd.append('title', form.title)
+        fd.append('content', form.content)
+        fd.append('target_role', form.target_role)
+        fd.append('category', form.category || 'general')
+        fd.append('is_pinned', form.is_pinned ? '1' : '0')
+        if (form.expires_at) fd.append('expires_at', form.expires_at)
+        if (attachFile) fd.append('attachment', attachFile)
+        if (editItem && removeExisting && !attachFile) fd.append('remove_attachment', '1')
+
+        if (editItem) {
+          await api.post(`/coordinator/announcements/${editItem.id}`, fd)
+          setMessage({ type: 'success', text: 'Announcement updated.' })
+        } else {
+          await api.post('/coordinator/announcements', fd)
+          setMessage({ type: 'success', text: 'Announcement posted.' })
+        }
+      } else if (editItem) {
         await api.put(`/coordinator/announcements/${editItem.id}`, form)
         setMessage({ type: 'success', text: 'Announcement updated.' })
       } else {
         await api.post('/coordinator/announcements', form)
         setMessage({ type: 'success', text: 'Announcement posted.' })
       }
-      setShowForm(false); fetchAnnouncements()
+
+      setShowForm(false)
+      clearLocalAttach()
+      fetchAnnouncements()
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Failed to save.' })
-    } finally { setSaving(false) }
+      const status = err.response?.status
+      const data = err.response?.data
+      const text = data?.errors?.attachment?.[0]
+        || data?.message
+        || 'Failed to save.'
+      if (status === 413) {
+        setMessage({ type: 'danger', text: text || 'File is too large. Maximum size is 10 MB.' })
+      } else {
+        setMessage({ type: 'danger', text })
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDelete = async () => {
@@ -66,6 +163,7 @@ function CoordAnnouncements() {
   }
 
   const roleBadge = { all: 'bg-secondary', student: 'bg-success', supervisor: 'bg-info', faculty: 'bg-warning', coordinator: 'bg-primary', director: 'bg-dark' }
+  const showExisting = existingAttachment && !removeExisting && !attachFile
 
   return (
     <Layout title="Announcements" subtitle={CURRENT_TERM} icon="fa-bullhorn" bodyClass="coordinator-page">
@@ -87,7 +185,6 @@ function CoordAnnouncements() {
         <button className="btn btn-primary" onClick={openCreate}><i className="fa fa-plus me-2"></i>New Announcement</button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="content-card mb-4">
           <div className="content-card-header"><i className="fa fa-pen"></i><h6>{editItem ? 'Edit Announcement' : 'Create Announcement'}</h6></div>
@@ -112,6 +209,13 @@ function CoordAnnouncements() {
                 </select>
               </div>
               <div className="col-md-4">
+                <label className="form-label fw-semibold">Category</label>
+                <select className="form-select" value={form.category} onChange={e => setForm(p => ({...p, category: e.target.value}))}>
+                  <option value="general">General</option>
+                  <option value="policy_update">Policy Update</option>
+                </select>
+              </div>
+              <div className="col-md-4">
                 <label className="form-label fw-semibold">Expiry Date (optional)</label>
                 <input type="date" className="form-control" value={form.expires_at} onChange={e => setForm(p => ({...p, expires_at: e.target.value}))} />
               </div>
@@ -121,18 +225,68 @@ function CoordAnnouncements() {
                   <label className="form-check-label" htmlFor="pinCheck">📌 Pin this announcement</label>
                 </div>
               </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">Attachment (optional)</label>
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="visually-hidden"
+                    accept={ATTACH_ACCEPT}
+                    onChange={onPickFile}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={saving}
+                  >
+                    <i className="fa fa-paperclip me-2" aria-hidden="true" />
+                    {attachFile || showExisting ? 'Replace file' : 'Attach file or image'}
+                  </button>
+                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>Max 10 MB · images &amp; PDF/DOC/XLS</span>
+                </div>
+                {attachFile && (
+                  <AnnouncementAttachPreview
+                    file={attachFile}
+                    previewUrl={attachPreviewUrl}
+                    onRemove={clearLocalAttach}
+                    disabled={saving}
+                  />
+                )}
+                {showExisting && (
+                  <div className="ann-attach-block">
+                    <AnnouncementAttachmentView attachment={existingAttachment} />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger mt-2"
+                      onClick={() => setRemoveExisting(true)}
+                      disabled={saving}
+                    >
+                      Remove attachment
+                    </button>
+                  </div>
+                )}
+                {editItem && removeExisting && !attachFile && (
+                  <p className="text-muted mb-0 mt-2" style={{ fontSize: '0.82rem' }}>
+                    Existing attachment will be removed on save.
+                  </p>
+                )}
+              </div>
             </div>
             <div className="mt-3">
               <button type="submit" className="btn btn-success me-2" disabled={saving}>
-                <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>{saving ? 'Saving…' : 'Save'}
+                <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>
+                {saving ? 'Posting…' : 'Save'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowForm(false); clearLocalAttach() }} disabled={saving}>Cancel</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* List */}
       <div className="content-card">
         <div className="content-card-header"><i className="fa fa-list"></i><h6>All Announcements</h6></div>
         <div className="table-card">
@@ -147,10 +301,18 @@ function CoordAnnouncements() {
                   <div className="d-flex align-items-center gap-2 mb-1">
                     {a.is_pinned && <span style={{fontSize:'0.9rem'}}>📌</span>}
                     <strong>{a.title}</strong>
+                    {a.category === 'policy_update' && (
+                      <span className="badge bg-danger ms-1" style={{fontSize:'0.7rem'}}>Policy Update</span>
+                    )}
                     <span className={`badge ${roleBadge[a.target_role] ?? 'bg-secondary'} ms-1`} style={{fontSize:'0.7rem'}}>{a.target_role}</span>
                     <span className="ms-auto text-muted" style={{fontSize:'0.75rem'}}>{new Date(a.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-muted mb-0" style={{fontSize:'0.87rem'}}>{a.content}</p>
+                  {a.attachment && (
+                    <div className="ann-attach-block">
+                      <AnnouncementAttachmentView attachment={a.attachment} />
+                    </div>
+                  )}
                 </div>
                 <div className="ms-3 d-flex gap-2 flex-shrink-0">
                   <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(a)}><i className="fa fa-pen"></i></button>

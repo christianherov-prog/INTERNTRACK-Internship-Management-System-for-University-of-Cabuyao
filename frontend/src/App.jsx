@@ -34,6 +34,7 @@ import FacultyJournals from './pages/faculty/FacultyJournals'
 import FacultyEvaluations from './pages/faculty/FacultyEvaluations'
 import FacultyFeedback from './pages/faculty/FacultyFeedback'
 import FacultyDocuments from './pages/faculty/FacultyDocuments'
+import FacultyAttendance from './pages/faculty/FacultyAttendance'
 import FacultySettings from './pages/faculty/FacultySettings'
 import DirectorInternships from './pages/director/DirectorInternships'
 import CoordMonitoring from './pages/coordinator/CoordMonitoring'
@@ -101,6 +102,7 @@ function App() {
           <Route path="/faculty/evaluations" element={<ProtectedRoute role="faculty"><FacultyEvaluations /></ProtectedRoute>} />
           <Route path="/faculty/feedback" element={<ProtectedRoute role="faculty"><FacultyFeedback /></ProtectedRoute>} />
           <Route path="/faculty/documents" element={<ProtectedRoute role="faculty"><FacultyDocuments /></ProtectedRoute>} />
+          <Route path="/faculty/attendance" element={<ProtectedRoute role="faculty"><FacultyAttendance /></ProtectedRoute>} />
           <Route path="/faculty/messages" element={<ProtectedRoute role="faculty"><FacultyMessages /></ProtectedRoute>} />
           <Route path="/faculty/settings" element={<ProtectedRoute role="faculty"><FacultySettings /></ProtectedRoute>} />
           

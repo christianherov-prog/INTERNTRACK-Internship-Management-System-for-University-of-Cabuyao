@@ -7,17 +7,25 @@ import { CURRENT_TERM } from '../../config/term'
 
 function DirectorReports() {
   const [data, setData] = useState(null)
+  const [trends, setTrends] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const load = () => {
     setLoading(true)
     setError(null)
-    api.get('/director/dashboard')
-      .then((res) => setData(res.data))
+    Promise.all([
+      api.get('/director/dashboard'),
+      api.get('/director/reports/placement-trends'),
+    ])
+      .then(([dash, trendRes]) => {
+        setData(dash.data)
+        setTrends(trendRes.data)
+      })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load reports.')
         setData(null)
+        setTrends(null)
       })
       .finally(() => setLoading(false))
   }
@@ -28,6 +36,8 @@ function DirectorReports() {
   const byProgram = data?.by_program ?? []
   const topCompanies = data?.top_companies ?? []
   const moaByStatus = data?.moa_by_status ?? {}
+  const years = trends?.academic_years ?? []
+  const trendCompanies = trends?.by_company ?? []
 
   const exportInternshipSummary = () => {
     downloadCsv('internship-summary-by-program', byProgram.map((p) => ({
@@ -54,6 +64,18 @@ function DirectorReports() {
     })))
   }
 
+  const exportTrends = () => {
+    downloadCsv('placement-trends-3yr', trendCompanies.map((c) => {
+      const row = {
+        Company: c.company_name,
+        Industry: c.industry ?? '—',
+        Total: c.total,
+      }
+      years.forEach((y) => { row[y] = c.years?.[y] ?? 0 })
+      return row
+    }))
+  }
+
   return (
     <Layout title="Reports" subtitle={CURRENT_TERM} icon="fa-chart-bar" bodyClass="director-page">
       {error && <PageError message={error} onRetry={load} />}
@@ -77,7 +99,7 @@ function DirectorReports() {
             </div>
           </div>
 
-          <div className="row g-3">
+          <div className="row g-3 mb-4">
             <div className="col-md-4">
               <div className="content-card h-100">
                 <div className="content-card-header">
@@ -122,6 +144,49 @@ function DirectorReports() {
                   {!Object.keys(moaByStatus).length && <p className="text-muted small mt-3 mb-0">No MOA data yet.</p>}
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="content-card">
+            <div className="content-card-header">
+              <i className="fa fa-chart-line"></i>
+              <h6>3-Year Placement Trends by Company</h6>
+              <button type="button" className="btn btn-sm btn-outline-success ms-auto" onClick={exportTrends} disabled={!trendCompanies.length}>
+                <i className="fa fa-file-csv me-1"></i>Export CSV
+              </button>
+            </div>
+            <div className="table-card">
+              {!trendCompanies.length ? (
+                <div className="text-center py-4 text-muted">No placement data for the last three academic years.</div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="table table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Industry</th>
+                        {years.map((y) => <th key={y} className="text-center">{y}</th>)}
+                        <th className="text-center">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trendCompanies.map((c) => (
+                        <tr key={c.company_id}>
+                          <td className="fw-semibold">{c.company_name}</td>
+                          <td>{c.industry || '—'}</td>
+                          {years.map((y) => (
+                            <td key={y} className="text-center">{c.years?.[y] ?? 0}</td>
+                          ))}
+                          <td className="text-center fw-semibold">{c.total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-muted px-3 pb-3 mb-0" style={{ fontSize: '0.78rem' }}>
+                Aggregated via SQL GROUP BY company + academic year. Years: {years.join(', ') || '—'}.
+              </p>
             </div>
           </div>
         </>

@@ -43,6 +43,7 @@ const ROLE_NAV = {
   faculty: [
     { section: 'MAIN', to: '/faculty/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/faculty/assigned-students', icon: 'fa-users', text: 'Assigned Students' },
+    { section: 'TOOLS', to: '/faculty/attendance', icon: 'fa-calendar-check', text: 'Attendance' },
     { section: 'TOOLS', to: '/faculty/journals', icon: 'fa-book', text: 'Journals' },
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/feedback', icon: 'fa-comment-dots', text: 'Feedback' },

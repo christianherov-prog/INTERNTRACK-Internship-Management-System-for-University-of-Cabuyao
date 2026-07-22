@@ -109,9 +109,12 @@ class StudentController extends Controller
                 $q->where('target_role', 'all')->orWhere('target_role', 'student');
             })
             ->where(function ($q) { $q->whereNull('expires_at')->orWhere('expires_at', '>', now()); })
+            ->orderByDesc('is_pinned')
             ->latest()
             ->take(5)
-            ->get(['id', 'title', 'content', 'created_at', 'is_pinned']);
+            ->get()
+            ->map(fn (Announcement $a) => $a->toClientArray())
+            ->values();
 
         return response()->json([
             'student' => $this->studentSummary($user->studentProfile),
@@ -126,7 +129,7 @@ class StudentController extends Controller
                 'doc_compliance'   => $docCompliance,
                 'evaluation_score' => $evalAvg ? round($evalAvg * 20, 1) : null,
             ],
-            'weekly_chart'  => ['labels' => $labels, 'hours' => $hours, 'target' => array_fill(0, 8, 20)],
+            'weekly_chart'  => ['labels' => $labels, 'hours' => $hours],
             'announcements' => $announcements,
             'internship'    => [
                 'id'            => $internship->id,

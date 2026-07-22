@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DirectorController extends Controller
 {
@@ -122,6 +123,96 @@ class DirectorController extends Controller
             'is_active'       => $c->is_active,
         ]);
         return ApiResponse::list($companies);
+    }
+
+    /**
+     * GET /api/v1/director/reports/placement-trends
+     * Last three academic years: placement counts by company (SQL GROUP BY).
+     */
+    public function placementTrends(Request $request)
+    {
+        return response()->json($this->placementTrendsPayload());
+    }
+
+    private function placementTrendsPayload(): array
+    {
+        $years = $this->lastThreeAcademicYears();
+
+        $rows = DB::table('internships')
+            ->join('companies', 'companies.id', '=', 'internships.company_id')
+            ->whereIn('internships.academic_year', $years)
+            ->whereNotNull('internships.company_id')
+            ->whereNull('internships.deleted_at')
+            ->selectRaw('
+                companies.id as company_id,
+                companies.company_name,
+                companies.industry,
+                internships.academic_year,
+                COUNT(*) as placement_count
+            ')
+            ->groupBy(
+                'companies.id',
+                'companies.company_name',
+                'companies.industry',
+                'internships.academic_year'
+            )
+            ->orderBy('internships.academic_year')
+            ->orderByDesc('placement_count')
+            ->orderBy('companies.company_name')
+            ->get();
+
+        // Pivot for UI: one row per company with year columns
+        $byCompany = [];
+        foreach ($rows as $row) {
+            $id = (int) $row->company_id;
+            if (!isset($byCompany[$id])) {
+                $byCompany[$id] = [
+                    'company_id'   => $id,
+                    'company_name' => $row->company_name,
+                    'industry'     => $row->industry,
+                    'years'        => array_fill_keys($years, 0),
+                    'total'        => 0,
+                ];
+            }
+            $byCompany[$id]['years'][$row->academic_year] = (int) $row->placement_count;
+            $byCompany[$id]['total'] += (int) $row->placement_count;
+        }
+
+        $companies = collect($byCompany)
+            ->sortByDesc('total')
+            ->values()
+            ->all();
+
+        return [
+            'academic_years' => $years,
+            'rows'           => $rows,
+            'by_company'     => $companies,
+            'generated_at'   => now()->toDateTimeString(),
+        ];
+    }
+
+    /** e.g. [2025-2026, 2024-2025, 2023-2024] newest first. */
+    private function lastThreeAcademicYears(): array
+    {
+        $latest = Internship::query()
+            ->whereNotNull('academic_year')
+            ->orderByDesc('academic_year')
+            ->value('academic_year');
+
+        if ($latest && preg_match('/^(\d{4})-(\d{4})$/', $latest, $m)) {
+            $start = (int) $m[1];
+        } else {
+            // AY typically spans calendar year → next; use current calendar year as end.
+            $start = (int) now()->year - 1;
+        }
+
+        $years = [];
+        for ($i = 0; $i < 3; $i++) {
+            $s = $start - $i;
+            $years[] = $s.'-'.($s + 1);
+        }
+
+        return $years;
     }
 
     /**
