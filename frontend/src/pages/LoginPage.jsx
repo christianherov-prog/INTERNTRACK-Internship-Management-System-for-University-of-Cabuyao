@@ -47,7 +47,18 @@ function LoginPage() {
   return (
     <div className="login-page-redesign">
       <div className="login-split-left">
-        <div className="login-bg-overlay"></div>
+        <div className="login-bg-overlay" aria-hidden="true" />
+        <div className="login-hero-watermark" aria-hidden="true">
+          <img
+            src="/logo.jpg"
+            alt=""
+            className="login-hero-watermark-img"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+              e.currentTarget.parentElement?.classList.add('is-missing')
+            }}
+          />
+        </div>
         <div className="login-left-content">
           <h1 className="login-left-title">
             <span className="brand-intern">INTERN</span>
@@ -135,12 +146,14 @@ function LoginPage() {
               </a>
             </div>
 
-            {error && (
-              <div className="login-error-box" id="loginError">
-                <i className="fa fa-exclamation-circle"></i>
-                {error}
-              </div>
-            )}
+            <div className="login-error-slot" role="alert" aria-live="polite">
+              {error ? (
+                <div className="login-error-box" id="loginError">
+                  <i className="fa fa-exclamation-circle" aria-hidden="true" />
+                  {error}
+                </div>
+              ) : null}
+            </div>
 
             <button type="submit" className="btn-signin" disabled={loading}>
               {loading ? (
