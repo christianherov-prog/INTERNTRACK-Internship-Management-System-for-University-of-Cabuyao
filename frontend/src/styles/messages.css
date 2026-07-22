@@ -219,6 +219,21 @@
   white-space: nowrap;
 }
 
+.msg-conv-context {
+  margin-top: 0.12rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-dark, #0a5c2e);
+  background: var(--green-pale, #e8f7ee);
+  border-radius: 6px;
+  padding: 0.12rem 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: inline-block;
+}
+
 .msg-conv-preview {
   margin-top: 0.15rem;
   font-size: 0.78rem;

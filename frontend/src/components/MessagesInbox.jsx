@@ -79,6 +79,14 @@ function threadKey(internshipId, peerId) {
 function ConversationRow({ thread, isActive, onSelect }) {
   const preview = thread.last_message?.body || 'No messages yet'
   const when = thread.last_message?.created_at
+  const contextParts = []
+  if (thread.student_name) contextParts.push(`Re: ${thread.student_name}`)
+  if (thread.internship_term) contextParts.push(thread.internship_term)
+  if (thread.internship_status) {
+    contextParts.push(String(thread.internship_status).replace(/_/g, ' '))
+  }
+  const contextLine = contextParts.join(' · ')
+  const ariaCtx = contextLine ? `, ${contextLine}` : ''
 
   return (
     <button
@@ -87,7 +95,7 @@ function ConversationRow({ thread, isActive, onSelect }) {
       className={`msg-conv-item ${isActive ? 'is-active' : ''} ${thread.unread_count > 0 ? 'has-unread' : ''}`}
       onClick={() => onSelect(thread)}
       aria-current={isActive ? 'true' : undefined}
-      aria-label={`Conversation with ${thread.peer.name}, ${roleLabel(thread.peer.role)}`}
+      aria-label={`Conversation with ${thread.peer.name}, ${roleLabel(thread.peer.role)}${ariaCtx}`}
     >
       <PeerAvatar peer={thread.peer} />
       <div className="msg-conv-body">
@@ -97,8 +105,12 @@ function ConversationRow({ thread, isActive, onSelect }) {
         </div>
         <div className="msg-conv-meta">
           {roleLabel(thread.peer.role)}
-          {thread.student_name ? ` · ${thread.student_name}` : ''}
         </div>
+        {contextLine && (
+          <div className="msg-conv-context" title={contextLine}>
+            {contextLine}
+          </div>
+        )}
         <div className="msg-conv-preview">{preview}</div>
       </div>
       {thread.unread_count > 0 && (
@@ -176,7 +188,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
   const [listLoading, setListLoading] = useState(true)
   const [listRefreshing, setListRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [active, setActive] = useState(null)
+  const [active, setActive] = useState(null) // { internship_id, peer, student_name?, internship_term?, internship_status? }
   const [messages, setMessages] = useState([])
   const [threadMeta, setThreadMeta] = useState(null)
   const [threadPage, setThreadPage] = useState(1)
@@ -291,7 +303,13 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
       return
     }
 
-    setActive({ internship_id: thread.internship_id, peer: thread.peer })
+    setActive({
+      internship_id: thread.internship_id,
+      peer: thread.peer,
+      student_name: thread.student_name || null,
+      internship_term: thread.internship_term || null,
+      internship_status: thread.internship_status || null,
+    })
     setThreadLoading(true)
     setSendError(null)
     if (!same) setDraft('')
@@ -576,12 +594,15 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
               </div>
             ) : (
               <>
-                {threadMeta?.internship?.term && (
+                {(threadMeta?.internship || active?.student_name || active?.internship_term) && (
                   <div className="msg-thread-context">
-                    {threadMeta.internship.term}
-                    {threadMeta.internship.status
-                      ? ` · ${String(threadMeta.internship.status).replace(/_/g, ' ')}`
-                      : ''}
+                    {[
+                      active?.student_name ? `Re: ${active.student_name}` : null,
+                      threadMeta?.internship?.term || active?.internship_term || null,
+                      (threadMeta?.internship?.status || active?.internship_status)
+                        ? String(threadMeta?.internship?.status || active.internship_status).replace(/_/g, ' ')
+                        : null,
+                    ].filter(Boolean).join(' · ')}
                   </div>
                 )}
 
