@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Layout from './Layout'
 import PageError from './PageError'
 import api from '../services/api'
 import { unwrapList } from '../utils/apiList'
 import { useAuth } from '../contexts/AuthContext'
+import '../styles/messages.css'
 
 function roleLabel(role) {
   const map = {
@@ -13,16 +21,118 @@ function roleLabel(role) {
     faculty: 'Faculty Supervisor',
     coordinator: 'Coordinator',
   }
-  return map[role] || role
+  return map[role] || role || 'Stakeholder'
 }
 
 function timeAgo(iso) {
   if (!iso) return ''
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (diff < 0) return 'just now'
   if (diff < 60) return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
   return `${Math.floor(diff / 86400)}d ago`
+}
+
+function initials(name) {
+  if (!name || name === '…') return '?'
+  const parts = String(name).trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+function threadKey(internshipId, peerId) {
+  return `${internshipId}-${peerId}`
+}
+
+function ConversationRow({ thread, isActive, onSelect }) {
+  const preview = thread.last_message?.body || 'No messages yet'
+  const when = thread.last_message?.created_at
+
+  return (
+    <button
+      type="button"
+      role="listitem"
+      className={`msg-conv-item ${isActive ? 'is-active' : ''} ${thread.unread_count > 0 ? 'has-unread' : ''}`}
+      onClick={() => onSelect(thread)}
+      aria-current={isActive ? 'true' : undefined}
+      aria-label={`Conversation with ${thread.peer.name}, ${roleLabel(thread.peer.role)}`}
+    >
+      <div className="msg-conv-avatar" aria-hidden="true">
+        {initials(thread.peer.name)}
+      </div>
+      <div className="msg-conv-body">
+        <div className="msg-conv-top">
+          <span className="msg-conv-name">{thread.peer.name}</span>
+          {when && <span className="msg-conv-time">{timeAgo(when)}</span>}
+        </div>
+        <div className="msg-conv-meta">
+          {roleLabel(thread.peer.role)}
+          {thread.student_name ? ` · ${thread.student_name}` : ''}
+        </div>
+        <div className="msg-conv-preview">{preview}</div>
+      </div>
+      {thread.unread_count > 0 && (
+        <span className="msg-unread-badge" aria-label={`${thread.unread_count} unread`}>
+          {thread.unread_count > 99 ? '99+' : thread.unread_count}
+        </span>
+      )}
+    </button>
+  )
+}
+
+const MemoConversationRow = memo(ConversationRow)
+
+function MessageBubble({ message, mine }) {
+  const pending = Boolean(message._pending)
+  const failed = Boolean(message._failed)
+
+  return (
+    <div
+      className={`msg-bubble-row ${mine ? 'is-mine' : 'is-theirs'} ${pending ? 'is-pending' : ''} ${failed ? 'is-failed' : ''}`}
+    >
+      <div className={`msg-bubble ${mine ? 'msg-bubble-mine' : 'msg-bubble-theirs'}`}>
+        <div className="msg-bubble-text">{message.body}</div>
+        <div className="msg-bubble-meta">
+          {pending ? 'Sending…' : failed ? 'Failed to send' : timeAgo(message.created_at)}
+          {!mine && !pending && message.read_at ? ' · Read' : ''}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const MemoMessageBubble = memo(MessageBubble)
+
+function ListSkeleton() {
+  return (
+    <div className="msg-skeleton-list" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="msg-skeleton-row">
+          <div className="msg-skeleton-avatar" />
+          <div className="msg-skeleton-lines">
+            <div className="msg-skeleton-line w-60" />
+            <div className="msg-skeleton-line w-40" />
+            <div className="msg-skeleton-line w-80" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ThreadSkeleton() {
+  return (
+    <div className="msg-skeleton-thread" aria-hidden="true">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className={`msg-skeleton-bubble ${i % 2 === 0 ? 'left' : 'right'}`}>
+          <div className="msg-skeleton-line" />
+          <div className="msg-skeleton-line w-40" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -35,9 +145,10 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
   const [threads, setThreads] = useState([])
   const [listMeta, setListMeta] = useState(null)
   const [listPage, setListPage] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const [listLoading, setListLoading] = useState(true)
+  const [listRefreshing, setListRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [active, setActive] = useState(null) // { internship_id, peer }
+  const [active, setActive] = useState(null)
   const [messages, setMessages] = useState([])
   const [threadMeta, setThreadMeta] = useState(null)
   const [threadPage, setThreadPage] = useState(1)
@@ -46,13 +157,40 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState(null)
-  const deepLinkHandled = useRef(false)
-  const threadEndRef = useRef(null)
 
-  const loadThreads = useCallback((page = 1, append = false) => {
-    setLoading(!append)
+  const deepLinkHandled = useRef(false)
+  const paneRef = useRef(null)
+  const stickToBottomRef = useRef(true)
+  const activeRef = useRef(null)
+  const tempIdRef = useRef(0)
+
+  useEffect(() => {
+    activeRef.current = active
+  }, [active])
+
+  const isNearBottom = useCallback(() => {
+    const el = paneRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80
+  }, [])
+
+  const scrollToBottom = useCallback((behavior = 'auto') => {
+    const el = paneRef.current
+    if (!el) return
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior })
+    })
+  }, [])
+
+  const onPaneScroll = () => {
+    stickToBottomRef.current = isNearBottom()
+  }
+
+  const loadThreads = useCallback((page = 1, { append = false, silent = false } = {}) => {
+    if (!silent && !append) setListLoading(true)
+    if (silent) setListRefreshing(true)
     setError(null)
-    api.get('/messages/conversations', {
+    return api.get('/messages/conversations', {
       params: { archived: archived ? 1 : 0, page, per_page: 20 },
     })
       .then((res) => {
@@ -65,14 +203,19 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         setError(err.response?.data?.message || 'Failed to load conversations.')
         if (!append) setThreads([])
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setListLoading(false)
+        setListRefreshing(false)
+      })
   }, [archived])
 
   useEffect(() => {
     deepLinkHandled.current = false
     setActive(null)
     setMessages([])
-    loadThreads(1, false)
+    setThreadMeta(null)
+    stickToBottomRef.current = true
+    loadThreads(1, { append: false, silent: false })
   }, [loadThreads])
 
   const fetchThreadPage = async (internshipId, peerId, page, { prepend = false } = {}) => {
@@ -82,27 +225,51 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     const chunk = res.data.messages || []
     setThreadMeta(res.data)
     setThreadPage(page)
-    setMessages((prev) => (prepend ? [...chunk, ...prev] : chunk))
+    setMessages((prev) => {
+      if (prepend) return [...chunk, ...prev]
+      // Keep optimistic pending/failed locals that aren't on the server yet
+      const locals = prev.filter((m) => m._pending || m._failed)
+      const ids = new Set(chunk.map((m) => m.id))
+      const keepLocals = locals.filter((m) => !ids.has(m.id) && !ids.has(m._serverId))
+      return [...chunk, ...keepLocals]
+    })
     return res.data
   }
 
   const openThread = async (thread, { replaceUrl = true } = {}) => {
+    const same =
+      active
+      && active.internship_id === thread.internship_id
+      && active.peer.id === thread.peer.id
+
+    if (same && messages.length > 0 && !threadLoading) {
+      // Already open — soft refresh without clearing UI
+      try {
+        await fetchThreadPage(thread.internship_id, thread.peer.id, 1, { prepend: false })
+        if (stickToBottomRef.current) scrollToBottom('smooth')
+        loadThreads(1, { silent: true })
+      } catch {
+        /* ignore soft refresh errors */
+      }
+      return
+    }
+
     setActive({ internship_id: thread.internship_id, peer: thread.peer })
     setThreadLoading(true)
     setSendError(null)
-    setDraft('')
+    if (!same) setDraft('')
+    stickToBottomRef.current = true
+
     try {
       await fetchThreadPage(thread.internship_id, thread.peer.id, 1, { prepend: false })
-      loadThreads(1, false)
+      loadThreads(1, { silent: true })
       if (replaceUrl) {
         setSearchParams({
           internship_id: String(thread.internship_id),
           peer_id: String(thread.peer.id),
-        })
+        }, { replace: true })
       }
-      requestAnimationFrame(() => {
-        threadEndRef.current?.scrollIntoView({ block: 'end' })
-      })
+      scrollToBottom('auto')
     } catch (err) {
       setSendError(err.response?.data?.message || 'Failed to open conversation.')
       setMessages([])
@@ -113,7 +280,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
   // Deep-link from notification: ?internship_id=&peer_id=
   useEffect(() => {
-    if (deepLinkHandled.current || loading || threads.length === 0) return
+    if (deepLinkHandled.current || listLoading || threads.length === 0) return
     const internshipId = Number(searchParams.get('internship_id'))
     const peerId = Number(searchParams.get('peer_id'))
     if (!internshipId || !peerId) return
@@ -125,22 +292,29 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     if (match) {
       openThread(match, { replaceUrl: false })
     } else {
-      // Thread may be on another page / archived — open directly
       openThread(
         { internship_id: internshipId, peer: { id: peerId, name: '…', role: '' } },
         { replaceUrl: false }
       )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, threads, searchParams])
+  }, [listLoading, threads, searchParams])
 
   const loadOlderMessages = async () => {
     if (!active || !threadMeta?.meta) return
     const next = threadPage + 1
     if (next > threadMeta.meta.last_page) return
+    const el = paneRef.current
+    const prevHeight = el?.scrollHeight || 0
+    const prevTop = el?.scrollTop || 0
     setLoadingOlder(true)
     try {
       await fetchThreadPage(active.internship_id, active.peer.id, next, { prepend: true })
+      requestAnimationFrame(() => {
+        if (!paneRef.current) return
+        const delta = paneRef.current.scrollHeight - prevHeight
+        paneRef.current.scrollTop = prevTop + delta
+      })
     } catch (err) {
       setSendError(err.response?.data?.message || 'Failed to load earlier messages.')
     } finally {
@@ -150,34 +324,100 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
   const handleSend = async (e) => {
     e?.preventDefault?.()
-    if (!active || draft.trim().length < 1) return
-    setSending(true)
+    if (!active || draft.trim().length < 1 || sending) return
+
+    const body = draft.trim()
+    const tempId = `tmp-${++tempIdRef.current}`
+    const optimistic = {
+      id: tempId,
+      internship_id: active.internship_id,
+      sender_id: user?.id,
+      recipient_id: active.peer.id,
+      body,
+      created_at: new Date().toISOString(),
+      read_at: null,
+      _pending: true,
+    }
+
+    setDraft('')
     setSendError(null)
+    setSending(true)
+    setMessages((prev) => [...prev, optimistic])
+    stickToBottomRef.current = true
+    scrollToBottom('smooth')
+
     try {
       const res = await api.post('/messages', {
         internship_id: active.internship_id,
         recipient_id: active.peer.id,
-        body: draft.trim(),
+        body,
       })
       const created = res.data.data
-      setMessages((prev) => [...prev, created])
-      setDraft('')
-      loadThreads(1, false)
-      requestAnimationFrame(() => {
-        threadEndRef.current?.scrollIntoView({ block: 'end' })
-      })
+      setMessages((prev) => prev.map((m) => (m.id === tempId ? created : m)))
+      loadThreads(1, { silent: true })
+      if (stickToBottomRef.current) scrollToBottom('smooth')
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.message
+      setMessages((prev) => prev.map((m) => (
+        m.id === tempId ? { ...m, _pending: false, _failed: true } : m
+      )))
       if (status === 429) {
         setSendError(msg || 'Too many messages sent. Please wait a moment before sending again.')
       } else {
         setSendError(msg || 'Failed to send message.')
       }
+      // Restore draft so the user can retry
+      setDraft((d) => (d ? d : body))
     } finally {
       setSending(false)
     }
   }
+
+  // Soft-poll active thread for new messages without resetting draft/scroll
+  useEffect(() => {
+    if (!active) return undefined
+    const tick = async () => {
+      const cur = activeRef.current
+      if (!cur) return
+      try {
+        const res = await api.get(`/messages/conversations/${cur.internship_id}/${cur.peer.id}`, {
+          params: { page: 1, per_page: 50 },
+        })
+        const chunk = res.data.messages || []
+        const shouldStick = stickToBottomRef.current
+        setMessages((prev) => {
+          const pendingOrFailed = prev.filter((m) => m._pending || m._failed)
+          const confirmedTemps = pendingOrFailed.filter((local) =>
+            chunk.some(
+              (c) => c.sender_id === local.sender_id && c.body === local.body
+            )
+          )
+          const stillLocal = pendingOrFailed.filter((local) => !confirmedTemps.includes(local))
+          const next = [...chunk, ...stillLocal].sort((a, b) => {
+            const ta = new Date(a.created_at).getTime()
+            const tb = new Date(b.created_at).getTime()
+            if (ta !== tb) return ta - tb
+            return String(a.id).localeCompare(String(b.id))
+          })
+          if (
+            next.length === prev.length
+            && next.every((m, i) => m.id === prev[i].id && m.read_at === prev[i].read_at && m._pending === prev[i]._pending)
+          ) {
+            return prev
+          }
+          return next
+        })
+        setThreadMeta((prev) => (prev ? { ...prev, ...res.data, messages: undefined } : res.data))
+        if (shouldStick) scrollToBottom('smooth')
+        loadThreads(1, { silent: true })
+      } catch {
+        /* ignore poll errors */
+      }
+    }
+    const id = window.setInterval(tick, 12000)
+    return () => window.clearInterval(id)
+  }, [active?.internship_id, active?.peer?.id, loadThreads, scrollToBottom])
 
   const onComposerKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -188,95 +428,83 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
   const hasOlder = threadMeta?.meta && threadPage < threadMeta.meta.last_page
   const canLoadMoreThreads = listMeta && listPage < listMeta.last_page
+  const activeKey = active ? threadKey(active.internship_id, active.peer.id) : null
+
+  const headerPeer = useMemo(() => {
+    if (!active) return null
+    return active.peer
+  }, [active])
 
   return (
     <Layout title="Messages" subtitle={titleSubtitle} icon="fa-envelope" bodyClass={bodyClass}>
-      {error && <PageError message={error} onRetry={() => loadThreads(1, false)} />}
+      {error && <PageError message={error} onRetry={() => loadThreads(1, { silent: false })} />}
 
-      <div className="d-flex flex-wrap gap-2 mb-3" role="tablist" aria-label="Inbox views">
-        <button
-          type="button"
-          className={`btn btn-sm ${!archived ? 'btn-success' : 'btn-outline-secondary'}`}
-          aria-selected={!archived}
-          onClick={() => setArchived(false)}
-        >
-          Active
-        </button>
-        <button
-          type="button"
-          className={`btn btn-sm ${archived ? 'btn-success' : 'btn-outline-secondary'}`}
-          aria-selected={archived}
-          onClick={() => setArchived(true)}
-        >
-          Archived
-        </button>
-      </div>
+      <div className="msg-inbox">
+        <div className="msg-inbox-toolbar" role="tablist" aria-label="Inbox views">
+          <button
+            type="button"
+            className={`msg-tab ${!archived ? 'is-active' : ''}`}
+            aria-selected={!archived}
+            onClick={() => setArchived(false)}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            className={`msg-tab ${archived ? 'is-active' : ''}`}
+            aria-selected={archived}
+            onClick={() => setArchived(true)}
+          >
+            Archived
+          </button>
+          {listRefreshing && (
+            <span className="msg-refresh-hint" aria-live="polite">
+              <i className="fa fa-sync fa-spin" aria-hidden="true" /> Updating
+            </span>
+          )}
+        </div>
 
-      <div className="row g-3 messages-inbox-row">
-        <div className="col-lg-4 col-12">
-          <div className="content-card h-100">
-            <div className="content-card-header">
-              <i className="fa fa-inbox" aria-hidden="true"></i>
-              <h6>{archived ? 'Archived conversations' : 'Conversations'}</h6>
-            </div>
-            <div
-              className="table-card messages-thread-list"
-              style={{ maxHeight: 520, overflowY: 'auto' }}
-              role="list"
-              aria-label="Conversation list"
-            >
-              {loading ? (
-                <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted" aria-hidden="true"></i></div>
+        <div className="msg-inbox-grid">
+          <section className="msg-panel msg-panel-list" aria-label="Conversations">
+            <header className="msg-panel-header">
+              <i className="fa fa-inbox" aria-hidden="true" />
+              <h6>{archived ? 'Archived' : 'Conversations'}</h6>
+            </header>
+
+            <div className="msg-conv-list" role="list">
+              {listLoading ? (
+                <ListSkeleton />
               ) : threads.length === 0 ? (
-                <div className="text-center text-muted py-5 px-3">
-                  <i className="fa fa-comments fa-2x mb-2 d-block" aria-hidden="true"></i>
-                  {archived
-                    ? 'No archived conversations yet.'
-                    : 'No conversations yet. You can message people linked to your internship once they are assigned.'}
+                <div className="msg-empty">
+                  <i className="fa fa-comments" aria-hidden="true" />
+                  <p className="msg-empty-title">
+                    {archived ? 'No archived conversations yet' : 'No conversations yet'}
+                  </p>
+                  <p className="msg-empty-sub">
+                    {archived
+                      ? 'Ended internships will appear here when available.'
+                      : 'People linked to your internship will show up here once they are assigned.'}
+                  </p>
                 </div>
               ) : (
                 <>
-                  <div className="list-group list-group-flush">
-                    {threads.map((t) => {
-                      const key = `${t.internship_id}-${t.peer.id}`
-                      const isActive = active
-                        && active.internship_id === t.internship_id
-                        && active.peer.id === t.peer.id
-                      return (
-                        <button
-                          type="button"
-                          key={key}
-                          role="listitem"
-                          className={`list-group-item list-group-item-action text-start ${isActive ? 'active' : ''}`}
-                          onClick={() => openThread(t)}
-                          aria-label={`Conversation with ${t.peer.name}, ${roleLabel(t.peer.role)}`}
-                        >
-                          <div className="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                              <strong>{t.peer.name}</strong>
-                              <div className="small opacity-75">{roleLabel(t.peer.role)}</div>
-                              <div className="small opacity-75">{t.student_name} · {t.internship_term}</div>
-                            </div>
-                            {t.unread_count > 0 && (
-                              <span className="badge bg-danger" aria-label={`${t.unread_count} unread`}>{t.unread_count}</span>
-                            )}
-                          </div>
-                          {t.last_message && (
-                            <div className="small mt-1 text-truncate" style={{ maxWidth: '100%' }}>
-                              {t.last_message.body}
-                              <span className="ms-1 opacity-75">· {timeAgo(t.last_message.created_at)}</span>
-                            </div>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  {threads.map((t) => {
+                    const key = threadKey(t.internship_id, t.peer.id)
+                    return (
+                      <MemoConversationRow
+                        key={key}
+                        thread={t}
+                        isActive={activeKey === key}
+                        onSelect={openThread}
+                      />
+                    )
+                  })}
                   {canLoadMoreThreads && (
-                    <div className="p-2 text-center">
+                    <div className="msg-list-more">
                       <button
                         type="button"
                         className="btn btn-sm btn-outline-secondary"
-                        onClick={() => loadThreads(listPage + 1, true)}
+                        onClick={() => loadThreads(listPage + 1, { append: true, silent: true })}
                       >
                         Load more conversations
                       </button>
@@ -285,119 +513,121 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                 </>
               )}
             </div>
-          </div>
-        </div>
+          </section>
 
-        <div className="col-lg-8 col-12">
-          <div className="content-card h-100 d-flex flex-column">
-            <div className="content-card-header">
-              <i className="fa fa-comments" aria-hidden="true"></i>
-              <h6>
-                {active
-                  ? `${active.peer.name || 'Conversation'} (${roleLabel(active.peer.role) || '…'})`
+          <section className="msg-panel msg-panel-thread" aria-label="Message thread">
+            <header className="msg-panel-header">
+              <i className="fa fa-comments" aria-hidden="true" />
+              <h6 className="msg-thread-title">
+                {headerPeer
+                  ? (
+                    <>
+                      <span className="msg-thread-name">{headerPeer.name || 'Conversation'}</span>
+                      <span className="msg-thread-role">{roleLabel(headerPeer.role)}</span>
+                    </>
+                    )
                   : 'Select a conversation'}
               </h6>
-            </div>
+            </header>
 
             {!active ? (
-              <div className="text-center text-muted py-5">
-                Choose a conversation from the list to read and send messages.
+              <div className="msg-empty msg-empty-thread">
+                <i className="fa fa-paper-plane" aria-hidden="true" />
+                <p className="msg-empty-title">Select a conversation to start messaging</p>
+                <p className="msg-empty-sub">Choose someone from the list to view the thread and send a message.</p>
               </div>
-            ) : threadLoading ? (
-              <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted" aria-hidden="true"></i></div>
             ) : (
               <>
                 {threadMeta?.internship?.term && (
-                  <div className="px-3 pt-2 small text-muted">
-                    Internship: {threadMeta.internship.term}
-                    {threadMeta.internship.status ? ` · ${threadMeta.internship.status}` : ''}
+                  <div className="msg-thread-context">
+                    {threadMeta.internship.term}
+                    {threadMeta.internship.status
+                      ? ` · ${String(threadMeta.internship.status).replace(/_/g, ' ')}`
+                      : ''}
                   </div>
                 )}
-                {hasOlder && (
-                  <div className="px-3 pt-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary w-100"
-                      onClick={loadOlderMessages}
-                      disabled={loadingOlder}
-                    >
-                      {loadingOlder ? 'Loading…' : 'Load earlier messages'}
-                    </button>
-                  </div>
-                )}
-                <div
-                  className="flex-grow-1 px-3 py-3 messages-thread-pane"
-                  style={{ maxHeight: 380, overflowY: 'auto', background: 'rgba(0,0,0,0.02)' }}
-                  role="log"
-                  aria-live="polite"
-                  aria-label="Message thread"
-                >
-                  {messages.length === 0 ? (
-                    <div className="text-center text-muted py-4">No messages yet. Say hello.</div>
-                  ) : (
-                    messages.map((m) => {
-                      const mine = m.sender_id === user?.id
-                      return (
-                        <div
-                          key={m.id}
-                          className={`mb-2 d-flex ${mine ? 'justify-content-end' : 'justify-content-start'}`}
+
+                {threadLoading && messages.length === 0 ? (
+                  <ThreadSkeleton />
+                ) : (
+                  <>
+                    {hasOlder && (
+                      <div className="msg-load-older">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={loadOlderMessages}
+                          disabled={loadingOlder}
                         >
-                          <div
-                            className={`rounded px-3 py-2 ${mine ? 'bg-success text-white' : 'bg-white border'}`}
-                            style={{ maxWidth: '85%', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                          >
-                            <div>{m.body}</div>
-                            <div className={`small mt-1 ${mine ? 'text-white-50' : 'text-muted'}`}>
-                              {timeAgo(m.created_at)}
-                              {!mine && m.read_at ? ' · read' : ''}
-                            </div>
-                          </div>
+                          {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+                        </button>
+                      </div>
+                    )}
+
+                    <div
+                      ref={paneRef}
+                      className={`msg-thread-pane ${threadLoading ? 'is-loading' : ''}`}
+                      role="log"
+                      aria-live="polite"
+                      aria-label="Message thread"
+                      onScroll={onPaneScroll}
+                    >
+                      {messages.length === 0 ? (
+                        <div className="msg-empty msg-empty-inline">
+                          <p className="msg-empty-title">No messages yet</p>
+                          <p className="msg-empty-sub">Say hello to start the conversation.</p>
                         </div>
-                      )
-                    })
-                  )}
-                  <div ref={threadEndRef} />
-                </div>
+                      ) : (
+                        messages.map((m) => (
+                          <MemoMessageBubble
+                            key={m.id}
+                            message={m}
+                            mine={m.sender_id === user?.id}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {sendError && (
-                  <div className="alert alert-danger mx-3 mb-2 py-2" role="alert">{sendError}</div>
+                  <div className="alert alert-danger msg-send-error py-2" role="alert">{sendError}</div>
                 )}
 
-                <form onSubmit={handleSend} className="px-3 pb-3">
-                  <label className="form-label visually-hidden" htmlFor="message-composer">
-                    Message body
-                  </label>
-                  <div className="input-group">
-                    <textarea
-                      id="message-composer"
-                      className="form-control"
-                      rows={2}
-                      placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={onComposerKeyDown}
-                      maxLength={5000}
-                      required
-                      aria-label="Message body"
-                    />
-                    <button
-                      type="submit"
-                      className="btn btn-success"
-                      disabled={sending || draft.trim().length < 1}
-                      aria-label="Send message"
-                    >
-                      {sending ? <i className="fa fa-spinner fa-spin" aria-hidden="true"></i> : <i className="fa fa-paper-plane" aria-hidden="true"></i>}
-                    </button>
-                  </div>
+                <form onSubmit={handleSend} className="msg-composer">
+                  <label className="visually-hidden" htmlFor="message-composer">Message body</label>
+                  <textarea
+                    id="message-composer"
+                    className="msg-composer-input form-control"
+                    rows={2}
+                    placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={onComposerKeyDown}
+                    maxLength={5000}
+                    required
+                    aria-label="Message body"
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-success msg-composer-send"
+                    disabled={sending || draft.trim().length < 1}
+                    aria-label="Send message"
+                  >
+                    {sending
+                      ? <i className="fa fa-spinner fa-spin" aria-hidden="true" />
+                      : <i className="fa fa-paper-plane" aria-hidden="true" />}
+                    <span>Send</span>
+                  </button>
                   {archived && (
-                    <div className="small text-muted mt-1">
+                    <div className="msg-composer-hint">
                       Viewing an archived (ended) internship conversation.
                     </div>
                   )}
                 </form>
               </>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </Layout>
