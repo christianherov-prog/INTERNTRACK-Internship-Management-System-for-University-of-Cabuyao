@@ -9,6 +9,7 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import Layout from './Layout'
 import PageError from './PageError'
+import ConfirmModal from './modals/ConfirmModal'
 import api from '../services/api'
 import { unwrapList } from '../utils/apiList'
 import { useAuth } from '../contexts/AuthContext'
@@ -22,6 +23,61 @@ function roleLabel(role) {
     coordinator: 'Coordinator',
   }
   return map[role] || role || 'Stakeholder'
+}
+
+const ATTACH_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png,image/gif,image/webp,application/pdf'
+const ATTACH_MAX_BYTES = 10 * 1024 * 1024
+const ATTACH_EXT_OK = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx'])
+const POLL_MS = 12000
+const LAST_THREAD_KEY = (userId) => `interntrack_msg_last_${userId || 'anon'}`
+
+function fileExt(name) {
+  const parts = String(name || '').toLowerCase().split('.')
+  return parts.length > 1 ? parts.pop() : ''
+}
+
+function isImageFile(fileOrMeta) {
+  if (!fileOrMeta) return false
+  if (fileOrMeta.is_image != null) return Boolean(fileOrMeta.is_image)
+  const mime = (fileOrMeta.type || fileOrMeta.mime || '').toLowerCase()
+  if (mime.startsWith('image/')) return true
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt(fileOrMeta.name || fileOrMeta.filename))
+}
+
+function fileTypeIcon(filename) {
+  const ext = fileExt(filename)
+  if (ext === 'pdf') return 'fa-file-pdf'
+  if (['doc', 'docx'].includes(ext)) return 'fa-file-word'
+  if (['xls', 'xlsx'].includes(ext)) return 'fa-file-excel'
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'fa-file-image'
+  return 'fa-file'
+}
+
+function formatBytes(n) {
+  const size = Number(n) || 0
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function validateAttachFile(file) {
+  if (!file) return 'No file selected.'
+  const ext = fileExt(file.name)
+  if (!ATTACH_EXT_OK.has(ext)) {
+    return 'Unsupported file type. Use images (jpg, png, gif, webp) or documents (pdf, doc, docx, xls, xlsx).'
+  }
+  if (file.size > ATTACH_MAX_BYTES) {
+    return 'File is too large. Maximum size is 10 MB.'
+  }
+  return null
+}
+
+function conversationPreview(thread) {
+  if (thread.last_message?.is_unsent) return 'This message was unsent'
+  const body = (thread.last_message?.body || '').trim()
+  if (body) return body
+  if (thread.last_message?.has_attachment) return '📎 Attachment'
+  return 'No messages yet'
 }
 
 function timeAgo(iso) {
@@ -40,6 +96,15 @@ function initials(name) {
   if (parts.length === 0) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+function threadKey(internshipId, peerId) {
+  return `${internshipId}-${peerId}`
+}
+
+function sameThread(a, b) {
+  if (!a || !b) return false
+  return a.internship_id === b.internship_id && a.peer?.id === b.peer?.id
 }
 
 /** Photo when available; initials fallback (and onError for broken URLs). */
@@ -72,12 +137,8 @@ function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
   )
 }
 
-function threadKey(internshipId, peerId) {
-  return `${internshipId}-${peerId}`
-}
-
-function ConversationRow({ thread, isActive, onSelect }) {
-  const preview = thread.last_message?.body || 'No messages yet'
+function ConversationRow({ thread, isActive, onSelect, onToggleArchive, archiveBusy }) {
+  const preview = conversationPreview(thread)
   const when = thread.last_message?.created_at
   const contextParts = []
   if (thread.student_name) contextParts.push(`Re: ${thread.student_name}`)
@@ -87,63 +148,398 @@ function ConversationRow({ thread, isActive, onSelect }) {
   }
   const contextLine = contextParts.join(' · ')
   const ariaCtx = contextLine ? `, ${contextLine}` : ''
+  const isUserArchived = Boolean(thread.user_archived)
 
   return (
-    <button
-      type="button"
+    <div
       role="listitem"
       className={`msg-conv-item ${isActive ? 'is-active' : ''} ${thread.unread_count > 0 ? 'has-unread' : ''}`}
-      onClick={() => onSelect(thread)}
-      aria-current={isActive ? 'true' : undefined}
-      aria-label={`Conversation with ${thread.peer.name}, ${roleLabel(thread.peer.role)}${ariaCtx}`}
     >
-      <PeerAvatar peer={thread.peer} />
-      <div className="msg-conv-body">
-        <div className="msg-conv-top">
-          <span className="msg-conv-name">{thread.peer.name}</span>
-          {when && <span className="msg-conv-time">{timeAgo(when)}</span>}
-        </div>
-        <div className="msg-conv-meta">
-          {roleLabel(thread.peer.role)}
-        </div>
-        {contextLine && (
-          <div className="msg-conv-context" title={contextLine}>
-            {contextLine}
+      <button
+        type="button"
+        className="msg-conv-main"
+        onClick={() => onSelect(thread)}
+        aria-current={isActive ? 'true' : undefined}
+        aria-label={`Conversation with ${thread.peer.name}, ${roleLabel(thread.peer.role)}${ariaCtx}`}
+      >
+        <PeerAvatar peer={thread.peer} />
+        <div className="msg-conv-body">
+          <div className="msg-conv-top">
+            <span className="msg-conv-name">{thread.peer.name}</span>
+            {when && <span className="msg-conv-time">{timeAgo(when)}</span>}
           </div>
+          <div className="msg-conv-meta">
+            {roleLabel(thread.peer.role)}
+          </div>
+          {contextLine && (
+            <div className="msg-conv-context" title={contextLine}>
+              {contextLine}
+            </div>
+          )}
+          <div className={`msg-conv-preview ${thread.last_message?.is_unsent ? 'is-unsent' : ''}`}>
+            {preview}
+          </div>
+        </div>
+        {thread.unread_count > 0 && (
+          <span className="msg-unread-badge" aria-label={`${thread.unread_count} unread`}>
+            {thread.unread_count > 99 ? '99+' : thread.unread_count}
+          </span>
         )}
-        <div className="msg-conv-preview">{preview}</div>
-      </div>
-      {thread.unread_count > 0 && (
-        <span className="msg-unread-badge" aria-label={`${thread.unread_count} unread`}>
-          {thread.unread_count > 99 ? '99+' : thread.unread_count}
-        </span>
-      )}
-    </button>
+      </button>
+      <button
+        type="button"
+        className="msg-conv-archive-btn"
+        title={isUserArchived ? 'Move to Active' : 'Archive conversation'}
+        aria-label={isUserArchived ? 'Unarchive conversation' : 'Archive conversation'}
+        disabled={archiveBusy}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleArchive(thread, !isUserArchived)
+        }}
+      >
+        <i className={`fa ${isUserArchived ? 'fa-inbox' : 'fa-archive'}`} aria-hidden="true" />
+      </button>
+    </div>
   )
 }
 
 const MemoConversationRow = memo(ConversationRow)
 
-function MessageBubble({ message, mine }) {
+function MessageAttachment({ attachment, onOpenImage }) {
+  const [broken, setBroken] = useState(false)
+  if (!attachment) return null
+
+  if (attachment.is_image) {
+    if (broken || !attachment.url) {
+      return (
+        <div className="msg-attach-unavailable" role="status">
+          <i className="fa fa-image" aria-hidden="true" />
+          <span>Image unavailable</span>
+        </div>
+      )
+    }
+    return (
+      <button
+        type="button"
+        className="msg-attach-image-btn"
+        onClick={() => onOpenImage?.(attachment)}
+        aria-label={`View image ${attachment.filename || ''}`}
+      >
+        <img
+          src={attachment.url}
+          alt={attachment.filename || 'Attached image'}
+          className="msg-attach-thumb"
+          onError={() => setBroken(true)}
+        />
+      </button>
+    )
+  }
+
+  if (broken || !attachment.url) {
+    return (
+      <div className="msg-attach-unavailable" role="status">
+        <i className="fa fa-file" aria-hidden="true" />
+        <span>File unavailable</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="msg-attach-file">
+      <div className="msg-attach-file-icon" aria-hidden="true">
+        <i className={`fa ${fileTypeIcon(attachment.filename)}`} />
+      </div>
+      <div className="msg-attach-file-meta">
+        <div className="msg-attach-file-name" title={attachment.filename}>
+          {attachment.filename || 'Attachment'}
+        </div>
+        <div className="msg-attach-file-sub">
+          {formatBytes(attachment.size)}
+        </div>
+      </div>
+      <a
+        className="btn btn-sm btn-outline-secondary msg-attach-download"
+        href={attachment.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        download={attachment.filename || undefined}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <i className="fa fa-download" aria-hidden="true" />
+        <span>Open</span>
+      </a>
+    </div>
+  )
+}
+
+function MessageBubble({ message, mine, onUnsend, onOpenImage }) {
   const pending = Boolean(message._pending)
   const failed = Boolean(message._failed)
+  const unsent = Boolean(message.is_unsent)
+  const attachment = !unsent ? (message.attachment || message._localAttachment) : null
+  const text = (message.body || '').trim()
+  const showText = unsent || text.length > 0
 
   return (
     <div
-      className={`msg-bubble-row ${mine ? 'is-mine' : 'is-theirs'} ${pending ? 'is-pending' : ''} ${failed ? 'is-failed' : ''}`}
+      className={`msg-bubble-row ${mine ? 'is-mine' : 'is-theirs'} ${pending ? 'is-pending' : ''} ${failed ? 'is-failed' : ''} ${unsent ? 'is-unsent' : ''}`}
     >
-      <div className={`msg-bubble ${mine ? 'msg-bubble-mine' : 'msg-bubble-theirs'}`}>
-        <div className="msg-bubble-text">{message.body}</div>
+      <div className={`msg-bubble ${mine ? 'msg-bubble-mine' : 'msg-bubble-theirs'} ${unsent ? 'msg-bubble-unsent' : ''}`}>
+        {attachment && (
+          <div className="msg-bubble-attach">
+            <MessageAttachment attachment={attachment} onOpenImage={onOpenImage} />
+          </div>
+        )}
+        {showText && (
+          <div className={`msg-bubble-text ${unsent ? 'is-unsent' : ''}`}>{message.body}</div>
+        )}
         <div className="msg-bubble-meta">
-          {pending ? 'Sending…' : failed ? 'Failed to send' : timeAgo(message.created_at)}
-          {!mine && !pending && message.read_at ? ' · Read' : ''}
+          {pending ? 'Sending…' : failed ? 'Failed to send' : unsent ? 'Unsent' : timeAgo(message.created_at)}
+          {!mine && !pending && !unsent && message.read_at ? ' · Read' : ''}
         </div>
+        {mine && !pending && !failed && !unsent && typeof message.id === 'number' && (
+          <button
+            type="button"
+            className="msg-unsend-btn"
+            onClick={() => onUnsend(message)}
+            aria-label="Unsend message"
+            title="Unsend"
+          >
+            Unsend
+          </button>
+        )}
       </div>
     </div>
   )
 }
 
 const MemoMessageBubble = memo(MessageBubble)
+
+/** Composer keeps draft locally so typing does not re-render the conversation list. */
+const MessageComposer = memo(function MessageComposer({
+  disabled,
+  sending,
+  showArchivedHint,
+  onSend,
+}) {
+  const [draft, setDraft] = useState('')
+  const [attachFile, setAttachFile] = useState(null)
+  const [attachPreviewUrl, setAttachPreviewUrl] = useState(null)
+  const [localError, setLocalError] = useState(null)
+  const fileInputRef = useRef(null)
+
+  const clearAttachment = useCallback(() => {
+    setAttachFile(null)
+    setAttachPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [])
+
+  const onPickAttachment = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const err = validateAttachFile(file)
+    if (err) {
+      setLocalError(err)
+      e.target.value = ''
+      return
+    }
+    setLocalError(null)
+    setAttachPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return isImageFile(file) ? URL.createObjectURL(file) : null
+    })
+    setAttachFile(file)
+  }
+
+  const submit = async (e) => {
+    e?.preventDefault?.()
+    if (disabled || sending) return
+    const body = draft.trim()
+    if (body.length < 1 && !attachFile) return
+
+    const fileSnapshot = attachFile
+    const previewSnapshot = attachPreviewUrl
+    const draftSnapshot = draft
+    setDraft('')
+    setAttachFile(null)
+    setAttachPreviewUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setLocalError(null)
+
+    const result = await onSend({
+      body,
+      file: fileSnapshot,
+      previewUrl: previewSnapshot,
+    })
+
+    if (result?.ok === false) {
+      setDraft((d) => (d ? d : draftSnapshot))
+      if (fileSnapshot) {
+        setAttachFile(fileSnapshot)
+        if (previewSnapshot) {
+          setAttachPreviewUrl(previewSnapshot)
+        } else if (isImageFile(fileSnapshot)) {
+          setAttachPreviewUrl(URL.createObjectURL(fileSnapshot))
+        }
+      }
+      if (result.error) setLocalError(result.error)
+    } else if (previewSnapshot) {
+      URL.revokeObjectURL(previewSnapshot)
+    }
+  }
+
+  const onComposerKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      submit(e)
+    }
+  }
+
+  return (
+    <>
+      {localError && (
+        <div className="alert alert-danger msg-send-error py-2" role="alert">{localError}</div>
+      )}
+      {attachFile && (
+        <div className="msg-attach-preview" aria-live="polite">
+          {attachPreviewUrl ? (
+            <img src={attachPreviewUrl} alt="" className="msg-attach-preview-thumb" />
+          ) : (
+            <div className="msg-attach-preview-file">
+              <i className={`fa ${fileTypeIcon(attachFile.name)}`} aria-hidden="true" />
+              <div>
+                <div className="msg-attach-preview-name">{attachFile.name}</div>
+                <div className="msg-attach-preview-sub">{formatBytes(attachFile.size)}</div>
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger msg-attach-preview-remove"
+            onClick={clearAttachment}
+            disabled={sending}
+            aria-label="Remove attachment"
+          >
+            <i className="fa fa-times" aria-hidden="true" />
+            Remove
+          </button>
+        </div>
+      )}
+      <form onSubmit={submit} className="msg-composer">
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="visually-hidden"
+          accept={ATTACH_ACCEPT}
+          onChange={onPickAttachment}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+        <button
+          type="button"
+          className="btn btn-outline-secondary msg-composer-attach"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={sending || disabled}
+          title="Attach file or image"
+          aria-label="Attach file or image"
+        >
+          <i className="fa fa-paperclip" aria-hidden="true" />
+        </button>
+        <label className="visually-hidden" htmlFor="message-composer">Message body</label>
+        <textarea
+          id="message-composer"
+          className="msg-composer-input form-control"
+          rows={2}
+          placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onComposerKeyDown}
+          maxLength={5000}
+          aria-label="Message body"
+          disabled={disabled}
+        />
+        <button
+          type="submit"
+          className="btn btn-success msg-composer-send"
+          disabled={sending || disabled || (draft.trim().length < 1 && !attachFile)}
+          aria-label="Send message"
+        >
+          {sending
+            ? <i className="fa fa-spinner fa-spin" aria-hidden="true" />
+            : <i className="fa fa-paper-plane" aria-hidden="true" />}
+          <span>{sending ? 'Sending…' : 'Send'}</span>
+        </button>
+        {showArchivedHint && (
+          <div className="msg-composer-hint">
+            Viewing an archived conversation. You can still send messages; unarchive anytime to move it back to Active.
+          </div>
+        )}
+      </form>
+    </>
+  )
+})
+
+const ConversationList = memo(function ConversationList({
+  listLoading,
+  threads,
+  archived,
+  activeKey,
+  archiveBusyKey,
+  canLoadMoreThreads,
+  listPage,
+  onSelect,
+  onToggleArchive,
+  onLoadMore,
+}) {
+  if (listLoading) return <ListSkeleton />
+  if (threads.length === 0) {
+    return (
+      <div className="msg-empty">
+        <i className="fa fa-comments" aria-hidden="true" />
+        <p className="msg-empty-title">
+          {archived ? 'No archived conversations yet' : 'No conversations yet'}
+        </p>
+        <p className="msg-empty-sub">
+          {archived
+            ? 'Archive a conversation to move it here, or check ended internships.'
+            : 'People linked to your internship will show up here once they are assigned.'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {threads.map((t) => {
+        const key = threadKey(t.internship_id, t.peer.id)
+        return (
+          <MemoConversationRow
+            key={key}
+            thread={t}
+            isActive={activeKey === key}
+            onSelect={onSelect}
+            onToggleArchive={onToggleArchive}
+            archiveBusy={archiveBusyKey === key}
+          />
+        )
+      })}
+      {canLoadMoreThreads && (
+        <div className="msg-list-more">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => onLoadMore(listPage + 1)}
+          >
+            Load more conversations
+          </button>
+        </div>
+      )}
+    </>
+  )
+})
 
 function ListSkeleton() {
   return (
@@ -188,25 +584,44 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
   const [listLoading, setListLoading] = useState(true)
   const [listRefreshing, setListRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [active, setActive] = useState(null) // { internship_id, peer, student_name?, internship_term?, internship_status? }
+  const [active, setActive] = useState(null)
   const [messages, setMessages] = useState([])
   const [threadMeta, setThreadMeta] = useState(null)
   const [threadPage, setThreadPage] = useState(1)
   const [threadLoading, setThreadLoading] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
-  const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState(null)
+  const [archiveBusyKey, setArchiveBusyKey] = useState(null)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  const [clearBusy, setClearBusy] = useState(false)
+  const [clearError, setClearError] = useState(null)
+  const [actionError, setActionError] = useState(null)
+  const [lightbox, setLightbox] = useState(null)
 
   const deepLinkHandled = useRef(false)
+  const restoreHandled = useRef(false)
   const paneRef = useRef(null)
   const stickToBottomRef = useRef(true)
   const activeRef = useRef(null)
   const tempIdRef = useRef(0)
+  const threadReqIdRef = useRef(0)
+  const threadAbortRef = useRef(null)
+  const listAbortRef = useRef(null)
+  const listCacheRef = useRef({
+    false: null,
+    true: null,
+  })
+  const scrollPosRef = useRef(new Map())
+  const archivedRef = useRef(archived)
 
   useEffect(() => {
     activeRef.current = active
   }, [active])
+
+  useEffect(() => {
+    archivedRef.current = archived
+  }, [archived])
 
   const isNearBottom = useCallback(() => {
     const el = paneRef.current
@@ -222,101 +637,203 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     })
   }, [])
 
+  const rememberScroll = useCallback(() => {
+    const cur = activeRef.current
+    const el = paneRef.current
+    if (!cur || !el) return
+    const key = threadKey(cur.internship_id, cur.peer.id)
+    scrollPosRef.current.set(key, {
+      top: el.scrollTop,
+      stick: stickToBottomRef.current,
+    })
+  }, [])
+
+  const restoreScroll = useCallback((key, { preferBottom = false } = {}) => {
+    requestAnimationFrame(() => {
+      const el = paneRef.current
+      if (!el) return
+      const saved = scrollPosRef.current.get(key)
+      if (preferBottom || !saved || saved.stick) {
+        stickToBottomRef.current = true
+        el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
+        return
+      }
+      stickToBottomRef.current = false
+      el.scrollTop = saved.top
+    })
+  }, [])
+
+  const persistLastThread = useCallback((thread, tabArchived) => {
+    if (!user?.id || !thread) return
+    try {
+      sessionStorage.setItem(LAST_THREAD_KEY(user.id), JSON.stringify({
+        internship_id: thread.internship_id,
+        peer_id: thread.peer.id,
+        archived: Boolean(tabArchived),
+      }))
+    } catch {
+      /* ignore quota */
+    }
+  }, [user?.id])
+
   const onPaneScroll = () => {
     stickToBottomRef.current = isNearBottom()
   }
 
-  const loadThreads = useCallback((page = 1, { append = false, silent = false } = {}) => {
+  const loadThreads = useCallback((page = 1, { append = false, silent = false, tab = null } = {}) => {
+    const forArchived = tab == null ? archivedRef.current : Boolean(tab)
     if (!silent && !append) setListLoading(true)
     if (silent) setListRefreshing(true)
     setError(null)
+
+    if (listAbortRef.current && !append && !silent) {
+      listAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    if (!append) listAbortRef.current = controller
+
     return api.get('/messages/conversations', {
-      params: { archived: archived ? 1 : 0, page, per_page: 20 },
+      params: { archived: forArchived ? 1 : 0, page, per_page: 20 },
+      signal: controller.signal,
     })
       .then((res) => {
+        if (forArchived !== archivedRef.current && !append) return null
         const { items, meta } = unwrapList(res.data)
         setThreads((prev) => (append ? [...prev, ...items] : items))
         setListMeta(meta)
         setListPage(page)
+        if (!append) {
+          listCacheRef.current[forArchived] = { threads: items, meta, page }
+        }
+        return { items, meta }
       })
       .catch((err) => {
+        if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return null
+        if (forArchived !== archivedRef.current) return null
         setError(err.response?.data?.message || 'Failed to load conversations.')
         if (!append) setThreads([])
+        return null
       })
       .finally(() => {
-        setListLoading(false)
-        setListRefreshing(false)
+        if (forArchived === archivedRef.current) {
+          setListLoading(false)
+          setListRefreshing(false)
+        }
       })
-  }, [archived])
+  }, [])
 
+  // Initial load + tab changes (with cache for instant Active/Archived switch)
   useEffect(() => {
-    deepLinkHandled.current = false
-    setActive(null)
-    setMessages([])
-    setThreadMeta(null)
-    stickToBottomRef.current = true
-    loadThreads(1, { append: false, silent: false })
-  }, [loadThreads])
+    const cached = listCacheRef.current[archived]
+    if (cached?.threads) {
+      setThreads(cached.threads)
+      setListMeta(cached.meta)
+      setListPage(cached.page)
+      setListLoading(false)
+      loadThreads(1, { silent: true, tab: archived })
+    } else {
+      setThreads([])
+      setListMeta(null)
+      setListPage(1)
+      loadThreads(1, { silent: false, tab: archived })
+    }
+    // Keep open thread visible across tab switches (no blank flash).
+  }, [archived, loadThreads])
 
-  const fetchThreadPage = async (internshipId, peerId, page, { prepend = false } = {}) => {
-    const res = await api.get(`/messages/conversations/${internshipId}/${peerId}`, {
-      params: { page, per_page: 50 },
-    })
-    const chunk = res.data.messages || []
-    setThreadMeta(res.data)
-    if (res.data.peer) {
+  const applyThreadPayload = useCallback((internshipId, peerId, data, { prepend = false, reqId, page = 1 } = {}) => {
+    if (reqId != null && reqId !== threadReqIdRef.current) return false
+    const cur = activeRef.current
+    if (!cur || cur.internship_id !== internshipId || cur.peer?.id !== peerId) return false
+
+    const chunk = data.messages || []
+    setThreadMeta(data)
+    if (data.peer) {
       setActive((prev) => (
         prev
         && prev.internship_id === internshipId
         && prev.peer?.id === peerId
-          ? { ...prev, peer: { ...prev.peer, ...res.data.peer } }
+          ? { ...prev, peer: { ...prev.peer, ...data.peer } }
           : prev
       ))
     }
     setThreadPage(page)
     setMessages((prev) => {
       if (prepend) return [...chunk, ...prev]
-      // Keep optimistic pending/failed locals that aren't on the server yet
       const locals = prev.filter((m) => m._pending || m._failed)
       const ids = new Set(chunk.map((m) => m.id))
       const keepLocals = locals.filter((m) => !ids.has(m.id) && !ids.has(m._serverId))
       return [...chunk, ...keepLocals]
     })
+    return true
+  }, [])
+
+  const fetchThreadPage = useCallback(async (internshipId, peerId, page, {
+    prepend = false,
+    signal,
+    reqId,
+  } = {}) => {
+    const res = await api.get(`/messages/conversations/${internshipId}/${peerId}`, {
+      params: { page, per_page: 50 },
+      signal,
+    })
+    applyThreadPayload(internshipId, peerId, res.data, { prepend, reqId, page })
     return res.data
-  }
+  }, [applyThreadPayload])
 
-  const openThread = async (thread, { replaceUrl = true } = {}) => {
-    const same =
-      active
-      && active.internship_id === thread.internship_id
-      && active.peer.id === thread.peer.id
+  const openThread = useCallback(async (thread, { replaceUrl = true } = {}) => {
+    const same = sameThread(activeRef.current, thread)
 
-    if (same && messages.length > 0 && !threadLoading) {
-      // Already open — soft refresh without clearing UI
+    if (same) {
       try {
-        await fetchThreadPage(thread.internship_id, thread.peer.id, 1, { prepend: false })
+        const reqId = ++threadReqIdRef.current
+        threadAbortRef.current?.abort()
+        const controller = new AbortController()
+        threadAbortRef.current = controller
+        await fetchThreadPage(thread.internship_id, thread.peer.id, 1, {
+          prepend: false,
+          signal: controller.signal,
+          reqId,
+        })
         if (stickToBottomRef.current) scrollToBottom('smooth')
         loadThreads(1, { silent: true })
-      } catch {
-        /* ignore soft refresh errors */
+      } catch (err) {
+        if (err?.code !== 'ERR_CANCELED' && err?.name !== 'CanceledError') {
+          /* soft refresh — ignore other errors */
+        }
       }
       return
     }
 
-    setActive({
+    rememberScroll()
+
+    const nextActive = {
       internship_id: thread.internship_id,
       peer: thread.peer,
       student_name: thread.student_name || null,
       internship_term: thread.internship_term || null,
       internship_status: thread.internship_status || null,
-    })
+    }
+    setActive(nextActive)
+    activeRef.current = nextActive
+    setMessages([])
+    setThreadMeta(null)
+    setThreadPage(1)
     setThreadLoading(true)
     setSendError(null)
-    if (!same) setDraft('')
     stickToBottomRef.current = true
 
+    const reqId = ++threadReqIdRef.current
+    threadAbortRef.current?.abort()
+    const controller = new AbortController()
+    threadAbortRef.current = controller
+
     try {
-      await fetchThreadPage(thread.internship_id, thread.peer.id, 1, { prepend: false })
+      await fetchThreadPage(thread.internship_id, thread.peer.id, 1, {
+        prepend: false,
+        signal: controller.signal,
+        reqId,
+      })
+      if (reqId !== threadReqIdRef.current) return
       loadThreads(1, { silent: true })
       if (replaceUrl) {
         setSearchParams({
@@ -324,77 +841,128 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           peer_id: String(thread.peer.id),
         }, { replace: true })
       }
-      scrollToBottom('auto')
+      persistLastThread(thread, archivedRef.current)
+      const key = threadKey(thread.internship_id, thread.peer.id)
+      restoreScroll(key, { preferBottom: true })
     } catch (err) {
+      if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return
+      if (reqId !== threadReqIdRef.current) return
       setSendError(err.response?.data?.message || 'Failed to open conversation.')
       setMessages([])
     } finally {
-      setThreadLoading(false)
+      if (reqId === threadReqIdRef.current) {
+        setThreadLoading(false)
+      }
     }
-  }
+  }, [
+    fetchThreadPage,
+    loadThreads,
+    persistLastThread,
+    rememberScroll,
+    restoreScroll,
+    scrollToBottom,
+    setSearchParams,
+  ])
 
-  // Deep-link from notification: ?internship_id=&peer_id=
+  // Deep-link from notification OR restore last-viewed conversation
   useEffect(() => {
-    if (deepLinkHandled.current || listLoading || threads.length === 0) return
+    if (listLoading) return
+
     const internshipId = Number(searchParams.get('internship_id'))
     const peerId = Number(searchParams.get('peer_id'))
-    if (!internshipId || !peerId) return
 
-    const match = threads.find(
-      (t) => t.internship_id === internshipId && t.peer?.id === peerId
-    )
-    deepLinkHandled.current = true
-    if (match) {
-      openThread(match, { replaceUrl: false })
-    } else {
-      openThread(
-        { internship_id: internshipId, peer: { id: peerId, name: '…', role: '' } },
-        { replaceUrl: false }
+    if (internshipId && peerId) {
+      if (deepLinkHandled.current) return
+      const match = threads.find(
+        (t) => t.internship_id === internshipId && t.peer?.id === peerId
       )
+      deepLinkHandled.current = true
+      restoreHandled.current = true
+      if (match) {
+        openThread(match, { replaceUrl: false })
+      } else {
+        openThread(
+          { internship_id: internshipId, peer: { id: peerId, name: '…', role: '' } },
+          { replaceUrl: false }
+        )
+      }
+      return
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listLoading, threads, searchParams])
 
-  const loadOlderMessages = async () => {
-    if (!active || !threadMeta?.meta) return
+    if (restoreHandled.current || activeRef.current || threads.length === 0) return
+    restoreHandled.current = true
+    try {
+      const raw = sessionStorage.getItem(LAST_THREAD_KEY(user?.id))
+      if (!raw) return
+      const saved = JSON.parse(raw)
+      if (Boolean(saved.archived) !== archived) return
+      const match = threads.find(
+        (t) => t.internship_id === saved.internship_id && t.peer?.id === saved.peer_id
+      )
+      if (match) openThread(match, { replaceUrl: true })
+    } catch {
+      /* ignore */
+    }
+  }, [listLoading, threads, searchParams, archived, openThread, user?.id])
+
+  const loadOlderMessages = useCallback(async () => {
+    const cur = activeRef.current
+    if (!cur || !threadMeta?.meta) return
     const next = threadPage + 1
     if (next > threadMeta.meta.last_page) return
     const el = paneRef.current
     const prevHeight = el?.scrollHeight || 0
     const prevTop = el?.scrollTop || 0
     setLoadingOlder(true)
+    const reqId = threadReqIdRef.current
     try {
-      await fetchThreadPage(active.internship_id, active.peer.id, next, { prepend: true })
+      await fetchThreadPage(cur.internship_id, cur.peer.id, next, {
+        prepend: true,
+        reqId,
+      })
+      // After prepend, keep viewport stable (not jump to bottom)
+      stickToBottomRef.current = false
       requestAnimationFrame(() => {
-        if (!paneRef.current) return
+        if (!paneRef.current || reqId !== threadReqIdRef.current) return
         const delta = paneRef.current.scrollHeight - prevHeight
         paneRef.current.scrollTop = prevTop + delta
       })
     } catch (err) {
+      if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return
       setSendError(err.response?.data?.message || 'Failed to load earlier messages.')
     } finally {
       setLoadingOlder(false)
     }
-  }
+  }, [fetchThreadPage, threadMeta, threadPage])
 
-  const handleSend = async (e) => {
-    e?.preventDefault?.()
-    if (!active || draft.trim().length < 1 || sending) return
+  const handleSend = useCallback(async ({ body, file, previewUrl }) => {
+    const cur = activeRef.current
+    if (!cur || sending) return { ok: false, error: 'No conversation selected.' }
 
-    const body = draft.trim()
     const tempId = `tmp-${++tempIdRef.current}`
+    const localAttachment = file
+      ? {
+          url: isImageFile(file) && previewUrl ? previewUrl : null,
+          filename: file.name,
+          mime: file.type,
+          size: file.size,
+          is_image: isImageFile(file),
+        }
+      : null
+
     const optimistic = {
       id: tempId,
-      internship_id: active.internship_id,
+      internship_id: cur.internship_id,
       sender_id: user?.id,
-      recipient_id: active.peer.id,
+      recipient_id: cur.peer.id,
       body,
       created_at: new Date().toISOString(),
       read_at: null,
       _pending: true,
+      _localAttachment: localAttachment,
+      attachment: localAttachment,
     }
 
-    setDraft('')
     setSendError(null)
     setSending(true)
     setMessages((prev) => [...prev, optimistic])
@@ -402,50 +970,78 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     scrollToBottom('smooth')
 
     try {
-      const res = await api.post('/messages', {
-        internship_id: active.internship_id,
-        recipient_id: active.peer.id,
-        body,
-      })
+      let res
+      if (file) {
+        const form = new FormData()
+        form.append('internship_id', String(cur.internship_id))
+        form.append('recipient_id', String(cur.peer.id))
+        form.append('body', body)
+        form.append('attachment', file)
+        res = await api.post('/messages', form)
+      } else {
+        res = await api.post('/messages', {
+          internship_id: cur.internship_id,
+          recipient_id: cur.peer.id,
+          body,
+        })
+      }
+      if (!sameThread(activeRef.current, cur)) {
+        return { ok: true }
+      }
       const created = res.data.data
       setMessages((prev) => prev.map((m) => (m.id === tempId ? created : m)))
       loadThreads(1, { silent: true })
       if (stickToBottomRef.current) scrollToBottom('smooth')
+      return { ok: true }
     } catch (err) {
       const status = err.response?.status
-      const msg = err.response?.data?.message
-      setMessages((prev) => prev.map((m) => (
-        m.id === tempId ? { ...m, _pending: false, _failed: true } : m
-      )))
-      if (status === 429) {
-        setSendError(msg || 'Too many messages sent. Please wait a moment before sending again.')
-      } else {
-        setSendError(msg || 'Failed to send message.')
+      const data = err.response?.data
+      const fieldMsg = data?.errors?.attachment?.[0]
+        || data?.errors?.body?.[0]
+        || data?.message
+      if (sameThread(activeRef.current, cur)) {
+        setMessages((prev) => prev.map((m) => (
+          m.id === tempId ? { ...m, _pending: false, _failed: true } : m
+        )))
       }
-      // Restore draft so the user can retry
-      setDraft((d) => (d ? d : body))
+      let error = fieldMsg || 'Failed to send message.'
+      if (status === 429) {
+        error = fieldMsg || 'Too many messages sent. Please wait a moment before sending again.'
+      } else if (status === 413) {
+        error = fieldMsg || 'File is too large. Maximum size is 10 MB.'
+      }
+      setSendError(error)
+      return { ok: false, error }
     } finally {
       setSending(false)
     }
-  }
+  }, [loadThreads, scrollToBottom, sending, user?.id])
 
-  // Soft-poll active thread for new messages without resetting draft/scroll
+  // Soft-poll active thread — never resets draft (composer is local) or scroll when reading history
   useEffect(() => {
     if (!active) return undefined
+    let cancelled = false
     const tick = async () => {
       const cur = activeRef.current
-      if (!cur) return
+      if (!cur || cancelled) return
+      const reqId = threadReqIdRef.current
       try {
         const res = await api.get(`/messages/conversations/${cur.internship_id}/${cur.peer.id}`, {
           params: { page: 1, per_page: 50 },
         })
+        if (cancelled || reqId !== threadReqIdRef.current) return
+        if (!sameThread(activeRef.current, cur)) return
+
         const chunk = res.data.messages || []
         const shouldStick = stickToBottomRef.current
+        let changed = false
         setMessages((prev) => {
           const pendingOrFailed = prev.filter((m) => m._pending || m._failed)
           const confirmedTemps = pendingOrFailed.filter((local) =>
             chunk.some(
-              (c) => c.sender_id === local.sender_id && c.body === local.body
+              (c) => c.sender_id === local.sender_id
+                && c.body === local.body
+                && Boolean(c.attachment?.filename) === Boolean(local.attachment?.filename || local._localAttachment?.filename)
             )
           )
           const stillLocal = pendingOrFailed.filter((local) => !confirmedTemps.includes(local))
@@ -457,42 +1053,163 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           })
           if (
             next.length === prev.length
-            && next.every((m, i) => m.id === prev[i].id && m.read_at === prev[i].read_at && m._pending === prev[i]._pending)
+            && next.every((m, i) => (
+              m.id === prev[i].id
+              && m.read_at === prev[i].read_at
+              && m._pending === prev[i]._pending
+              && Boolean(m.is_unsent) === Boolean(prev[i].is_unsent)
+              && m.body === prev[i].body
+              && (m.attachment?.url || '') === (prev[i].attachment?.url || '')
+            ))
           ) {
             return prev
           }
+          changed = true
           return next
         })
         setThreadMeta((prev) => (prev ? { ...prev, ...res.data, messages: undefined } : res.data))
         if (shouldStick) scrollToBottom('smooth')
-        loadThreads(1, { silent: true })
+        // Refresh conversation list only when thread content changed (avoids list flicker)
+        if (changed) loadThreads(1, { silent: true })
       } catch {
         /* ignore poll errors */
       }
     }
-    const id = window.setInterval(tick, 12000)
-    return () => window.clearInterval(id)
+    const id = window.setInterval(tick, POLL_MS)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
   }, [active?.internship_id, active?.peer?.id, loadThreads, scrollToBottom])
 
-  const onComposerKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend(e)
+  const toggleArchive = useCallback(async (thread, nextArchived) => {
+    const key = threadKey(thread.internship_id, thread.peer.id)
+    setArchiveBusyKey(key)
+    setActionError(null)
+    setThreads((prev) => prev.filter(
+      (t) => !(t.internship_id === thread.internship_id && t.peer.id === thread.peer.id)
+    ))
+    // Invalidate caches for both tabs
+    listCacheRef.current.false = null
+    listCacheRef.current.true = null
+
+    const wasActive = sameThread(activeRef.current, thread)
+    if (wasActive) {
+      rememberScroll()
+      setActive(null)
+      activeRef.current = null
+      setMessages([])
+      setThreadMeta(null)
+      setSearchParams({}, { replace: true })
+    }
+    try {
+      await api.post(`/messages/conversations/${thread.internship_id}/${thread.peer.id}/archive`, {
+        archived: nextArchived,
+      })
+      await loadThreads(1, { silent: true })
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Failed to update archive status.')
+      await loadThreads(1, { silent: false })
+    } finally {
+      setArchiveBusyKey(null)
+    }
+  }, [loadThreads, rememberScroll, setSearchParams])
+
+  const handleUnsend = useCallback(async (message) => {
+    if (!message?.id || typeof message.id !== 'number') return
+    const prevBody = message.body
+    setMessages((prev) => prev.map((m) => (
+      m.id === message.id
+        ? { ...m, is_unsent: true, body: 'This message was unsent', unsent_at: new Date().toISOString() }
+        : m
+    )))
+    setActionError(null)
+    try {
+      const res = await api.post(`/messages/${message.id}/unsend`)
+      const updated = res.data?.data
+      if (updated) {
+        setMessages((prev) => prev.map((m) => (m.id === message.id ? updated : m)))
+      }
+      loadThreads(1, { silent: true })
+    } catch (err) {
+      setMessages((prev) => prev.map((m) => (
+        m.id === message.id ? { ...m, is_unsent: false, body: prevBody, unsent_at: null } : m
+      )))
+      setActionError(err.response?.data?.message || 'Failed to unsend message.')
+    }
+  }, [loadThreads])
+
+  const confirmClearConversation = async () => {
+    if (!active) return
+    setClearBusy(true)
+    setClearError(null)
+    try {
+      await api.post(`/messages/conversations/${active.internship_id}/${active.peer.id}/clear`)
+      setMessages([])
+      setThreadMeta((prev) => (prev ? { ...prev, messages: [] } : prev))
+      setClearConfirmOpen(false)
+      loadThreads(1, { silent: true })
+    } catch (err) {
+      setClearError(err.response?.data?.message || 'Failed to clear conversation.')
+    } finally {
+      setClearBusy(false)
     }
   }
+
+  const openLightbox = useCallback((attachment) => {
+    if (!attachment?.url || !attachment.is_image) return
+    setLightbox({ url: attachment.url, filename: attachment.filename || 'Image' })
+  }, [])
+
+  const onSelectTab = useCallback((nextArchived) => {
+    if (nextArchived === archived) return
+    rememberScroll()
+    setArchived(nextArchived)
+  }, [archived, rememberScroll])
+
+  const onLoadMoreThreads = useCallback((page) => {
+    loadThreads(page, { append: true, silent: true })
+  }, [loadThreads])
 
   const hasOlder = threadMeta?.meta && threadPage < threadMeta.meta.last_page
   const canLoadMoreThreads = listMeta && listPage < listMeta.last_page
   const activeKey = active ? threadKey(active.internship_id, active.peer.id) : null
+  const activeUserArchived = Boolean(
+    threadMeta?.user_archived
+    ?? threads.find((t) => threadKey(t.internship_id, t.peer.id) === activeKey)?.user_archived
+  )
 
   const headerPeer = useMemo(() => {
     if (!active) return null
     return active.peer
   }, [active])
 
+  // Abort in-flight requests when leaving the page
+  useEffect(() => () => {
+    threadAbortRef.current?.abort()
+    listAbortRef.current?.abort()
+  }, [])
+
   return (
     <Layout title="Messages" subtitle={titleSubtitle} icon="fa-envelope" bodyClass={bodyClass}>
       {error && <PageError message={error} onRetry={() => loadThreads(1, { silent: false })} />}
+
+      <ConfirmModal
+        open={clearConfirmOpen}
+        title="Clear conversation?"
+        message="This clears the message history from your view only. The other person will still see the full conversation. New messages after this will appear normally."
+        confirmLabel="Clear my view"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={clearBusy}
+        error={clearError}
+        onCancel={() => {
+          if (clearBusy) return
+          setClearConfirmOpen(false)
+          setClearError(null)
+        }}
+        onConfirm={confirmClearConversation}
+      />
 
       <div className="msg-inbox">
         <div className="msg-inbox-toolbar" role="tablist" aria-label="Inbox views">
@@ -500,7 +1217,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
             type="button"
             className={`msg-tab ${!archived ? 'is-active' : ''}`}
             aria-selected={!archived}
-            onClick={() => setArchived(false)}
+            onClick={() => onSelectTab(false)}
           >
             Active
           </button>
@@ -508,7 +1225,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
             type="button"
             className={`msg-tab ${archived ? 'is-active' : ''}`}
             aria-selected={archived}
-            onClick={() => setArchived(true)}
+            onClick={() => onSelectTab(true)}
           >
             Archived
           </button>
@@ -519,6 +1236,10 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           )}
         </div>
 
+        {actionError && (
+          <div className="alert alert-danger py-2 mb-2" role="alert">{actionError}</div>
+        )}
+
         <div className="msg-inbox-grid">
           <section className="msg-panel msg-panel-list" aria-label="Conversations">
             <header className="msg-panel-header">
@@ -527,51 +1248,23 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
             </header>
 
             <div className="msg-conv-list" role="list">
-              {listLoading ? (
-                <ListSkeleton />
-              ) : threads.length === 0 ? (
-                <div className="msg-empty">
-                  <i className="fa fa-comments" aria-hidden="true" />
-                  <p className="msg-empty-title">
-                    {archived ? 'No archived conversations yet' : 'No conversations yet'}
-                  </p>
-                  <p className="msg-empty-sub">
-                    {archived
-                      ? 'Ended internships will appear here when available.'
-                      : 'People linked to your internship will show up here once they are assigned.'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {threads.map((t) => {
-                    const key = threadKey(t.internship_id, t.peer.id)
-                    return (
-                      <MemoConversationRow
-                        key={key}
-                        thread={t}
-                        isActive={activeKey === key}
-                        onSelect={openThread}
-                      />
-                    )
-                  })}
-                  {canLoadMoreThreads && (
-                    <div className="msg-list-more">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => loadThreads(listPage + 1, { append: true, silent: true })}
-                      >
-                        Load more conversations
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
+              <ConversationList
+                listLoading={listLoading}
+                threads={threads}
+                archived={archived}
+                activeKey={activeKey}
+                archiveBusyKey={archiveBusyKey}
+                canLoadMoreThreads={canLoadMoreThreads}
+                listPage={listPage}
+                onSelect={openThread}
+                onToggleArchive={toggleArchive}
+                onLoadMore={onLoadMoreThreads}
+              />
             </div>
           </section>
 
           <section className="msg-panel msg-panel-thread" aria-label="Message thread">
-            <header className="msg-panel-header">
+            <header className="msg-panel-header msg-panel-header-thread">
               <i className="fa fa-comments" aria-hidden="true" />
               <h6 className="msg-thread-title">
                 {headerPeer
@@ -584,6 +1277,39 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                     )
                   : 'Select a conversation'}
               </h6>
+              {active && (
+                <div className="msg-thread-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => toggleArchive(
+                      {
+                        internship_id: active.internship_id,
+                        peer: active.peer,
+                        user_archived: activeUserArchived,
+                      },
+                      !activeUserArchived
+                    )}
+                    disabled={archiveBusyKey === activeKey}
+                    title={activeUserArchived ? 'Move to Active' : 'Archive'}
+                  >
+                    <i className={`fa ${activeUserArchived ? 'fa-inbox' : 'fa-archive'}`} aria-hidden="true" />
+                    <span>{activeUserArchived ? 'Unarchive' : 'Archive'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => {
+                      setClearError(null)
+                      setClearConfirmOpen(true)
+                    }}
+                    title="Clear conversation from your view"
+                  >
+                    <i className="fa fa-eraser" aria-hidden="true" />
+                    <span>Clear</span>
+                  </button>
+                </div>
+              )}
             </header>
 
             {!active ? (
@@ -606,7 +1332,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                   </div>
                 )}
 
-                {threadLoading && messages.length === 0 ? (
+                {threadLoading ? (
                   <ThreadSkeleton />
                 ) : (
                   <>
@@ -625,7 +1351,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
                     <div
                       ref={paneRef}
-                      className={`msg-thread-pane ${threadLoading ? 'is-loading' : ''}`}
+                      className="msg-thread-pane"
                       role="log"
                       aria-live="polite"
                       aria-label="Message thread"
@@ -642,6 +1368,8 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                             key={m.id}
                             message={m}
                             mine={m.sender_id === user?.id}
+                            onUnsend={handleUnsend}
+                            onOpenImage={openLightbox}
                           />
                         ))
                       )}
@@ -653,42 +1381,48 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                   <div className="alert alert-danger msg-send-error py-2" role="alert">{sendError}</div>
                 )}
 
-                <form onSubmit={handleSend} className="msg-composer">
-                  <label className="visually-hidden" htmlFor="message-composer">Message body</label>
-                  <textarea
-                    id="message-composer"
-                    className="msg-composer-input form-control"
-                    rows={2}
-                    placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={onComposerKeyDown}
-                    maxLength={5000}
-                    required
-                    aria-label="Message body"
-                  />
-                  <button
-                    type="submit"
-                    className="btn btn-success msg-composer-send"
-                    disabled={sending || draft.trim().length < 1}
-                    aria-label="Send message"
-                  >
-                    {sending
-                      ? <i className="fa fa-spinner fa-spin" aria-hidden="true" />
-                      : <i className="fa fa-paper-plane" aria-hidden="true" />}
-                    <span>Send</span>
-                  </button>
-                  {archived && (
-                    <div className="msg-composer-hint">
-                      Viewing an archived (ended) internship conversation.
-                    </div>
-                  )}
-                </form>
+                <MessageComposer
+                  key={activeKey}
+                  disabled={!active}
+                  sending={sending}
+                  showArchivedHint={archived}
+                  onSend={handleSend}
+                />
               </>
             )}
           </section>
         </div>
       </div>
+
+      {lightbox && (
+        <div
+          className="msg-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.filename}
+          onClick={() => setLightbox(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setLightbox(null)
+          }}
+        >
+          <button
+            type="button"
+            className="msg-lightbox-close"
+            aria-label="Close image"
+            onClick={() => setLightbox(null)}
+          >
+            <i className="fa fa-times" aria-hidden="true" />
+          </button>
+          <img
+            src={lightbox.url}
+            alt={lightbox.filename}
+            className="msg-lightbox-img"
+            onClick={(e) => e.stopPropagation()}
+            onError={() => setLightbox(null)}
+          />
+          <div className="msg-lightbox-caption">{lightbox.filename}</div>
+        </div>
+      )}
     </Layout>
   )
 }
