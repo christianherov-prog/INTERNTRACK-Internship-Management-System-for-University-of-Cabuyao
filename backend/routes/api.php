@@ -58,7 +58,10 @@ Route::prefix('v1')->group(function () {
         // Messages — shared across roles; controller enforces internship participant checks
         Route::get('/messages/conversations',                              [MessageController::class, 'conversations']);
         Route::get('/messages/conversations/{internshipId}/{peerId}',      [MessageController::class, 'thread']);
+        Route::post('/messages/conversations/{internshipId}/{peerId}/archive', [MessageController::class, 'setArchived']);
+        Route::post('/messages/conversations/{internshipId}/{peerId}/clear',   [MessageController::class, 'clearThread']);
         Route::post('/messages',                                           [MessageController::class, 'send'])->middleware('throttle:messages');
+        Route::post('/messages/{id}/unsend',                               [MessageController::class, 'unsend']);
 
 
         // Student
@@ -109,6 +112,8 @@ Route::prefix('v1')->group(function () {
         Route::prefix('faculty')->middleware('role:faculty')->group(function () {
             Route::get('/dashboard',                   [FacultyController::class, 'dashboard']);
             Route::get('/assigned-students',           [FacultyController::class, 'assignedStudents']);
+            Route::patch('/students/{userId}/archive', [FacultyController::class, 'setStudentArchived']);
+            Route::get('/attendance',                  [FacultyController::class, 'attendance']);
             Route::get('/journals',                    [FacultyController::class, 'journals']);
             Route::patch('/journals/{id}/review',      [FacultyController::class, 'reviewJournal']);
             Route::get('/evaluations',                 [FacultyController::class, 'evaluations']);
@@ -126,7 +131,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/monitoring',                [CoordinatorController::class, 'monitoring']);
             Route::get('/announcements',             [CoordinatorController::class, 'announcements']);
             Route::post('/announcements',            [CoordinatorController::class, 'createAnnouncement']);
-            Route::put('/announcements/{id}',        [CoordinatorController::class, 'updateAnnouncement']);
+            // POST allowed for multipart attachment replace (PHP file uploads require POST).
+            Route::match(['put', 'post'], '/announcements/{id}', [CoordinatorController::class, 'updateAnnouncement']);
             Route::delete('/announcements/{id}',     [CoordinatorController::class, 'deleteAnnouncement']);
             Route::get('/documents',                 [CoordinatorController::class, 'documents']);
             Route::patch('/documents/bulk-approve',  [CoordinatorController::class, 'bulkApproveDocuments']);
@@ -136,6 +142,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/logbook',                   [CoordinatorController::class, 'logbook']);
             Route::patch('/logbook/{id}/review',     [CoordinatorController::class, 'reviewLogbook']);
             Route::get('/records',                   [CoordinatorController::class, 'records']);
+            Route::patch('/students/{userId}/archive',[CoordinatorController::class, 'setStudentArchived']);
             Route::get('/placement-options',         [CoordinatorController::class, 'placementOptions']);
             Route::post('/internships/{id}/place',   [CoordinatorController::class, 'assignPlacement']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
@@ -163,6 +170,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/companies',      [DirectorController::class, 'storeCompany']);
             Route::put('/companies/{id}',  [DirectorController::class, 'updateCompany']);
             Route::get('/moa-monitoring',  [DirectorController::class, 'moaMonitoring']);
+            Route::get('/reports/placement-trends', [DirectorController::class, 'placementTrends']);
             Route::get('/internships',     [DirectorController::class, 'internships']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
             Route::patch('/internships/{id}/status', [InternshipStatusController::class, 'update']);

@@ -199,4 +199,144 @@ class MessagingFlowTest extends TestCase
         $last->assertStatus(429)
             ->assertJsonFragment(['message' => 'Too many messages sent. Please wait a moment before sending again.']);
     }
+
+    public function test_archive_is_per_user_and_reversible(): void
+    {
+        $student = $this->user('student', 'STU-M7', 'stu-m7@example.com');
+        $faculty = $this->user('faculty', 'FAC-M7', 'fac-m7@example.com');
+        $supervisor = $this->user('supervisor', 'SUP-M7', 'sup-m7@example.com');
+        $coordinator = $this->user('coordinator', 'COR-M7', 'cor-m7@example.com');
+        $internship = $this->placedInternship($student, $faculty, $supervisor, $coordinator);
+
+        $this->actingAs($coordinator, 'sanctum')->postJson('/api/v1/messages', [
+            'internship_id' => $internship->id,
+            'recipient_id'  => $student->id,
+            'body'          => 'Archive me',
+        ])->assertCreated();
+
+        $this->actingAs($coordinator, 'sanctum')
+            ->postJson("/api/v1/messages/conversations/{$internship->id}/{$student->id}/archive", [
+                'archived' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('user_archived', true);
+
+        $coordActive = $this->actingAs($coordinator, 'sanctum')
+            ->getJson('/api/v1/messages/conversations?archived=0');
+        $coordActive->assertOk();
+        $this->assertFalse(collect($coordActive->json('data'))->contains(
+            fn ($t) => (int) $t['internship_id'] === (int) $internship->id && (int) $t['peer']['id'] === (int) $student->id
+        ));
+
+        $coordArchived = $this->actingAs($coordinator, 'sanctum')
+            ->getJson('/api/v1/messages/conversations?archived=1');
+        $coordArchived->assertOk();
+        $this->assertTrue(collect($coordArchived->json('data'))->contains(
+            fn ($t) => (int) $t['internship_id'] === (int) $internship->id
+                && (int) $t['peer']['id'] === (int) $student->id
+                && $t['user_archived'] === true
+        ));
+
+        // Student still sees Active
+        $stuActive = $this->actingAs($student, 'sanctum')
+            ->getJson('/api/v1/messages/conversations?archived=0');
+        $stuActive->assertOk();
+        $this->assertTrue(collect($stuActive->json('data'))->contains(
+            fn ($t) => (int) $t['internship_id'] === (int) $internship->id
+                && (int) $t['peer']['id'] === (int) $coordinator->id
+                && $t['user_archived'] === false
+        ));
+
+        $this->actingAs($coordinator, 'sanctum')
+            ->postJson("/api/v1/messages/conversations/{$internship->id}/{$student->id}/archive", [
+                'archived' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('user_archived', false);
+
+        $coordActiveAgain = $this->actingAs($coordinator, 'sanctum')
+            ->getJson('/api/v1/messages/conversations?archived=0');
+        $this->assertTrue(collect($coordActiveAgain->json('data'))->contains(
+            fn ($t) => (int) $t['internship_id'] === (int) $internship->id && (int) $t['peer']['id'] === (int) $student->id
+        ));
+    }
+
+    public function test_unsend_shows_placeholder_for_both_users(): void
+    {
+        $student = $this->user('student', 'STU-M8', 'stu-m8@example.com');
+        $faculty = $this->user('faculty', 'FAC-M8', 'fac-m8@example.com');
+        $supervisor = $this->user('supervisor', 'SUP-M8', 'sup-m8@example.com');
+        $coordinator = $this->user('coordinator', 'COR-M8', 'cor-m8@example.com');
+        $internship = $this->placedInternship($student, $faculty, $supervisor, $coordinator);
+
+        $send = $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
+            'internship_id' => $internship->id,
+            'recipient_id'  => $coordinator->id,
+            'body'          => 'Secret oops',
+        ])->assertCreated();
+
+        $messageId = $send->json('data.id');
+
+        $this->actingAs($coordinator, 'sanctum')
+            ->postJson("/api/v1/messages/{$messageId}/unsend")
+            ->assertStatus(403);
+
+        $unsend = $this->actingAs($student, 'sanctum')
+            ->postJson("/api/v1/messages/{$messageId}/unsend");
+        $unsend->assertOk()
+            ->assertJsonPath('data.is_unsent', true)
+            ->assertJsonPath('data.body', Message::UNSENT_PLACEHOLDER);
+
+        $this->assertNotNull(Message::find($messageId)->unsent_at);
+        $this->assertSame('Secret oops', Message::find($messageId)->getRawOriginal('body'));
+
+        $coordThread = $this->actingAs($coordinator, 'sanctum')
+            ->getJson("/api/v1/messages/conversations/{$internship->id}/{$student->id}");
+        $coordThread->assertOk();
+        $this->assertSame(Message::UNSENT_PLACEHOLDER, $coordThread->json('messages.0.body'));
+        $this->assertTrue($coordThread->json('messages.0.is_unsent'));
+    }
+
+    public function test_clear_conversation_is_per_user_only(): void
+    {
+        $student = $this->user('student', 'STU-M9', 'stu-m9@example.com');
+        $faculty = $this->user('faculty', 'FAC-M9', 'fac-m9@example.com');
+        $supervisor = $this->user('supervisor', 'SUP-M9', 'sup-m9@example.com');
+        $coordinator = $this->user('coordinator', 'COR-M9', 'cor-m9@example.com');
+        $internship = $this->placedInternship($student, $faculty, $supervisor, $coordinator);
+
+        $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
+            'internship_id' => $internship->id,
+            'recipient_id'  => $coordinator->id,
+            'body'          => 'Keep for coordinator',
+        ])->assertCreated();
+
+        $this->actingAs($student, 'sanctum')
+            ->postJson("/api/v1/messages/conversations/{$internship->id}/{$coordinator->id}/clear")
+            ->assertOk();
+
+        $stuThread = $this->actingAs($student, 'sanctum')
+            ->getJson("/api/v1/messages/conversations/{$internship->id}/{$coordinator->id}");
+        $stuThread->assertOk();
+        $this->assertCount(0, $stuThread->json('messages'));
+
+        $coordThread = $this->actingAs($coordinator, 'sanctum')
+            ->getJson("/api/v1/messages/conversations/{$internship->id}/{$student->id}");
+        $coordThread->assertOk();
+        $this->assertCount(1, $coordThread->json('messages'));
+        $this->assertSame('Keep for coordinator', $coordThread->json('messages.0.body'));
+
+        // New messages after clear still appear for the clearer
+        $this->actingAs($coordinator, 'sanctum')->postJson('/api/v1/messages', [
+            'internship_id' => $internship->id,
+            'recipient_id'  => $student->id,
+            'body'          => 'After clear',
+        ])->assertCreated();
+
+        $stuAfter = $this->actingAs($student, 'sanctum')
+            ->getJson("/api/v1/messages/conversations/{$internship->id}/{$coordinator->id}");
+        $stuAfter->assertOk();
+        $this->assertCount(1, $stuAfter->json('messages'));
+        $this->assertSame('After clear', $stuAfter->json('messages.0.body'));
+    }
 }

@@ -38,6 +38,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'message' => 'The attachment must not be larger than 10 MB.',
+                ], 413);
+            }
+        });
+
         // Context-aware 429 JSON for API (named limiters supply their own copy when possible).
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, Request $request) {
             if (!$request->is('api/*')) {
