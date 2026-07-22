@@ -107,14 +107,6 @@ class DirectorController extends Controller
         return response()->json(['message' => 'Company updated.', 'company' => $company]);
     }
 
-    public function destroyCompany(Request $request, int $id)
-    {
-        $company = Company::findOrFail($id);
-        $company->delete();
-        audit_log($request->user()->id, 'delete_company', ['company_id' => $id]);
-        return response()->json(['message' => 'Company removed.']);
-    }
-
     public function moaMonitoring(Request $request)
     {
         $companies = Company::orderBy('moa_expiry_date')->get()->map(fn($c) => [
@@ -130,21 +122,6 @@ class DirectorController extends Controller
             'is_active'       => $c->is_active,
         ]);
         return ApiResponse::list($companies);
-    }
-
-    public function reports(Request $request)
-    {
-        $programs = $this->internsByProgram()->map(fn ($row) => [
-            'program' => $row->program,
-            'total' => $row->count,
-            'completed' => $row->completed,
-            'avg_hours' => $row->avg_hours,
-        ])->values();
-
-        return response()->json([
-            'by_program' => $programs,
-            'absorption' => AbsorptionService::analytics(),
-        ]);
     }
 
     /**
@@ -215,16 +192,5 @@ class DirectorController extends Controller
         $rows->setCollection($mapped);
 
         return ApiResponse::list($rows);
-    }
-
-    /** GET /api/v1/director/documents — oversight (all stages) */
-    public function documents(Request $request)
-    {
-        $docs = \App\Models\Document::with(['internship.student.studentProfile', 'reviews'])
-            ->whereNotIn('status', ['not_submitted'])
-            ->orderByDesc('submitted_at')
-            ->paginate(40);
-
-        return ApiResponse::list($docs);
     }
 }

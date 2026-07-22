@@ -59,7 +59,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/messages/conversations',                              [MessageController::class, 'conversations']);
         Route::get('/messages/conversations/{internshipId}/{peerId}',      [MessageController::class, 'thread']);
         Route::post('/messages',                                           [MessageController::class, 'send'])->middleware('throttle:messages');
-        Route::post('/messages/mark-read',                                 [MessageController::class, 'markRead']);
 
 
         // Student
@@ -75,7 +74,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/evaluations',           [StudentController::class, 'evaluations']);
             Route::get('/records',               [StudentController::class, 'records']);
             Route::post('/absorption/declare',   [StudentController::class, 'declareAbsorption']);
-            Route::get('/announcements',         [StudentController::class, 'announcements']);
             Route::get('/certificates/completion', [CertificateController::class, 'completion']);
             
             // Portfolio Builder
@@ -103,7 +101,6 @@ Route::prefix('v1')->group(function () {
             Route::post('/evaluations/{internshipId}',    [SupervisorController::class, 'submitEvaluation']);
             Route::get('/feedback',                       [SupervisorController::class, 'feedback']);
             Route::post('/feedback/{internshipId}',       [SupervisorController::class, 'submitFeedback']);
-            Route::get('/notifications',                  [SupervisorController::class, 'notifications']);
             Route::get('/absorption',                     [SupervisorController::class, 'absorptionList']);
             Route::patch('/internships/{id}/absorption',  [SupervisorController::class, 'recordAbsorption']);
         });
@@ -146,7 +143,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/internships/{id}/certificate', [CertificateController::class, 'completion']);
             Route::get('/absorption',                    [CoordinatorController::class, 'absorptionList']);
             Route::patch('/internships/{id}/absorption', [CoordinatorController::class, 'recordAbsorption']);
-            Route::get('/reports/overview',          [CoordinatorController::class, 'reportsOverview']);
             Route::get('/reports/student-summary',   [CoordinatorController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance',        [CoordinatorController::class, 'reportCompliance']);
             Route::get('/reports/performance',       [CoordinatorController::class, 'reportPerformance']);
@@ -166,11 +162,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies',       [DirectorController::class, 'companies']);
             Route::post('/companies',      [DirectorController::class, 'storeCompany']);
             Route::put('/companies/{id}',  [DirectorController::class, 'updateCompany']);
-            Route::delete('/companies/{id}', [DirectorController::class, 'destroyCompany']);
             Route::get('/moa-monitoring',  [DirectorController::class, 'moaMonitoring']);
-            Route::get('/reports',         [DirectorController::class, 'reports']);
             Route::get('/internships',     [DirectorController::class, 'internships']);
-            Route::get('/documents',       [DirectorController::class, 'documents']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
             Route::patch('/internships/{id}/status', [InternshipStatusController::class, 'update']);
             Route::get('/internships/{id}/certificate', [CertificateController::class, 'completion']);

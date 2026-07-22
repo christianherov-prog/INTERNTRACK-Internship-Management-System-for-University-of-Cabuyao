@@ -203,16 +203,4 @@ class MisdIntegrationService
             return $response->json() ?? [];
         });
     }
-
-    /**
-     * Sync an existing student's profile from MISD (refresh from source).
-     */
-    public function syncStudent(User $user): void
-    {
-        $data = $this->fetchStudent($user->username);
-        if (empty($data)) return;
-
-        Cache::forget("misd_student_{$user->username}");
-        $user->studentProfile?->update(array_merge($data, ['synced_at' => now()]));
-    }
 }

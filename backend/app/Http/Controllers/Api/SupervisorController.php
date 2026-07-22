@@ -438,25 +438,6 @@ class SupervisorController extends Controller
         return response()->json(['message' => 'Evaluation submitted successfully.', 'evaluation' => $eval], 201);
     }
 
-    /** GET /api/v1/supervisor/notifications */
-    public function notifications(Request $request)
-    {
-        $internshipIds = Internship::where('supervisor_id', $request->user()->id)->pluck('id');
-
-        $pendingAttendance = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)->where('status', 'pending')->count();
-        $pendingJournals   = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)->where('status', 'submitted')->count();
-
-        $notifications = collect();
-        if ($pendingAttendance > 0) {
-            $notifications->push(['type' => 'attendance', 'message' => "{$pendingAttendance} attendance record(s) pending validation.", 'count' => $pendingAttendance]);
-        }
-        if ($pendingJournals > 0) {
-            $notifications->push(['type' => 'journal', 'message' => "{$pendingJournals} journal entry(s) awaiting your review.", 'count' => $pendingJournals]);
-        }
-
-        return ApiResponse::list($notifications);
-    }
-
     /** GET /api/v1/supervisor/absorption */
     public function absorptionList(Request $request)
     {

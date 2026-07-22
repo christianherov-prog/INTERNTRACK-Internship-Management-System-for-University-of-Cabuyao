@@ -363,37 +363,6 @@ class MessageController extends Controller
         ], 201);
     }
 
-    /** POST /api/v1/messages/mark-read */
-    public function markRead(Request $request)
-    {
-        $request->validate([
-            'internship_id' => 'required|integer|exists:internships,id',
-            'peer_id'       => 'required|integer|exists:users,id',
-        ]);
-
-        $user = $request->user();
-        $internship = Internship::findOrFail((int) $request->internship_id);
-        $peerId = (int) $request->peer_id;
-
-        $this->assertParticipant($internship, (int) $user->id);
-        $this->assertParticipant($internship, $peerId);
-
-        $peer = User::findOrFail($peerId);
-
-        $updated = $this->rolePairQuery($internship->id, $user->role, $peer->role)
-            ->whereNull('read_at')
-            ->where(function ($q) use ($user) {
-                $q->where('recipient_id', $user->id)
-                    ->orWhere('recipient_role', $user->role);
-            })
-            ->update(['read_at' => now()]);
-
-        return response()->json([
-            'message' => 'Messages marked as read.',
-            'updated' => $updated,
-        ]);
-    }
-
     private function messagesPathForRole(?string $role): string
     {
         return match ($role) {

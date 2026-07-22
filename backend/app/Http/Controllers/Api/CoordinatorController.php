@@ -481,26 +481,6 @@ class CoordinatorController extends Controller
         return response()->json(['message' => 'Placement assigned successfully.', 'internship' => $internship]);
     }
 
-    /** GET /api/v1/coordinator/reports/overview */
-    public function reportsOverview(Request $request)
-    {
-        $total    = Internship::count();
-        $ongoing  = Internship::whereIn('status', ['ongoing', 'active'])->count();
-        $done     = Internship::where('status', 'completed')->count();
-        $docsOk   = Document::where('status', 'approved')->count();
-        $docsPending = Document::where('status', 'pending_review')->count();
-        $journalsSubmitted = JournalEntry::where('status', 'submitted')->count();
-        $attendancePending = \App\Models\AttendanceLog::where('status', 'pending')->count();
-
-        return response()->json([
-            'internships'        => compact('total', 'ongoing', 'done'),
-            'documents'          => ['approved' => $docsOk, 'pending' => $docsPending],
-            'journals_submitted' => $journalsSubmitted,
-            'attendance_pending' => $attendancePending,
-            'absorption'         => AbsorptionService::analytics(),
-        ]);
-    }
-
     /** GET /api/v1/coordinator/absorption — completed internships needing / with outcomes */
     public function absorptionList(Request $request)
     {

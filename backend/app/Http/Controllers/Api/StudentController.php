@@ -391,18 +391,4 @@ class StudentController extends Controller
             'internship' => $updated,
         ]);
     }
-
-    /** GET /api/v1/student/announcements */
-    public function announcements(Request $request)
-    {
-        $items = Announcement::where(function ($q) {
-                $q->where('target_role', 'all')->orWhere('target_role', 'student');
-            })
-            ->where(function ($q) { $q->whereNull('expires_at')->orWhere('expires_at', '>', now()); })
-            ->orderByDesc('is_pinned')
-            ->orderByDesc('created_at')
-            ->paginate(15);
-
-        return ApiResponse::list($items);
-    }
 }
