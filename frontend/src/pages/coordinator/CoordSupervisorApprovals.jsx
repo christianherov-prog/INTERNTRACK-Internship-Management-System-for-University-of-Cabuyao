@@ -4,7 +4,7 @@ import ConfirmModal from '../../components/modals/ConfirmModal'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 
-function CoordSupervisorApprovals() {
+function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-page' }) {
   const [pending, setPending] = useState([])
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,7 +18,7 @@ function CoordSupervisorApprovals() {
   const fetchData = () => {
     setLoading(true)
     setLoadError(null)
-    api.get('/coordinator/supervisor-approvals')
+    api.get(`${apiBase}/supervisor-approvals`)
       .then(res => {
         setPending(res.data.pending || [])
         setHistory(res.data.history || [])
@@ -31,13 +31,13 @@ function CoordSupervisorApprovals() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [apiBase])
 
   const handleApprove = async () => {
     if (!approveTarget) return
     setActionLoading(approveTarget)
     try {
-      await api.patch(`/coordinator/supervisor-approvals/${approveTarget}/approve`, { remarks: '' })
+      await api.patch(`${apiBase}/supervisor-approvals/${approveTarget}/approve`, { remarks: '' })
       setApproveTarget(null)
       fetchData()
     } catch (err) {
@@ -54,7 +54,7 @@ function CoordSupervisorApprovals() {
     }
     setActionLoading(rejectTarget)
     try {
-      await api.patch(`/coordinator/supervisor-approvals/${rejectTarget}/reject`, { remarks })
+      await api.patch(`${apiBase}/supervisor-approvals/${rejectTarget}/reject`, { remarks })
       setRejectTarget(null)
       setRemarks('')
       setMessage(null)
@@ -68,14 +68,14 @@ function CoordSupervisorApprovals() {
 
   if (loading) {
     return (
-      <Layout title="Supervisor Approvals" subtitle="Review Pending Registrations" icon="fa-user-check" bodyClass="coordinator-page">
+      <Layout title="Supervisor Approvals" subtitle="Review Pending Registrations" icon="fa-user-check" bodyClass={bodyClass}>
         <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x"></i></div>
       </Layout>
     )
   }
 
   return (
-    <Layout title="Supervisor Approvals" subtitle="Review Pending Registrations" icon="fa-user-check" bodyClass="coordinator-page">
+    <Layout title="Supervisor Approvals" subtitle="Review Pending Registrations" icon="fa-user-check" bodyClass={bodyClass}>
       {loadError && <PageError message={loadError} onRetry={fetchData} />}
       {message && (
         <div className="alert alert-danger alert-dismissible mb-3">

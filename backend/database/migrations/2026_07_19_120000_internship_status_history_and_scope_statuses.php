@@ -15,10 +15,30 @@ return new class extends Migration
             });
         }
 
-        // Widen status beyond original enum (MySQL). SQLite stores enums as TEXT already.
+        // Widen status beyond original enum (MySQL). Avoid MODIFY ENUM→VARCHAR:
+        // XAMPP MariaDB 10.4 often crashes ("Lost connection") on that ALTER.
         $driver = Schema::getConnection()->getDriverName();
         if ($driver === 'mysql') {
-            DB::statement("ALTER TABLE internships MODIFY status VARCHAR(40) NOT NULL DEFAULT 'pending_placement'");
+            $column = DB::selectOne("SHOW COLUMNS FROM internships LIKE 'status'");
+            $type = strtolower((string) ($column->Type ?? ''));
+            if (str_starts_with($type, 'enum(')) {
+                Schema::table('internships', function (Blueprint $table) {
+                    $table->string('status_new', 40)->default('pending_placement')->after('status');
+                });
+                DB::table('internships')->update([
+                    'status_new' => DB::raw('`status`'),
+                ]);
+                Schema::table('internships', function (Blueprint $table) {
+                    $table->dropIndex(['status']);
+                    $table->dropColumn('status');
+                });
+                Schema::table('internships', function (Blueprint $table) {
+                    $table->renameColumn('status_new', 'status');
+                });
+                Schema::table('internships', function (Blueprint $table) {
+                    $table->index('status');
+                });
+            }
         }
 
         DB::table('internships')->where('status', 'ongoing')->update(['status' => 'active']);

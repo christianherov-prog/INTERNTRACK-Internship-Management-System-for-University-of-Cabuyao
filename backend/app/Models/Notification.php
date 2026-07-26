@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\NotificationCreated;
 use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
@@ -97,7 +98,7 @@ class Notification extends Model
             return null;
         }
 
-        return static::create([
+        $notification = static::create([
             'user_id' => $userId,
             'type'    => $type,
             'title'   => $title,
@@ -105,5 +106,13 @@ class Notification extends Model
             'link'    => $link,
             'data'    => $data,
         ]);
+
+        try {
+            broadcast(new NotificationCreated($notification))->toOthers();
+        } catch (\Throwable) {
+            // Broadcasting is optional (e.g. no Reverb / queue in tests).
+        }
+
+        return $notification;
     }
 }

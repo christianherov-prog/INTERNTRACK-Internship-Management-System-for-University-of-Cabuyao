@@ -7,8 +7,9 @@ import api from '../services/api'
 import { getAvatarSrc } from '../utils/avatar'
 
 /**
- * Shared Settings UI for all roles (Student, Coordinator, Supervisor, Faculty, Director).
- * Role-specific copy/fields are passed as props from thin page wrappers.
+ * Shared Settings UI for all roles (Student, Coordinator, Supervisor, Faculty, Director, Admin).
+ * iEnroll roles: identity fields are display-only; password/avatar/notifications remain editable.
+ * Supervisors: full profile edit (not in iEnroll).
  */
 function RoleSettings({
   bodyClass,
@@ -21,6 +22,7 @@ function RoleSettings({
   accountExtraFields = [],
   notificationDefs = [],
   defaultNotifications = {},
+  children,
 }) {
   const { user, updateUserLocal, refreshUser } = useAuth()
   const toast = useToast()
@@ -29,8 +31,13 @@ function RoleSettings({
     ? `interntrack_notifications_${user.id}`
     : 'interntrack_notifications_guest'
 
-  // Pull fresh /auth/user so Profile Summary meta (company, coordinator, term)
-  // reflects the database — not a stale sessionStorage snapshot from login.
+  const profileEditable = Boolean(user?.profile_editable)
+  const identityLocked = !profileEditable
+
+  useEffect(() => {
+    setAvatarBroken(false)
+  }, [user?.avatarUrl, user?.avatarVersion])
+
   useEffect(() => {
     if (!user?.id) return undefined
     refreshUser()
@@ -43,6 +50,7 @@ function RoleSettings({
     contact: user?.contact || '',
     company: user?.company || '',
     position: user?.position || '',
+    sex: user?.sex || '',
   })
 
   const [passwords, setPasswords] = useState({
@@ -50,19 +58,14 @@ function RoleSettings({
     new_password: '',
   })
   const [passwordLoading, setPasswordLoading] = useState(false)
-  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' })
   const [profileSaving, setProfileSaving] = useState(false)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(() => {
-    if (!user?.id) return false
-    return localStorage.getItem(`interntrack_2fa_${user.id}`) === '1'
-  })
 
   const [cropSrc, setCropSrc] = useState(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState(null)
+  const [avatarBroken, setAvatarBroken] = useState(false)
 
   const [notifications, setNotifications] = useState(() => {
-    // Prefer server prefs; fall back to localStorage cache then defaults.
     if (user?.notificationPreferences && typeof user.notificationPreferences === 'object') {
       return { ...defaultNotifications, ...user.notificationPreferences }
     }
@@ -73,7 +76,6 @@ function RoleSettings({
     return { ...defaultNotifications }
   })
   const [notifSaving, setNotifSaving] = useState(false)
-  const [notifMessage, setNotifMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
     setFormData({
@@ -83,45 +85,51 @@ function RoleSettings({
       contact: user?.contact || '',
       company: user?.company || '',
       position: user?.position || '',
+      sex: user?.sex || '',
     })
-  }, [user?.id, user?.name, user?.email, user?.program, user?.contact, user?.company, user?.position])
+  }, [
+    user?.id,
+    user?.name,
+    user?.email,
+    user?.program,
+    user?.contact,
+    user?.company,
+    user?.position,
+    user?.sex,
+  ])
 
-  // Sync toggles when server prefs arrive (e.g. after refreshUser).
   useEffect(() => {
     if (user?.notificationPreferences && typeof user.notificationPreferences === 'object') {
-      setNotifications({ ...defaultNotifications, ...user.notificationPreferences })
+      const merged = { ...defaultNotifications, ...user.notificationPreferences }
+      setNotifications(merged)
       try {
-        localStorage.setItem(storageKey, JSON.stringify({
-          ...defaultNotifications,
-          ...user.notificationPreferences,
-        }))
+        localStorage.setItem(storageKey, JSON.stringify(merged))
       } catch { /* ignore */ }
     }
   }, [user?.id, user?.notificationPreferences]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cache locally only — server is source of truth.
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(notifications))
     } catch { /* ignore */ }
   }, [notifications, storageKey])
 
-  useEffect(() => {
-    if (!user?.id) return
-    localStorage.setItem(`interntrack_2fa_${user.id}`, twoFactorEnabled ? '1' : '0')
-  }, [twoFactorEnabled, user?.id])
+  const securityStatus = user?.must_change_password
+    ? 'Password change required'
+    : 'Password protected'
 
   const filledAccountFields = [
     formData.name,
     formData.email,
     formData.contact,
-    ...accountExtraFields.map(f => formData[f.name]),
-  ].filter(v => String(v || '').trim().length > 0).length
-  const totalAccountFields = 2 + accountExtraFields.length + 1 // name, email, contact, extras
+    ...accountExtraFields.map((f) => formData[f.name]),
+  ].filter((v) => String(v || '').trim().length > 0).length
+  const totalAccountFields = 2 + accountExtraFields.length + 1
   const profileCompletion = Math.round((filledAccountFields / Math.max(totalAccountFields, 1)) * 100)
   const notifEnabledCount = Object.values(notifications).filter(Boolean).length
 
   const handleFormChange = (e) => {
+    if (identityLocked && e.target.name !== 'sex') return
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
@@ -130,47 +138,46 @@ function RoleSettings({
   }
 
   const handleNotificationChange = async (key) => {
+    const previous = notifications
     const next = { ...notifications, [key]: !notifications[key] }
     setNotifications(next)
     setNotifSaving(true)
-    setNotifMessage({ type: '', text: '' })
     try {
       const res = await api.put('/auth/notification-preferences', { preferences: next })
+      const prefs = res.data?.preferences || next
+      setNotifications({ ...defaultNotifications, ...prefs })
       if (res.data?.user) {
         updateUserLocal(res.data.user)
+      } else {
+        updateUserLocal({ notificationPreferences: prefs })
       }
       try {
-        localStorage.setItem(storageKey, JSON.stringify(next))
+        localStorage.setItem(storageKey, JSON.stringify({ ...defaultNotifications, ...prefs }))
       } catch { /* ignore */ }
+      toast.success('Notification preferences saved.')
     } catch (err) {
-      // Revert optimistic update on failure.
-      setNotifications(notifications)
-      setNotifMessage({
-        type: 'error',
-        text: err.response?.data?.message || 'Failed to save notification preferences.',
-      })
+      setNotifications(previous)
+      toast.error(err.response?.data?.message || 'Failed to save notification preferences.')
     } finally {
       setNotifSaving(false)
     }
   }
 
   const handleSaveProfile = async () => {
+
     const updates = {
       name: formData.name,
       email: formData.email,
-      program: formData.program,
       contact: formData.contact,
+      position: formData.position || undefined,
+      sex: formData.sex || undefined,
     }
-    if (accountExtraFields.some(f => f.name === 'company')) updates.company = formData.company
-    if (accountExtraFields.some(f => f.name === 'position')) updates.position = formData.position
 
     setProfileSaving(true)
     try {
       const res = await api.put('/auth/profile', updates)
       if (res.data?.user) {
         updateUserLocal(res.data.user)
-      } else {
-        updateUserLocal(updates)
       }
       await refreshUser()
       toast.success('Profile saved successfully')
@@ -191,36 +198,17 @@ function RoleSettings({
       contact: user?.contact || '',
       company: user?.company || '',
       position: user?.position || '',
+      sex: user?.sex || '',
     })
   }
 
-  const handleUpdatePassword = async () => {
-    if (!passwords.current_password || !passwords.new_password) {
-      setPasswordMessage({ type: 'error', text: 'Please fill in all password fields.' })
-      return
-    }
-    if (passwords.new_password.length < 8) {
-      setPasswordMessage({ type: 'error', text: 'New password must be at least 8 characters.' })
-      return
-    }
-
+  const handleRequestPasswordChange = async () => {
     setPasswordLoading(true)
-    setPasswordMessage({ type: '', text: '' })
-
     try {
-      await api.post('/auth/change-password', {
-        current_password: passwords.current_password,
-        new_password: passwords.new_password,
-        new_password_confirmation: passwords.new_password,
-      })
-      setPasswordMessage({ type: 'success', text: 'Password updated successfully.' })
-      setPasswords({ current_password: '', new_password: '' })
+      const { data } = await api.post('/auth/request-password-change')
+      toast.success(data.message || 'Password confirmation email sent.')
     } catch (err) {
-      const msg =
-        err.response?.data?.errors?.current_password?.[0] ||
-        err.response?.data?.message ||
-        'Failed to update password.'
-      setPasswordMessage({ type: 'error', text: msg })
+      toast.error(err.response?.data?.message || 'Failed to send password change email.')
     } finally {
       setPasswordLoading(false)
     }
@@ -244,17 +232,19 @@ function RoleSettings({
     setAvatarError(null)
     try {
       const blob = await (await fetch(croppedDataUrl)).blob()
+      // Explicit File+MIME so Laravel's image/mimes rules always see a PNG upload.
+      const file = new File([blob], 'avatar.png', { type: blob.type || 'image/png' })
       const fd = new FormData()
-      fd.append('avatar', blob, 'avatar.png')
-      // Do not set Content-Type manually — axios/browser must add the multipart boundary.
+      fd.append('avatar', file)
       const { data } = await api.post('/auth/avatar', fd)
-      // Push into AuthContext so Topbar (and every other consumer) re-renders immediately.
       updateUserLocal({
         ...data.user,
         avatarVersion: Date.now(),
       })
+      setAvatarBroken(false)
     } catch (err) {
-      setAvatarError(err.response?.data?.message || 'Failed to upload profile photo. Please try again.')
+      const fieldErr = err.response?.data?.errors?.avatar?.[0]
+      setAvatarError(fieldErr || err.response?.data?.message || 'Failed to upload profile photo. Please try again.')
     } finally {
       setAvatarUploading(false)
     }
@@ -293,11 +283,19 @@ function RoleSettings({
     return date.toLocaleDateString()
   }
 
+  const fieldReadOnly = (field) => identityLocked || Boolean(field.readOnly)
+
   return (
     <Layout title="Settings" subtitle={subtitleLabel} icon="fa-cog" bodyClass={bodyClass}>
+      {user?.must_change_password && (
+        <div className="alert alert-warning border mb-3" role="alert">
+          <i className="fa fa-key me-2"></i>
+          <strong>Password change required.</strong> An administrator reset your password to the default.
+          Update it in the Security section below before continuing.
+        </div>
+      )}
       <div className="row g-4 settings-layout">
 
-        {/* Profile Summary */}
         <div className="col-xl-4 col-lg-5 d-flex">
           <div className="content-card settings-summary-card w-100">
             <div className="content-card-header">
@@ -312,8 +310,13 @@ function RoleSettings({
                 title="Click to change photo"
                 disabled={avatarUploading}
               >
-                {getAvatarSrc(user) ? (
-                  <img src={getAvatarSrc(user)} alt="Avatar" className="settings-avatar-img" />
+                {getAvatarSrc(user) && !avatarBroken ? (
+                  <img
+                    src={getAvatarSrc(user)}
+                    alt=""
+                    className="settings-avatar-img"
+                    onError={() => setAvatarBroken(true)}
+                  />
                 ) : (
                   <span className="settings-avatar-initials">{user?.avatar || 'U'}</span>
                 )}
@@ -340,7 +343,7 @@ function RoleSettings({
             </div>
 
             <div className="settings-meta-list">
-              {metaFields.map(field => (
+              {metaFields.map((field) => (
                 <div className="settings-meta-item" key={field.label}>
                   <span className="settings-meta-label">{field.label}</span>
                   <strong>{resolveMetaValue(field)}</strong>
@@ -355,7 +358,7 @@ function RoleSettings({
               </div>
               <div className="settings-stat-card">
                 <span>Security Status</span>
-                <strong>{twoFactorEnabled ? 'High' : 'Standard'}</strong>
+                <strong>{securityStatus}</strong>
               </div>
               <div className="settings-stat-card">
                 <span>Notifications</span>
@@ -374,39 +377,95 @@ function RoleSettings({
           </div>
         </div>
 
-        {/* Account Settings */}
         <div className="col-xl-8 col-lg-7 d-flex">
           <div className="content-card settings-section-card account-settings-panel w-100">
             <div className="content-card-header">
               <i className="fa fa-id-card"></i>
-              <h6>Account Settings</h6>
+              <h6>Profile Information</h6>
             </div>
             <div className="settings-section-intro">{accountIntro}</div>
+            {identityLocked && (
+              <div className="alert alert-info py-2 px-3 mb-3" style={{ fontSize: '0.85rem' }}>
+                Identity fields are synced from iEnroll and are read-only. You can still update your
+                contact number, password, photo, and notification preferences.
+              </div>
+            )}
             <div className="row g-3 g-lg-4">
               <div className="col-md-6">
                 <label className="form-label form-label-subtle">Full Name</label>
-                <input type="text" className="form-control" name="name" value={formData.name} onChange={handleFormChange} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label form-label-subtle">Email Address</label>
-                <input type="email" className="form-control" name="email" value={formData.email} onChange={handleFormChange} />
-              </div>
-              {accountExtraFields.map(field => (
-                <div className="col-md-6" key={field.name}>
-                  <label className="form-label form-label-subtle">{field.label}</label>
+                {identityLocked ? (
+                  <div className="form-control-plaintext bg-light px-3 py-2 rounded text-dark fw-medium border">
+                    {formData.name || '—'}
+                  </div>
+                ) : (
                   <input
                     type="text"
                     className="form-control"
-                    name={field.name}
-                    value={formData[field.name] || ''}
+                    name="name"
+                    value={formData.name}
                     onChange={handleFormChange}
-                    readOnly={field.readOnly}
                   />
+                )}
+              </div>
+              <div className="col-md-6">
+                <label className="form-label form-label-subtle">Email Address</label>
+                {identityLocked ? (
+                  <div className="form-control-plaintext bg-light px-3 py-2 rounded text-dark fw-medium border">
+                    {formData.email || '—'}
+                  </div>
+                ) : (
+                  <input
+                    type="email"
+                    className="form-control"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleFormChange}
+                  />
+                )}
+              </div>
+              {accountExtraFields.map((field) => (
+                <div className="col-md-6" key={field.name}>
+                  <label className="form-label form-label-subtle">{field.label}</label>
+                  {fieldReadOnly(field) ? (
+                    <div className="form-control-plaintext bg-light px-3 py-2 rounded text-dark fw-medium border">
+                      {formData[field.name] || '—'}
+                    </div>
+                  ) : field.type === 'select' ? (
+                    <select
+                      className="form-select"
+                      name={field.name}
+                      value={formData[field.name] || ''}
+                      onChange={handleFormChange}
+                    >
+                      <option value="">Select…</option>
+                      {(field.options || []).map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="form-control"
+                      name={field.name}
+                      value={formData[field.name] || ''}
+                      onChange={handleFormChange}
+                    />
+                  )}
+                  {field.helperText && (
+                    <div className="form-text" style={{ fontSize: '0.75rem' }}>{field.helperText}</div>
+                  )}
                 </div>
               ))}
               <div className="col-md-6">
                 <label className="form-label form-label-subtle">Contact Number</label>
-                <input type="text" className="form-control" name="contact" value={formData.contact} onChange={handleFormChange} />
+                <input
+                  type="text"
+                  className="form-control"
+                  name="contact"
+                  value={formData.contact}
+                  onChange={handleFormChange}
+                  placeholder="e.g. 09123456789"
+                />
               </div>
             </div>
             <div className="settings-actions-row mt-4">
@@ -421,7 +480,6 @@ function RoleSettings({
           </div>
         </div>
 
-        {/* Notifications */}
         <div className="col-xl-7 col-lg-6 d-flex">
           <div className="content-card settings-section-card settings-notification-card w-100">
             <div className="content-card-header">
@@ -429,13 +487,8 @@ function RoleSettings({
               <h6>Notifications</h6>
             </div>
             <div className="settings-section-intro">{notificationsIntro}</div>
-            {notifMessage.text && (
-              <div className={`alert alert-${notifMessage.type === 'error' ? 'danger' : 'success'} py-2 px-3 mb-3`} style={{ fontSize: '0.85rem' }}>
-                {notifMessage.text}
-              </div>
-            )}
             <div className="settings-toggle-list">
-              {notificationDefs.map(item => (
+              {notificationDefs.map((item) => (
                 <div className="settings-toggle-row settings-toggle-card" key={item.key}>
                   <div>
                     <strong>{item.title}</strong>
@@ -456,7 +509,6 @@ function RoleSettings({
           </div>
         </div>
 
-        {/* Security */}
         <div className="col-xl-5 col-lg-6 d-flex">
           <div className="content-card settings-section-card settings-security-card w-100">
             <div className="content-card-header">
@@ -465,47 +517,27 @@ function RoleSettings({
             </div>
             <div className="settings-section-intro">{securityIntro}</div>
 
-            {passwordMessage.text && (
-              <div className={`alert alert-${passwordMessage.type === 'error' ? 'danger' : 'success'} py-2 px-3 mb-3`} style={{ fontSize: '0.85rem' }}>
-                {passwordMessage.text}
+            <div className="p-3 bg-light rounded border mb-4">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <i className="fa fa-envelope text-success"></i>
+                <span className="fw-semibold text-dark" style={{ fontSize: '0.88rem' }}>Email Confirmation Flow</span>
               </div>
-            )}
-
-            <div className="row g-3">
-              <div className="col-12">
-                <label className="form-label form-label-subtle">Current Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  name="current_password"
-                  value={passwords.current_password}
-                  onChange={handlePasswordChange}
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="col-12">
-                <label className="form-label form-label-subtle">New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  name="new_password"
-                  value={passwords.new_password}
-                  onChange={handlePasswordChange}
-                  placeholder="••••••••"
-                />
-              </div>
+              <p className="text-muted mb-0" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+                To keep your account secure, password changes require email verification. Click the button below to receive a confirmation link sent to your registered email address (valid for 60 minutes).
+              </p>
             </div>
-            <div className="settings-actions-row mt-4">
-              <button type="button" className="btn-green" onClick={handleUpdatePassword} disabled={passwordLoading}>
-                {passwordLoading ? 'Updating...' : 'Update Password'}
-              </button>
-              <button type="button" className="btn-outline-green" onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}>
-                {twoFactorEnabled ? 'Disable 2-Step Verification' : 'Enable 2-Step Verification'}
+
+            <div className="settings-actions-row">
+              <button type="button" className="btn-green d-inline-flex align-items-center gap-2" onClick={handleRequestPasswordChange} disabled={passwordLoading}>
+                <i className="fa fa-paper-plane"></i>
+                {passwordLoading ? 'Sending Email...' : 'Send Password Change Email'}
               </button>
             </div>
           </div>
         </div>
 
+        {/* Children (e.g., SignatureUpload for StudentSettings) */}
+        {children}
       </div>
 
       {cropSrc && (

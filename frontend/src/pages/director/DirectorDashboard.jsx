@@ -1,9 +1,49 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
+import EmptyState from '../../components/EmptyState'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
+import QuickActionsPanel from '../../components/QuickActionsPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
-import { CURRENT_TERM } from '../../config/term'
+import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+
+const DIRECTOR_QUICK_ACTIONS = [
+  {
+    to: '/director/reports',
+    title: 'Reports & Analytics',
+    description: 'Generate placement and performance reports',
+    icon: 'fa-chart-bar',
+    tone: 'blue',
+  },
+  {
+    to: '/director/companies',
+    title: 'Company Partnerships',
+    description: 'Manage partner companies and contacts',
+    icon: 'fa-building',
+    tone: 'teal',
+  },
+  {
+    to: '/director/moa-monitoring',
+    title: 'MOA Monitoring',
+    description: 'Track MOA status and renewals',
+    icon: 'fa-file-signature',
+    tone: 'amber',
+  },
+  {
+    to: '/director/internships',
+    title: 'Student Roster & Placements',
+    description: 'View and manage internship placements',
+    icon: 'fa-users',
+    tone: 'green',
+  },
+  {
+    to: '/director/absorption',
+    title: 'Absorption Overview',
+    description: 'Finalize hire / absorption outcomes',
+    icon: 'fa-user-check',
+    tone: 'gray',
+  },
+]
 
 const MOA_COLORS = {
   active:      { bg: '#dcfce7', color: '#166534', label: 'Active' },
@@ -14,7 +54,7 @@ const MOA_COLORS = {
 }
 
 function ProgramBar({ programs, total }) {
-  if (!programs?.length) return <p className="text-muted">No data.</p>
+  if (!programs?.length) return <EmptyState icon="fa-graduation-cap" title="No program data" message="Intern counts by program will appear once internships are active." />
   return (
     <div className="table-responsive">
       <table className="table table-hover mb-0" style={{ fontSize: '0.85rem' }}>
@@ -98,6 +138,7 @@ function CompetencyBars({ evalBreakdown }) {
 }
 
 function DirectorDashboard() {
+  const currentTerm = useCurrentTerm()
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
@@ -121,54 +162,30 @@ function DirectorDashboard() {
   const moaByStatus = data?.moa_by_status ?? {}
   const topCompanies= data?.top_companies ?? []
   const evalBreak   = data?.eval_breakdown ?? null
-  const absorption  = data?.absorption    ?? {}
 
   return (
-    <Layout title="Dashboard" subtitle={CURRENT_TERM} icon="fa-chart-pie" bodyClass="director-page">
+    <Layout title="Dashboard" subtitle={currentTerm} icon="fa-chart-pie" bodyClass="director-page">
       <RoleSummaryPanel />
-
-      <div className="alert alert-light border mb-4" role="note">
-        <div className="d-flex gap-2 align-items-start">
-          <i className="fa fa-envelope mt-1 text-muted" aria-hidden="true"></i>
-          <div>
-            <strong>Direct messaging</strong> is not available for the PALD Director role.
-            Stakeholder chat is scoped to people linked on an internship (student, faculty,
-            industry supervisor, and coordinator). Directors continue to use dashboards,
-            reports, and system notifications for oversight.
-          </div>
-        </div>
-      </div>
-
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
         <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
       ) : !error && (
         <>
-          <div className="content-card mb-4">
-            <div className="content-card-header">
-              <i className="fa fa-user-check"></i>
-              <h6>Absorption Summary</h6>
+          <div className="row g-3 mb-4">
+            <div className="col-lg-6">
+              <QuickActionsPanel actions={DIRECTOR_QUICK_ACTIONS} />
             </div>
-            <div className="row g-3 p-3">
-              <div className="col-md-3 col-6">
-                <div className="text-muted small">Completed</div>
-                <div className="fw-bold" style={{ fontSize: '1.4rem' }}>{absorption.completed_internships ?? 0}</div>
-              </div>
-              <div className="col-md-3 col-6">
-                <div className="text-muted small">Absorbed</div>
-                <div className="fw-bold" style={{ fontSize: '1.4rem', color: '#16a34a' }}>{absorption.absorbed ?? 0}</div>
-              </div>
-              <div className="col-md-3 col-6">
-                <div className="text-muted small">Not Hired / Pending</div>
-                <div className="fw-bold" style={{ fontSize: '1.4rem' }}>
-                  {(absorption.not_hired ?? 0)} / {(absorption.pending ?? 0)}
+
+            {/* Evaluation Competency Averages — promoted next to Quick Actions to fill the row */}
+            <div className="col-lg-6">
+              <div className="content-card h-100">
+                <div className="content-card-header">
+                  <i className="fa fa-star"></i>
+                  <h6>Average Evaluation Scores</h6>
                 </div>
-              </div>
-              <div className="col-md-3 col-6">
-                <div className="text-muted small">Absorption Rate</div>
-                <div className="fw-bold" style={{ fontSize: '1.4rem' }}>
-                  {absorption.absorption_rate != null ? `${absorption.absorption_rate}%` : '—'}
+                <div className="p-3">
+                  <CompetencyBars evalBreakdown={evalBreak} />
                 </div>
               </div>
             </div>
@@ -203,21 +220,8 @@ function DirectorDashboard() {
           </div>
 
           <div className="row g-3 mb-4">
-            {/* Evaluation Competency Averages */}
-            <div className="col-lg-6">
-              <div className="content-card h-100">
-                <div className="content-card-header">
-                  <i className="fa fa-star"></i>
-                  <h6>Average Evaluation Scores</h6>
-                </div>
-                <div className="p-3">
-                  <CompetencyBars evalBreakdown={evalBreak} />
-                </div>
-              </div>
-            </div>
-
             {/* Top Companies by Interns */}
-            <div className="col-lg-6">
+            <div className="col-12">
               <div className="content-card h-100">
                 <div className="content-card-header">
                   <i className="fa fa-building"></i>

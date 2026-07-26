@@ -1,22 +1,37 @@
 import RoleSettings from '../../components/RoleSettings'
-import { CURRENT_TERM } from '../../config/term'
 
 function FacultySettings() {
   return (
     <RoleSettings
       bodyClass="faculty-page"
       subtitleLabel="Faculty"
-      summaryNote="Keep your department and contact details updated so advisees and the practicum coordinator can reach you for journal and evaluation follow-ups."
-      accountIntro="Manage your faculty adviser profile details used across journal review and student evaluations."
+      summaryNote="Your official faculty identity is synced from iEnroll. Update password and avatar here; request HR/MISD corrections for identity changes."
+      accountIntro="Official faculty profile from iEnroll. These fields are display-only in INTERNTRACK."
       notificationsIntro="Choose which faculty advising alerts you want to receive."
       securityIntro="Update your password and strengthen account protection for your school credentials."
       metaFields={[
+        { label: 'Employee Number', key: 'employee_number', fallback: '—' },
         { label: 'Department', key: 'program', fallback: 'CCS' },
+        { label: 'College', key: 'college', fallback: '—' },
+        { label: 'Employment Status', key: 'employment_status', fallback: '—' },
         { label: 'Position', key: 'position', fallback: 'Faculty Adviser' },
-        { label: 'Academic Term', key: 'term', fallback: CURRENT_TERM },
+        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, Sem 2' },
       ]}
       accountExtraFields={[
-        { name: 'program', label: 'Department' },
+        {
+          name: 'program',
+          label: 'Department',
+          readOnly: true,
+          helperText: 'Synced from iEnroll — read-only.',
+        },
+        {
+          name: 'sex',
+          label: 'Sex',
+          type: 'select',
+          options: ['Male', 'Female'],
+          readOnly: true,
+          helperText: 'Official record from iEnroll — cannot be edited here.',
+        },
       ]}
       defaultNotifications={{
         journalSubmissions: true,

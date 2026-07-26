@@ -3,7 +3,7 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
-import { CURRENT_TERM } from '../../config/term'
+import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 
 function studentName(entry) {
   const p = entry?.internship?.student?.student_profile
@@ -15,6 +15,7 @@ function studentName(entry) {
 }
 
 function FacultyFeedback() {
+  const currentTerm = useCurrentTerm()
   const [feedbackRows, setFeedbackRows] = useState([])
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -70,7 +71,7 @@ function FacultyFeedback() {
   }
 
   return (
-    <Layout title="Feedback" subtitle={CURRENT_TERM} icon="fa-comment-dots" bodyClass="faculty-page">
+    <Layout title="Feedback" subtitle={currentTerm} icon="fa-comment-dots" bodyClass="faculty-page">
       {error && <PageError message={error} onRetry={load} />}
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible mb-3`}>

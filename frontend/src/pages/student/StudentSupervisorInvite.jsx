@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
+import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 
 function StudentSupervisorInvite() {
@@ -9,11 +11,13 @@ function StudentSupervisorInvite() {
   const [supervisor, setSupervisor] = useState(null)
   const [state, setState] = useState('none')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const fetchStatus = () => {
     setLoading(true)
+    setError(null)
     api.get('/student/supervisor-invite/status')
       .then(res => {
         setInvite(res.data.invite)
@@ -21,7 +25,9 @@ function StudentSupervisorInvite() {
         setSupervisor(res.data.supervisor || null)
         setState(res.data.state || (res.data.has_supervisor ? 'assigned' : 'none'))
       })
-      .catch(console.error)
+      .catch((err) => {
+        setError(err.response?.data?.message || 'Failed to load supervisor invite status.')
+      })
       .finally(() => setLoading(false))
   }
 
@@ -76,6 +82,7 @@ function StudentSupervisorInvite() {
 
   return (
     <Layout title="Supervisor Invite" subtitle="QR Code Registration" icon="fa-qrcode" bodyClass="student-page">
+      {error && <PageError message={error} onRetry={fetchStatus} />}
       {hasSupervisor || state === 'assigned' ? (
         <div className="content-card">
           <div className="content-card-header bg-light">
@@ -110,7 +117,7 @@ function StudentSupervisorInvite() {
                 </div>
                 <div className="d-flex align-items-start mb-3">
                   <span className="badge bg-primary rounded-circle me-3" style={{width:'28px',height:'28px',lineHeight:'18px',fontSize:'13px'}}>3</span>
-                  <div><strong>Coordinator Reviews & Approves</strong><p className="text-muted small mb-0">The Internship Coordinator will verify and approve the supervisor's account.</p></div>
+                  <div><strong>Faculty Reviews & Approves</strong><p className="text-muted small mb-0">Your Faculty Supervisor will verify and approve the supervisor's account.</p></div>
                 </div>
                 <div className="d-flex align-items-start">
                   <span className="badge bg-success rounded-circle me-3" style={{width:'28px',height:'28px',lineHeight:'18px',fontSize:'13px'}}>4</span>
@@ -130,7 +137,7 @@ function StudentSupervisorInvite() {
                   <>
                     <i className="fa fa-user-plus fa-3x text-muted mb-3"></i>
                     <p className="text-muted mb-4">Generate a QR code to invite your HTE Supervisor to register on InternTrack.</p>
-                    <button className="btn btn-primary px-5" onClick={handleGenerate} disabled={generating}>
+                    <button className="btn btn-green px-5" onClick={handleGenerate} disabled={generating}>
                       {generating
                         ? <><i className="fa fa-spinner fa-spin me-2"></i>Generating...</>
                         : <><i className="fa fa-qrcode me-2"></i>Generate QR Code</>
@@ -149,7 +156,7 @@ function StudentSupervisorInvite() {
                         <p className="small text-muted mb-2">Ask your supervisor to scan this QR code, or share the link below:</p>
                         <div className="input-group input-group-sm mb-3">
                           <input type="text" className="form-control form-control-sm" value={registerUrl} readOnly style={{fontSize:'11px'}} />
-                          <button className="btn btn-outline-primary btn-sm" onClick={handleCopy}>
+                          <button className="btn btn-outline-green btn-sm" onClick={handleCopy}>
                             <i className={`fa ${copied ? 'fa-check' : 'fa-copy'} me-1`}></i>{copied ? 'Copied!' : 'Copy'}
                           </button>
                         </div>
@@ -168,7 +175,7 @@ function StudentSupervisorInvite() {
                         <i className="fa fa-user-clock fa-3x text-info mb-3"></i>
                         <p className="mb-1"><strong>{invite.first_name} {invite.last_name}</strong></p>
                         <p className="text-muted small mb-0">{invite.position} &middot; {invite.email}</p>
-                        <p className="text-muted small mt-3">The Internship Coordinator is reviewing this registration.</p>
+                        <p className="text-muted small mt-3">Your Faculty Supervisor is reviewing this registration.</p>
                       </div>
                     )}
 

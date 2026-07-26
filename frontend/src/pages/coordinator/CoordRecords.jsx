@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
 import StatusHistoryModal from '../../components/StatusHistoryModal'
+import ModalPortal from '../../components/modals/ModalPortal'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
@@ -48,8 +49,9 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
   }
 
   return (
+    <ModalPortal>
     <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content">
           <form onSubmit={handleSubmit}>
             <div className="modal-header">
@@ -86,7 +88,7 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading || saving}>
+              <button type="submit" className="btn btn-green" disabled={loading || saving}>
                 {saving ? 'Assigning...' : 'Authorize Deployment'}
               </button>
             </div>
@@ -94,6 +96,7 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
         </div>
       </div>
     </div>
+    </ModalPortal>
   )
 }
 
@@ -293,14 +296,14 @@ function CoordRecords() {
                               <i className={`fa ${archived ? 'fa-box-open' : 'fa-box-archive'}`}></i>
                             </button>
                             {st === 'pending_placement' ? (
-                              <button className="btn btn-sm btn-primary me-1" onClick={() => setAssigning(s)}>
+                              <button className="btn btn-sm btn-green me-1" onClick={() => setAssigning(s)}>
                                 <i className="fa fa-map-pin me-1"></i> Assign Placement
                               </button>
                             ) : null}
                             {internship?.id ? (
                               <>
                                 <button
-                                  className="btn btn-sm btn-outline-primary me-1"
+                                  className="btn btn-sm btn-outline-green me-1"
                                   onClick={() => setStatusTarget({
                                     internshipId: internship.id,
                                     studentName: name,

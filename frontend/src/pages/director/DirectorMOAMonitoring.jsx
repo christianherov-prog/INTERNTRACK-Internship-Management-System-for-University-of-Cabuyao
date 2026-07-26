@@ -1,19 +1,29 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
 import api from '../../services/api'
-import { downloadCsv } from '../../utils/csv'
 import { unwrapList } from '../../utils/apiList'
+import ReportExportModal from '../../components/modals/ReportExportModal'
 
 function DirectorMOAMonitoring() {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
+  const [exportPreview, setExportPreview] = useState(null)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
+    setError(null)
     api.get('/director/moa-monitoring')
       .then(res => setCompanies(unwrapList(res.data).items))
-      .catch(console.error)
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load MOA monitoring.')
+        setCompanies([])
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   const urgencyColor = (days) => {
     if (days === null || days === undefined) return '#64748b'
@@ -38,14 +48,20 @@ function DirectorMOAMonitoring() {
   const expired  = companies.filter(c => c.moa_status === 'expired').length
 
   const handleExportCsv = () => {
-    downloadCsv('moa-monitoring', companies.map(c => ({
-      Company: c.company_name, Status: c.moa_status, 'Expiry Date': c.moa_expiry_date ?? '—',
-      'Urgency (days)': c.expires_in_days ?? '—', Contact: c.contact_person ?? '—', Slots: c.slots_available,
-    })))
+    setExportPreview({
+      title: 'MOA Monitoring Report',
+      filename: 'moa-monitoring',
+      rows: companies.map(c => ({
+        Company: c.company_name, Status: c.moa_status, 'Expiry Date': c.moa_expiry_date ?? '—',
+        'Urgency (days)': c.expires_in_days ?? '—', Contact: c.contact_person ?? '—', Slots: c.slots_available,
+      })),
+    })
   }
 
   return (
     <Layout title="MOA Monitoring" subtitle="Memorandum of Agreement Tracker" icon="fa-file-signature" bodyClass="director-page">
+      {error && <PageError message={error} onRetry={load} />}
+
       {/* Summary — shared .stat-card (same as Student/Coordinator) */}
       <div className="row g-3 mb-4">
         <div className="col-sm-4">
@@ -74,9 +90,9 @@ function DirectorMOAMonitoring() {
               <table className="table table-hover mb-0">
                 <thead><tr><th>Company</th><th>Status</th><th>Expiry Date</th><th>Urgency</th><th>Contact</th><th>Slots</th></tr></thead>
                 <tbody>
-                  {companies.length === 0 ? (
+                  {companies.length === 0 && !error ? (
                     <tr><td colSpan={6} className="text-center text-muted py-4">No companies found.</td></tr>
-                  ) : companies.map(c => (
+                  ) : companies.length === 0 ? null : companies.map(c => (
                     <tr key={c.id}>
                       <td className="fw-semibold">{c.company_name}</td>
                       <td><span className={`badge-status ${moaBadge[c.moa_status] ?? 'badge-pending'}`}>{c.moa_status?.replace('_',' ').replace(/\b\w/g, l => l.toUpperCase())}</span></td>
@@ -97,6 +113,7 @@ function DirectorMOAMonitoring() {
           )}
         </div>
       </div>
+      <ReportExportModal preview={exportPreview} onClose={() => setExportPreview(null)} />
     </Layout>
   )
 }

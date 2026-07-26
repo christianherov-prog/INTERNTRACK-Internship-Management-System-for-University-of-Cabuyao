@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapGroups } from '../../utils/apiList'
-import { CURRENT_TERM } from '../../config/term'
+import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 
 const COMPETENCIES = [
   { key: 'technical_skills',       label: 'Technical Skills' },
@@ -24,9 +25,20 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
 
   const setScore = (key, val) => setScores(prev => ({ ...prev, [key]: val }))
   const allFilled = COMPETENCIES.every(c => scores[c.key])
+  const canSubmit = allFilled
 
-  const profile = internship.student?.studentProfile
+  const profile = internship.student?.student_profile || internship.student?.studentProfile
   const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+
+  const handleLocalSubmit = async () => {
+    if (!canSubmit || processing) return
+
+    const fd = new FormData()
+    fd.append('evaluation_period', period)
+    COMPETENCIES.forEach(c => fd.append(c.key, String(scores[c.key])))
+    if (comments.trim()) fd.append('general_comments', comments.trim())
+    onSubmit(internship.id, fd, period)
+  }
 
   return (
     <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -88,7 +100,7 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
                 {(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length).toFixed(2)} / 5.00
               </div>
             )}
-            <div>
+            <div className="mb-3">
               <label className="form-label fw-semibold">General Comments</label>
               <textarea className="form-control" rows={3} value={comments} onChange={e => setComments(e.target.value)} placeholder="Optional overall comments…"></textarea>
             </div>
@@ -97,8 +109,8 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button
               className="btn btn-warning text-white"
-              onClick={() => onSubmit(internship.id, period, scores, comments)}
-              disabled={processing || !allFilled}
+              onClick={handleLocalSubmit}
+              disabled={processing || !canSubmit}
             >
               <i className={`fa fa-${processing ? 'spinner fa-spin' : 'paper-plane'} me-2`}></i>Submit Evaluation
             </button>
@@ -110,28 +122,32 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
 }
 
 function FacultyEvaluations() {
+  const currentTerm = useCurrentTerm()
   const [data, setData]           = useState(null)
   const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
   const [processing, setProcessing] = useState(false)
   const [message, setMessage]     = useState(null)
   const [modal, setModal]         = useState(null)
 
   const fetchData = () => {
     setLoading(true)
+    setError(null)
     api.get('/faculty/evaluations')
       .then(res => setData(unwrapGroups(res.data)))
-      .catch(console.error)
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load evaluations.')
+        setData(null)
+      })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [])
 
-  const handleSubmit = async (internshipId, period, scores, comments) => {
+  const handleSubmit = async (internshipId, formData, period) => {
     setProcessing(true)
     try {
-      await api.post(`/faculty/evaluations/${internshipId}`, {
-        evaluation_period: period, general_comments: comments, ...scores,
-      })
+      await api.post(`/faculty/evaluations/${internshipId}`, formData)
       setMessage({ type: 'success', text: `${period.charAt(0).toUpperCase() + period.slice(1)} evaluation submitted successfully!` })
       setModal(null)
       fetchData()
@@ -144,7 +160,9 @@ function FacultyEvaluations() {
   const completed = data?.completed ?? []
 
   return (
-    <Layout title="Evaluations" subtitle={CURRENT_TERM} icon="fa-star" bodyClass="faculty-page">
+    <Layout title="Evaluations" subtitle={currentTerm} icon="fa-star" bodyClass="faculty-page">
+      {error && <PageError message={error} onRetry={fetchData} />}
+
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
           {message.text}
@@ -167,10 +185,10 @@ function FacultyEvaluations() {
               <span className="ms-auto badge bg-warning text-dark">{pending.length}</span>
             </div>
             <div className="table-card">
-              {pending.length === 0 ? (
+              {pending.length === 0 && !error ? (
                 <div className="text-center py-3 text-muted">No pending evaluations.</div>
-              ) : pending.map(i => {
-                const p = i.student?.studentProfile
+              ) : pending.length === 0 ? null : pending.map(i => {
+                const p = i.student?.student_profile || i.student?.studentProfile
                 const name = p ? `${p.first_name} ${p.last_name}` : '—'
                 return (
                   <div key={i.id} className="p-3 border-bottom d-flex align-items-center justify-content-between">
@@ -201,7 +219,7 @@ function FacultyEvaluations() {
                   {completed.length === 0 ? (
                     <tr><td colSpan={7} className="text-center text-muted py-3">No completed evaluations.</td></tr>
                   ) : completed.map(ev => {
-                    const p = ev.internship?.student?.studentProfile
+                    const p = ev.internship?.student?.student_profile || ev.internship?.student?.studentProfile
                     const name = p ? `${p.first_name} ${p.last_name}` : '—'
                     return (
                       <tr key={ev.id}>

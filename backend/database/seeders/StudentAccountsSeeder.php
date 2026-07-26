@@ -38,7 +38,7 @@ class StudentAccountsSeeder extends Seeder
                     'birthday' => '2000-01-01',
                     'sex' => 'Male',
                     'program' => 'BS Information Technology',
-                    'college' => 'College of Computing and Information Sciences',
+                    'college' => 'College of Computing Studies',
                     'department' => 'Information Technology',
                     'course_name' => 'BS Information Technology',
                     'year_level' => 4,
@@ -59,9 +59,32 @@ class StudentAccountsSeeder extends Seeder
                     'email' => 'clarence.montealegre@uc.edu.ph',
                     'contact_number' => null,
                     'birthday' => null,
-                    'sex' => null,
+                    'sex' => 'Male',
                     'program' => 'BS Information Technology',
-                    'college' => 'College of Computing and Information Sciences',
+                    'college' => 'College of Computing Studies',
+                    'department' => 'Information Technology',
+                    'course_name' => 'BS Information Technology',
+                    'year_level' => 4,
+                    'section' => '4ITD',
+                    'academic_year' => '2025-2026',
+                    'semester' => 2,
+                    'enrollment_status' => 'Enrolled',
+                ],
+            ],
+            [
+                'username' => '2300590',
+                'email' => 'angel.taactaac@uc.edu.ph',
+                'profile' => [
+                    'student_number' => '2300590',
+                    'first_name' => 'Angel Luis',
+                    'middle_name' => 'Rafols',
+                    'last_name' => 'Taac-Taac',
+                    'email' => 'angel.taactaac@uc.edu.ph',
+                    'contact_number' => null,
+                    'birthday' => null,
+                    'sex' => 'Male',
+                    'program' => 'BS Information Technology',
+                    'college' => 'College of Computing Studies',
                     'department' => 'Information Technology',
                     'course_name' => 'BS Information Technology',
                     'year_level' => 4,
@@ -117,6 +140,6 @@ class StudentAccountsSeeder extends Seeder
             }
         }
 
-        $this->command?->info('Student accounts seeded: 2300600 (Valinado), 2300592 (Montealegre).');
+        $this->command?->info('Student accounts seeded: 2300600 (Valinado), 2300592 (Montealegre), 2300590 (Taac-Taac).');
     }
 }

@@ -5,24 +5,26 @@ Internship Management System for the **University of Cabuyao (Pamantasan ng Cabu
 Capstone project — Group 4  
 Stack: **React (Vite)** frontend · **Laravel Sanctum** REST API · **MySQL**
 
-Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrack-capstone) · active branch: **`develop`**
+Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrack-capstone)  
+Integration branch: **`MERGE-ONLY-BAWAL-MAG-PUSH`** (combined `develop` + `GawaNiValinadoV2`)  
+Source branches stay unchanged: `develop`, `GawaNiValinadoV2`
 
----
+## Features (MERGE-ONLY combined)
 
-## New / Updated Functionalities
+- Role-based portals: **Student**, **Faculty**, **Coordinator**, **Director**, **Industry Supervisor**, **MISD Admin**
+- **In-app messaging** with attachments, archive/unarchive, unsend, clear-own-view, avatars, smoother navigation — includes **Director**
+- Student **Clock In / Clock Out** attendance; **FO-30** DTR upload; **FO-31** weekly journal upload
+- **Meetings** (orientation/check-in + RSVP) and canvas **e-signatures** (acknowledgment, not PKI)
+- **Live notifications** via Laravel Reverb (HTTP polling fallback if Reverb is down)
+- **500-hour OJT** requirement; faculty read-only attendance monitoring
+- **Announcements** with audience targeting + attachments
+- Coordinator report filters (program/industry); Director **3-year placement trends**
+- Archive inactive students (coordinator/faculty)
+- Secure private file downloads; **must-change-password** after staff reset; stronger ownership ACL
+- Settings: iEnroll identity fields **read-only** (password / avatar / notifications still editable); supervisors fully editable
+- MISD: **local mock** + Admin Sync portal (`ADMIN-MISD-001`) — not live institutional SSO
 
-- **In-app messaging** — shared `MessagesInbox` for **Student**, **Faculty Supervisor**, **Industry Supervisor**, and **Coordinator** (role-scoped to shared internships). **Director has no messaging portal** (by design). Supports attachments (images/docs on the public disk), per-user archive/unarchive, unsend, clear-own-view, peer avatars, and smooth client-side conversation navigation (no full-page reload; race-safe thread fetches). Industry Supervisor ↔ Faculty messaging works when both are on the same internship. API: `/api/v1/messages/*` (send throttled at 30/min).
-- **Faculty attendance monitoring** — Faculty Supervisors can view assigned students’ attendance/logged hours (read-only) at `/faculty/attendance`. Validation remains with Industry Supervisors.
-- **Announcements** — Coordinators post with audience targeting (students, faculty, supervisors, coordinators, or all), categories **General** / **Policy Update**, and optional file attachment. Student and Faculty dashboards show Policy Update badges and attachments.
-- **500-hour OJT requirement** — CCS uniform target hours. Config: `INTERNTRACK_TARGET_HOURS` / `VITE_INTERNTRACK_TARGET_HOURS` (default **500**). Progress = logged hours ÷ target (no hardcoded 20h/week pace line on the student weekly chart).
-- **Report filters** — Coordinator reports accept `program` and `industry` query filters (UI + backend on student-summary, compliance, performance).
-- **3-year placement trends** — Director Reports: `GET /api/v1/director/reports/placement-trends` aggregates placements by company × academic year (SQL `GROUP BY`).
-- **Archive inactive students** — Coordinators (`/coordinator/records`) and Faculty (`/faculty/assigned-students`) Active/Archived tabs; toggles `users.is_active` (reversible). Archived students are excluded from default lists and cannot log in.
-- **Survey demo placements** — `SurveyPlacementSeeder` links students `2300600` / `2300592` to FAC-1001, industry supervisor, COR-1001, and an active MOA company (also called from `DatabaseSeeder`).
-- **Notification preference enforcement** — `Notification::notify()` skips types the recipient opted out of in Settings.
-- **Coordinator monitoring** — live lists/counts include `active`, `ongoing`, `placed`, and `for_evaluation`.
-- **Login rate-limit copy** — throttled login returns a login-specific JSON message (not the messaging 429 text).
-- **MISD / EMIS** — intentionally **mocked** for defense (`MockMisdController` + `MisdIntegrationService`, `MISD_USE_MOCK=true`). Not a live EMIS client. Mock routes register only when `APP_ENV=local`.
+See [`PROGRESS_NOTES.md`](PROGRESS_NOTES.md), [`DEFENSE_SCRIPT.md`](DEFENSE_SCRIPT.md), and [`thesis/MANUSCRIPT_WORDING.md`](thesis/MANUSCRIPT_WORDING.md) for defense wording aligned to the code.
 
 ### Setup notes (new / updated)
 
@@ -36,117 +38,100 @@ Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrac
 | `INTERNTRACK_UPLOAD_MAX_MB=10` | `backend/.env` | Max upload size (messages, announcements, etc.) |
 | `CACHE_STORE=file` or `database` | `backend/.env` | Required for rate limits under `artisan serve` (not `array`) |
 
-`php artisan storage:link` is required for **avatars**, **message/announcement attachments**, and other files on the **public** disk.
+`php artisan migrate` (or `migrate:fresh --seed`) is required after pull so tables like **`meetings`** exist.  
+`php artisan storage:link` is required for **avatars**, **message/announcement attachments**, and public-disk files.
 
 Notifications are stored synchronously — no queue worker required for messaging or preference enforcement.
 
 ---
 
-## 🚀 Recent Updates
+## Recent updates (MERGE-ONLY)
 
-- **Post-completion absorption tracking** — supervisors and coordinators record hire outcomes; directors view absorption analytics (`DirectorAbsorption`); coordinator/supervisor share `RoleAbsorption`
-- **Internship status workflow** — active / completed / suspended / deferred / expelled with reason and status history
-- **Document stage routing** — coordinator → faculty review path
-- **Completion certificates** — PDF when an internship is marked completed
-- **Supervisor invitation workflow** — student QR invite → public register → coordinator approval
-- **Profile & settings** — DB-backed profile fields; avatar upload; notification preferences
-- **Academic year / term config** — current default **AY 2025-2026, Sem 2**
-- **API hardening** — rate limiting on login, supervisor registration, change-password, avatar upload, and messaging
-- **Feature tests** — Auth, absorption, internship status, messaging (incl. archive/unsend/clear), notification preferences
-- **Dead-code cleanup** — unused API stubs/routes, unused frontend barrel/exports, ExampleTest scaffolding, unused npm `bootstrap` / `@types/react*`, unused `laravel/sail` (local commits on `develop`)
+- Combined **develop** polish + **GawaNiValinadoV2** defense hardening on this branch only
+- **MISD Admin** demo account seeded: `ADMIN-MISD-001` / `interntrack123`
+- Director **placement trends** API restored
+- Richer messaging (attachments, archive, unsend, clear) with **Director** kept in inbox
+- FO-30 DTR fields, secure file access, must-change-password
+- 500-hour OJT, announcements with attachments, archive inactive students
+- Meetings / e-sign migrations; ErrorBoundary + portfolio confirm polish
 
 ---
 
-## 🛠 Recently Fixed
+## Recently fixed
 
-- Login failures caused by **UTF-8 BOM** on PHP sources after config cache clear
-- Academic term / semester **drift** (footer and seeder/internship defaults aligned to Sem 2)
-- Portfolio and records missing **active** internships
-- Avatar / profile photo serving after `storage:link`
-- Logout and Sanctum token invalidation behavior
-- Coordinator monitoring excluding **`active`** internships (now includes live statuses)
-- Incorrect **429** copy on login when messaging throttle text leaked globally
-- Scratch / local noise files ignored via `.gitignore` (`*.docx`, `*.pdf`, local scratch paths)
+- Missing `meetings` / `meeting_attendees` tables (run pending migrations)
+- MISD admin login failing (`ADMIN-MISD-001` not seeded; username hyphen regex)
+- `DirectorController::placementTrends()` missing after merge
+- Login rate-limit copy; coordinator monitoring live statuses; Sem 2 term alignment
 
 ---
 
-## Current Features
+## Current features
 
 ### Authentication
 - Username/password login via Laravel Sanctum
 - Role-based session and protected API routes
-- Change password (authenticated)
+- Change password; forced change after staff reset when flagged
 - Rate-limited sensitive endpoints
 - Inactive (`is_active=false`) accounts cannot log in
 
 ### Portals / roles
-Five portals: **Student**, **Faculty Supervisor**, **Industry Supervisor** (`supervisor`), **Internship Coordinator**, **PALD Director** (`director`).  
-There is **no** Academic Personnel or IT Expert role in the app (those appear only as external research audiences). The DB enum also includes unused `admin` (no portal).
+Six portals: **Student**, **Faculty Supervisor**, **Industry Supervisor**, **Internship Coordinator**, **PALD Director**, **MISD Admin**.
 
 ### Dashboard
-- Role-specific dashboards for all five portals
+- Role-specific dashboards
 - Term badge / internship context for students
-- Announcements on student/faculty dashboards (with Policy Update badge when applicable)
+- Announcements on student/faculty dashboards (Policy Update badge when applicable)
 
-### Internship Management
+### Internship management
 - Coordinator placement and records
-- Status tagging with reason and history (coordinator + director)
-- Absorption after completion (supervisor/coordinator record; student declare; director analytics)
+- Status tagging with reason and history
+- Absorption after completion (Director finalizes hire outcomes)
 
-### Document Management
-- Student document uploads
+### Documents
+- Student uploads (private disk + secure download)
 - Coordinator → faculty stage routing and review
 
 ### Attendance
-- Student attendance logging
-- Industry Supervisor validation (incl. bulk)
-- Faculty Supervisor monitoring (assigned students, read-only)
+- Student clock in/out; Industry Supervisor validation
+- Faculty read-only monitoring
+- FO-30 as uploaded DTR appendix (not an in-app form filler)
 
 ### Journals
-- Weekly logbook / journal entries (file upload)
+- Weekly FO-31 logbook uploads
 - Review paths for supervisor, faculty, and coordinator
 
 ### Messaging
-- Shared inbox for student / faculty / industry supervisor / coordinator
+- Inbox for student / faculty / industry supervisor / coordinator / **director**
 - Attachments, archive/unarchive, unsend, clear (own view), peer avatars
-- Industry ↔ Faculty on shared internships
+
+### Meetings
+- Orientation / check-in scheduling + RSVP
 
 ### Announcements
-- Coordinator compose with audience targeting and **General** / **Policy Update** categories
-- Optional file attachment
+- Coordinator compose with audience targeting and attachments
 
-### Supervisor Management
-- QR-based supervisor invitation
-- Public supervisor registration
-- Coordinator approval of pending supervisors
+### Supervisor management
+- QR invite → public register → coordinator approval
 
 ### Notifications
-- In-app notifications (Topbar)
-- Server-persisted notification preferences
+- In-app Topbar notifications + persisted preferences
 
-### Reports & Analytics
-- Coordinator reports with **program** and **industry** filters
-- Coordinator evaluations / supervisor-feedback oversight pages
-- Director companies, MOA monitoring, absorption analytics
-- Director **3-year placement trends** by company
-- Coordinator monitoring dashboard
+### Reports & analytics
+- Coordinator reports with program/industry filters
+- Director companies, MOA monitoring, absorption, **3-year placement trends**
 
-### Portfolio Builder
-- Student portfolio generation (active internships included)
+### Portfolio
+- Student portfolio builder (active internships included)
 
-### Certificates
-- Completion certificate PDF for completed internships
+### User settings
+- iEnroll identity **display-only** for student/faculty/coordinator/director/admin
+- Password, avatar, and notification preferences remain editable
+- Supervisors: full profile edit
 
-### User Settings
-- Profile edit (saved to DB)
-- Avatar upload
-- Password change
-- Notification preferences
-- Archive / unarchive students (coordinator & faculty)
-
-### Role-Based Access Control
-- Five portals with API `role:*` guards
-- Unauthorized routes return 403 for restricted roles
+### Access control
+- API `role:*` guards; internship ownership checks for coordinators
+- Secure file download endpoint for private uploads
 
 ---
 
@@ -158,44 +143,43 @@ There is **no** Academic Personnel or IT Expert role in the app (those appear on
 | Backend | Laravel 12 (PHP 8.2+), Sanctum API tokens |
 | Database | MySQL 8.x |
 | Auth | Laravel Sanctum |
-| PDF | Server-side completion certificate generation |
-| Tooling | Composer, npm, PHPUnit feature tests, GitHub (`develop`) |
+| Realtime | Laravel Reverb (optional; UI falls back to polling) |
+| Tooling | Composer, npm, PHPUnit feature tests, GitHub |
 
 ---
 
-## 📈 Project Status
+## Project status
 
-INTERNTRACK is under **active capstone development**. Core modules (auth, internships, documents, attendance, journals, messaging, announcements, supervisors, absorption, certificates, settings, reports, and RBAC) are **implemented** and wired end-to-end (July 2026).
+INTERNTRACK is under **active capstone development**. On **`MERGE-ONLY-BAWAL-MAG-PUSH`**, core modules (auth, internships, documents, attendance, journals, messaging, meetings, announcements, supervisors, absorption, settings, reports, MISD admin, and RBAC) are **implemented** and wired end-to-end (July 2026).
 
 Open items that need **department policy confirmation** (not missing by accident) are listed under Future Improvements below.
 
 ---
 
-## 🔮 Future Improvements / policy-pending
+## Future improvements / policy-pending
 
 - Dual-role accounts (one login with role switcher vs separate accounts) — **not implemented**; one `users.role` per account today
-- Student **name lock** (read-only after MISD provision) — **not implemented**; name remains editable in Settings
-- Logbook/DTR frequency: keep **weekly** journals vs semester-end compiled submission — code is weekly-only today
-- Distinct **Training Program** module vs existing Training Plan **document** type — no separate training-program module yet
+- Digital in-app FO-30 / FO-31 form fillers — currently **upload** of offline-filled forms
+- Distinct **Training Program** module vs existing Training Plan **document** type
 - **Live MISD/EMIS API** — mock is intentional for defense; real client not wired
 - Optional Two-Factor Authentication (planned; not implemented)
-- Stronger password validation UX; broader API/UI error-handling consistency
+- Chat attachments already shipped; browser Web Push / PKI DigiSign still future
 - End-user / IT-expert surveys (outside the app)
 
 ---
 
 ## Features (quick list)
 
-- Five portals: Student, Faculty Supervisor, Industry Supervisor, Coordinator, PALD Director
-- Student attendance, weekly logbook, documents, evaluations, portfolio, messages
+- Six portals including **MISD Admin**
+- Student attendance, FO-30/FO-31 uploads, documents, evaluations, portfolio, messages, meetings
 - Faculty attendance monitoring + archive inactive assigned students
-- Coordinator placement (ownership-checked), document stage routing, supervisor QR approvals, Policy Update announcements
+- Coordinator placement, document stage routing, supervisor QR approvals, announcement attachments
 - Internship status tagging with reason + history
-- **500-hour** OJT progress (hours vs target; no fixed weekly-pace chart line)
-- Messaging: attachments, archive, unsend, clear, avatars; Industry ↔ Faculty
-- Completion certificate PDF; absorption tracking; director placement trends
-- Coordinator report filters by program and industry
-- Profile + avatar + notification preferences; MISD mocked (`MISD_USE_MOCK`)
+- **500-hour** OJT progress
+- Messaging with attachments/archive/unsend/clear/avatars — **Director included**
+- Absorption tracking; director placement trends; coordinator report filters
+- iEnroll identity lock in Settings; secure private files; must-change-password
+- MISD mocked (`MISD_USE_MOCK`) + Admin Sync portal
 
 ## Requirements
 
@@ -213,7 +197,7 @@ Open items that need **department policy confirmation** (not missing by accident
 ```bash
 git clone https://github.com/Orb-BIT/interntrack-capstone.git
 cd interntrack-capstone
-git checkout develop
+git checkout MERGE-ONLY-BAWAL-MAG-PUSH
 ```
 
 ### 2. Backend (Laravel API)
@@ -243,13 +227,20 @@ INTERNTRACK_UPLOAD_MAX_MB=10
 CACHE_STORE=file
 ```
 
-Create the empty MySQL database `interntrack`, then:
+Create the empty MySQL databases, then migrate:
+
+```sql
+CREATE DATABASE interntrack;
+CREATE DATABASE interntrack_testing;  -- used only by php artisan test
+```
 
 ```bash
 php artisan migrate:fresh --seed
 php artisan storage:link
 php artisan serve --host=127.0.0.1 --port=8001
 ```
+
+**Database:** INTERNTRACK is **MySQL-only** (SQLite is not used for the app or PHPUnit).
 
 Leave this terminal running. API: `http://127.0.0.1:8001`
 
@@ -300,15 +291,21 @@ More detail: see [`SETUP.md`](./SETUP.md) and [`DATABASE_COMMANDS.md`](./DATABAS
 
 Password for **all** seeded accounts: `interntrack123`
 
+**MISD default-password provision:** keep `MISD_ALLOW_DEFAULT_PASSWORD_PROVISION=false` on staging/production (non-local). First-login auto-provision from MISD using the demo default password is allowed only when `APP_ENV=local`, or when you explicitly set `MISD_ALLOW_DEFAULT_PASSWORD_PROVISION=true` for a controlled demo. Prefer pre-seeded or staff-assigned accounts outside local.
+
 | Role | Username | Name |
 |------|----------|------|
+| MISD Admin | `ADMIN-MISD-001` | MISD Administrator |
 | Student | `2300600` | Christian Hero Valinado (4ITD) |
 | Student | `2300592` | Clarence Montealegre (4ITD) |
 | Faculty | `FAC-1001` | — |
 | Coordinator | `COR-1001` | — |
 | Director (PALD) | `DIR-1001` | — |
+| Industry Supervisor | `SUP-1001` | (via `SurveyPlacementSeeder`) |
 
-Industry Supervisor accounts are **not** seeded. Create one via:
+After `migrate:fresh --seed`, use the table above. If you only ran `migrate` on an existing DB, create/reset the MISD admin with seed or ask a teammate — login is `ADMIN-MISD-001` / `interntrack123`.
+
+Additional Industry Supervisors can also be created via:
 
 **Student → Invite Supervisor (QR) → public register → Coordinator approve.**
 

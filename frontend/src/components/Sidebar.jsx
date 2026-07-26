@@ -13,7 +13,8 @@ const ROLE_NAV = {
     { section: 'TOOLS', to: '/student/supervisor-invite', icon: 'fa-qrcode', text: 'Invite Supervisor' },
     { section: 'TOOLS', to: '/student/portfolio', icon: 'fa-briefcase', text: 'Portfolio' },
     { section: 'TOOLS', to: '/student/records', icon: 'fa-folder-open', text: 'My Records' },
-    { section: 'TOOLS', to: '/student/messages', icon: 'fa-envelope', text: 'Messages' },
+    { section: 'TOOLS', to: '/student/messages', icon: 'fa-comments', text: 'Messages' },
+    { section: 'TOOLS', to: '/student/meetings', icon: 'fa-calendar', text: 'Meetings' },
     { section: 'ACCOUNT', to: '/student/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -22,8 +23,11 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/director/companies', icon: 'fa-building', text: 'Companies' },
     { section: 'MAIN', to: '/director/moa-monitoring', icon: 'fa-file-signature', text: 'MOA Monitoring' },
     { section: 'MAIN', to: '/director/reports', icon: 'fa-chart-bar', text: 'Reports' },
-    { section: 'MAIN', to: '/director/internships', icon: 'fa-tags', text: 'Internship Status' },
+    { section: 'MAIN', to: '/director/internships', icon: 'fa-users', text: 'Student Roster & Placements' },
     { section: 'MAIN', to: '/director/absorption', icon: 'fa-user-check', text: 'Absorption' },
+    { section: 'MAIN', to: '/director/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
+    { section: 'MAIN', to: '/director/messages', icon: 'fa-comments', text: 'Messages' },
+    { section: 'MAIN', to: '/director/meetings', icon: 'fa-calendar', text: 'Meetings' },
     { section: 'ACCOUNT', to: '/director/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -35,8 +39,9 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
     { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
+    { section: 'MAIN', to: '/supervisor/messages', icon: 'fa-comments', text: 'Messages' },
+    { section: 'MAIN', to: '/supervisor/meetings', icon: 'fa-calendar', text: 'Meetings' },
     { section: 'MAIN', to: '/supervisor/notifications', icon: 'fa-bell', text: 'Notifications' },
-    { section: 'MAIN', to: '/supervisor/messages', icon: 'fa-envelope', text: 'Messages' },
     { section: 'ACCOUNT', to: '/supervisor/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -48,22 +53,33 @@ const ROLE_NAV = {
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'TOOLS', to: '/faculty/documents', icon: 'fa-file-circle-check', text: 'Document Verification' },
-    { section: 'TOOLS', to: '/faculty/messages', icon: 'fa-envelope', text: 'Messages' },
+    { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
+    { section: 'TOOLS', to: '/faculty/reports', icon: 'fa-chart-bar', text: 'Reports' },
+    { section: 'TOOLS', to: '/faculty/messages', icon: 'fa-comments', text: 'Messages' },
+    { section: 'TOOLS', to: '/faculty/meetings', icon: 'fa-calendar', text: 'Meetings' },
     { section: 'ACCOUNT', to: '/faculty/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
   coordinator: [
     { section: 'MAIN', to: '/coordinator/monitoring', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/coordinator/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
-    { section: 'MAIN', to: '/coordinator/doc-approvals', icon: 'fa-file-circle-check', text: 'Document Approvals' },
-    { section: 'MAIN', to: '/coordinator/logbook-review', icon: 'fa-book-open', text: 'Logbook Review' },
-    { section: 'MAIN', to: '/coordinator/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
     { section: 'MAIN', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
     { section: 'MAIN', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'MAIN', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
-    { section: 'MAIN', to: '/coordinator/messages', icon: 'fa-envelope', text: 'Messages' },
+    { section: 'MAIN', to: '/coordinator/messages', icon: 'fa-comments', text: 'Messages' },
+    { section: 'MAIN', to: '/coordinator/meetings', icon: 'fa-calendar', text: 'Meetings' },
     { section: 'ACCOUNT', to: '/coordinator/settings', icon: 'fa-cog', text: 'Settings' },
+    { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
+  ],
+  admin: [
+    { section: 'MAIN', to: '/admin/dashboard', icon: 'fa-server', text: 'Dashboard' },
+    { section: 'MAIN', to: '/admin/directors', icon: 'fa-user-tie', text: 'Directors' },
+    { section: 'MAIN', to: '/admin/coordinators', icon: 'fa-user-check', text: 'Coordinators' },
+    { section: 'MAIN', to: '/admin/section-mappings', icon: 'fa-sitemap', text: 'Section Mappings' },
+    { section: 'MAIN', to: '/admin/users', icon: 'fa-users', text: 'Users' },
+    { section: 'MAIN', to: '/admin/sync', icon: 'fa-sync', text: 'MISD Sync' },
+    { section: 'ACCOUNT', to: '/admin/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ]
 }

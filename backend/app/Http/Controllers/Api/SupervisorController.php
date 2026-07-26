@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
+use App\Support\SignatureCapture;
 use Illuminate\Http\Request;
 
 class SupervisorController extends Controller
@@ -171,7 +172,6 @@ class SupervisorController extends Controller
                 'week_number' => 1,
                 'date' => now()->toDateString(),
                 'activities_summary' => 'Supervisor feedback note',
-                'hours_declared' => 0,
                 'status' => 'approved',
             ]);
         }
@@ -188,7 +188,8 @@ class SupervisorController extends Controller
                 'supervisor_feedback',
                 'New feedback from Industry Supervisor',
                 $request->feedback,
-                '/student/logbook'
+                '/student/logbook',
+                ['journal_id' => $journal->id, 'feedback' => $request->feedback]
             );
         }
 
@@ -199,7 +200,8 @@ class SupervisorController extends Controller
                 'supervisor_feedback_submitted',
                 'Supervisor feedback submitted',
                 'Industry supervisor submitted feedback for an assigned intern.',
-                '/coordinator/reports'
+                '/coordinator/reports',
+                ['journal_id' => $journal->id, 'student_id' => $internship->student_id]
             );
         }
 
@@ -216,13 +218,29 @@ class SupervisorController extends Controller
     {
         $internshipIds = Internship::where('supervisor_id', $request->user()->id)->pluck('id');
 
-        $logs = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
-            ->with(['internship.student.studentProfile'])
+        $pending = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
+            ->with(['internship.student.studentProfile', 'internship.company'])
             ->where('status', 'pending')
             ->orderByDesc('date')
             ->paginate(25);
 
-        return ApiResponse::list($logs);
+        $recentValidated = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
+            ->with(['internship.student.studentProfile'])
+            ->where('status', 'validated')
+            ->orderByDesc('validated_at')
+            ->limit(15)
+            ->get();
+
+        return response()->json([
+            'data' => $pending->items(),
+            'meta' => [
+                'current_page' => $pending->currentPage(),
+                'last_page' => $pending->lastPage(),
+                'per_page' => $pending->perPage(),
+                'total' => $pending->total(),
+            ],
+            'recent_validated' => $recentValidated,
+        ]);
     }
 
     /** PATCH /api/v1/supervisor/attendance/{id}/validate */
@@ -233,8 +251,15 @@ class SupervisorController extends Controller
             'remarks' => 'nullable|string|max:500',
         ]);
 
-        $log = \App\Models\AttendanceLog::whereHas('internship', fn($q) => $q->where('supervisor_id', $request->user()->id))
-            ->findOrFail($id);
+        $log = \App\Models\AttendanceLog::with('internship')->findOrFail($id);
+
+        if ((int) $log->internship->supervisor_id !== (int) $request->user()->id) {
+            abort(403, 'You may only verify attendance for your assigned interns.');
+        }
+
+        if ($log->status !== 'pending') {
+            return response()->json(['message' => 'Only pending attendance records can be validated.'], 422);
+        }
 
         $log->update([
             'status'       => $request->action,
@@ -243,12 +268,17 @@ class SupervisorController extends Controller
             'validated_at' => now(),
         ]);
 
-        // Refresh internship total hours
         $log->internship->refreshTotalHours();
 
-        audit_log($request->user()->id, 'validate_attendance', ['log_id' => $id, 'action' => $request->action]);
+        audit_log($request->user()->id, 'validate_attendance', [
+            'log_id' => $id,
+            'action' => $request->action,
+        ]);
 
-        return response()->json(['message' => 'Attendance ' . $request->action . ' successfully.', 'record' => $log]);
+        return response()->json([
+            'message' => 'Attendance '.$request->action.' successfully.',
+            'record'  => $log->fresh(),
+        ]);
     }
 
     /** PATCH /api/v1/supervisor/attendance/bulk-validate */
@@ -262,13 +292,14 @@ class SupervisorController extends Controller
         ]);
 
         $logs = \App\Models\AttendanceLog::whereIn('id', $request->ids)
-            ->whereHas('internship', fn($q) => $q->where('supervisor_id', $request->user()->id))
+            ->whereHas('internship', fn ($q) => $q->where('supervisor_id', $request->user()->id))
             ->where('status', 'pending')
             ->get();
 
+        $eligible = $logs->filter(fn ($log) => (bool) $log->clock_out);
         $affectedInternships = collect();
 
-        foreach ($logs as $log) {
+        foreach ($eligible as $log) {
             $log->update([
                 'status'       => $request->action,
                 'remarks'      => $request->remarks,
@@ -278,14 +309,17 @@ class SupervisorController extends Controller
             $affectedInternships->push($log->internship);
         }
 
-        // Recalculate totals for every distinct internship touched by this batch
-        $affectedInternships->unique('id')->each(fn($internship) => $internship?->refreshTotalHours());
+        $affectedInternships->unique('id')->each(fn ($internship) => $internship?->refreshTotalHours());
 
-        audit_log($request->user()->id, 'bulk_validate_attendance', ['log_ids' => $logs->pluck('id'), 'action' => $request->action]);
+        audit_log($request->user()->id, 'bulk_validate_attendance', [
+            'log_ids' => $eligible->pluck('id'),
+            'action'  => $request->action,
+        ]);
 
         return response()->json([
-            'message'         => "{$logs->count()} attendance record(s) {$request->action}.",
-            'processed_count' => $logs->count(),
+            'message'         => "{$eligible->count()} attendance record(s) {$request->action}.",
+            'processed_count' => $eligible->count(),
+            'skipped_count'   => $logs->count() - $eligible->count(),
         ]);
     }
 
@@ -330,7 +364,8 @@ class SupervisorController extends Controller
                     'journal_reviewed',
                     "Journal Approved ✅",
                     "Your {$weekLabel} journal was approved by your company supervisor.",
-                    '/student/logbook'
+                    '/student/logbook',
+                    ['journal_id' => $journal->id, 'week_number' => $journal->week_number, 'action' => 'approved']
                 );
             } else {
                 Notification::notify(
@@ -391,20 +426,29 @@ class SupervisorController extends Controller
             ->with(['student.studentProfile', 'coordinator'])
             ->findOrFail($internshipId);
 
+        $period = $request->input('evaluation_period');
+
         $eval = Evaluation::updateOrCreate(
             [
                 'internship_id' => $internship->id,
                 'evaluator_type' => 'supervisor',
-                'evaluation_period' => $request->evaluation_period,
+                'evaluation_period' => $period,
             ],
-            array_merge($request->only([
-                'technical_skills', 'communication_skills', 'teamwork',
-                'initiative', 'work_ethics', 'attendance_punctuality', 'adaptability',
-                'problem_solving', 'strengths', 'areas_for_improvement', 'general_comments',
-            ]), [
+            [
+                'technical_skills' => $request->input('technical_skills'),
+                'communication_skills' => $request->input('communication_skills'),
+                'teamwork' => $request->input('teamwork'),
+                'initiative' => $request->input('initiative'),
+                'work_ethics' => $request->input('work_ethics'),
+                'attendance_punctuality' => $request->input('attendance_punctuality'),
+                'adaptability' => $request->input('adaptability'),
+                'problem_solving' => $request->input('problem_solving'),
+                'strengths' => $request->input('strengths'),
+                'areas_for_improvement' => $request->input('areas_for_improvement'),
+                'general_comments' => $request->input('general_comments'),
                 'evaluated_by' => $request->user()->id,
                 'submitted_at' => now(),
-            ])
+            ]
         );
         $eval->computeScores();
         $eval->save();
@@ -424,14 +468,15 @@ class SupervisorController extends Controller
                 $uid,
                 'supervisor_evaluation_submitted',
                 'Industry supervisor evaluation submitted',
-                "{$studentName} — {$request->evaluation_period} evaluation (avg {$eval->average_score}).",
-                '/coordinator/evaluations'
+                "{$studentName} — {$period} evaluation (avg {$eval->average_score}).",
+                '/coordinator/evaluations',
+                ['evaluation_id' => $eval->id, 'internship_id' => $internshipId, 'student_id' => $internship->student_id]
             );
         }
 
         audit_log($request->user()->id, 'submit_evaluation', [
             'internship_id' => $internshipId,
-            'period' => $request->evaluation_period,
+            'period' => $period,
             'evaluation_id' => $eval->id,
         ]);
 
@@ -450,33 +495,11 @@ class SupervisorController extends Controller
         return response()->json(['internships' => $items]);
     }
 
-    /** PATCH /api/v1/supervisor/internships/{id}/absorption */
+    /** PATCH /api/v1/supervisor/internships/{id}/absorption — blocked; Director only */
     public function recordAbsorption(Request $request, int $id)
     {
-        $request->validate([
-            'absorption_status' => 'required|in:absorbed,not_hired',
-            'absorbed_at'       => 'nullable|date',
-            'job_title'         => 'nullable|string|max:255',
-            'absorption_notes'  => 'nullable|string|max:2000',
-        ]);
-
-        $internship = Internship::where('supervisor_id', $request->user()->id)->findOrFail($id);
-
-        $updated = AbsorptionService::recordOutcome(
-            $internship,
-            $request->user(),
-            'supervisor',
-            $request->absorption_status,
-            $request->absorbed_at,
-            $request->job_title,
-            $request->absorption_notes,
-        );
-
-        audit_log($request->user()->id, 'record_absorption', [
-            'internship_id' => $id,
-            'status'        => $request->absorption_status,
-        ]);
-
-        return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
+        return response()->json([
+            'message' => 'Only the PALD Director may finalize absorption.',
+        ], 403);
     }
 }

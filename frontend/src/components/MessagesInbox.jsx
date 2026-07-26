@@ -21,6 +21,7 @@ function roleLabel(role) {
     supervisor: 'Industry Supervisor',
     faculty: 'Faculty Supervisor',
     coordinator: 'Coordinator',
+    director: 'Director',
   }
   return map[role] || role || 'Stakeholder'
 }
@@ -76,7 +77,7 @@ function conversationPreview(thread) {
   if (thread.last_message?.is_unsent) return 'This message was unsent'
   const body = (thread.last_message?.body || '').trim()
   if (body) return body
-  if (thread.last_message?.has_attachment) return '📎 Attachment'
+  if (thread.last_message?.has_attachment) return 'Attachment'
   return 'No messages yet'
 }
 
@@ -205,16 +206,99 @@ function ConversationRow({ thread, isActive, onSelect, onToggleArchive, archiveB
 
 const MemoConversationRow = memo(ConversationRow)
 
+/** Local optimistic preview URL (blob:) or authenticated storage path. */
+function attachmentLocalUrl(attachment) {
+  const url = attachment?.url
+  if (!url || typeof url !== 'string') return null
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url
+  return null
+}
+
+async function fetchAttachmentBlobUrl(path) {
+  const res = await api.get('/files/download', {
+    params: { path },
+    responseType: 'blob',
+  })
+  return URL.createObjectURL(res.data)
+}
+
 function MessageAttachment({ attachment, onOpenImage }) {
   const [broken, setBroken] = useState(false)
+  const [blobUrl, setBlobUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const localUrl = attachmentLocalUrl(attachment)
+  const storagePath = attachment?.path || null
+  const displaySrc = localUrl || blobUrl
+
+  useEffect(() => {
+    setBroken(false)
+  }, [attachment?.path, attachment?.url])
+
+  useEffect(() => {
+    let active = true
+    let objectUrl = ''
+    if (localUrl || !storagePath) {
+      setBlobUrl('')
+      return undefined
+    }
+    fetchAttachmentBlobUrl(storagePath)
+      .then((url) => {
+        if (!active) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        objectUrl = url
+        setBlobUrl(url)
+      })
+      .catch(() => {
+        if (active) {
+          setBlobUrl('')
+          setBroken(true)
+        }
+      })
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [localUrl, storagePath])
+
   if (!attachment) return null
 
+  const openBlob = async (e) => {
+    e?.preventDefault?.()
+    e?.stopPropagation?.()
+    if (busy) return
+    if (localUrl) {
+      window.open(localUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+    if (!storagePath) return
+    setBusy(true)
+    try {
+      const url = await fetchAttachmentBlobUrl(storagePath)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch {
+      setBroken(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (attachment.is_image) {
-    if (broken || !attachment.url) {
+    if (broken || (!localUrl && !storagePath)) {
       return (
         <div className="msg-attach-unavailable" role="status">
           <i className="fa fa-image" aria-hidden="true" />
           <span>Image unavailable</span>
+        </div>
+      )
+    }
+    if (!displaySrc) {
+      return (
+        <div className="msg-attach-unavailable" role="status">
+          <i className="fa fa-spinner fa-spin" aria-hidden="true" />
+          <span>Loading…</span>
         </div>
       )
     }
@@ -226,7 +310,7 @@ function MessageAttachment({ attachment, onOpenImage }) {
         aria-label={`View image ${attachment.filename || ''}`}
       >
         <img
-          src={attachment.url}
+          src={displaySrc}
           alt={attachment.filename || 'Attached image'}
           className="msg-attach-thumb"
           onError={() => setBroken(true)}
@@ -235,7 +319,8 @@ function MessageAttachment({ attachment, onOpenImage }) {
     )
   }
 
-  if (broken || !attachment.url) {
+  // Non-image: path (auth download), local blob URL, or optimistic filename-only while sending
+  if (broken && !attachment.filename) {
     return (
       <div className="msg-attach-unavailable" role="status">
         <i className="fa fa-file" aria-hidden="true" />
@@ -243,6 +328,8 @@ function MessageAttachment({ attachment, onOpenImage }) {
       </div>
     )
   }
+
+  const canOpen = Boolean(localUrl || storagePath)
 
   return (
     <div className="msg-attach-file">
@@ -257,17 +344,18 @@ function MessageAttachment({ attachment, onOpenImage }) {
           {formatBytes(attachment.size)}
         </div>
       </div>
-      <a
-        className="btn btn-sm btn-outline-secondary msg-attach-download"
-        href={attachment.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        download={attachment.filename || undefined}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <i className="fa fa-download" aria-hidden="true" />
-        <span>Open</span>
-      </a>
+      {canOpen && (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary msg-attach-download"
+          onClick={openBlob}
+          disabled={busy}
+          aria-busy={busy}
+        >
+          <i className={`fa ${busy ? 'fa-spinner fa-spin' : 'fa-download'}`} aria-hidden="true" />
+          <span>{busy ? 'Opening…' : 'Open'}</span>
+        </button>
+      )}
     </div>
   )
 }
@@ -327,6 +415,19 @@ const MessageComposer = memo(function MessageComposer({
   const [attachPreviewUrl, setAttachPreviewUrl] = useState(null)
   const [localError, setLocalError] = useState(null)
   const fileInputRef = useRef(null)
+  const inputRef = useRef(null)
+  const sendingLockRef = useRef(false)
+
+  const resizeComposer = useCallback(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`
+  }, [])
+
+  useEffect(() => {
+    resizeComposer()
+  }, [draft, resizeComposer])
 
   const clearAttachment = useCallback(() => {
     setAttachFile(null)
@@ -356,10 +457,11 @@ const MessageComposer = memo(function MessageComposer({
 
   const submit = async (e) => {
     e?.preventDefault?.()
-    if (disabled || sending) return
+    if (disabled || sending || sendingLockRef.current) return
     const body = draft.trim()
     if (body.length < 1 && !attachFile) return
 
+    sendingLockRef.current = true
     const fileSnapshot = attachFile
     const previewSnapshot = attachPreviewUrl
     const draftSnapshot = draft
@@ -369,34 +471,43 @@ const MessageComposer = memo(function MessageComposer({
     if (fileInputRef.current) fileInputRef.current.value = ''
     setLocalError(null)
 
-    const result = await onSend({
-      body,
-      file: fileSnapshot,
-      previewUrl: previewSnapshot,
-    })
+    try {
+      const result = await onSend({
+        body,
+        file: fileSnapshot,
+        previewUrl: previewSnapshot,
+      })
 
-    if (result?.ok === false) {
-      setDraft((d) => (d ? d : draftSnapshot))
-      if (fileSnapshot) {
-        setAttachFile(fileSnapshot)
-        if (previewSnapshot) {
-          setAttachPreviewUrl(previewSnapshot)
-        } else if (isImageFile(fileSnapshot)) {
-          setAttachPreviewUrl(URL.createObjectURL(fileSnapshot))
+      if (result?.ok === false) {
+        setDraft((d) => (d ? d : draftSnapshot))
+        if (fileSnapshot) {
+          setAttachFile(fileSnapshot)
+          if (previewSnapshot) {
+            setAttachPreviewUrl(previewSnapshot)
+          } else if (isImageFile(fileSnapshot)) {
+            setAttachPreviewUrl(URL.createObjectURL(fileSnapshot))
+          }
         }
+        if (result.error) setLocalError(result.error)
+      } else if (previewSnapshot) {
+        URL.revokeObjectURL(previewSnapshot)
       }
-      if (result.error) setLocalError(result.error)
-    } else if (previewSnapshot) {
-      URL.revokeObjectURL(previewSnapshot)
+    } finally {
+      sendingLockRef.current = false
     }
   }
 
   const onComposerKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
+      if (disabled || sending || sendingLockRef.current) return
+      if (draft.trim().length < 1 && !attachFile) return
       submit(e)
     }
   }
+
+  const busy = sending || disabled
+  const canSend = !busy && (draft.trim().length >= 1 || Boolean(attachFile))
 
   return (
     <>
@@ -420,7 +531,7 @@ const MessageComposer = memo(function MessageComposer({
             type="button"
             className="btn btn-sm btn-outline-danger msg-attach-preview-remove"
             onClick={clearAttachment}
-            disabled={sending}
+            disabled={busy}
             aria-label="Remove attachment"
           >
             <i className="fa fa-times" aria-hidden="true" />
@@ -442,7 +553,7 @@ const MessageComposer = memo(function MessageComposer({
           type="button"
           className="btn btn-outline-secondary msg-composer-attach"
           onClick={() => fileInputRef.current?.click()}
-          disabled={sending || disabled}
+          disabled={busy}
           title="Attach file or image"
           aria-label="Attach file or image"
         >
@@ -450,27 +561,28 @@ const MessageComposer = memo(function MessageComposer({
         </button>
         <label className="visually-hidden" htmlFor="message-composer">Message body</label>
         <textarea
+          ref={inputRef}
           id="message-composer"
           className="msg-composer-input form-control"
-          rows={2}
+          rows={1}
           placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onComposerKeyDown}
           maxLength={5000}
           aria-label="Message body"
-          disabled={disabled}
+          disabled={busy}
         />
         <button
           type="submit"
           className="btn btn-success msg-composer-send"
-          disabled={sending || disabled || (draft.trim().length < 1 && !attachFile)}
+          disabled={!canSend}
           aria-label="Send message"
         >
           {sending
             ? <i className="fa fa-spinner fa-spin" aria-hidden="true" />
             : <i className="fa fa-paper-plane" aria-hidden="true" />}
-          <span>{sending ? 'Sending…' : 'Send'}</span>
+          <span className="msg-composer-send-label">{sending ? 'Sending…' : 'Send'}</span>
         </button>
         {showArchivedHint && (
           <div className="msg-composer-hint">
@@ -780,6 +892,18 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     return res.data
   }, [applyThreadPayload])
 
+  const closeThread = useCallback(() => {
+    rememberScroll()
+    setActive(null)
+    activeRef.current = null
+    setMessages([])
+    setThreadMeta(null)
+    setThreadPage(1)
+    setThreadLoading(false)
+    setSendError(null)
+    setSearchParams({}, { replace: true })
+  }, [rememberScroll, setSearchParams])
+
   const openThread = useCallback(async (thread, { replaceUrl = true } = {}) => {
     const same = sameThread(activeRef.current, thread)
 
@@ -1059,7 +1183,8 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
               && m._pending === prev[i]._pending
               && Boolean(m.is_unsent) === Boolean(prev[i].is_unsent)
               && m.body === prev[i].body
-              && (m.attachment?.url || '') === (prev[i].attachment?.url || '')
+              && (m.attachment?.url || m.attachment?.path || '')
+                === (prev[i].attachment?.url || prev[i].attachment?.path || '')
             ))
           ) {
             return prev
@@ -1156,9 +1281,20 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     }
   }
 
-  const openLightbox = useCallback((attachment) => {
-    if (!attachment?.url || !attachment.is_image) return
-    setLightbox({ url: attachment.url, filename: attachment.filename || 'Image' })
+  const openLightbox = useCallback(async (attachment) => {
+    if (!attachment?.is_image) return
+    const localUrl = attachmentLocalUrl(attachment)
+    if (localUrl) {
+      setLightbox({ url: localUrl, filename: attachment.filename || 'Image', revokeOnClose: false })
+      return
+    }
+    if (!attachment.path) return
+    try {
+      const url = await fetchAttachmentBlobUrl(attachment.path)
+      setLightbox({ url, filename: attachment.filename || 'Image', revokeOnClose: true })
+    } catch {
+      /* ignore — thumb already shows error state */
+    }
   }, [])
 
   const onSelectTab = useCallback((nextArchived) => {
@@ -1240,7 +1376,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           <div className="alert alert-danger py-2 mb-2" role="alert">{actionError}</div>
         )}
 
-        <div className="msg-inbox-grid">
+        <div className={`msg-inbox-grid${active ? ' has-active-thread' : ''}`}>
           <section className="msg-panel msg-panel-list" aria-label="Conversations">
             <header className="msg-panel-header">
               <i className="fa fa-inbox" aria-hidden="true" />
@@ -1265,7 +1401,16 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
           <section className="msg-panel msg-panel-thread" aria-label="Message thread">
             <header className="msg-panel-header msg-panel-header-thread">
-              <i className="fa fa-comments" aria-hidden="true" />
+              <button
+                type="button"
+                className="msg-thread-back"
+                onClick={closeThread}
+                aria-label="Back to conversations"
+              >
+                <i className="fa fa-arrow-left" aria-hidden="true" />
+                <span>Back</span>
+              </button>
+              <i className="fa fa-comments msg-thread-header-icon" aria-hidden="true" />
               <h6 className="msg-thread-title">
                 {headerPeer
                   ? (
@@ -1400,16 +1545,25 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           role="dialog"
           aria-modal="true"
           aria-label={lightbox.filename}
-          onClick={() => setLightbox(null)}
+          onClick={() => {
+            if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
+            setLightbox(null)
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setLightbox(null)
+            if (e.key === 'Escape') {
+              if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
+              setLightbox(null)
+            }
           }}
         >
           <button
             type="button"
             className="msg-lightbox-close"
             aria-label="Close image"
-            onClick={() => setLightbox(null)}
+            onClick={() => {
+              if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
+              setLightbox(null)
+            }}
           >
             <i className="fa fa-times" aria-hidden="true" />
           </button>
@@ -1418,7 +1572,10 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
             alt={lightbox.filename}
             className="msg-lightbox-img"
             onClick={(e) => e.stopPropagation()}
-            onError={() => setLightbox(null)}
+            onError={() => {
+              if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
+              setLightbox(null)
+            }}
           />
           <div className="msg-lightbox-caption">{lightbox.filename}</div>
         </div>

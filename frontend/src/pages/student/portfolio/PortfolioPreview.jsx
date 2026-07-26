@@ -1,20 +1,28 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import PageError from '../../../components/PageError'
 import api from '../../../services/api'
+import { AuthenticatedFileImage } from '../../../components/AuthenticatedFile'
 import '../../../assets/css/portfolio-print.css'
-
-const BACKEND_URL = 'http://127.0.0.1:8001'
 
 function PortfolioPreview() {
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError]   = useState(null)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
+    setError(null)
     api.get('/student/portfolio')
       .then(res => setData(res.data))
-      .catch(console.error)
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load portfolio.')
+        setData(null)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   if (loading) {
     return (
@@ -22,6 +30,17 @@ function PortfolioPreview() {
         <div className="text-center">
           <i className="fa fa-spinner fa-spin fa-3x text-success mb-3"></i>
           <p className="text-muted">Generating portfolio…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ background: '#e5e5e5', minHeight: '100vh', padding: '24px' }}>
+        <PageError message={error} onRetry={load} />
+        <div className="text-center mt-3">
+          <Link to="/student/portfolio" className="text-muted">Back to Builder</Link>
         </div>
       </div>
     )
@@ -90,7 +109,7 @@ function PortfolioPreview() {
     { type: 'acceptance_form', label: 'Student Internship Acceptance Form PNC:AA-FO-29' },
     { type: 'consent_form', label: 'Student Internship Consent Form PNC: AA-FO-28' },
     { type: 'training_plan', label: 'Internship Training Plan PNC: AA-FO-25.3' },
-    { type: 'dtr_form', label: 'Student Internship Daily Time Record (DTR) Form PNC: AA-FO-30' },
+    { type: 'dtr_form', label: 'PNC:AA-FO-30 DTR (manual form upload) — Student Internship Daily Time Record' },
     { type: 'performance_eval', label: 'Student Internship Performance Evaluation Form PNC: AA-FO-24' },
     { type: 'moa_document', label: 'Memorandum of Agreement' },
     { type: 'visitation_form', label: 'Internship / OJT Visitation Form' },
@@ -144,7 +163,7 @@ function PortfolioPreview() {
                         <p className="small text-muted m-0" style={{ fontSize: '9pt' }}>[ Please insert physical PDF page here before final binding ]</p>
                     </div>
                 ) : (
-                    <img src={`${BACKEND_URL}/storage/${photo.file_path}`} alt={photo.label} style={{ maxWidth: '80%', maxHeight: '400px', objectFit: 'contain', border: '1px solid #ddd' }} />
+                    <AuthenticatedFileImage path={photo.file_path} alt={photo.label} style={{ maxWidth: '80%', maxHeight: '400px', objectFit: 'contain', border: '1px solid #ddd' }} />
                 )}
                 <p style={{ fontWeight: 'bold', marginTop: '6px', textIndent: '0', fontSize: '10pt' }}>
                     {requiresWeek && photo.week_number ? `Week ${photo.week_number} - ` : ''}
@@ -183,139 +202,155 @@ function PortfolioPreview() {
         </button>
       </div>
 
-      {/* PAGE 1 */}
-      <div className="a4-page page-break" style={{ backgroundImage: 'url(/images/cover-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', padding: 0, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '8%', right: '6%', textAlign: 'right', maxWidth: '55%' }}>
-          <div style={{ fontFamily: '"Old English Text MT", "UnifrakturMaguntia", serif', color: '#1a5c2a', fontSize: '2rem', fontWeight: 'normal', lineHeight: 1.1 }}>University of Cabuyao</div>
-          <div style={{ letterSpacing: '3px', fontSize: '10pt', fontWeight: 400, marginTop: '4px' }}>( P A M A N T A S A N &nbsp; N G &nbsp; C A B U Y A O )</div>
-          <div style={{ fontSize: '8pt', marginTop: '4px' }}>Katapatan Mutual Homes, Brgy. Banay-Banay, City of Cabuyao, Laguna, Philippines 4025</div>
-        </div>
-        <div style={{ position: 'absolute', bottom: '30%', right: '6%', textAlign: 'right', maxWidth: '55%' }}>
-          <div style={{ fontSize: '22pt', fontWeight: 'bold', color: '#fff', lineHeight: 1.2 }}>Internship Portfolio</div>
-          <div style={{ fontSize: '12pt', color: '#fff', marginTop: '6px' }}>{ayLabel}</div>
-          <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#fff', marginTop: '14px' }}>{studentName}</div>
-          <div style={{ fontSize: '11pt', color: '#e5e5e5' }}>{section}</div>
-        </div>
-      </div>
-
-      {/* PAGE 2 */}
-      <div className="a4-page page-break" style={{ backgroundImage: 'url(/images/title-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', padding: 0, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', bottom: '23%', left: '6%', textAlign: 'left', maxWidth: '50%' }}>
-          <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#1a5c2a' }}>{practicumCode}</div>
-          <div style={{ fontSize: '11pt', color: '#333', marginTop: '4px' }}>{ayLabel}</div>
-          <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#222', marginTop: '12px' }}>{studentName}</div>
-          <div style={{ fontSize: '11pt', color: '#333' }}>{section}</div>
-        </div>
-      </div>
-
-      {/* PAGE 3 */}
-      <div className="a4-page page-break portfolio-document position-relative" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <img src="/images/ccs-logo.png" alt="UC Seal" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
-          <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
-            <div style={{ fontSize: '8pt' }}>Republic of the Philippines</div>
-            <div style={{ fontFamily: 'Arial, sans-serif', color: '#1a5c2a', fontSize: '1.4rem', lineHeight: 1.1 }}>University of Cabuyao</div>
-            <div style={{ fontSize: '9pt' }}>(Pamantasan ng cabuyao)</div>
-            <div style={{ fontWeight: 'bold', fontStyle: 'italic', fontSize: '10pt' }}>COLLEGE OF COMPUTING STUDIES</div>
-            <div style={{ fontSize: '8pt' }}>Katapatan Mutual Homes, Brgy. Banay-banay, City of Cabuyao, Laguna 4025</div>
+      {/* PAGE 1 - Cover Page: bg image + text overlay at bottom-center */}
+      <div className="a4-page page-break" style={{ backgroundImage: 'url(/images/cover-bg.jpg)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: 0, position: 'relative', overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute',
+          bottom: '14%',
+          left: 0,
+          width: '100%',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '26pt', fontWeight: 'bold', color: '#1a4731', letterSpacing: '1px' }}>
+            Internship Portfolio
           </div>
-          <div style={{ width: '100px', height: '80px', border: '1px solid transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {p?.company_logo_path && <img src={`${BACKEND_URL}/storage/${p.company_logo_path}`} alt="Company Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />}
+          <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '11pt', fontWeight: 'bold', color: '#333', marginTop: '6px', letterSpacing: '2px' }}>
+            {ayLabel}
           </div>
         </div>
-        <div style={{ textAlign: 'center', marginTop: '30px' }}>
-          <h4 style={{ fontWeight: 'bold', marginBottom: '24px' }}>A PRACTICUM REPORT</h4>
-          <p style={{ textIndent: 0, marginBottom: '20px', textAlign: 'center' }}>A Narrative Report on the On-The-Job</p>
-          <p style={{ textIndent: 0, marginBottom: '20px', textAlign: 'center' }}>
-            undertaken at <strong style={{ fontStyle: 'italic' }}>{i?.company?.company_name || '___________________________'}</strong>,
-          </p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>
-            located at <strong style={{ fontStyle: 'italic' }}>{i?.company?.address || '___________________________'}</strong>
-          </p>
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>In partial fulfillment of the requirements for the course</p>
-          <p style={{ textIndent: 0, fontWeight: 'bold', textAlign: 'center' }}>{practicumCode}</p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>For the Degree of</p>
-          <p style={{ textIndent: 0, fontWeight: 'bold', textAlign: 'center' }}>{programTitle}</p>
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>Presented to the faculty of Computing Studies</p>
-          <p style={{ textIndent: 0, fontWeight: 'bold', textAlign: 'center' }}>COLLEGE OF COMPUTING STUDIES</p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>UNIVERSITY OF CABUYAO (PnC)</p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>Katapatan Homes Subdivision</p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>Banay-banay, City of Cabuyao, Laguna 4025</p>
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>Submitted by:</p>
-          <p style={{ textIndent: 0, fontWeight: 'bold', textAlign: 'center' }}>{studentName}</p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>{section}</p>
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>Submitted to:</p>
-          <p style={{ textIndent: 0, fontWeight: 'bold', fontStyle: 'italic', textAlign: 'center' }}>
-            {i?.faculty?.facultyProfile
-              ? `Dr. ${i.faculty.facultyProfile.first_name} ${i.faculty.facultyProfile.last_name}`
-              : '___________________________'}
-          </p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>Internship Instructor</p>
-          <p style={{ textIndent: 0, marginTop: '16px', fontWeight: 'bold', textAlign: 'center' }}>ASST. PROF. ARCELITO QUIATCHON</p>
-          <p style={{ textIndent: 0, textAlign: 'center' }}>CCS Internship Coordinator</p>
-          <p style={{ textIndent: 0, marginTop: '20px', textAlign: 'center' }}>{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
-        </div>
-        <div className="page-number">i</div>
       </div>
 
-      {/* PAGE 4 */}
-      <div className="a4-page page-break portfolio-document position-relative">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
-        <p style={{ textAlign: 'right', fontWeight: 'bold', marginTop: '10px' }}>
-          {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-        </p>
-        <p style={{ fontWeight: 'bold', textAlign: 'left', fontSize: '12pt' }}>Table of Contents <span style={{ fontStyle: 'italic', fontWeight: 'normal', fontSize: '10pt' }}>(Kindly add page numbers)</span></p>
-        <ul className="toc-list" style={{ fontSize: '10.5pt', listStyleType: 'none', paddingLeft: 0 }}>
-          <li><span className="fw-bold">CHAPTER I: INTRODUCTION</span><span>{tocPages.ch1}</span></li>
-          <li className="ms-4"><span>Vision of UC</span><span>{tocPages.visionMission}</span></li>
-          <li className="ms-4"><span>Mission of UC</span><span>{tocPages.visionMission}</span></li>
-          <li className="ms-4"><span>Host Company Profile</span><span>{tocPages.visionMission}</span></li>
-          <li className="ms-5"><span>Vision and Mission</span><span>{tocPages.visionMission}</span></li>
-          {tocPages.orgChart && <li className="ms-5"><span>Organizational Chart</span><span>{tocPages.orgChart}</span></li>}
-          <li className="ms-5"><span>History</span><span>{tocPages.history}</span></li>
+      {/* PAGE 2 - OJT Training Narrative page: bg image + text overlay at left */}
+      <div className="a4-page page-break" style={{ backgroundImage: 'url(/images/title-bg.jpg)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: 0, position: 'relative', overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute',
+          top: '52%',
+          left: '4%',
+          width: '52%',
+        }}>
+          <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '11pt', fontWeight: 'bold', color: '#005a2b' }}>{practicumCode}</div>
+          <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '10pt', fontWeight: 'bold', color: '#005a2b', marginTop: '2px' }}>{ayLabel}</div>
+          <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '11pt', fontWeight: 'bold', color: '#1a1a1a', marginTop: '8px' }}>{studentName}</div>
+          <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '10pt', fontWeight: 'bold', color: '#1a1a1a' }}>{section}</div>
+        </div>
+      </div>
 
-          <li style={{ marginTop: '8px' }}><span className="fw-bold">CHAPTER II: WEEKLY PROGRESS REPORT</span><span>{tocPages.ch2}</span></li>
-          {journalPages.map(j => (
-            <li key={j.id} className="ms-4"><span>Week {j.week}</span><span>{j.page}</span></li>
-          ))}
+      {/* PAGE 3 - Title Page: centered, CCS logo at bottom-left */}
+      <div className="a4-page page-break position-relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '11pt', color: '#000', padding: '50px 60px 60px 60px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', width: '100%' }}>
+          <p style={{ margin: '0 0 12px 0', textIndent: 0 }}>A Narrative Report on the On-The-Job</p>
+          <p style={{ margin: '0 0 12px 0', textIndent: 0 }}>
+            undertaken at <strong style={{ fontStyle: 'italic' }}>{i?.company?.company_name || '(Name of THE)'}</strong>,
+          </p>
+          <p style={{ margin: '0 0 24px 0', textIndent: 0 }}>
+            located at <strong style={{ fontStyle: 'italic' }}>{i?.company?.address || '(Address of THE)'}</strong>
+          </p>
 
-          <li style={{ marginTop: '8px' }}><span className="fw-bold">CHAPTER III: ASSESSMENT OF THE PROGRAM</span><span>{tocPages.ch3}</span></li>
-          <li className="ms-4"><span>Professional and Ethical and Legal Responsibilities as Future IT Professionals</span><span>{tocPages.ch3Content}</span></li>
-          <li className="ms-5"><span>Things I learned as future IT Professional</span><span>{tocPages.ch3Content}</span></li>
-          <li className="ms-5"><span>My experience with people around me</span><span>{tocPages.ch3Content}</span></li>
-          <li className="ms-5"><span>Industry-aligned best practices and standards I learned</span><span>{tocPages.ch3Content}</span></li>
-          <li className="ms-4"><span>My recommendation for improvement of the Internship Program</span><span>{tocPages.ch3Content}</span></li>
-          <li className="ms-4"><span>My advice to those who will take their internship in the near future</span><span>{tocPages.ch3Content}</span></li>
+          <p style={{ margin: '0 0 8px 0', textIndent: 0 }}>In partial fulfillment of the requirements for the course</p>
+          <p style={{ margin: '0 0 24px 0', fontWeight: 'bold', textIndent: 0 }}>{practicumCode}</p>
 
-          <li style={{ marginTop: '8px' }}><span className="fw-bold">APPENDICES (ADDITIONAL DOCUMENTS AT THE END)</span><span>{tocPages.appendices}</span></li>
-          {appendixForms.map(f => (
-            appendixPages[f.type] && <li key={f.type} className="ms-4"><span>{f.label}</span><span>{appendixPages[f.type]}</span></li>
-          ))}
-          
-          {ojtWeeks.length > 0 && <li className="ms-4"><span>Photos During OJT (Kindly add label and explanation)</span><span>{ojtPages[ojtWeeks[0]]}</span></li>}
-          {ojtWeeks.map(w => (
-            <li key={`toc-ojt-${w}`} className="ms-5"><span>Week {w}</span><span>{ojtPages[w]}</span></li>
-          ))}
+          <p style={{ margin: '0 0 8px 0', textIndent: 0 }}>For the Degree of</p>
+          <p style={{ margin: '0 0 24px 0', fontWeight: 'bold', textIndent: 0 }}>{programTitle}</p>
 
-          {Object.keys(wadhwaniPages).length > 0 && <li className="ms-4"><span>ONLINE / F2F TRAINING (WADWHANI)</span><span></span></li>}
-          {wadhwaniPages['training_certificate'] && <li className="ms-5"><span>CERTIFICATE OF TRAINING</span><span>{wadhwaniPages['training_certificate']}</span></li>}
-          {wadhwaniPages['training_test_result'] && <li className="ms-5"><span>PRE AND POST TEST RESULT (If applicable)</span><span>{wadhwaniPages['training_test_result']}</span></li>}
-          {wadhwaniPages['training_documentation'] && <li className="ms-5"><span>DOCUMENTATION OF TRAINING PROPER (PICTURES WITH DETAILED EXPLANATION)</span><span>{wadhwaniPages['training_documentation']}</span></li>}
-          
-          {Object.keys(certPages).length > 0 && <li className="ms-4"><span>CERTIFICATION EXAM (ONLINE / F2F)</span><span></span></li>}
-          {certPages['exam_certificate'] && <li className="ms-5"><span>CERTIFICATION</span><span>{certPages['exam_certificate']}</span></li>}
-          {certPages['exam_test_result'] && <li className="ms-5"><span>PRE AND POST TEST RESULT</span><span>{certPages['exam_test_result']}</span></li>}
-          {certPages['exam_documentation'] && <li className="ms-5"><span>DOCUMENTATION OF DURING AND PREPARATION OF EXAM (PICTURES WITH DETAILED EXPLANATION)</span><span>{certPages['exam_documentation']}</span></li>}
-        </ul>
-        <div className="page-number">ii</div>
+          <p style={{ margin: '0 0 4px 0', textIndent: 0 }}>Presented to the faculty of Computing Studies</p>
+          <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', textIndent: 0 }}>COLLEGE OF COMPUTING STUDIES</p>
+          <p style={{ margin: '0 0 4px 0', textIndent: 0 }}>UNIVERSITY OF CABUYAO (PnC)</p>
+          <p style={{ margin: '0 0 24px 0', textIndent: 0 }}>Katapatan Homes Subdivision<br />Banay-banay, City of Cabuyao, Laguna 4025</p>
+
+          <p style={{ margin: '0 0 4px 0', textIndent: 0 }}>Submitted by:</p>
+          <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', textIndent: 0 }}>{studentName}</p>
+          <p style={{ margin: '0 0 24px 0', textIndent: 0 }}>{section}</p>
+
+          <p style={{ margin: '0 0 4px 0', textIndent: 0 }}>Submitted to:</p>
+          <p style={{ margin: '0 0 4px 0', fontStyle: 'italic', textIndent: 0 }}>
+            {(() => {
+              const fp = i?.faculty?.faculty_profile ?? i?.faculty?.facultyProfile
+              return fp
+                ? `${fp.first_name} ${fp.last_name}`
+                : '(Name of Instructor / Moderator)'
+            })()}
+          </p>
+          <p style={{ margin: '0 0 16px 0', textIndent: 0 }}>Internship Instructor</p>
+
+          <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', textIndent: 0 }}>ASST. PROF. ARCELITO QUIATCHON</p>
+          <p style={{ margin: '0', textIndent: 0 }}>CCS Internship Coordinator</p>
+        </div>
+
+        <img src="/images/ccs-logo.png" alt="CCS Logo" style={{ position: 'absolute', bottom: '24px', left: '24px', width: '70px', objectFit: 'contain' }} />
+        <div style={{ position: 'absolute', bottom: '15mm', right: '18mm', fontFamily: "'Times New Roman', Times, serif", fontSize: '11pt' }}>-i</div>
+      </div>
+
+      {/* PAGE 4 - Table of Contents with color-coded entries matching the template */}
+      <div className="a4-page page-break position-relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '11pt', color: '#000', padding: '40px 50px' }}>
+        <h2 style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16pt', fontWeight: 'bold', color: '#000', marginBottom: '20px' }}>
+          Table of Contents <span style={{ fontWeight: 'normal', fontStyle: 'italic', fontSize: '12pt' }}>(Kindly add page numbers)</span>
+        </h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
+          <tbody>
+            <tr>
+              <td style={{ color: '#005a2b', fontWeight: 'bold', padding: '3px 0', paddingLeft: '0' }}>CHAPTER I: INTRODUCTION</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', width: '40px', color: '#005a2b', fontWeight: 'bold' }}>{tocPages.ch1}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#1a5c8a', padding: '2px 0', paddingLeft: '20px' }}>Host Company Profile</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#1a5c8a' }}>{tocPages.visionMission}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#8a6a00', padding: '2px 0', paddingLeft: '40px' }}>Vision and Mission</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#8a6a00' }}>{tocPages.visionMission}</td>
+            </tr>
+            {tocPages.orgChart && <tr>
+              <td style={{ color: '#8a6a00', padding: '2px 0', paddingLeft: '40px' }}>Organizational Chart</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#8a6a00' }}>{tocPages.orgChart}</td>
+            </tr>}
+            <tr>
+              <td style={{ color: '#8a6a00', padding: '2px 0', paddingLeft: '40px' }}>History</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#8a6a00' }}>{tocPages.history}</td>
+            </tr>
+
+            <tr><td style={{ height: '8px' }} /></tr>
+            <tr>
+              <td style={{ color: '#005a2b', fontWeight: 'bold', padding: '3px 0', paddingLeft: '0' }}>CHAPTER II: WEEKLY PROGRESS REPORT</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#005a2b', fontWeight: 'bold' }}>{tocPages.ch2}</td>
+            </tr>
+
+            <tr><td style={{ height: '8px' }} /></tr>
+            <tr>
+              <td style={{ color: '#005a2b', fontWeight: 'bold', padding: '3px 0', paddingLeft: '0' }}>CHAPTER III: ASSESSMENT OF THE PROGRAM</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#005a2b', fontWeight: 'bold' }}>{tocPages.ch3}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#1a5c8a', padding: '2px 0', paddingLeft: '20px' }}>Professional and Ethical and Legal Responsibilities as Future IT Professionals</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#1a5c8a' }}>{tocPages.ch3Content}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#8a6a00', padding: '2px 0', paddingLeft: '40px' }}>Things I learned as future IT Professional</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#8a6a00' }}>{tocPages.ch3Content}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#8a6a00', padding: '2px 0', paddingLeft: '40px' }}>My experience with people around me</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#8a6a00' }}>{tocPages.ch3Content}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#8a6a00', padding: '2px 0', paddingLeft: '40px' }}>Industry-aligned best practices and standards I learned</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#8a6a00' }}>{tocPages.ch3Content}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#1a5c8a', padding: '2px 0', paddingLeft: '20px' }}>My recommendation for improvement of the Internship Program</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#1a5c8a' }}>{tocPages.ch3Content}</td>
+            </tr>
+            <tr>
+              <td style={{ color: '#1a5c8a', padding: '2px 0', paddingLeft: '20px' }}>My advice to those who will take their internship in the near future</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#1a5c8a' }}>{tocPages.ch3Content}</td>
+            </tr>
+
+            <tr><td style={{ height: '8px' }} /></tr>
+            <tr>
+              <td style={{ color: '#005a2b', fontWeight: 'bold', padding: '3px 0', paddingLeft: '0' }}>APPENDICES (ADDITIONAL DOCUMENTS AT THE END)</td>
+              <td style={{ textAlign: 'right', borderBottom: '1px dotted #999', color: '#005a2b', fontWeight: 'bold' }}>{tocPages.appendices}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       {/* CHAPTER I */}
@@ -329,23 +364,23 @@ function PortfolioPreview() {
       <div className="a4-page page-break portfolio-document position-relative">
         <PageHeader companyLogoPath={p?.company_logo_path} />
         <div style={{ marginTop: '20px' }}>
-          <h4 style={{ fontWeight: 'bold', textAlign: 'left' }}>Vision of UC</h4>
-          <p>An institution of higher learning in Region IV. developing globally-competitive and value-laden professionals and leaders instrumental to community development and nation building.</p>
-          <h4 style={{ fontWeight: 'bold', textAlign: 'left', marginTop: '20px' }}>Mission of UC</h4>
-          <p>An institution of higher learning committed to equip individuals with knowledge, skills and values that will enable them to achieve professional goals & provide leadership and service for national development.</p>
-          <h4 style={{ fontWeight: 'bold', textAlign: 'left', marginTop: '20px' }}>Host Company Profile</h4>
+          <h4 style={{ fontWeight: 'bold', textAlign: 'left' }}>Host Company Profile</h4>
+          {p?.company_profile && (
+            <p style={{ whiteSpace: 'pre-wrap', textAlign: 'justify', marginTop: '10px' }}>{p.company_profile}</p>
+          )}
           <h5 style={{ fontWeight: 'bold', marginTop: '16px', textAlign: 'left' }}>Vision and Mission</h5>
           <p style={{ textIndent: '0.5in' }}><strong>Vision:</strong> {p?.company_vision ?? 'N/A'}</p>
           <p style={{ textIndent: '0.5in' }}><strong>Mission:</strong> {p?.company_mission ?? 'N/A'}</p>
         </div>
         <div className="page-number">{nextPg()}</div>
       </div>
+
       {p?.org_chart_path && (
         <div className="a4-page page-break portfolio-document position-relative">
           <PageHeader companyLogoPath={p?.company_logo_path} />
           <h5 style={{ fontWeight: 'bold', marginTop: '20px', textAlign: 'left' }}>Organizational Chart</h5>
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <img src={`${BACKEND_URL}/storage/${p.org_chart_path}`} alt="Org Chart" style={{ maxWidth: '100%', maxHeight: '700px' }} />
+            <AuthenticatedFileImage path={p.org_chart_path} alt="Org Chart" style={{ maxWidth: '100%', maxHeight: '700px' }} />
           </div>
           <div className="page-number">{nextPg()}</div>
         </div>
@@ -366,22 +401,67 @@ function PortfolioPreview() {
         <div className="page-number">{nextPg()}</div>
       </div>
       {journals.map((j) => (
-        <div key={j.id} className="a4-page page-break portfolio-document position-relative text-center">
-            <PageHeader companyLogoPath={p?.company_logo_path} />
-            <h4 style={{ fontWeight: 'bold', marginTop: '20px', textAlign: 'left' }}>Week {j.week_number}</h4>
-            <div style={{ marginTop: '20px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-            {j.file_path && j.file_path.endsWith('.pdf') ? (
-                <div style={{ padding: '40px', border: '2px dashed #999', background: '#f9f9f9', width: '80%' }}>
-                    <h5 className="fw-bold">PNC:AA-FO-31 Weekly Journal</h5>
-                    <p className="small text-muted m-0">[ Insert physical PDF page here before final binding ]</p>
-                </div>
-            ) : (
-                <img src={`${BACKEND_URL}/storage/${j.file_path}`} alt={`Week ${j.week_number} Journal`} style={{ maxWidth: '90%', maxHeight: '700px', objectFit: 'contain', border: '1px solid #ddd' }} />
+        <div key={j.id} className="a4-page page-break portfolio-document position-relative">
+          <PageHeader companyLogoPath={p?.company_logo_path} />
+          <div style={{ marginTop: '16px' }}>
+            <h4 style={{ fontWeight: 'bold', textAlign: 'left', color: '#005a2b', borderBottom: '2px solid #005a2b', paddingBottom: '6px' }}>
+              Week {j.week_number ?? j.entry_number}
+              {j.date && <span style={{ fontWeight: 'normal', fontSize: '10pt', color: '#555', marginLeft: '12px' }}>{j.date}</span>}
+            </h4>
+
+            {/* Text-based journal entry */}
+            {j.activities_summary && (
+              <div style={{ marginTop: '12px' }}>
+                <h6 style={{ fontWeight: 'bold', fontSize: '10pt', color: '#1a1a1a', marginBottom: '4px' }}>Activities / Tasks Performed:</h6>
+                <p style={{ whiteSpace: 'pre-wrap', fontSize: '10pt', textAlign: 'justify', marginBottom: '10px' }}>{j.activities_summary}</p>
+              </div>
             )}
-            </div>
-            <div className="page-number">{nextPg()}</div>
+            {j.learnings && (
+              <div style={{ marginTop: '8px' }}>
+                <h6 style={{ fontWeight: 'bold', fontSize: '10pt', color: '#1a1a1a', marginBottom: '4px' }}>What I Learned:</h6>
+                <p style={{ whiteSpace: 'pre-wrap', fontSize: '10pt', textAlign: 'justify', marginBottom: '10px' }}>{j.learnings}</p>
+              </div>
+            )}
+            {j.challenges && (
+              <div style={{ marginTop: '8px' }}>
+                <h6 style={{ fontWeight: 'bold', fontSize: '10pt', color: '#1a1a1a', marginBottom: '4px' }}>Challenges Encountered:</h6>
+                <p style={{ whiteSpace: 'pre-wrap', fontSize: '10pt', textAlign: 'justify', marginBottom: '10px' }}>{j.challenges}</p>
+              </div>
+            )}
+            {j.notes && (
+              <div style={{ marginTop: '8px' }}>
+                <h6 style={{ fontWeight: 'bold', fontSize: '10pt', color: '#1a1a1a', marginBottom: '4px' }}>Notes / Reflection:</h6>
+                <p style={{ whiteSpace: 'pre-wrap', fontSize: '10pt', textAlign: 'justify', marginBottom: '10px' }}>{j.notes}</p>
+              </div>
+            )}
+
+            {/* File attachment (uploaded form image or PDF) */}
+            {j.file_path && (
+              <div style={{ marginTop: '16px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                {j.file_path.endsWith('.pdf') ? (
+                  <div style={{ padding: '24px 40px', border: '2px dashed #999', background: '#f9f9f9', textAlign: 'center', width: '80%' }}>
+                    <h6 className="fw-bold" style={{ marginBottom: '4px' }}>PNC:AA-FO-31 Daily Journal (manual form upload)</h6>
+                    <p className="small text-muted m-0">[ Insert physical PDF page here before final binding ]</p>
+                  </div>
+                ) : (
+                  <AuthenticatedFileImage
+                    path={j.file_path}
+                    alt={`Week ${j.week_number ?? j.entry_number} Journal`}
+                    style={{ maxWidth: '90%', maxHeight: '600px', objectFit: 'contain', border: '1px solid #ddd' }}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* No content fallback */}
+            {!j.activities_summary && !j.file_path && (
+              <p style={{ color: '#999', fontStyle: 'italic', marginTop: '20px' }}>No content provided for this week.</p>
+            )}
+          </div>
+          <div className="page-number">{nextPg()}</div>
         </div>
       ))}
+
 
       {/* CHAPTER III
           Split across multiple A4 pages (2 sections each) so long answers
@@ -441,7 +521,7 @@ function PortfolioPreview() {
       {renderPhotos('acceptance_form', 'Student Internship Acceptance Form PNC:AA-FO-29')}
       {renderPhotos('consent_form', 'Student Internship Consent Form PNC: AA-FO-28')}
       {renderPhotos('training_plan', 'Internship Training Plan PNC: AA-FO-25.3')}
-      {renderPhotos('dtr_form', 'Student Internship Daily Time Record (DTR) Form PNC: AA-FO-30')}
+      {renderPhotos('dtr_form', 'PNC:AA-FO-30 DTR (manual form upload) — Student Internship Daily Time Record')}
       {renderPhotos('performance_eval', 'Student Internship Performance Evaluation Form PNC: AA-FO-24')}
       {renderPhotos('moa_document', 'Memorandum of Agreement')}
       {renderPhotos('visitation_form', 'Internship / OJT Visitation Form')}
@@ -465,7 +545,7 @@ function PortfolioPreview() {
                             <p className="small text-muted m-0" style={{ fontSize: '9pt' }}>[ Insert physical PDF page here before final binding ]</p>
                         </div>
                     ) : (
-                        <img src={`${BACKEND_URL}/storage/${photo.file_path}`} alt={photo.label} style={{ maxWidth: '80%', maxHeight: '400px', objectFit: 'contain', border: '1px solid #ddd' }} />
+                        <AuthenticatedFileImage path={photo.file_path} alt={photo.label} style={{ maxWidth: '80%', maxHeight: '400px', objectFit: 'contain', border: '1px solid #ddd' }} />
                     )}
                     <p style={{ fontWeight: 'bold', marginTop: '6px', textIndent: '0', fontSize: '10pt' }}>
                         {photo.label}
@@ -507,17 +587,17 @@ function PortfolioPreview() {
 
 function PageHeader({ companyLogoPath }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #15803d', paddingBottom: '8px', marginBottom: '4px' }}>
-      <img src="/images/ccs-logo.png" alt="UC Seal" style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #005a2b', paddingBottom: '8px', marginBottom: '4px' }}>
+      <img src="/images/uc-logo.png" alt="UC Logo" style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
       <div style={{ textAlign: 'center', flex: 1 }}>
-        <div style={{ fontSize: '8.5pt' }}>Republic of the Philippines</div>
-        <div style={{ fontFamily: 'Arial, sans-serif', color: '#1a5c2a', fontSize: '18pt', lineHeight: 1.1 }}>University of Cabuyao</div>
-        <div style={{ fontSize: '10pt', marginTop: '2px' }}>(Pamantasan ng cabuyao)</div>
-        <div style={{ fontWeight: 'bold', fontStyle: 'italic', fontSize: '10pt', marginTop: '2px' }}>COLLEGE OF COMPUTING STUDIES</div>
-        <div style={{ fontSize: '8pt' }}>Katapatan Mutual Homes, Brgy. Banay-banay, City of Cabuyao, Laguna 4025</div>
+        <div style={{ fontSize: '9pt', marginBottom: '2px' }}>Republic of the Philippines</div>
+        <div style={{ fontFamily: 'Arial, sans-serif', color: '#005a2b', fontSize: '16pt', fontWeight: 'bold', lineHeight: 1.1 }}>PAMANTASAN NG LUNGSOD NG Cabuyao</div>
+        <div style={{ fontSize: '10pt', fontStyle: 'italic', marginTop: '2px' }}>(Pamantasan ng Cabuyao)</div>
+        <div style={{ fontWeight: 'bold', fontStyle: 'italic', fontSize: '10pt', marginTop: '2px' }}>Office of Academic Affairs</div>
+        <div style={{ fontSize: '8.5pt', marginTop: '2px' }}>Biglang-awa St., cor. Catleya St., Deparo, Cabuyao City</div>
       </div>
       <div style={{ width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {companyLogoPath ? <img src={`${BACKEND_URL}/storage/${companyLogoPath}`} alt="Company Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <div style={{ width: '60px' }}></div>}
+        {companyLogoPath ? <AuthenticatedFileImage path={companyLogoPath} alt="Company Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : <div style={{ width: '60px' }}></div>}
       </div>
     </div>
   )

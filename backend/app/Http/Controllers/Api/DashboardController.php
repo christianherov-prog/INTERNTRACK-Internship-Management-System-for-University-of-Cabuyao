@@ -38,6 +38,7 @@ class DashboardController extends Controller
             'faculty'     => $this->facultySummary($user, $base),
             'supervisor'  => $this->supervisorSummary($user, $base),
             'student'     => $this->studentSummary($user, $base),
+            'admin'       => $this->adminSummary($user, $base),
             default       => null,
         };
 
@@ -151,6 +152,19 @@ class DashboardController extends Controller
         ]);
     }
 
+    private function adminSummary(User $user, array $base): array
+    {
+        $profile = $user->facultyProfile;
+
+        return array_merge($base, [
+            'label'            => 'MISD DASHBOARD',
+            'employee_number'  => $profile?->employee_number ?: $user->username,
+            'position'         => $profile?->position ?: 'MISD Administrator',
+            'office'           => $profile?->department ?: 'MISD',
+            'security_status'  => $user->must_change_password ? 'Password change required' : 'Standard',
+        ]);
+    }
+
     private function studentSummary(User $user, array $base): array
     {
         $internship = $user->activeInternship()->with('company')->first();
@@ -159,6 +173,7 @@ class DashboardController extends Controller
         return array_merge($base, [
             'label'           => 'INTERNSHIP DASHBOARD',
             'section'         => $profile?->section,
+            'year_level'      => $profile?->year_level,
             'student_number'  => $user->username,
             'company_name'    => $internship?->company?->company_name,
             'internship_status' => $internship?->status,
@@ -173,6 +188,7 @@ class DashboardController extends Controller
             'faculty'     => 'Faculty Account',
             'coordinator' => 'Coordinator Account',
             'director'    => 'Director Account',
+            'admin'       => 'MISD Admin Account',
             default       => ucfirst($role).' Account',
         };
     }

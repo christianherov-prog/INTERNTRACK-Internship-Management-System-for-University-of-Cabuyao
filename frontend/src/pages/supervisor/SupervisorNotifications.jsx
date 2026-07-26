@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
@@ -15,6 +15,7 @@ function timeAgo(iso) {
 }
 
 function SupervisorNotifications() {
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [unread, setUnread] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -47,6 +48,39 @@ function SupervisorNotifications() {
     }
   }
 
+  const handleNotifClick = (n) => {
+    if (!n.read_at) {
+      api.post(`/notifications/${n.id}/read`).catch(() => {})
+      setItems(prev => prev.map(item => item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item))
+      setUnread(u => Math.max(0, u - 1))
+    }
+    if (n.link) {
+      if (n.link.startsWith('http://') || n.link.startsWith('https://')) {
+        window.location.href = n.link
+      } else {
+        navigate(n.link)
+      }
+    }
+  }
+
+  const getIcon = (type) => {
+    const map = {
+      document_approved: 'fa-circle-check text-success',
+      document_coordinator_approved: 'fa-circle-check text-success',
+      document_rejected: 'fa-circle-xmark text-danger',
+      document_pending_faculty: 'fa-file-signature text-warning',
+      journal_reviewed:  'fa-book text-primary',
+      supervisor_feedback: 'fa-comment-dots text-info',
+      supervisor_feedback_submitted: 'fa-comment-dots text-info',
+      supervisor_evaluation_submitted: 'fa-clipboard-check text-success',
+      meeting_invite: 'fa-calendar-plus text-primary',
+      meeting_updated: 'fa-calendar-check text-info',
+      placement_assigned: 'fa-briefcase text-success',
+      new_message:       'fa-comments text-primary',
+    }
+    return map[type] ?? 'fa-bell text-secondary'
+  }
+
   return (
     <Layout title="Notifications" subtitle="Supervisor" icon="fa-bell" bodyClass="supervisor-page">
       {error && <PageError message={error} onRetry={load} />}
@@ -67,24 +101,37 @@ function SupervisorNotifications() {
             <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
           ) : items.length === 0 ? (
             <div className="text-center text-muted py-5">
-              <i className="fa fa-inbox fa-2x mb-2 d-block"></i>
-              No notifications yet.
-              <div className="mt-3">
+              <i className="fa fa-bell-slash fa-2x mb-2 d-block text-secondary opacity-50"></i>
+              <span className="fw-medium text-dark d-block mb-1">No notifications yet</span>
+              <span className="text-muted d-block mb-3" style={{ fontSize: '0.85rem' }}>When you receive system updates or feedback, they will appear here.</span>
+              <div>
                 <Link to="/supervisor/dashboard" className="btn btn-sm btn-outline-success">Back to dashboard</Link>
               </div>
             </div>
           ) : (
             <div className="list-group list-group-flush">
-              {items.map((n) => (
+              {[...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((n) => (
                 <div
                   key={n.id}
-                  className={`list-group-item d-flex align-items-start gap-3 px-4 py-3 ${n.read_at ? '' : 'bg-light'}`}
+                  onClick={() => handleNotifClick(n)}
+                  className="list-group-item d-flex align-items-start gap-3 px-4 py-3 transition-all"
+                  style={{
+                    background: n.read_at ? '#ffffff' : '#f0fdf4',
+                    borderLeft: n.read_at ? '4px solid transparent' : '4px solid #16a34a',
+                    cursor: 'pointer'
+                  }}
                 >
+                  <i className={`fa ${getIcon(n.type)} mt-1`} style={{ fontSize: '1.2rem', minWidth: '22px' }}></i>
                   <div className="flex-grow-1">
-                    <div className="fw-semibold" style={{ fontSize: '0.9rem' }}>{n.title || n.type || 'Notification'}</div>
-                    <div className="text-muted" style={{ fontSize: '0.85rem' }}>{n.message || n.body || ''}</div>
+                    <div className={n.read_at ? "fw-medium text-secondary" : "fw-bold text-dark"} style={{ fontSize: '0.92rem' }}>
+                      {n.title || n.type || 'Notification'}
+                    </div>
+                    <div className="text-muted mt-1" style={{ fontSize: '0.85rem', lineHeight: 1.4 }}>{n.message || n.body || ''}</div>
                   </div>
-                  <small className="text-muted flex-shrink-0">{timeAgo(n.created_at)}</small>
+                  <div className="text-end flex-shrink-0">
+                    <small className="text-muted d-block">{timeAgo(n.created_at)}</small>
+                    {!n.read_at && <span className="badge bg-success mt-1" style={{ fontSize: '0.65rem' }}>New</span>}
+                  </div>
                 </div>
               ))}
             </div>

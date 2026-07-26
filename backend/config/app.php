@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend SPA URL
+    |--------------------------------------------------------------------------
+    |
+    | Used for supervisor invite / QR registration links. Must match the Vite
+    | (or production) origin where the React app is served.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

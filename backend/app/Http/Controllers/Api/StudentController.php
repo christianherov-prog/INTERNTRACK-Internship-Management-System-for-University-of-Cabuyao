@@ -9,9 +9,11 @@ use App\Models\Document;
 use App\Models\Announcement;
 use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
+use App\Support\RequiredDocuments;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
@@ -81,7 +83,7 @@ class StudentController extends Controller
         $journalCount = $internship->journals()->whereIn('status', ['submitted', 'approved'])->count();
 
         // Document stats
-        $docsTotal     = 13;
+        $docsTotal     = max(1, \App\Models\OjtRequirementTemplate::where('is_active', true)->count());
         $docsSubmitted = $internship->documents()->whereIn('status', ['pending_review', 'under_review', 'pending_faculty', 'approved', 'resubmitted'])->count();
         $docCompliance = round(($docsSubmitted / $docsTotal) * 100);
 
@@ -151,16 +153,15 @@ class StudentController extends Controller
             ->orderByDesc('date')
             ->paginate(20);
 
-        // Check if already clocked in today
         $today       = now()->toDateString();
         $todayRecord = $internship->attendance()->whereDate('date', $today)->first();
 
         return response()->json([
-            'attendance'     => $logs,
-            'today_status'   => $todayRecord
+            'attendance'   => $logs,
+            'today_record' => $todayRecord,
+            'today_status' => $todayRecord
                 ? ($todayRecord->clock_out ? 'clocked_out' : 'clocked_in')
                 : 'not_clocked_in',
-            'today_record'   => $todayRecord,
         ]);
     }
 
@@ -174,11 +175,14 @@ class StudentController extends Controller
             return response()->json(['message' => 'You have already clocked in today.'], 422);
         }
 
+        $clockIn = now()->toTimeString();
+
         $log = $internship->attendance()->create([
-            'date'               => $today,
-            'clock_in'           => now()->toTimeString(),
-            'status'             => 'pending',
-            'clock_in_location'  => $request->location ?? null,
+            'date'              => $today,
+            'clock_in'          => $clockIn,
+            'am_time_in'        => $clockIn,
+            'status'            => 'pending',
+            'clock_in_location' => $request->location ?? null,
         ]);
 
         audit_log($request->user()->id, 'clock_in', ['date' => $today]);
@@ -193,12 +197,14 @@ class StudentController extends Controller
         $today      = now()->toDateString();
         $log        = $internship->attendance()->whereDate('date', $today)->whereNull('clock_out')->firstOrFail();
 
-        $clockIn      = \Carbon\Carbon::parse($log->clock_in);
-        $clockOut     = now();
+        $clockIn       = \Carbon\Carbon::parse($log->clock_in);
+        $clockOut      = now();
         $hoursRendered = round($clockIn->diffInMinutes($clockOut) / 60, 2);
+        $clockOutTime  = $clockOut->toTimeString();
 
         $log->update([
-            'clock_out'          => $clockOut->toTimeString(),
+            'clock_out'          => $clockOutTime,
+            'am_time_out'        => $clockOutTime,
             'hours_rendered'     => $hoursRendered,
             'clock_out_location' => $request->location ?? null,
         ]);
@@ -221,7 +227,6 @@ class StudentController extends Controller
     {
         $request->validate([
             'week_number'    => 'required|integer|min:1|max:52',
-            'hours_declared' => 'required|numeric|min:1|max:60',
             'file'           => 'required|file|max:10240', // 10MB max, any file type
             'notes'          => 'nullable|string',
         ]);
@@ -233,11 +238,10 @@ class StudentController extends Controller
             return response()->json(['message' => 'Journal for this week is already submitted or approved.'], 422);
         }
 
-        $path = $request->file('file')->store('journals/' . $internship->id, 'public');
+        $path = $request->file('file')->store('journals/' . $internship->id, 'local');
 
         if ($journal) {
             $journal->update([
-                'hours_declared' => $request->hours_declared,
                 'file_path'      => $path,
                 'notes'          => $request->notes,
                 'status'         => 'submitted'
@@ -246,7 +250,6 @@ class StudentController extends Controller
             $journal = $internship->journals()->create([
                 'entry_number'   => $request->week_number, // Fallback for legacy DB column
                 'week_number'    => $request->week_number,
-                'hours_declared' => $request->hours_declared,
                 'file_path'      => $path,
                 'notes'          => $request->notes,
                 'status'         => 'submitted',
@@ -262,24 +265,7 @@ class StudentController extends Controller
     public function documents(Request $request)
     {
         $internship = $this->internship($request);
-
-        // All required document types per UC Internship Manual
-        $required = [
-            'Curriculum Vitae (PNC:AA-FO-27)',
-            'Medical Clearance',
-            'Psychological Assessment Certificate',
-            'Notarized Student Internship Consent Form (PNC:AA-FO-28)',
-            'Student Internship Acceptance Form (PNC:AA-FO-29)',
-            'Application Letter',
-            'Recommendation Letter',
-            'MOA / LOA / TOR',
-            'Company Profile',
-            'Training Plan',
-            'Midterm Evaluation',
-            'Final Report',
-            'Certificate of Completion'
-        ];
-
+        $required = \App\Models\OjtRequirementTemplate::where('is_active', true)->orderBy('sort_order')->pluck('name')->toArray();
         $submitted = $internship->documents()->get()->keyBy('document_type');
 
         $docs = collect($required)->map(function ($type) use ($submitted) {
@@ -292,29 +278,36 @@ class StudentController extends Controller
                 'submitted_at'  => $doc?->submitted_at?->toDateString() ?? null,
                 'remarks'       => $doc?->remarks ?? null,
                 'id'            => $doc?->id ?? null,
-                'file_url'      => $doc ? asset('storage/' . $doc->file_path) : null,
+                'file_path'     => $doc?->file_path ?? null,
+                'file_url'      => null,
             ];
         });
 
-        return ApiResponse::list($docs);
+        $payload = ApiResponse::list($docs)->getData(true);
+        $payload['meta']['docs_total'] = count($required);
+        $payload['required_types'] = $required;
+
+        return response()->json($payload);
     }
 
     /** POST /api/v1/student/documents/upload */
     public function uploadDocument(Request $request)
     {
+        $validTypes = \App\Models\OjtRequirementTemplate::where('is_active', true)->pluck('name')->toArray();
         $request->validate([
-            'document_type' => 'required|string',
+            'document_type' => ['required', 'string', Rule::in($validTypes)],
             'file'          => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
         $internship = $this->internship($request);
         $file       = $request->file('file');
-        $path       = $file->store("internships/{$internship->id}/documents", 'public');
+        $path       = $file->store("internships/{$internship->id}/documents", 'local');
 
         // Update or create
         $existing = $internship->documents()->where('document_type', $request->document_type)->first();
 
         if ($existing) {
+            Storage::disk('local')->delete($existing->file_path);
             Storage::disk('public')->delete($existing->file_path);
             $existing->update([
                 'file_path'     => $path,
@@ -370,7 +363,7 @@ class StudentController extends Controller
 
     /**
      * POST /api/v1/student/absorption/declare
-     * Optional: student reports they were hired — stays pending until supervisor/coord confirms.
+     * Optional: student reports they were hired — stays pending until the PALD Director finalizes.
      */
     public function declareAbsorption(Request $request)
     {
@@ -390,7 +383,7 @@ class StudentController extends Controller
         audit_log($request->user()->id, 'student_declare_hired', ['internship_id' => $internship->id]);
 
         return response()->json([
-            'message' => 'Your hire declaration was submitted. It stays pending until your supervisor or coordinator confirms.',
+            'message' => 'Your hire declaration was submitted. It stays pending until the PALD Director finalizes Absorbed / Not Hired.',
             'internship' => $updated,
         ]);
     }

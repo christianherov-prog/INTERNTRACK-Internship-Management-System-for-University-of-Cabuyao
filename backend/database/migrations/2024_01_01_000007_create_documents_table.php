@@ -31,14 +31,7 @@ return new class extends Migration {
             $table->string('file_size')->nullable();
             $table->string('mime_type')->nullable();
 
-            $table->enum('status', [
-                'not_submitted',
-                'pending_review',
-                'under_review',
-                'approved',
-                'rejected',
-                'resubmitted',
-            ])->default('pending_review');
+            $table->string('status', 40)->default('pending_review');
 
             $table->text('remarks')->nullable()->comment('Reviewer feedback');
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();

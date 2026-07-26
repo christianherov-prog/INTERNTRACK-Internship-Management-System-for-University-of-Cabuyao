@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
-import { downloadCsv } from '../../utils/csv'
 import { CURRENT_TERM } from '../../config/term'
+import ReportExportModal from '../../components/modals/ReportExportModal'
 
 const REPORT_TYPES = [
   {
@@ -186,6 +186,7 @@ function CoordReports() {
   const [programFilter, setProgramFilter] = useState('')
   const [industryFilter, setIndustryFilter] = useState('')
   const [filterOptions, setFilterOptions] = useState({ programs: [], industries: [] })
+  const [exportPreview, setExportPreview] = useState(null)
 
   const generateReport = async (key) => {
     setLoading(true)
@@ -221,24 +222,36 @@ function CoordReports() {
     if (!reportData) return
 
     if (activeReport === 'student-summary') {
-      downloadCsv('student-summary-report', (reportData.students ?? []).map(r => ({
-        Student: r.student_name, 'Student No.': r.student_number, Program: r.program, Company: r.company,
-        Industry: r.industry, Status: r.status, 'Hours Rendered': r.hours_rendered, 'Target Hours': r.target_hours,
-        'Progress %': r.progress_pct, 'Validated Days': r.validated_days,
-        'Approved Journals': r.approved_journals, 'Approved Docs': r.approved_docs,
-      })))
+      setExportPreview({
+        title: 'Student Summary Report',
+        filename: 'student-summary-report',
+        rows: (reportData.students ?? []).map(r => ({
+          Student: r.student_name, 'Student No.': r.student_number, Program: r.program, Company: r.company,
+          Industry: r.industry, Status: r.status, 'Hours Rendered': r.hours_rendered, 'Target Hours': r.target_hours,
+          'Progress %': r.progress_pct, 'Validated Days': r.validated_days,
+          'Approved Journals': r.approved_journals, 'Approved Docs': r.approved_docs,
+        })),
+      })
     } else if (activeReport === 'compliance') {
-      downloadCsv('document-compliance-report', (reportData.rows ?? []).map(r => ({
-        Student: r.student_name, Program: r.program, Industry: r.industry, 'Compliance %': r.compliance_pct,
-        'Approved Docs': r.approved_docs, 'Required Docs': r.required_docs,
-        'Missing Documents': (r.missing_docs ?? []).join('; '),
-      })))
+      setExportPreview({
+        title: 'Document Compliance Report',
+        filename: 'document-compliance-report',
+        rows: (reportData.rows ?? []).map(r => ({
+          Student: r.student_name, Program: r.program, Industry: r.industry, 'Compliance %': r.compliance_pct,
+          'Approved Docs': r.approved_docs, 'Required Docs': r.required_docs,
+          'Missing Documents': (r.missing_docs ?? []).join('; '),
+        })),
+      })
     } else if (activeReport === 'performance') {
-      downloadCsv('performance-report', (reportData.by_program ?? []).map(p => ({
-        Program: p.program, Total: p.total, Completed: p.completed,
-        'Avg Hours': parseFloat(p.avg_hours ?? 0).toFixed(1),
-        'Completion Rate %': p.total > 0 ? Math.round(p.completed / p.total * 100) : 0,
-      })))
+      setExportPreview({
+        title: 'Performance Analytics Report',
+        filename: 'performance-report',
+        rows: (reportData.by_program ?? []).map(p => ({
+          Program: p.program, Total: p.total, Completed: p.completed,
+          'Avg Hours': parseFloat(p.avg_hours ?? 0).toFixed(1),
+          'Completion Rate %': p.total > 0 ? Math.round(p.completed / p.total * 100) : 0,
+        })),
+      })
     }
   }
 
@@ -276,7 +289,7 @@ function CoordReports() {
             {activeReport && (
               <button
                 type="button"
-                className="btn btn-outline-primary ms-2"
+                className="btn btn-outline-green ms-2"
                 onClick={() => generateReport(activeReport)}
                 disabled={loading}
               >
@@ -292,8 +305,11 @@ function CoordReports() {
         {REPORT_TYPES.map(r => (
           <div key={r.key} className="col-md-4">
             <div
-              className={`content-card h-100 cursor-pointer ${activeReport === r.key ? 'border-2 border-primary' : ''}`}
-              style={{ cursor: 'pointer', borderColor: activeReport === r.key ? '#6366f1' : undefined }}
+              className={`content-card h-100 cursor-pointer ${activeReport === r.key ? 'border-2' : ''}`}
+              style={{
+                cursor: 'pointer',
+                borderColor: activeReport === r.key ? 'var(--green-main, #1a7a3f)' : undefined,
+              }}
               onClick={() => generateReport(r.key)}
             >
               <div className="p-3 text-center">
@@ -303,7 +319,7 @@ function CoordReports() {
                 <div className="fw-semibold mb-1">{r.title}</div>
                 <p className="text-muted mb-3" style={{ fontSize: '0.82rem' }}>{r.desc}</p>
                 <button
-                  className={`btn btn-sm ${activeReport === r.key ? 'btn-primary' : 'btn-outline-primary'}`}
+                  className={`btn btn-sm ${activeReport === r.key ? 'btn-green' : 'btn-outline-green'}`}
                   onClick={e => { e.stopPropagation(); generateReport(r.key) }}
                   disabled={loading && activeReport === r.key}
                 >
@@ -353,6 +369,7 @@ function CoordReports() {
           </div>
         </div>
       )}
+      <ReportExportModal preview={exportPreview} onClose={() => setExportPreview(null)} />
     </Layout>
   )
 }

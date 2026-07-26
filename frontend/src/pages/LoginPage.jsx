@@ -13,12 +13,25 @@ function LoginPage() {
 
   useEffect(() => {
     if (user) {
+      if (user.must_change_password) {
+        const settingsRoutes = {
+          student: '/student/settings',
+          director: '/director/settings',
+          supervisor: '/supervisor/settings',
+          faculty: '/faculty/settings',
+          coordinator: '/coordinator/settings',
+          admin: '/admin/settings',
+        }
+        navigate(settingsRoutes[user.role] || '/')
+        return
+      }
       const roleRoutes = {
         student: '/student/dashboard',
         director: '/director/dashboard',
         supervisor: '/supervisor/dashboard',
         faculty: '/faculty/dashboard',
-        coordinator: '/coordinator/monitoring'
+        coordinator: '/coordinator/monitoring',
+        admin: '/admin/dashboard',
       }
       navigate(roleRoutes[user.role])
     }

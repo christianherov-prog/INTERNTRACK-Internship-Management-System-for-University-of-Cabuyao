@@ -3,17 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
 use App\Models\Internship;
 use App\Models\InternshipStatusHistory;
 use App\Models\Notification;
 use App\Services\AbsorptionService;
-use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class InternshipStatusController extends Controller
 {
+    private const OCCUPYING = ['active', 'ongoing', 'placed', 'for_evaluation', 'suspended'];
+
+    private const FREEING = ['completed', 'expelled', 'deferred', 'terminated', 'failed'];
+
     /** GET /api/v1/{coordinator|director}/internships/{id}/status-history */
     public function history(Request $request, int $id)
     {
@@ -76,20 +81,33 @@ class InternshipStatusController extends Controller
 
         $reason = trim($data['reason']);
 
-        $internship->update([
-            'status' => $to,
-            'status_reason' => $reason,
-            'termination_reason' => in_array($to, ['expelled', 'terminated', 'failed'], true) ? $reason : $internship->termination_reason,
-            'end_date' => $to === 'completed' ? ($internship->end_date ?? now()) : $internship->end_date,
-        ]);
+        try {
+            DB::transaction(function () use ($request, $internship, $from, $to, $reason) {
+                if ($internship->company_id) {
+                    $company = Company::whereKey($internship->company_id)->lockForUpdate()->first();
+                    if ($company) {
+                        $this->adjustSlotsForTransition($company, $from, $to);
+                    }
+                }
 
-        InternshipStatusHistory::create([
-            'internship_id' => $internship->id,
-            'from_status' => $from,
-            'to_status' => $to,
-            'reason' => $reason,
-            'changed_by' => $request->user()->id,
-        ]);
+                $internship->update([
+                    'status' => $to,
+                    'status_reason' => $reason,
+                    'termination_reason' => in_array($to, ['expelled', 'terminated', 'failed'], true) ? $reason : $internship->termination_reason,
+                    'end_date' => $to === 'completed' ? ($internship->end_date ?? now()) : $internship->end_date,
+                ]);
+
+                InternshipStatusHistory::create([
+                    'internship_id' => $internship->id,
+                    'from_status' => $from,
+                    'to_status' => $to,
+                    'reason' => $reason,
+                    'changed_by' => $request->user()->id,
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         if ($to === 'completed') {
             AbsorptionService::initializePending($internship->fresh());
@@ -120,17 +138,44 @@ class InternshipStatusController extends Controller
         ]);
     }
 
+    private function adjustSlotsForTransition(Company $company, string $from, string $to): void
+    {
+        $wasOccupying = in_array($from, self::OCCUPYING, true);
+        $willOccupy = in_array($to, self::OCCUPYING, true);
+        $wasFreeing = in_array($from, self::FREEING, true);
+        $willFree = in_array($to, self::FREEING, true);
+
+        if ($wasOccupying && $willFree) {
+            $company->releaseSlot();
+            return;
+        }
+
+        if ($wasFreeing && $willOccupy) {
+            if (!$company->isEligibleForPlacement()) {
+                throw new \RuntimeException($company->ineligibilityReason());
+            }
+            $company->consumeSlot();
+        }
+    }
+
     private function assertCanManage(Request $request, Internship $internship): void
     {
         $role = $request->user()->role;
-        if (!in_array($role, ['coordinator', 'director'], true)) {
-            abort(403, 'Only coordinators and directors may change internship status.');
+        if ($role === 'director') {
+            return;
         }
 
-        // Coordinators may manage internships they coordinate or any pending/active in roster.
-        if ($role === 'coordinator' && $internship->coordinator_id && $internship->coordinator_id !== $request->user()->id) {
-            // Still allow if coordinator_id was never set / reassigned — open for active coords.
+        if ($role === 'coordinator') {
+            // Own assigned internships, or unassigned (null) so a coordinator can place/manage.
+            if ($internship->coordinator_id !== null
+                && (int) $internship->coordinator_id !== (int) $request->user()->id) {
+                abort(403, 'You may only manage internships assigned to you as coordinator.');
+            }
+
+            return;
         }
+
+        abort(403, 'Only coordinators and directors may change internship status.');
     }
 
     private function payload(Internship $internship): array

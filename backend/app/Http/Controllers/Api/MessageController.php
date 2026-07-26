@@ -37,6 +37,11 @@ class MessageController extends Controller
 
     private function internshipsFor(User $user)
     {
+        // Directors have no internship FK — MERGE-ONLY keeps director messaging as oversight access.
+        if ($user->role === 'director') {
+            return Internship::query();
+        }
+
         return Internship::query()
             ->where(function ($q) use ($user) {
                 $q->where('student_id', $user->id)
@@ -48,9 +53,16 @@ class MessageController extends Controller
 
     private function assertParticipant(Internship $internship, int $userId): void
     {
-        if (!$internship->isParticipant($userId)) {
-            abort(403, 'Forbidden. You are not a participant on this internship.');
+        if ($internship->isParticipant($userId)) {
+            return;
         }
+
+        $role = User::query()->whereKey($userId)->value('role');
+        if ($role === 'director') {
+            return;
+        }
+
+        abort(403, 'Forbidden. You are not a participant on this internship.');
     }
 
     private function userPayload(User $user): array
@@ -155,7 +167,17 @@ class MessageController extends Controller
             $isLive = in_array($internship->status, self::ACTIVE_INBOX_STATUSES, true)
                 || in_array($statusNorm, self::ACTIVE_INBOX_STATUSES, true);
 
-            foreach ($internship->participantUserIds() as $peerId) {
+            $peerIds = $internship->participantUserIds();
+            foreach ($messages as $m) {
+                if ((int) $m->sender_id === (int) $user->id) {
+                    $peerIds[] = (int) $m->recipient_id;
+                } elseif ((int) $m->recipient_id === (int) $user->id) {
+                    $peerIds[] = (int) $m->sender_id;
+                }
+            }
+            $peerIds = array_values(array_unique(array_filter($peerIds)));
+
+            foreach ($peerIds as $peerId) {
                 if ($peerId === (int) $user->id) {
                     continue;
                 }
@@ -414,7 +436,7 @@ class MessageController extends Controller
             $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
             $storedName = $safeBase.'_'.Str::lower(Str::random(8)).'.'.$ext;
             $dir = 'messages/'.$internship->id;
-            $attachmentPath = $file->storeAs($dir, $storedName, 'public');
+            $attachmentPath = $file->storeAs($dir, $storedName, 'local');
             $attachmentName = $originalName;
             $attachmentMime = $file->getMimeType() ?: $file->getClientMimeType();
             $attachmentSize = (int) $file->getSize();
@@ -634,6 +656,7 @@ class MessageController extends Controller
             'supervisor'  => '/supervisor/messages',
             'faculty'     => '/faculty/messages',
             'coordinator' => '/coordinator/messages',
+            'director'    => '/director/messages',
             default       => '/',
         };
     }

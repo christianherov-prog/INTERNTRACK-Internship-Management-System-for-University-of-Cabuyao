@@ -85,7 +85,7 @@ class SupervisorRegistrationController extends Controller
             $invite = null;
         }
 
-        // Assigned only when internship.supervisor_id is set (coordinator approved / placed).
+        // Assigned only when internship.supervisor_id is set (faculty approved / placed).
         // Pending/registered invites must NOT be treated as "already assigned".
         $hasSupervisor = (bool) $internship->supervisor_id;
 
@@ -175,10 +175,13 @@ class SupervisorRegistrationController extends Controller
         $request->validate([
             'token'          => 'required|string',
             'first_name'     => 'required|string|max:255',
+            'middle_name'    => 'nullable|string|max:255',
             'last_name'      => 'required|string|max:255',
+            'suffix'         => 'nullable|string|max:30',
             'email'          => 'required|email|max:255',
             'contact_number' => 'required|string|max:30',
             'position'       => 'required|string|max:255',
+            'sex'            => \App\Support\SexOptions::validationRule(true),
             'company_id'     => 'required|exists:companies,id',
             'password'       => 'required|string|min:8|confirmed',
         ]);
@@ -218,9 +221,12 @@ class SupervisorRegistrationController extends Controller
             SupervisorProfile::create([
                 'user_id'        => $user->id,
                 'first_name'     => $request->first_name,
+                'middle_name'    => $request->middle_name ?: null,
                 'last_name'      => $request->last_name,
+                'suffix'         => $request->suffix ?: null,
                 'email'          => $request->email,
                 'contact_number' => $request->contact_number,
+                'sex'            => \App\Support\SexOptions::sanitize($request->sex),
                 'position'       => $request->position,
             ]);
 
@@ -228,48 +234,71 @@ class SupervisorRegistrationController extends Controller
                 'status'             => 'registered',
                 'supervisor_user_id' => $user->id,
                 'first_name'         => $request->first_name,
+                'middle_name'        => $request->middle_name ?: null,
                 'last_name'          => $request->last_name,
+                'suffix'             => $request->suffix ?: null,
                 'email'              => $request->email,
                 'contact_number'     => $request->contact_number,
                 'position'           => $request->position,
                 'company_id'         => $request->company_id,
             ]);
 
-            // Notify all coordinators
-            $coordinators = User::where('role', 'coordinator')->pluck('id');
-            foreach ($coordinators as $coordId) {
+            $displayName = \App\Support\NameParts::display(
+                $request->first_name,
+                $request->middle_name,
+                $request->last_name,
+                $request->suffix
+            );
+
+            // Notify assigned faculty (or all faculty if not yet assigned)
+            $internship = Internship::find($invite->internship_id);
+            $facultyQuery = User::where('role', 'faculty')->where('is_active', true);
+            if ($internship?->faculty_id) {
+                $facultyQuery->where('id', $internship->faculty_id);
+            }
+            foreach ($facultyQuery->pluck('id') as $facultyId) {
                 Notification::notify(
-                    $coordId,
+                    $facultyId,
                     'supervisor_registration',
                     'New Supervisor Registration',
-                    "{$request->first_name} {$request->last_name} has registered as a supervisor and is awaiting your approval.",
-                    '/coordinator/supervisor-approvals'
+                    "{$displayName} has registered as a supervisor and is awaiting your approval.",
+                    '/faculty/supervisor-approvals'
                 );
             }
 
             return response()->json([
-                'message'     => 'Registration submitted successfully. Your account will be activated once the Internship Coordinator approves it.',
+                'message'     => 'Registration submitted successfully. Your account will be activated once the Faculty Supervisor approves it.',
                 'username'    => $supCode,
             ], 201);
         });
     }
 
-    // ─── COORDINATOR: List pending supervisor registrations ───────────────────
+    // ─── FACULTY: List pending supervisor registrations ───────────────────────
 
     public function pendingList(Request $request)
     {
-        $invites = SupervisorInviteToken::where('status', 'registered')
+        $user = $request->user();
+
+        $pendingQuery = SupervisorInviteToken::where('status', 'registered')
             ->with([
                 'student.studentProfile',
                 'supervisor.supervisorProfile',
                 'company',
                 'internship',
             ])
-            ->orderByDesc('updated_at')
-            ->get();
+            ->orderByDesc('updated_at');
 
-        // Also return previously actioned ones for history
-        $history = SupervisorInviteToken::whereIn('status', ['approved', 'rejected'])
+        // Faculty only sees invites for their assigned internships (or unassigned faculty).
+        if ($user->role === 'faculty') {
+            $pendingQuery->whereHas('internship', function ($q) use ($user) {
+                $q->where('faculty_id', $user->id)
+                    ->orWhereNull('faculty_id');
+            });
+        }
+
+        $invites = $pendingQuery->get();
+
+        $historyQuery = SupervisorInviteToken::whereIn('status', ['approved', 'rejected'])
             ->with([
                 'student.studentProfile',
                 'supervisor.supervisorProfile',
@@ -277,8 +306,16 @@ class SupervisorRegistrationController extends Controller
                 'reviewer',
             ])
             ->orderByDesc('reviewed_at')
-            ->limit(20)
-            ->get();
+            ->limit(20);
+
+        if ($user->role === 'faculty') {
+            $historyQuery->where(function ($q) use ($user) {
+                $q->where('reviewed_by', $user->id)
+                    ->orWhereHas('internship', fn ($iq) => $iq->where('faculty_id', $user->id));
+            });
+        }
+
+        $history = $historyQuery->get();
 
         return response()->json([
             'pending' => $invites,
@@ -286,13 +323,14 @@ class SupervisorRegistrationController extends Controller
         ]);
     }
 
-    // ─── COORDINATOR: Approve a supervisor registration ───────────────────────
+    // ─── FACULTY: Approve a supervisor registration ───────────────────────────
 
     public function approve(Request $request, int $id)
     {
         $request->validate(['remarks' => 'nullable|string|max:500']);
 
         $invite = SupervisorInviteToken::where('status', 'registered')->findOrFail($id);
+        $this->assertFacultyMayReview($request->user(), $invite);
 
         return DB::transaction(function () use ($request, $invite) {
             // Activate the supervisor account
@@ -342,13 +380,14 @@ class SupervisorRegistrationController extends Controller
         });
     }
 
-    // ─── COORDINATOR: Reject a supervisor registration ────────────────────────
+    // ─── FACULTY: Reject a supervisor registration ────────────────────────────
 
     public function reject(Request $request, int $id)
     {
         $request->validate(['remarks' => 'required|string|max:500']);
 
         $invite = SupervisorInviteToken::where('status', 'registered')->findOrFail($id);
+        $this->assertFacultyMayReview($request->user(), $invite);
 
         $invite->update([
             'status'         => 'rejected',
@@ -371,5 +410,22 @@ class SupervisorRegistrationController extends Controller
         return response()->json([
             'message' => "Supervisor registration rejected.",
         ]);
+    }
+
+    /** Faculty may review invites for their advisees (or unassigned faculty on the internship). */
+    private function assertFacultyMayReview($user, SupervisorInviteToken $invite): void
+    {
+        if ($user->role !== 'faculty') {
+            abort(403, 'Only faculty supervisors may approve supervisor registrations.');
+        }
+
+        $internship = Internship::find($invite->internship_id);
+        if (!$internship) {
+            abort(404, 'Internship not found for this registration.');
+        }
+
+        if ($internship->faculty_id !== null && (int) $internship->faculty_id !== (int) $user->id) {
+            abort(403, 'You may only review supervisor registrations for your assigned students.');
+        }
     }
 }

@@ -22,15 +22,8 @@ return new class extends Migration {
             $table->integer('target_hours')->default(500);
             $table->decimal('total_hours_rendered', 8, 2)->default(0);
 
-            $table->enum('status', [
-                'pending_placement',
-                'placed',
-                'ongoing',
-                'for_evaluation',
-                'completed',
-                'terminated',
-                'failed'
-            ])->default('pending_placement');
+            // VARCHAR (not ENUM): XAMPP MariaDB can crash on later ENUM→VARCHAR alters.
+            $table->string('status', 40)->default('pending_placement');
 
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();

@@ -1,82 +1,54 @@
 # INTERNTRACK React Setup
 
-> Full stack setup (backend migrate, `storage:link`, env vars): see [`../SETUP.md`](../SETUP.md).
+> **Full stack setup** (Laravel backend, migrate, `storage:link`, env vars, demo accounts): see **[`../SETUP.md`](../SETUP.md)** and the repo **[`../README.md`](../README.md)**.
 
-## Installation Steps
+This folder is the Vite + React SPA. Styles live under `src/styles/` in the repo — no CSS copy from Interntrack-UI is required.
 
-1. **Install Dependencies**
+## Installation
+
+1. **Install dependencies and env**
+
 ```bash
 npm install
 cp .env.example .env
 ```
 
-Ensure `VITE_API_BASE_URL` matches your Laravel API origin (default `http://127.0.0.1:8001/api/v1`).
+Set `VITE_API_BASE_URL` to your Laravel API origin (default `http://127.0.0.1:8001/api/v1`).
 
-2. **Copy CSS Files to src/styles**
-```bash
-# Windows
-copy master-style.css src\styles\
-copy director-enhancements.css src\styles\
-copy coordinator-fix.css src\styles\
-copy styles.css src\styles\
+2. **Run development server**
 
-# Linux/Mac
-cp master-style.css src/styles/
-cp director-enhancements.css src/styles/
-cp coordinator-fix.css src/styles/
-cp styles.css src/styles/
-```
-
-3. **Copy Logo to Public Folder**
-```bash
-# Windows  
-copy logo.jpg public\
-
-# Linux/Mac
-cp logo.jpg public/
-```
-
-4. **Run Development Server**
 ```bash
 npm run dev
 ```
 
-## Default Login Credentials
+Open the URL Vite prints (usually `http://localhost:5173`).
+
+## Default login credentials
 
 - **Password for all users**: `interntrack123`
 
-### Student Account
-- **ID**: `2021-00123`
+| Role | ID |
+|------|-----|
+| Student | `2021-00123` |
+| Director | `DIR-001` |
+| Supervisor | `SUP-001` |
+| Faculty | `FAC-001` |
+| Coordinator | `EMP-1001` |
 
-### Director Account
-- **ID**: `DIR-001`
-
-### Supervisor Account
-- **ID**: `SUP-001`
-
-### Faculty Account
-- **ID**: `FAC-001`
-
-### Coordinator Account
-- **ID**: `EMP-1001`
+See [`../SETUP.md`](../SETUP.md) for the complete seeded user list.
 
 ## Routes
 
-- `/` - Login Page
-- `/student/*` - Student Portal
-- `/director/*` - Director Portal
-- `/supervisor/*` - Supervisor Portal
-- `/faculty/*` - Faculty Portal
-- `/coordinator/*` - Coordinator Portal
+- `/` — Login
+- `/student/*` — Student portal
+- `/director/*` — Director portal
+- `/supervisor/*` — Supervisor portal
+- `/faculty/*` — Faculty portal
+- `/coordinator/*` — Coordinator portal
 
-## Build for Production
+## Production
 
 ```bash
 npm run build
-```
-
-## Preview Production Build
-
-```bash
 npm run preview
 ```

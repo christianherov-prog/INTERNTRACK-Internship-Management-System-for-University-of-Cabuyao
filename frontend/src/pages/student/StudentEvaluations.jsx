@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
-import { CURRENT_TERM } from '../../config/term'
+import { AuthenticatedFileImage } from '../../components/AuthenticatedFile'
+import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 
 const COMPETENCIES = [
   { key: 'technical_skills',       label: 'Technical Skills' },
@@ -31,6 +33,7 @@ function ScoreBar({ value }) {
 function EvalDetailModal({ evaluation, onClose }) {
   const evaluatorLabel = evaluation.evaluator_type === 'supervisor' ? 'Company Supervisor' : 'Faculty Supervisor'
   const periodLabel    = evaluation.evaluation_period === 'midterm' ? 'Midterm' : 'Final'
+  const signatureIsHttpUrl = evaluation.signature_url && /^https?:\/\//i.test(evaluation.signature_url)
 
   return (
     <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -97,6 +100,36 @@ function EvalDetailModal({ evaluation, onClose }) {
               </div>
             )}
 
+            {(evaluation.signer_name || evaluation.signature_url || evaluation.signature_path) && (
+              <div className="mt-4 p-3 rounded border" style={{ background: '#f8fafc', fontSize: '0.88rem' }}>
+                <div className="fw-semibold mb-2">Electronic signature</div>
+                {(evaluation.signature_url || evaluation.signature_path) && (
+                  signatureIsHttpUrl ? (
+                    <img
+                      src={evaluation.signature_url}
+                      alt="Evaluator signature"
+                      className="border rounded bg-white mb-2"
+                      style={{ maxHeight: 100, maxWidth: '100%' }}
+                    />
+                  ) : evaluation.signature_path ? (
+                    <AuthenticatedFileImage
+                      path={evaluation.signature_path}
+                      alt="Evaluator signature"
+                      className="border rounded bg-white mb-2"
+                      style={{ maxHeight: 100, maxWidth: '100%' }}
+                    />
+                  ) : null
+                )}
+                <div><strong>Signed by:</strong> {evaluation.signer_name || '—'}</div>
+                <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                  {evaluation.signed_at
+                    ? new Date(evaluation.signed_at).toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '—'}
+                </div>
+                <small className="text-muted">Electronic acknowledgment (drawn signature + typed name), not a PKI certificate.</small>
+              </div>
+            )}
+
             <div className="mt-3 text-muted" style={{ fontSize: '0.78rem' }}>
               Submitted: {evaluation.submitted_at ? new Date(evaluation.submitted_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
             </div>
@@ -111,16 +144,25 @@ function EvalDetailModal({ evaluation, onClose }) {
 }
 
 function StudentEvaluations() {
+  const currentTerm = useCurrentTerm()
   const [evaluations, setEvaluations] = useState([])
   const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState(null)
   const [selected, setSelected]       = useState(null)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
+    setError(null)
     api.get('/student/evaluations')
       .then(res => setEvaluations(unwrapList(res.data).items))
-      .catch(console.error)
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load evaluations.')
+        setEvaluations([])
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   const getRatingBg = (avg) => {
     const n = parseFloat(avg ?? 0)
@@ -138,7 +180,9 @@ function StudentEvaluations() {
     : null
 
   return (
-    <Layout title="Evaluations" subtitle={CURRENT_TERM} icon="fa-star" bodyClass="student-page">
+    <Layout title="Evaluations" subtitle={currentTerm} icon="fa-star" bodyClass="student-page">
+      {error && <PageError message={error} onRetry={load} />}
+
       {selected && <EvalDetailModal evaluation={selected} onClose={() => setSelected(null)} />}
 
       {loading ? (
@@ -176,12 +220,12 @@ function StudentEvaluations() {
             </div>
           </div>
 
-          {evaluations.length === 0 ? (
+          {evaluations.length === 0 && !error ? (
             <div className="content-card p-4 text-center text-muted">
               <i className="fa fa-hourglass-half fa-2x mb-3 d-block"></i>
               No evaluations submitted yet. Your supervisor and faculty will submit evaluations during midterm and final periods.
             </div>
-          ) : (
+          ) : evaluations.length === 0 ? null : (
             <>
               {/* Supervisor Evaluations */}
               {supervisor.length > 0 && (
@@ -206,7 +250,7 @@ function StudentEvaluations() {
                               <td><strong style={{ color }}>{parseFloat(ev.average_score ?? 0).toFixed(2)}</strong></td>
                               <td><span className="badge" style={{ background: bg, color }}>{ev.rating ?? '—'}</span></td>
                               <td className="text-center">
-                                <button className="btn btn-sm btn-outline-primary" onClick={() => setSelected(ev)}>
+                                <button className="btn btn-sm btn-outline-green" onClick={() => setSelected(ev)}>
                                   <i className="fa fa-eye me-1"></i>View
                                 </button>
                               </td>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <!--[if gte mso 9]><xml>
+    <o:DocumentProperties><o:Title>PNC:AA-FO-30 Student Internship Daily Time Record (DTR) Form</o:Title></o:DocumentProperties>
+  </xml><![endif]-->
+  <title>PNC:AA-FO-30 — Student Internship Daily Time Record (DTR) Form</title>
+  <style>
+    /* ── Page (A4 portrait) ───────────────────────────────── */
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
+
+    :root {
+      --ink: #000;
+      --muted: #333;
+      --green: #1b7a3d;
+      --bar: #9a9a9a;
+      --line: #000;
+      --row-h: 18px;
+      --font: Arial, Helvetica, "DejaVu Sans", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e8e8e8;
+      color: var(--ink);
+      font-family: var(--font);
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #1e293b;
+      color: #fff;
+      font-size: 13px;
+    }
+    .toolbar strong { margin-right: 8px; }
+    .toolbar button, .toolbar label.btn {
+      border: 0;
+      border-radius: 4px;
+      padding: 7px 12px;
+      background: #0ea5e9;
+      color: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    .toolbar button.secondary { background: #64748b; }
+    .toolbar button:hover, .toolbar label.btn:hover { filter: brightness(1.08); }
+    .toolbar .hint { opacity: 0.85; font-size: 12px; margin-left: auto; }
+
+    .sheet-wrap {
+      padding: 18px 0 40px;
+    }
+
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #fff;
+      padding: 12mm 14mm;
+      box-shadow: 0 2px 14px rgba(0,0,0,.18);
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    .hdr {
+      display: grid;
+      grid-template-columns: 78px 1fr 118px;
+      gap: 8px;
+      align-items: start;
+      margin-bottom: 6px;
+    }
+    .hdr-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      display: block;
+    }
+    .hdr-logo.placeholder {
+      border: 1px dashed #999;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #666;
+      text-align: center;
+      padding: 6px;
+      width: 72px;
+      height: 72px;
+    }
+    .hdr-center { text-align: center; padding-top: 2px; }
+    .hdr-center .rep { font-size: 11px; margin: 0; }
+    .hdr-center .uni {
+      margin: 2px 0 0;
+      font-size: 26px;
+      line-height: 1.05;
+      color: var(--green);
+      font-family: "Old English Text MT", "Blackletter", "Times New Roman", Times, serif;
+      font-weight: 700;
+    }
+    .hdr-center .en {
+      margin: 2px 0 0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .hdr-center .aa {
+      margin: 3px 0 0;
+      font-size: 12px;
+      font-weight: 700;
+      font-style: italic;
+    }
+    .hdr-center .addr {
+      margin: 2px 0 0;
+      font-size: 9px;
+    }
+    .hdr-code {
+      text-align: right;
+      font-size: 9px;
+      padding-top: 4px;
+      white-space: nowrap;
+    }
+
+    .title-bar {
+      margin: 10px 0 12px;
+      background: var(--bar);
+      border: 1px solid #666;
+      text-align: center;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 6px 4px;
+    }
+
+    /* ── Info fields ──────────────────────────────────────── */
+    .info {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+      font-size: 11px;
+    }
+    .info td {
+      padding: 3px 0 5px;
+      vertical-align: bottom;
+    }
+    .info .lbl {
+      white-space: nowrap;
+      width: 1%;
+      padding-right: 6px;
+    }
+    .info .gap { width: 16px; }
+    .info input[type="text"] {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      font: inherit;
+      font-weight: 700;
+      padding: 1px 4px 2px;
+      outline: none;
+    }
+    .info input[type="text"]:focus {
+      background: #fffde7;
+    }
+
+    /* ── DTR table ────────────────────────────────────────── */
+    table.dtr {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+    table.dtr th,
+    table.dtr td {
+      border: 1px solid var(--line);
+      text-align: center;
+      vertical-align: middle;
+      padding: 0;
+      height: var(--row-h);
+    }
+    table.dtr thead th {
+      font-weight: 700;
+      background: #fff;
+    }
+    table.dtr thead .group { height: 16px; font-size: 11px; }
+    table.dtr thead .sub { height: 15px; font-size: 9px; }
+    table.dtr .c-date { width: 12%; }
+    table.dtr .c-time { width: 12%; }
+    table.dtr .c-hrs  { width: 14%; }
+    table.dtr .c-hte  { width: 14%; }
+
+    table.dtr input {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: transparent;
+      text-align: center;
+      font: inherit;
+      padding: 0 2px;
+      outline: none;
+    }
+    table.dtr input:focus { background: #fffde7; }
+    table.dtr input[type="date"],
+    table.dtr input[type="time"],
+    table.dtr input[type="number"] {
+      min-width: 0;
+    }
+    table.dtr .hte-cell {
+      position: relative;
+    }
+    table.dtr .hte-cell input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    table.dtr .hte-preview {
+      max-height: 14px;
+      max-width: 90%;
+      display: none;
+      margin: 0 auto;
+    }
+
+    /* ── Signatures ───────────────────────────────────────── */
+    .sigs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-top: 18px;
+      font-size: 11px;
+    }
+    .sig-block .label { margin-bottom: 4px; }
+    .sig-line {
+      border-bottom: 1px solid var(--line);
+      min-height: 48px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 8px;
+      padding-bottom: 2px;
+      position: relative;
+    }
+    .sig-line img {
+      max-height: 40px;
+      max-width: 70%;
+      display: none;
+    }
+    .sig-line input[type="text"] {
+      border: 0;
+      background: transparent;
+      text-align: center;
+      font: inherit;
+      font-weight: 700;
+      width: 70%;
+      outline: none;
+    }
+    .sig-line input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .sig-cap {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 4px;
+      line-height: 1.3;
+    }
+    .sig-cap .sub {
+      display: block;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10px;
+    }
+
+    .privacy {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 8px;
+      margin-top: 16px;
+      font-size: 9.5px;
+      line-height: 1.35;
+      text-align: justify;
+    }
+    .privacy input[type="checkbox"] {
+      width: 13px;
+      height: 13px;
+      margin-top: 1px;
+      accent-color: #000;
+    }
+
+    .final-sig {
+      width: 48%;
+      margin-top: 22px;
+      font-size: 11px;
+    }
+    .final-sig .sig-line { min-height: 44px; }
+    .final-sig .sig-cap { font-weight: 700; font-size: 10px; }
+
+    .print-note {
+      margin-top: 10px;
+      font-size: 8px;
+      color: #666;
+      text-align: right;
+    }
+
+    /* ── Print ────────────────────────────────────────────── */
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none !important; }
+      .sheet-wrap { padding: 0; }
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      input, textarea {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      table.dtr input[type="file"],
+      .sig-line input[type="file"] { display: none !important; }
+      .print-note { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <strong>PNC:AA-FO-30</strong>
+    <span>Editable DTR template</span>
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    <button type="button" class="secondary" onclick="clearForm()">Clear fields</button>
+    <button type="button" class="secondary" onclick="addRow()">Add row</button>
+    <span class="hint">Fill fields → Print → Save as PDF. Open this HTML in Word via File → Open if needed.</span>
+  </div>
+
+  <div class="sheet-wrap">
+    <form class="sheet" id="fo30Form" autocomplete="off" onsubmit="return false;">
+      <!-- Header -->
+      <div class="hdr">
+        <div>
+          <img class="hdr-logo" src="assets/pnc-seal.png" alt="University of Cabuyao seal"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+          <div class="hdr-logo placeholder" style="display:none;">[Logo Placeholder]<br/>University of Cabuyao</div>
+        </div>
+        <div class="hdr-center">
+          <p class="rep">Republic of the Philippines</p>
+          <p class="uni">Pamantasan ng Cabuyao</p>
+          <p class="en">(UNIVERSITY OF CABUYAO)</p>
+          <p class="aa">Academic Affairs</p>
+          <p class="addr">Katapatan Mutual Homes, Brgy. Banay-banay, City of Cabuyao, Laguna 4025</p>
+        </div>
+        <div class="hdr-code">PNC:AA-FO-30 rev.1 09022025</div>
+      </div>
+
+      <div class="title-bar">Student Internship Daily Time Record (DTR) Form</div>
+
+      <!-- Student / company fields -->
+      <table class="info">
+        <tr>
+          <td class="lbl">Student Intern's Name:</td>
+          <td><input type="text" name="student_name" placeholder="" /></td>
+          <td class="gap"></td>
+          <td class="lbl">Section:</td>
+          <td style="width:28%;"><input type="text" name="section" /></td>
+        </tr>
+        <tr>
+          <td class="lbl">Program:</td>
+          <td><input type="text" name="program" /></td>
+          <td class="gap"></td>
+          <td class="lbl">Major:</td>
+          <td><input type="text" name="major" /></td>
+        </tr>
+        <tr>
+          <td class="lbl">Company/School:</td>
+          <td colspan="3"><input type="text" name="company" /></td>
+        </tr>
+      </table>
+
+      <!-- DTR grid: Date | AM In/Out | PM In/Out | Total # of Hours | HTE Signature -->
+      <table class="dtr" id="dtrTable">
+        <thead>
+          <tr>
+            <th class="c-date group" rowspan="2">Date</th>
+            <th class="group" colspan="2">AM</th>
+            <th class="group" colspan="2">PM</th>
+            <th class="c-hrs group" rowspan="2">Total #<br />of Hours</th>
+            <th class="c-hte group" rowspan="2">HTE<br />Signature</th>
+          </tr>
+          <tr>
+            <th class="c-time sub">Time In</th>
+            <th class="c-time sub">Time Out</th>
+            <th class="c-time sub">Time In</th>
+            <th class="c-time sub">Time Out</th>
+          </tr>
+        </thead>
+        <tbody id="dtrBody">
+          <!-- 26 editable rows (matches official blank sheet density) -->
+        </tbody>
+      </table>
+
+      <!-- Prepared by / Verified by -->
+      <div class="sigs">
+        <div class="sig-block">
+          <div class="label">Prepared by:</div>
+          <div class="sig-line">
+            <img class="sig-img" alt="Prepared by signature" />
+            <input type="text" name="prepared_name" placeholder="Printed name" />
+            <input type="file" accept="image/*" aria-label="Upload prepared-by signature"
+                   onchange="previewSig(this)" />
+          </div>
+          <div class="sig-cap">Signature over printed name of Student Intern</div>
+        </div>
+        <div class="sig-block">
+          <div class="label">Verified by:</div>
+          <div class="sig-line">
+            <img class="sig-img" alt="Verified by signature" />
+            <input type="text" name="verified_name" placeholder="Printed name" />
+            <input type="file" accept="image/*" aria-label="Upload verified-by signature"
+                   onchange="previewSig(this)" />
+          </div>
+          <div class="sig-cap">
+            Signature over printed name
+            <span class="sub">HTE IN-CHARGE/HEAD/SUPERVISOR</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privacy consent (RA 10173) -->
+      <div class="privacy">
+        <input type="checkbox" name="privacy_accepted" id="privacyAccepted" />
+        <label for="privacyAccepted">
+          I agree to the collection and processing of my data for the purpose of recording my daily time record to satisfy the requirements of the Internship Program. I understand that my personal information is protected by RA 10173, Data Privacy Act of 2012, and that I am required to provide truthful information.
+        </label>
+      </div>
+
+      <!-- Final student signature -->
+      <div class="final-sig">
+        <div class="sig-line">
+          <img class="sig-img" alt="Student intern signature" />
+          <input type="text" name="final_printed_name" placeholder="Printed name" />
+          <input type="file" accept="image/*" aria-label="Upload final student signature"
+                 onchange="previewSig(this)" />
+        </div>
+        <div class="sig-cap">Signature over printed name of Student Intern</div>
+      </div>
+
+      <div class="print-note">Editable template recreated from PNC:AA-FO-30 rev.1 09022025 · for print / PDF export</div>
+    </form>
+  </div>
+
+  <script>
+    const ROWS = 26;
+
+    function hoursBetween(a, b) {
+      if (!a || !b) return '';
+      const [ah, am] = a.split(':').map(Number);
+      const [bh, bm] = b.split(':').map(Number);
+      let mins = (bh * 60 + bm) - (ah * 60 + am);
+      if (mins <= 0) return '';
+      return (mins / 60).toFixed(2);
+    }
+
+    function recalcRow(tr) {
+      const amIn = tr.querySelector('[data-f="am_in"]').value;
+      const amOut = tr.querySelector('[data-f="am_out"]').value;
+      const pmIn = tr.querySelector('[data-f="pm_in"]').value;
+      const pmOut = tr.querySelector('[data-f="pm_out"]').value;
+      const am = parseFloat(hoursBetween(amIn, amOut) || '0');
+      const pm = parseFloat(hoursBetween(pmIn, pmOut) || '0');
+      const total = am + pm;
+      tr.querySelector('[data-f="hours"]').value = total > 0 ? total.toFixed(2) : '';
+    }
+
+    function bindRow(tr) {
+      tr.querySelectorAll('input[type="time"]').forEach((el) => {
+        el.addEventListener('change', () => recalcRow(tr));
+        el.addEventListener('input', () => recalcRow(tr));
+      });
+      const file = tr.querySelector('input[type="file"]');
+      const img = tr.querySelector('.hte-preview');
+      file.addEventListener('change', () => {
+        const f = file.files && file.files[0];
+        if (!f) { img.style.display = 'none'; img.removeAttribute('src'); return; }
+        const url = URL.createObjectURL(f);
+        img.src = url;
+        img.style.display = 'block';
+      });
+    }
+
+    function makeRow(i) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="date" name="rows[${i}][date]" data-f="date" aria-label="Date row ${i + 1}" /></td>
+        <td><input type="time" name="rows[${i}][am_in]" data-f="am_in" aria-label="AM time in row ${i + 1}" /></td>
+        <td><input type="time" name="rows[${i}][am_out]" data-f="am_out" aria-label="AM time out row ${i + 1}" /></td>
+        <td><input type="time" name="rows[${i}][pm_in]" data-f="pm_in" aria-label="PM time in row ${i + 1}" /></td>
+        <td><input type="time" name="rows[${i}][pm_out]" data-f="pm_out" aria-label="PM time out row ${i + 1}" /></td>
+        <td><input type="number" step="0.01" min="0" name="rows[${i}][hours]" data-f="hours" aria-label="Total hours row ${i + 1}" /></td>
+        <td class="hte-cell">
+          <img class="hte-preview" alt="" />
+          <input type="file" accept="image/*" name="rows[${i}][hte_signature]" aria-label="HTE signature row ${i + 1}" />
+        </td>`;
+      bindRow(tr);
+      return tr;
+    }
+
+    function buildRows(n) {
+      const body = document.getElementById('dtrBody');
+      body.innerHTML = '';
+      for (let i = 0; i < n; i++) body.appendChild(makeRow(i));
+    }
+
+    function addRow() {
+      const body = document.getElementById('dtrBody');
+      body.appendChild(makeRow(body.children.length));
+    }
+
+    function clearForm() {
+      document.getElementById('fo30Form').reset();
+      document.querySelectorAll('.hte-preview, .sig-img').forEach((img) => {
+        img.style.display = 'none';
+        img.removeAttribute('src');
+      });
+    }
+
+    function previewSig(input) {
+      const wrap = input.closest('.sig-line');
+      const img = wrap.querySelector('.sig-img');
+      const f = input.files && input.files[0];
+      if (!f) { img.style.display = 'none'; img.removeAttribute('src'); return; }
+      img.src = URL.createObjectURL(f);
+      img.style.display = 'block';
+    }
+
+    buildRows(ROWS);
+  </script>
+</body>
+</html>

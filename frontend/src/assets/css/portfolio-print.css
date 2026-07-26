@@ -141,3 +141,141 @@ body {
 .page-number.roman::before {
   content: counter(portfolio-page, lower-roman);
 }
+
+/* ============================================================
+   MOCKUP TEMPLATE STYLES
+   ============================================================ */
+/* Page 1: Cover Page */
+.cover-page {
+  background-image: url('/images/cover-bg.jpg');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  padding: 0 !important;
+}
+
+.cover-text {
+  position: absolute;
+  top: 65%;
+  right: 10%;
+  text-align: right;
+  color: #666;
+}
+
+.cover-text h1 {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #888;
+  margin-bottom: 0.5rem;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.cover-text p {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #aaa;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Page 2: Narrative Page */
+.narrative-page {
+  background-image: url('/images/title-bg.jpg');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  padding: 0 !important;
+}
+
+.narrative-content {
+  position: absolute;
+  top: 45%;
+  left: 10%;
+  width: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.narrative-content h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  font-weight: normal;
+  text-align: left;
+}
+
+.narrative-content p {
+  font-size: 1.1rem;
+  margin-bottom: 0.2rem;
+  text-align: left;
+}
+
+.narrative-content .student-name {
+  font-weight: bold;
+  margin-top: 1rem;
+  font-size: 1.2rem;
+}
+
+/* Page 3: Title Page */
+.title-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 4rem !important;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.title-page-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.title-page p {
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  text-align: center;
+  text-indent: 0;
+}
+
+.title-page h3 {
+  margin-bottom: 2rem;
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.title-page-logo {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  width: 100px;
+}
+
+/* Page 4: Table of Contents */
+.toc-page {
+  padding: 4rem !important;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.toc-header {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 2rem;
+  font-size: 1.2rem;
+}
+
+.toc-content {
+  line-height: 1.8;
+  font-size: 1.1rem;
+}
+
+.toc-content ul {
+  list-style-type: none;
+  padding-left: 2rem;
+}
+
+.toc-content li {
+  margin-bottom: 0.5rem;
+}
+

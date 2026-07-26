@@ -13,6 +13,8 @@ class PortfolioPhoto extends Model
         'description',
         'type',
         'week_number',
+        'date_taken',
+        'sort_order',
     ];
 
     public function portfolio()

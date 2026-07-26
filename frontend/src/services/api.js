@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { disconnectEcho } from './echo'
 
 /**
  * INTERNTRACK API Service
@@ -10,7 +11,7 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1',
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json; charset=UTF-8',
     'Accept': 'application/json',
   },
   withCredentials: false,
@@ -46,6 +47,7 @@ api.interceptors.response.use(
 
     // Let AuthContext/ConfirmLogoutModal handle logout 401s (token already gone).
     if (status === 401 && !requestUrl.includes('/auth/logout')) {
+      disconnectEcho()
       sessionStorage.removeItem('interntrack_token')
       sessionStorage.removeItem('interntrack_session')
       window.location.href = '/'

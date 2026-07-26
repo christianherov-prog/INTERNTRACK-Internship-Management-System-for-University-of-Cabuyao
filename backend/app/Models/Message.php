@@ -85,11 +85,17 @@ class Message extends Model
         return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
     }
 
-    /** Delete stored file from the public disk (used on unsend). */
+    /** Delete stored file (private local disk, then legacy public). */
     public function deleteStoredAttachment(): void
     {
-        if ($this->attachment_path) {
-            Storage::disk('public')->delete($this->attachment_path);
+        if (!$this->attachment_path) {
+            return;
+        }
+
+        foreach (['local', 'public'] as $disk) {
+            if (Storage::disk($disk)->exists($this->attachment_path)) {
+                Storage::disk($disk)->delete($this->attachment_path);
+            }
         }
     }
 
@@ -99,11 +105,11 @@ class Message extends Model
         $attachment = null;
         if (!$this->is_unsent && $this->hasAttachment()) {
             $attachment = [
-                'url'           => $this->resolvePublicUrl($this->attachment_path),
-                'filename'      => $this->attachment_original_name,
-                'mime'          => $this->attachment_mime,
-                'size'          => $this->attachment_size,
-                'is_image'      => $this->isImageAttachment(),
+                'path'     => $this->attachment_path,
+                'filename' => $this->attachment_original_name,
+                'mime'     => $this->attachment_mime,
+                'size'     => $this->attachment_size,
+                'is_image' => $this->isImageAttachment(),
             ];
         }
 
@@ -128,16 +134,5 @@ class Message extends Model
             'created_at'     => $this->created_at,
             'updated_at'     => $this->updated_at,
         ];
-    }
-
-    private function resolvePublicUrl(?string $path): ?string
-    {
-        if (!$path) {
-            return null;
-        }
-
-        $base = rtrim(request()->getSchemeAndHttpHost(), '/');
-
-        return $base.'/storage/'.ltrim($path, '/');
     }
 }

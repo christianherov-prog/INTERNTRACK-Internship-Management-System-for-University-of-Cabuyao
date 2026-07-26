@@ -14,6 +14,9 @@ class DocumentReview extends Model
         'to_status',
         'remarks',
         'reviewed_by',
+        'signer_name',
+        'signature_path',
+        'signed_at',
     ];
 
     public function document()

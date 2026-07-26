@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Hash;
  *
  * Accounts prepared:
  *   Students:     2300600 (Valinado), 2300592 (Montealegre)
+ *                 — fully placed for messaging demos
+ *                 2300590 (Taac-Taac) is intentionally NOT placed (fresh enrollee)
  *   Faculty:      FAC-1001
  *   Coordinator:  COR-1001
  *   Supervisor:   SUP-1001 (created here if missing)

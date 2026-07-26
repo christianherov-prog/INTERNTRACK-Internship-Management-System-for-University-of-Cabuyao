@@ -29,7 +29,11 @@ return new class extends Migration {
 
         Schema::table('messages', function (Blueprint $table) {
             if (!Schema::hasColumn('messages', 'unsent_at')) {
-                $table->timestamp('unsent_at')->nullable()->after('read_at');
+                if (Schema::hasColumn('messages', 'read_at')) {
+                    $table->timestamp('unsent_at')->nullable()->after('read_at');
+                } else {
+                    $table->timestamp('unsent_at')->nullable();
+                }
             }
         });
     }

@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import Layout from '../../components/Layout'
 import ConfirmModal from '../../components/modals/ConfirmModal'
 import PageError from '../../components/PageError'
+import EmptyState from '../../components/EmptyState'
 import {
   AnnouncementAttachmentView,
   AnnouncementAttachPreview,
@@ -13,7 +14,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
 
-function CoordAnnouncements() {
+function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator-page' }) {
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -42,7 +43,7 @@ function CoordAnnouncements() {
   const fetchAnnouncements = () => {
     setLoading(true)
     setLoadError(null)
-    api.get('/coordinator/announcements')
+    api.get(`${apiBase}/announcements`)
       .then(res => setAnnouncements(unwrapList(res.data).items))
       .catch((err) => {
         setLoadError(err.response?.data?.message || 'Failed to load announcements.')
@@ -51,7 +52,7 @@ function CoordAnnouncements() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { fetchAnnouncements() }, [])
+  useEffect(() => { fetchAnnouncements() }, [apiBase])
 
   const openCreate = () => {
     setEditItem(null)
@@ -115,17 +116,17 @@ function CoordAnnouncements() {
         if (editItem && removeExisting && !attachFile) fd.append('remove_attachment', '1')
 
         if (editItem) {
-          await api.post(`/coordinator/announcements/${editItem.id}`, fd)
+          await api.post(`${apiBase}/announcements/${editItem.id}`, fd)
           setMessage({ type: 'success', text: 'Announcement updated.' })
         } else {
-          await api.post('/coordinator/announcements', fd)
+          await api.post(`${apiBase}/announcements`, fd)
           setMessage({ type: 'success', text: 'Announcement posted.' })
         }
       } else if (editItem) {
-        await api.put(`/coordinator/announcements/${editItem.id}`, form)
+        await api.put(`${apiBase}/announcements/${editItem.id}`, form)
         setMessage({ type: 'success', text: 'Announcement updated.' })
       } else {
-        await api.post('/coordinator/announcements', form)
+        await api.post(`${apiBase}/announcements`, form)
         setMessage({ type: 'success', text: 'Announcement posted.' })
       }
 
@@ -152,7 +153,7 @@ function CoordAnnouncements() {
     if (!deleteTarget) return
     setDeleting(deleteTarget)
     try {
-      await api.delete(`/coordinator/announcements/${deleteTarget}`)
+      await api.delete(`${apiBase}/announcements/${deleteTarget}`)
       setDeleteTarget(null)
       fetchAnnouncements()
     } catch {
@@ -162,11 +163,18 @@ function CoordAnnouncements() {
     }
   }
 
-  const roleBadge = { all: 'bg-secondary', student: 'bg-success', supervisor: 'bg-info', faculty: 'bg-warning', coordinator: 'bg-primary', director: 'bg-dark' }
+  const roleBadge = {
+    all: 'ann-badge ann-badge-all',
+    student: 'ann-badge ann-badge-student',
+    supervisor: 'ann-badge ann-badge-supervisor',
+    faculty: 'ann-badge ann-badge-faculty',
+    coordinator: 'ann-badge ann-badge-coordinator',
+    director: 'ann-badge ann-badge-director',
+  }
   const showExisting = existingAttachment && !removeExisting && !attachFile
 
   return (
-    <Layout title="Announcements" subtitle={CURRENT_TERM} icon="fa-bullhorn" bodyClass="coordinator-page">
+    <Layout title="Announcements" subtitle={CURRENT_TERM} icon="fa-bullhorn" bodyClass={bodyClass}>
       {loadError && <PageError message={loadError} onRetry={fetchAnnouncements} />}
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
@@ -182,7 +190,7 @@ function CoordAnnouncements() {
       />
 
       <div className="d-flex justify-content-end mb-3">
-        <button className="btn btn-primary" onClick={openCreate}><i className="fa fa-plus me-2"></i>New Announcement</button>
+        <button className="btn btn-green" onClick={openCreate}><i className="fa fa-plus me-2"></i>New Announcement</button>
       </div>
 
       {showForm && (
@@ -222,7 +230,10 @@ function CoordAnnouncements() {
               <div className="col-md-4 d-flex align-items-end">
                 <div className="form-check">
                   <input type="checkbox" className="form-check-input" id="pinCheck" checked={form.is_pinned} onChange={e => setForm(p => ({...p, is_pinned: e.target.checked}))} />
-                  <label className="form-check-label" htmlFor="pinCheck">📌 Pin this announcement</label>
+                  <label className="form-check-label" htmlFor="pinCheck">
+                    <i className="fa fa-thumbtack me-1 text-success" aria-hidden="true"></i>
+                    Pin this announcement
+                  </label>
                 </div>
               </div>
               <div className="col-12">
@@ -293,29 +304,37 @@ function CoordAnnouncements() {
           {loading ? (
             <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
           ) : announcements.length === 0 ? (
-            <div className="text-center py-4 text-muted">No announcements yet.</div>
+            <EmptyState
+              icon="fa-bullhorn"
+              title="No announcements yet"
+              message="Create a pinned or role-targeted announcement for students and staff."
+            />
           ) : announcements.map(a => (
-            <div key={a.id} className="p-3 border-bottom">
-              <div className="d-flex align-items-start justify-content-between">
-                <div className="flex-grow-1">
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    {a.is_pinned && <span style={{fontSize:'0.9rem'}}>📌</span>}
-                    <strong>{a.title}</strong>
-                    {a.category === 'policy_update' && (
-                      <span className="badge bg-danger ms-1" style={{fontSize:'0.7rem'}}>Policy Update</span>
+            <div key={a.id} className="p-3 border-bottom ann-list-item">
+              <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+                <div className="flex-grow-1 min-w-0">
+                  <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    {a.is_pinned && (
+                      <span className="ann-pin-flag" title="Pinned">
+                        <i className="fa fa-thumbtack" aria-hidden="true"></i>
+                      </span>
                     )}
-                    <span className={`badge ${roleBadge[a.target_role] ?? 'bg-secondary'} ms-1`} style={{fontSize:'0.7rem'}}>{a.target_role}</span>
-                    <span className="ms-auto text-muted" style={{fontSize:'0.75rem'}}>{new Date(a.created_at).toLocaleDateString()}</span>
+                    <strong className="ann-title">{a.title}</strong>
+                    {a.category === 'policy_update' && (
+                      <span className="ann-badge ann-badge-policy">Policy Update</span>
+                    )}
+                    <span className={roleBadge[a.target_role] ?? 'ann-badge ann-badge-all'}>{a.target_role}</span>
+                    <span className="ms-md-auto text-muted ann-date">{new Date(a.created_at).toLocaleDateString()}</span>
                   </div>
-                  <p className="text-muted mb-0" style={{fontSize:'0.87rem'}}>{a.content}</p>
+                  <p className="text-muted mb-0 ann-body">{a.content}</p>
                   {a.attachment && (
                     <div className="ann-attach-block">
                       <AnnouncementAttachmentView attachment={a.attachment} />
                     </div>
                   )}
                 </div>
-                <div className="ms-3 d-flex gap-2 flex-shrink-0">
-                  <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(a)}><i className="fa fa-pen"></i></button>
+                <div className="d-flex gap-2 flex-shrink-0">
+                  <button className="btn btn-sm btn-outline-green" onClick={() => openEdit(a)}><i className="fa fa-pen"></i></button>
                   <button className="btn btn-sm btn-outline-danger" onClick={() => setDeleteTarget(a.id)} disabled={deleting === a.id}><i className={`fa fa-${deleting === a.id ? 'spinner fa-spin' : 'trash'}`}></i></button>
                 </div>
               </div>

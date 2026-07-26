@@ -12,11 +12,13 @@ class Document extends Model
     protected $fillable = [
         'internship_id', 'document_type', 'file_path', 'file_name', 'file_size', 'mime_type',
         'status', 'current_stage', 'remarks', 'reviewed_by', 'reviewed_at', 'submitted_at',
+        'attestation_name', 'attested_at',
     ];
 
     protected $casts = [
         'reviewed_at' => 'datetime',
         'submitted_at' => 'datetime',
+        'attested_at' => 'datetime',
     ];
 
     public function internship()
@@ -34,8 +36,9 @@ class Document extends Model
         return $this->hasMany(DocumentReview::class);
     }
 
-    public function getFileUrlAttribute(): string
+    public function getFileUrlAttribute(): ?string
     {
-        return asset('storage/'.$this->file_path);
+        // Private disk — clients must use authenticated GET /api/v1/files/download?path=
+        return null;
     }
 }

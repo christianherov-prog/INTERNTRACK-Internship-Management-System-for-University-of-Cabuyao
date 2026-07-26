@@ -14,15 +14,29 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SupervisorRegistrationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\InternshipStatusController;
-use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\MeetingController;
+use App\Http\Controllers\Api\MisdAdminController;
+use App\Http\Controllers\Api\SecureFileController;
+use App\Http\Controllers\Api\PublicAvatarController;
+use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\ClassListUploadController;
+use App\Http\Controllers\Api\RequirementController;
+use App\Http\Controllers\Api\SignatureController;
+use App\Http\Controllers\Api\DtrPdfController;
+use App\Http\Controllers\Api\JournalPdfController;
 
 // ─── Public: Auth ─────────────────────────────────────────────────────────────
 Route::prefix('v1')->group(function () {
 
     Route::post('/auth/login',  [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/auth/confirm-password-change', [AuthController::class, 'confirmPasswordChange'])->middleware('throttle:10,1');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/auth/user',    [AuthController::class, 'user'])->middleware('auth:sanctum');
+
+    // Public avatar media (does not require the public/storage symlink)
+    Route::get('/media/avatars/{filename}', [PublicAvatarController::class, 'show'])
+        ->where('filename', '[A-Za-z0-9._-]+');
 
     // ─── Mock MISD (iEnroll simulation) — LOCAL ONLY (login provisioning hits these) ─
     // Not available in staging/production so PII mock data is not publicly exposed.
@@ -36,18 +50,27 @@ Route::prefix('v1')->group(function () {
     }
 
     // ─── Public: Supervisor Self-Registration (QR Code Flow) ────────────────
-    Route::post('/supervisor-register/validate', [SupervisorRegistrationController::class, 'validateToken'])->middleware('throttle:5,1');
-    Route::post('/supervisor-register',          [SupervisorRegistrationController::class, 'register'])->middleware('throttle:5,1');
+    Route::post('/supervisor-register/validate', [SupervisorRegistrationController::class, 'validateToken'])
+        ->middleware('throttle:10,1');
+    Route::post('/supervisor-register',          [SupervisorRegistrationController::class, 'register'])
+        ->middleware('throttle:5,1');
 
     // ─── Protected Routes ────────────────────────────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
 
         Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('throttle:5,1');
+        Route::post('/auth/request-password-change', [AuthController::class, 'requestPasswordChange'])->middleware('throttle:5,1');
         Route::post('/auth/avatar',          [AuthController::class, 'uploadAvatar'])->middleware('throttle:5,1');
         Route::put('/auth/profile',          [AuthController::class, 'updateProfile']);
+        Route::get('/auth/notification-preferences', [AuthController::class, 'notificationPreferences']);
         Route::put('/auth/notification-preferences', [AuthController::class, 'updateNotificationPreferences']);
 
-        // Role-aware dashboard summary (director / coordinator / faculty / student)
+        // Signature upload (student & supervisor profiles)
+        Route::post('/auth/signature',        [SignatureController::class, 'upload']);
+        Route::delete('/auth/signature',      [SignatureController::class, 'destroy']);
+        Route::get('/auth/signature/status',  [SignatureController::class, 'status']);
+
+        // Role-aware dashboard summary (all portal roles including MISD admin)
         Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
 
         // Notifications — shared across all roles
@@ -56,6 +79,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/notifications/{id}/read',     [NotificationController::class, 'markRead']);
 
         // Messages — shared across roles; controller enforces internship participant checks
+        // Director messaging is enabled on MERGE-ONLY (participant ACL patched).
         Route::get('/messages/conversations',                              [MessageController::class, 'conversations']);
         Route::get('/messages/conversations/{internshipId}/{peerId}',      [MessageController::class, 'thread']);
         Route::post('/messages/conversations/{internshipId}/{peerId}/archive', [MessageController::class, 'setArchived']);
@@ -63,6 +87,15 @@ Route::prefix('v1')->group(function () {
         Route::post('/messages',                                           [MessageController::class, 'send'])->middleware('throttle:messages');
         Route::post('/messages/{id}/unsend',                               [MessageController::class, 'unsend']);
 
+        // Meetings / orientation scheduler
+        // Meetings / orientation scheduler
+        Route::get('/meetings',             [MeetingController::class, 'index']);
+        Route::post('/meetings',            [MeetingController::class, 'store']);
+        Route::patch('/meetings/{id}',      [MeetingController::class, 'update']);
+        Route::patch('/meetings/{id}/rsvp', [MeetingController::class, 'rsvp']);
+
+        // Private uploads (journals, documents, signatures, portfolio)
+        Route::get('/files/download', [SecureFileController::class, 'download']);
 
         // Student
         Route::prefix('student')->middleware('role:student')->group(function () {
@@ -77,8 +110,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/evaluations',           [StudentController::class, 'evaluations']);
             Route::get('/records',               [StudentController::class, 'records']);
             Route::post('/absorption/declare',   [StudentController::class, 'declareAbsorption']);
-            Route::get('/certificates/completion', [CertificateController::class, 'completion']);
-            
+
             // Portfolio Builder
             Route::get('/portfolio', [PortfolioController::class, 'getPortfolio']);
             Route::post('/portfolio', [PortfolioController::class, 'savePortfolio']);
@@ -88,6 +120,10 @@ Route::prefix('v1')->group(function () {
             // Supervisor Invite (QR Code)
             Route::post('/supervisor-invite',       [SupervisorRegistrationController::class, 'generateInvite']);
             Route::get('/supervisor-invite/status',  [SupervisorRegistrationController::class, 'inviteStatus']);
+
+            // PDF generation
+            Route::get('/dtr/generate',     [DtrPdfController::class, 'generate']);
+            Route::get('/journal/generate', [JournalPdfController::class, 'generate']);
         });
 
         // Supervisor
@@ -105,7 +141,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/feedback',                       [SupervisorController::class, 'feedback']);
             Route::post('/feedback/{internshipId}',       [SupervisorController::class, 'submitFeedback']);
             Route::get('/absorption',                     [SupervisorController::class, 'absorptionList']);
-            Route::patch('/internships/{id}/absorption',  [SupervisorController::class, 'recordAbsorption']);
+            // Absorption finalize is Director-only; stub route removed from supervisor API surface.
         });
 
         // Faculty
@@ -113,6 +149,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard',                   [FacultyController::class, 'dashboard']);
             Route::get('/assigned-students',           [FacultyController::class, 'assignedStudents']);
             Route::patch('/students/{userId}/archive', [FacultyController::class, 'setStudentArchived']);
+            Route::get('/students/{userId}/progress',  [FacultyController::class, 'studentProgress']);
             Route::get('/attendance',                  [FacultyController::class, 'attendance']);
             Route::get('/journals',                    [FacultyController::class, 'journals']);
             Route::patch('/journals/{id}/review',      [FacultyController::class, 'reviewJournal']);
@@ -123,43 +160,57 @@ Route::prefix('v1')->group(function () {
             Route::get('/documents',                   [FacultyController::class, 'documents']);
             Route::patch('/documents/{id}/verify',     [FacultyController::class, 'verifyDocument']);
             Route::patch('/documents/{id}/reject',     [FacultyController::class, 'rejectDocument']);
+            Route::get('/reports/student-summary',     [FacultyController::class, 'reportStudentSummary']);
+            Route::get('/reports/compliance',          [FacultyController::class, 'reportCompliance']);
+            Route::get('/reports/performance',         [FacultyController::class, 'reportPerformance']);
+
+            // PDF generation for faculty
+            Route::get('/dtr/generate',     [DtrPdfController::class, 'generate']);
+            Route::get('/journal/generate', [JournalPdfController::class, 'generate']);
+
+            // Supervisor registration approvals (faculty only)
+            Route::get('/supervisor-approvals',              [SupervisorRegistrationController::class, 'pendingList']);
+            Route::patch('/supervisor-approvals/{id}/approve', [SupervisorRegistrationController::class, 'approve']);
+            Route::patch('/supervisor-approvals/{id}/reject',  [SupervisorRegistrationController::class, 'reject']);
         });
 
         // Coordinator
         Route::prefix('coordinator')->middleware('role:coordinator')->group(function () {
             Route::get('/dashboard',                 [CoordinatorController::class, 'dashboard']);
+            Route::post('/class-list/upload',        [ClassListUploadController::class, 'upload']);
             Route::get('/monitoring',                [CoordinatorController::class, 'monitoring']);
-            Route::get('/announcements',             [CoordinatorController::class, 'announcements']);
-            Route::post('/announcements',            [CoordinatorController::class, 'createAnnouncement']);
+            Route::get('/announcements',             [AnnouncementController::class, 'index']);
+            Route::post('/announcements',            [AnnouncementController::class, 'store']);
             // POST allowed for multipart attachment replace (PHP file uploads require POST).
-            Route::match(['put', 'post'], '/announcements/{id}', [CoordinatorController::class, 'updateAnnouncement']);
-            Route::delete('/announcements/{id}',     [CoordinatorController::class, 'deleteAnnouncement']);
-            Route::get('/documents',                 [CoordinatorController::class, 'documents']);
-            Route::patch('/documents/bulk-approve',  [CoordinatorController::class, 'bulkApproveDocuments']);
-            Route::patch('/documents/bulk-reject',   [CoordinatorController::class, 'bulkRejectDocuments']);
-            Route::patch('/documents/{id}/approve',  [CoordinatorController::class, 'approveDocument']);
-            Route::patch('/documents/{id}/reject',   [CoordinatorController::class, 'rejectDocument']);
-            Route::get('/logbook',                   [CoordinatorController::class, 'logbook']);
-            Route::patch('/logbook/{id}/review',     [CoordinatorController::class, 'reviewLogbook']);
+            Route::match(['put', 'post'], '/announcements/{id}', [AnnouncementController::class, 'update']);
+            Route::delete('/announcements/{id}',     [AnnouncementController::class, 'destroy']);
             Route::get('/records',                   [CoordinatorController::class, 'records']);
             Route::patch('/students/{userId}/archive',[CoordinatorController::class, 'setStudentArchived']);
             Route::get('/placement-options',         [CoordinatorController::class, 'placementOptions']);
             Route::post('/internships/{id}/place',   [CoordinatorController::class, 'assignPlacement']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
             Route::patch('/internships/{id}/status', [InternshipStatusController::class, 'update']);
-            Route::get('/internships/{id}/certificate', [CertificateController::class, 'completion']);
             Route::get('/absorption',                    [CoordinatorController::class, 'absorptionList']);
-            Route::patch('/internships/{id}/absorption', [CoordinatorController::class, 'recordAbsorption']);
+            // Absorption finalize is Director-only on V2; keep overview + filtered reports from develop.
+            Route::get('/reports/overview',          [CoordinatorController::class, 'reportsOverview']);
             Route::get('/reports/student-summary',   [CoordinatorController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance',        [CoordinatorController::class, 'reportCompliance']);
             Route::get('/reports/performance',       [CoordinatorController::class, 'reportPerformance']);
             Route::get('/evaluations',               [CoordinatorController::class, 'evaluations']);
             Route::get('/supervisor-feedback',       [CoordinatorController::class, 'supervisorFeedback']);
+            Route::get('/logbook',                   [CoordinatorController::class, 'logbook']);
+            Route::patch('/logbook/{id}/review',     [CoordinatorController::class, 'reviewLogbook']);
+            Route::get('/documents',                 [CoordinatorController::class, 'documents']);
+            Route::patch('/documents/bulk-approve',  [CoordinatorController::class, 'bulkApproveDocuments']);
+            Route::patch('/documents/bulk-reject',   [CoordinatorController::class, 'bulkRejectDocuments']);
+            Route::patch('/documents/{id}/approve',  [CoordinatorController::class, 'approveDocument']);
+            Route::patch('/documents/{id}/reject',   [CoordinatorController::class, 'rejectDocument']);
 
-            // Supervisor Registration Approvals
-            Route::get('/supervisor-approvals',              [SupervisorRegistrationController::class, 'pendingList']);
-            Route::patch('/supervisor-approvals/{id}/approve', [SupervisorRegistrationController::class, 'approve']);
-            Route::patch('/supervisor-approvals/{id}/reject',  [SupervisorRegistrationController::class, 'reject']);
+            // Dynamic OJT Requirement Management
+            Route::get('/requirements',           [RequirementController::class, 'index']);
+            Route::post('/requirements',          [RequirementController::class, 'store']);
+            Route::put('/requirements/{id}',      [RequirementController::class, 'update']);
+            Route::delete('/requirements/{id}',   [RequirementController::class, 'destroy']);
         });
 
         // Director
@@ -171,10 +222,53 @@ Route::prefix('v1')->group(function () {
             Route::put('/companies/{id}',  [DirectorController::class, 'updateCompany']);
             Route::get('/moa-monitoring',  [DirectorController::class, 'moaMonitoring']);
             Route::get('/reports/placement-trends', [DirectorController::class, 'placementTrends']);
+            Route::get('/records',         [DirectorController::class, 'records']);
+            Route::get('/placement-options', [DirectorController::class, 'placementOptions']);
+            Route::post('/internships/{id}/place', [DirectorController::class, 'assignPlacement']);
+            Route::patch('/students/{userId}/archive', [DirectorController::class, 'setStudentArchived']);
             Route::get('/internships',     [DirectorController::class, 'internships']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
             Route::patch('/internships/{id}/status', [InternshipStatusController::class, 'update']);
-            Route::get('/internships/{id}/certificate', [CertificateController::class, 'completion']);
+            Route::get('/absorption',                    [DirectorController::class, 'absorptionList']);
+            Route::patch('/internships/{id}/absorption', [DirectorController::class, 'recordAbsorption']);
+            Route::get('/announcements',             [AnnouncementController::class, 'index']);
+            Route::post('/announcements',            [AnnouncementController::class, 'store']);
+            Route::match(['put', 'post'], '/announcements/{id}', [AnnouncementController::class, 'update']);
+            Route::delete('/announcements/{id}',     [AnnouncementController::class, 'destroy']);
+        });
+
+        // MISD Admin portal
+        Route::prefix('admin')->middleware('role:admin')->group(function () {
+            Route::get('/dashboard',                     [MisdAdminController::class, 'dashboard']);
+            Route::get('/directors',                     [MisdAdminController::class, 'directors']);
+            Route::post('/directors',                    [MisdAdminController::class, 'assignDirector']);
+            Route::get('/coordinators',                  [MisdAdminController::class, 'coordinators']);
+            Route::post('/coordinators',                 [MisdAdminController::class, 'assignCoordinator']);
+            Route::put('/staff/{id}',                    [MisdAdminController::class, 'updateStaff']);
+            Route::post('/staff/{id}/revoke',            [MisdAdminController::class, 'revokeStaff']);
+            Route::post('/staff/{id}/sync',              [MisdAdminController::class, 'syncStaff']);
+            Route::post('/staff/{id}/reset-password',    [MisdAdminController::class, 'resetPassword']);
+
+            Route::get('/users',                         [MisdAdminController::class, 'users']);
+            Route::patch('/users/{id}/active',           [MisdAdminController::class, 'setUserActive']);
+            Route::post('/users/{id}/reset-password',    [MisdAdminController::class, 'resetPassword']);
+
+            Route::get('/section-assignments',           [MisdAdminController::class, 'sectionAssignments']);
+            Route::post('/section-assignments',          [MisdAdminController::class, 'storeSectionAssignment']);
+            Route::put('/section-assignments/{id}',      [MisdAdminController::class, 'updateSectionAssignment']);
+            Route::delete('/section-assignments/{id}',   [MisdAdminController::class, 'destroySectionAssignment']);
+            Route::get('/faculty-options',               [MisdAdminController::class, 'facultyOptions']);
+
+            Route::get('/misd/status',                   [MisdAdminController::class, 'misdStatus']);
+            Route::get('/misd/faculty/{employeeNumber}', [MisdAdminController::class, 'previewFaculty']);
+            Route::get('/misd/students/{studentNumber}', [MisdAdminController::class, 'previewStudent']);
+            Route::post('/misd/sync/student/{id}',       [MisdAdminController::class, 'syncStudent']);
+            Route::post('/misd/directory',               [MisdAdminController::class, 'syncDirectory']);
+            Route::get('/misd/unmapped-sections',        [MisdAdminController::class, 'unmappedSections']);
+            Route::get('/audit-log',                     [MisdAdminController::class, 'auditLog']);
+            Route::get('/provisioning-log',              [MisdAdminController::class, 'provisioningLog']);
         });
     });
+
+
 });

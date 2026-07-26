@@ -1,9 +1,47 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+﻿import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
+import QuickActionsPanel from '../../components/QuickActionsPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
+
+const SUPERVISOR_QUICK_ACTIONS = [
+  {
+    to: '/supervisor/assigned-interns',
+    title: 'View Assigned Students',
+    description: 'See placement and official internship status',
+    icon: 'fa-users',
+    tone: 'blue',
+  },
+  {
+    to: '/supervisor/attendance-validation',
+    title: 'Validate Attendance',
+    description: 'Review and approve student DTRs',
+    icon: 'fa-clock',
+    tone: 'teal',
+  },
+  {
+    to: '/supervisor/journal-validation',
+    title: 'Review Journals',
+    description: 'Approve weekly narrative reports',
+    icon: 'fa-book-open',
+    tone: 'green',
+  },
+  {
+    to: '/supervisor/feedback',
+    title: 'Give Feedback',
+    description: 'Narrative feedback for assigned interns',
+    icon: 'fa-comment-dots',
+    tone: 'gray',
+  },
+  {
+    to: '/supervisor/performance-evaluation',
+    title: 'Submit Evaluations',
+    description: 'Midterm and final performance ratings',
+    icon: 'fa-star',
+    tone: 'amber',
+  },
+]
 
 function SupervisorDashboard() {
   const [data, setData] = useState(null)
@@ -36,66 +74,7 @@ function SupervisorDashboard() {
       ) : !error && (
         <div className="row">
           <div className="col-lg-6 mb-4">
-            <div className="content-card h-100">
-              <div className="content-card-header bg-light">
-                <i className="fa fa-bolt"></i>
-                <h6 className="mb-0">Quick Actions</h6>
-              </div>
-              <div className="p-4">
-                <div className="d-grid gap-3">
-                  <Link to="/supervisor/assigned-interns" className="btn btn-outline-primary text-start p-3 d-flex align-items-center">
-                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40 }}>
-                      <i className="fa fa-users"></i>
-                    </div>
-                    <div>
-                      <h6 className="mb-1 fw-bold">Assigned Students</h6>
-                      <small className="text-muted">View placement and official internship status</small>
-                    </div>
-                    <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                  </Link>
-                  <Link to="/supervisor/attendance-validation" className="btn btn-outline-primary text-start p-3 d-flex align-items-center">
-                    <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40 }}>
-                      <i className="fa fa-clock"></i>
-                    </div>
-                    <div>
-                      <h6 className="mb-1 fw-bold">Validate Attendance</h6>
-                      <small className="text-muted">Review and approve student DTRs</small>
-                    </div>
-                    <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                  </Link>
-                  <Link to="/supervisor/journal-validation" className="btn btn-outline-success text-start p-3 d-flex align-items-center">
-                    <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40 }}>
-                      <i className="fa fa-book-open"></i>
-                    </div>
-                    <div>
-                      <h6 className="mb-1 fw-bold">Review Journals</h6>
-                      <small className="text-muted">Approve weekly narrative reports</small>
-                    </div>
-                    <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                  </Link>
-                  <Link to="/supervisor/feedback" className="btn btn-outline-secondary text-start p-3 d-flex align-items-center">
-                    <div className="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40 }}>
-                      <i className="fa fa-comment-dots"></i>
-                    </div>
-                    <div>
-                      <h6 className="mb-1 fw-bold">Submit Feedback</h6>
-                      <small className="text-muted">Narrative feedback for assigned interns</small>
-                    </div>
-                    <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                  </Link>
-                  <Link to="/supervisor/performance-evaluation" className="btn btn-outline-warning text-start p-3 d-flex align-items-center">
-                    <div className="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: 40, height: 40 }}>
-                      <i className="fa fa-star"></i>
-                    </div>
-                    <div>
-                      <h6 className="mb-1 fw-bold text-dark">Performance Evaluation</h6>
-                      <small className="text-muted">Submit midterm / final ratings</small>
-                    </div>
-                    <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <QuickActionsPanel actions={SUPERVISOR_QUICK_ACTIONS} />
           </div>
 
           <div className="col-lg-6 mb-4">

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
+import { SUFFIX_OPTIONS, suffixToApi } from '../../utils/nameSuffix'
 
 function SupervisorRegisterPage() {
   const [searchParams] = useSearchParams()
@@ -14,11 +15,14 @@ function SupervisorRegisterPage() {
   const [success, setSuccess] = useState(null)
 
   const [form, setForm] = useState({
-    first_name: '',
     last_name: '',
+    first_name: '',
+    middle_name: '',
+    suffix: '',
     email: '',
     contact_number: '',
     position: '',
+    sex: '',
     company_id: '',
     password: '',
     password_confirmation: '',
@@ -55,7 +59,12 @@ function SupervisorRegisterPage() {
     setSubmitting(true)
     setErrors({})
     try {
-      const res = await api.post('/supervisor-register', { ...form, token })
+      const res = await api.post('/supervisor-register', {
+        ...form,
+        suffix: suffixToApi(form.suffix),
+        middle_name: form.middle_name?.trim() || null,
+        token,
+      })
       setSuccess(res.data)
     } catch (err) {
       if (err.response?.status === 422 && err.response?.data?.errors) {
@@ -94,7 +103,7 @@ function SupervisorRegisterPage() {
                   {success.username}
                 </div>
                 <p className="text-muted small mt-3 mb-0">
-                  Your account is pending approval by the Internship Coordinator.
+                  Your account is pending approval by the Faculty Supervisor.
                   You will be able to log in once it is approved.
                 </p>
               </div>
@@ -126,14 +135,34 @@ function SupervisorRegisterPage() {
                 <form onSubmit={handleSubmit}>
                   <div className="row g-3 mb-3">
                     <div className="col-6">
+                      <label className="form-label small fw-semibold">Last Name <span className="text-danger">*</span></label>
+                      <input type="text" name="last_name" className={`form-control ${errors.last_name ? 'is-invalid' : ''}`} value={form.last_name} onChange={handleChange} required />
+                      {errors.last_name && <div className="invalid-feedback">{errors.last_name[0]}</div>}
+                    </div>
+                    <div className="col-6">
                       <label className="form-label small fw-semibold">First Name <span className="text-danger">*</span></label>
                       <input type="text" name="first_name" className={`form-control ${errors.first_name ? 'is-invalid' : ''}`} value={form.first_name} onChange={handleChange} required />
                       {errors.first_name && <div className="invalid-feedback">{errors.first_name[0]}</div>}
                     </div>
                     <div className="col-6">
-                      <label className="form-label small fw-semibold">Last Name <span className="text-danger">*</span></label>
-                      <input type="text" name="last_name" className={`form-control ${errors.last_name ? 'is-invalid' : ''}`} value={form.last_name} onChange={handleChange} required />
-                      {errors.last_name && <div className="invalid-feedback">{errors.last_name[0]}</div>}
+                      <label className="form-label small fw-semibold">Middle Name</label>
+                      <input type="text" name="middle_name" className={`form-control ${errors.middle_name ? 'is-invalid' : ''}`} value={form.middle_name} onChange={handleChange} placeholder="Optional" />
+                      {errors.middle_name && <div className="invalid-feedback">{errors.middle_name[0]}</div>}
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label small fw-semibold">Suffix</label>
+                      <select
+                        name="suffix"
+                        className={`form-select ${errors.suffix ? 'is-invalid' : ''}`}
+                        value={form.suffix}
+                        onChange={handleChange}
+                      >
+                        <option value="">N/A</option>
+                        {SUFFIX_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                      {errors.suffix && <div className="invalid-feedback">{errors.suffix[0]}</div>}
                     </div>
                   </div>
 
@@ -150,10 +179,20 @@ function SupervisorRegisterPage() {
                       {errors.contact_number && <div className="invalid-feedback">{errors.contact_number[0]}</div>}
                     </div>
                     <div className="col-6">
-                      <label className="form-label small fw-semibold">Position / Designation <span className="text-danger">*</span></label>
-                      <input type="text" name="position" className={`form-control ${errors.position ? 'is-invalid' : ''}`} value={form.position} onChange={handleChange} placeholder="e.g. IT Manager" required />
-                      {errors.position && <div className="invalid-feedback">{errors.position[0]}</div>}
+                      <label className="form-label small fw-semibold">Sex <span className="text-danger">*</span></label>
+                      <select name="sex" className={`form-select ${errors.sex ? 'is-invalid' : ''}`} value={form.sex} onChange={handleChange} required>
+                        <option value="">Select…</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                      {errors.sex && <div className="invalid-feedback">{errors.sex[0]}</div>}
                     </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Position / Designation <span className="text-danger">*</span></label>
+                    <input type="text" name="position" className={`form-control ${errors.position ? 'is-invalid' : ''}`} value={form.position} onChange={handleChange} placeholder="e.g. IT Manager" required />
+                    {errors.position && <div className="invalid-feedback">{errors.position[0]}</div>}
                   </div>
 
                   <div className="mb-3">
@@ -192,7 +231,7 @@ function SupervisorRegisterPage() {
                     </div>
                   </div>
 
-                  <button type="submit" className="btn btn-primary w-100 py-2" disabled={submitting}>
+                  <button type="submit" className="btn btn-green w-100 py-2" disabled={submitting}>
                     {submitting
                       ? <><i className="fa fa-spinner fa-spin me-2"></i>Submitting...</>
                       : <><i className="fa fa-paper-plane me-2"></i>Submit Registration</>

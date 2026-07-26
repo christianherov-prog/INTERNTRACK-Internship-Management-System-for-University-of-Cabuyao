@@ -1,33 +1,44 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import Chart from 'chart.js/auto'
 import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
 import DashboardHeroBanner from '../../components/DashboardHeroBanner'
 import { AnnouncementAttachmentView } from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import { DEFAULT_TARGET_HOURS } from '../../config/hours'
+import { formatYearSection } from '../../utils/formatSection'
 
 function StudentDashboard() {
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError]   = useState(null)
   const chartRef            = useRef(null)
   const chartInstance       = useRef(null)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
+    setError(null)
     api.get('/student/dashboard')
       .then(res => setData(res.data))
-      .catch(console.error)
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load dashboard.')
+        setData(null)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   // Render Chart.js weekly hours bar chart
   useEffect(() => {
     if (!data?.weekly_chart || !chartRef.current) return
-    if (typeof window.Chart === 'undefined') return
 
     if (chartInstance.current) chartInstance.current.destroy()
 
     const { labels, hours } = data.weekly_chart
-    chartInstance.current = new window.Chart(chartRef.current, {
+    chartInstance.current = new Chart(chartRef.current, {
       type: 'bar',
       data: {
         labels,
@@ -53,19 +64,16 @@ function StudentDashboard() {
     </Layout>
   )
 
+  if (error) return (
+    <Layout title="Dashboard" subtitle="Student" icon="fa-gauge-high" bodyClass="student-page">
+      <PageError message={error} onRetry={load} />
+    </Layout>
+  )
+
   const s = data?.stats ?? {}
   const internship = data?.internship
   const announcements = data?.announcements ?? []
   const student = data?.student
-
-  // Format a raw section code like "4ITD" into "4 IT - D" for display.
-  const formatSection = (section) => {
-    if (!section) return null
-    const match = /^(\d+)([A-Za-z]+)([A-Za-z])$/.exec(section)
-    if (!match) return section
-    const [, year, program, letter] = match
-    return `${year} ${program} - ${letter}`
-  }
 
   return (
     <Layout title="Dashboard" subtitle="Student" icon="fa-gauge-high" bodyClass="student-page">
@@ -74,7 +82,7 @@ function StudentDashboard() {
         label="INTERNSHIP DASHBOARD"
         title={`Welcome back, ${student?.name ?? 'Student'}`}
         meta={[
-          formatSection(student?.section),
+          formatYearSection(student?.section, student?.year_level),
           `Student No. ${student?.student_number ?? '—'}`,
           internship?.company_name || 'No company assigned',
         ]}
@@ -96,6 +104,8 @@ function StudentDashboard() {
           <strong>Status note:</strong> {internship.status_reason}
         </div>
       )}
+
+
 
       {internship?.status === 'completed' && (
         <div className="mb-3">

@@ -13,16 +13,17 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'username', 'email', 'password', 'role', 'is_active', 'last_login_at', 'avatar_path',
-        'notification_preferences',
+        'username', 'email', 'password', 'role', 'sex', 'is_active', 'must_change_password',
+        'last_login_at', 'avatar_path', 'notification_preferences',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-        'is_active'                 => 'boolean',
-        'last_login_at'             => 'datetime',
-        'notification_preferences'  => 'array',
+        'is_active'     => 'boolean',
+        'must_change_password' => 'boolean',
+        'last_login_at' => 'datetime',
+        'notification_preferences' => 'array',
     ];
 
     // ─── Profile Relationships ────────────────────────────────────────────────
@@ -66,7 +67,7 @@ class User extends Authenticatable
     public function portfolioInternship()
     {
         return $this->hasOne(Internship::class, 'student_id')
-                    ->whereIn('status', ['ongoing', 'placed', 'active', 'for_evaluation', 'completed'])
+                    ->whereIn('status', ['ongoing', 'active', 'placed', 'for_evaluation', 'completed'])
                     ->latest();
     }
 
@@ -88,6 +89,15 @@ class User extends Authenticatable
         return $this->hasMany(Internship::class, 'coordinator_id');
     }
 
+    /** Scope to get students whose section matches the faculty's assigned sections */
+    public function scopeAssignedToFaculty($query, int $facultyId)
+    {
+        $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
+        return $query->where('role', 'student')->whereHas('studentProfile', function ($q) use ($sections) {
+            $q->whereIn('section', $sections);
+        });
+    }
+
     // ─── Helper Methods ───────────────────────────────────────────────────────
 
     public function getProfileNameAttribute(): string
@@ -102,4 +112,12 @@ class User extends Authenticatable
     public function isCoordinator(): bool { return $this->role === 'coordinator'; }
     public function isDirector(): bool    { return $this->role === 'director'; }
     public function isAdmin(): bool       { return $this->role === 'admin'; }
+
+    /** Whether this user wants inbox notifications for a Settings preference key. */
+    public function wantsNotification(string $prefKey): bool
+    {
+        $prefs = \App\Support\NotificationPreferences::mergeForUser($this->role, $this->notification_preferences);
+
+        return (bool) ($prefs[$prefKey] ?? true);
+    }
 }

@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class SupervisorInviteToken extends Model
 {
-    protected $fillable = [
+        protected $fillable = [
         'internship_id', 'student_id', 'token', 'expires_at', 'status',
-        'supervisor_user_id', 'first_name', 'last_name', 'email',
+        'supervisor_user_id', 'first_name', 'middle_name', 'last_name', 'suffix', 'email',
         'contact_number', 'position', 'company_id',
         'reviewed_by', 'reviewed_at', 'review_remarks',
     ];

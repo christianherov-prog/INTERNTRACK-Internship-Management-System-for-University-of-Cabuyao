@@ -1,0 +1,483 @@
+/**
+ * System-wide responsive / touch-usability overrides.
+ * Loaded LAST so these win over duplicated rules in master-style / styles.css.
+ * Desktop (≥992px) is intentionally left alone unless a shared component needs a
+ * non-visual safety (e.g. overflow-wrap).
+ */
+
+/* ── Shared: tables stay usable without breaking the page ── */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 991.98px) {
+  .table-responsive {
+    position: relative;
+  }
+
+  /* Subtle affordance that the table scrolls sideways */
+  .table-responsive::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 28px;
+    background: linear-gradient(90deg, transparent, rgba(244, 249, 245, 0.92));
+    opacity: 0.9;
+  }
+
+  .table-responsive > table {
+    margin-bottom: 0;
+  }
+}
+
+/* Wide roster / director tables already set min-width — keep them inside scroll shells */
+@media (max-width: 991.98px) {
+  .dir-roster-table,
+  .roster-table,
+  .supervision-table,
+  .evaluation-table {
+    width: max-content;
+    max-width: none;
+  }
+}
+
+/* ── Shared: touch-friendly controls on small screens ── */
+@media (max-width: 991.98px) {
+  .btn-sm,
+  .action-btn,
+  .btn-action {
+    min-height: 36px;
+  }
+
+  .btn:not(.btn-sm):not(.btn-close):not(.password-toggle-btn),
+  .btn-green,
+  .btn-outline-green,
+  .btn-signin {
+    min-height: 44px;
+  }
+
+  .form-control,
+  .form-select,
+  .filter-select,
+  .search-wrapper input {
+    min-height: 44px;
+  }
+
+  .sidebar-link {
+    min-height: 44px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* Prevent long meta strings from overflowing cards */
+  .settings-meta-value,
+  .content-card,
+  .stat-label,
+  .topbar-title {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ── Notification dropdown: don't exceed phone width ── */
+@media (max-width: 575.98px) {
+  .topbar .dropdown-menu.show {
+    min-width: min(340px, calc(100vw - 1.5rem)) !important;
+    max-width: calc(100vw - 1.5rem);
+    right: 0 !important;
+    left: auto !important;
+  }
+}
+
+/* ── Login: compose the card in the viewport (not pinned to top) ── */
+@media (max-width: 768px) {
+  .login-page-redesign {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
+  .login-split-right {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 100svh;
+    /* svh stays stable when the soft keyboard opens — avoids jumpy re-centering */
+    align-items: center;
+    justify-content: center;
+    padding:
+      max(1.1rem, env(safe-area-inset-top, 0px))
+      0.85rem
+      max(1.1rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .login-right-card {
+    width: 100%;
+    max-width: 420px;
+    margin-block: 0;
+    padding: 1.35rem 1.2rem 1.2rem;
+  }
+
+  .login-input-field {
+    min-height: 48px;
+    padding: 0.85rem 2.75rem 0.85rem 2.75rem;
+    font-size: 1rem; /* avoid iOS zoom-on-focus */
+  }
+
+  .password-toggle-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    right: 6px;
+    padding: 0;
+  }
+
+  .btn-signin {
+    min-height: 48px;
+    padding: 0.95rem 1.15rem;
+    font-size: 0.92rem;
+  }
+
+  .login-features {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .feature-badge {
+    flex: 1 1 30%;
+    min-width: 88px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.35rem;
+  }
+}
+
+/* Short / keyboard-constrained viewports: top-align so the form stays reachable */
+@media (max-width: 768px) and (max-height: 640px) {
+  .login-split-right {
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-height: auto;
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .login-right-card {
+    padding: 0.95rem 1rem 0.9rem;
+  }
+}
+
+@media (max-width: 414px) {
+  .login-right-card {
+    padding: 1.2rem 1.05rem 1.05rem;
+  }
+
+  .login-app-title {
+    font-size: 1.32rem;
+  }
+
+  .login-features {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .feature-badge {
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    flex: 1 1 auto;
+  }
+}
+
+/* Tablet / iPad portrait: keep split hero when possible, balanced card */
+@media (min-width: 769px) and (max-width: 991.98px) {
+  .login-split-right {
+    flex: 0 0 min(48%, 480px);
+    padding: 1.5rem 1.25rem;
+    align-items: center;
+  }
+
+  .login-right-card {
+    max-width: 440px;
+    padding: 2.25rem 1.85rem 1.85rem;
+  }
+
+  .login-input-field {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .btn-signin {
+    min-height: 48px;
+  }
+
+  .password-toggle-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ── Shell: restore topbar clearance for all roles on tablet/phone ── */
+@media (max-width: 991.98px) {
+  body.page-body .main-content,
+  body.director-page .main-content,
+  body.faculty-page .main-content,
+  body.supervisor-page .main-content,
+  body.student-page .main-content,
+  body.admin-page .main-content,
+  body.coordinator-page .main-content {
+    margin-top: 0;
+    margin-left: 0;
+    width: 100%;
+    padding: calc(var(--topbar-h, 72px) + 18px) 16px 22px;
+  }
+
+  .main-content,
+  .sp-page {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .content-card,
+  .sp-card,
+  .stat-card {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 575.98px) {
+  body.page-body .main-content,
+  body.director-page .main-content,
+  body.faculty-page .main-content,
+  body.supervisor-page .main-content,
+  body.student-page .main-content,
+  body.admin-page .main-content,
+  body.coordinator-page .main-content {
+    padding: calc(var(--topbar-h, 72px) + 18px) 12px 20px;
+  }
+
+  .topbar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .topbar-subtitle {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ── Desktop shell: Faculty/Coordinator Reports use the standard Layout
+   (fixed .topbar), but the shared `.reports-page` selector zeroes
+   .main-content padding-top (styles.css ~9925 — meant for legacy
+   page-topbar-hero shells). That let content slide under the fixed
+   topbar and clipped the report-card icon badges. Restore the same
+   clearance the Director Reports page uses (topbar-h + 24px = 96px).
+   Mobile (≤991px) is already handled by the shell rules above. ── */
+@media (min-width: 992px) {
+  body.faculty-page.reports-page .main-content,
+  body.coordinator-page.reports-page .main-content {
+    margin-top: 0;
+    padding-top: calc(var(--topbar-h, 72px) + 24px);
+  }
+}
+
+/* ── Modals: nearer full-bleed on phones ── */
+@media (max-width: 575.98px) {
+  .modal.show.d-block {
+    padding: 0 !important;
+  }
+
+  .modal-dialog {
+    margin: 0.35rem;
+    max-width: calc(100% - 0.7rem);
+    width: calc(100% - 0.7rem);
+  }
+
+  .modal-dialog-scrollable .modal-content,
+  .modal-dialog .modal-content {
+    max-height: calc(100dvh - 0.7rem);
+  }
+
+  .modal-dialog-centered {
+    min-height: calc(100% - 0.7rem);
+  }
+
+  .it-confirm-overlay {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .it-confirm-modal {
+    max-width: 100%;
+    border-radius: 16px 16px 12px 12px;
+    padding: 1.35rem 1.15rem 1.15rem;
+  }
+
+  .crop-modal {
+    max-width: calc(100vw - 1rem);
+    width: 100%;
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+
+  .crop-viewport {
+    max-width: min(280px, calc(100vw - 4rem));
+    max-height: min(280px, calc(100vw - 4rem));
+  }
+
+  .crop-modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .crop-modal-actions .btn-green,
+  .crop-modal-actions .btn-outline-green {
+    flex: 1 1 120px;
+    min-height: 44px;
+  }
+}
+
+/* iPad / tablet: comfortable modal margins */
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .modal-dialog {
+    max-width: min(640px, calc(100% - 2rem));
+  }
+}
+
+/* ── Dashboards / stat grids ── */
+@media (max-width: 575.98px) {
+  .coord-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dir-three-col,
+  .dir-two-col,
+  .dir-export-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin dashboard was forcing 2 cramped columns via col-6 */
+  .admin-page .row > [class*="col-6"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .stat-card .stat-value,
+  .dir-reports-stat .stat-value {
+    font-size: clamp(1.35rem, 6vw, 1.75rem);
+  }
+}
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .coord-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ── Forms / settings action rows ── */
+@media (max-width: 575.98px) {
+  .settings-profile-top .btn,
+  .settings-actions .btn,
+  .role-settings .btn-green,
+  .role-settings .btn-outline-green {
+    width: 100%;
+  }
+
+  .d-flex.gap-2.flex-wrap > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ── Charts / progress bars: stay within card ── */
+@media (max-width: 991.98px) {
+  canvas,
+  .chart-container,
+  .chart-wrap,
+  .logbook-chart-wrap,
+  .recharts-responsive-container,
+  .dir-mini-bar-wrap,
+  .dir-progress-bar,
+  .report-line-chart {
+    max-width: 100%;
+  }
+
+  .chart-container svg,
+  .chart-wrap svg,
+  .recharts-responsive-container svg,
+  .report-line-chart svg {
+    max-width: 100%;
+  }
+}
+
+/* ── Portfolio preview: scrollable A4 shell on small screens ── */
+@media (max-width: 991.98px) {
+  .portfolio-preview-page,
+  .portfolio-a4,
+  .portfolio-sheet {
+    max-width: 100%;
+  }
+
+  .portfolio-preview-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Roster filter toolbar: stack search inputs on phones */
+@media (max-width: 575.98px) {
+  .roster-page .main-content > .d-flex.justify-content-between,
+  .roster-page .main-content > .btn-group + .d-flex,
+  .coordinator-page.roster-page .main-content > .d-flex.justify-content-between {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem;
+  }
+
+  .roster-page .main-content > .d-flex.justify-content-between > .d-flex.gap-2 {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .roster-page .main-content input.form-control,
+  .roster-page .main-content input.form-control-sm {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .roster-page .btn-group {
+    width: 100%;
+  }
+
+  .roster-page .btn-group .btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .roster-page .main-content > .d-flex.justify-content-between {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .roster-page .main-content > .d-flex.justify-content-between > .d-flex.gap-2 {
+    flex: 1 1 280px;
+    min-width: 0;
+  }
+
+  .roster-page .main-content input.form-control,
+  .roster-page .main-content input.form-control-sm {
+    width: 100% !important;
+    min-width: 0;
+  }
+}

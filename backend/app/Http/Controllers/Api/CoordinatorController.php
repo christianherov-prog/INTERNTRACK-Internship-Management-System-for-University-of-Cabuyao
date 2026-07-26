@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Internship;
-use App\Models\Announcement;
 use App\Models\Document;
 use App\Models\JournalEntry;
 use App\Models\Notification;
@@ -13,6 +12,7 @@ use App\Models\Company;
 use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
+use App\Support\SignatureCapture;
 use Illuminate\Http\Request;
 
 class CoordinatorController extends Controller
@@ -44,7 +44,12 @@ class CoordinatorController extends Controller
         $live = InternshipStatuses::liveMonitoring();
 
         $activeInterns    = Internship::whereIn('status', $live)->count();
-        $pendingPlacement = Internship::where('status', 'pending_placement')->count();
+        $pendingPlacement = User::where('role', 'student')->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereDoesntHave('activeInternship')
+                  ->orWhereHas('activeInternship', fn($i) => $i->where('status', 'pending_placement'));
+            })->count();
+            
         $avgHoursCompletion = Internship::whereIn('status', $live)
             ->selectRaw('AVG(total_hours_rendered / NULLIF(target_hours, 0) * 100) as avg_pct')
             ->value('avg_pct') ?? 0;
@@ -57,40 +62,67 @@ class CoordinatorController extends Controller
 
         $fullyCompleted = Internship::where('status', 'completed')->count();
 
-        $internships = Internship::whereIn('status', array_merge(['pending_placement'], $live))
+        $query = User::where('role', 'student')->where('is_active', true)
             ->with([
-                'student.studentProfile',
-                'supervisor.supervisorProfile',
-                'company',
-                'journals' => fn($q) => $q->latest('date')->limit(1),
-                'documents',
-            ])
-            ->paginate(15);
+                'studentProfile',
+                'activeInternship.supervisor.supervisorProfile',
+                'activeInternship.company',
+                'activeInternship.faculty.facultyProfile',
+                'activeInternship.journals' => fn($q) => $q->latest('date')->limit(1),
+                'activeInternship.documents',
+            ]);
 
-        $rows = $internships->through(function ($i) {
-            $profile     = $i->student?->studentProfile;
-            $supProfile  = $i->supervisor?->supervisorProfile;
-            $lastJournal = $i->journals->first();
-            $docsApproved= $i->documents->where('status', 'approved')->count();
-            $docsTotal   = 13;
+        $students = $query->paginate(25);
+
+        // Preload faculty section assignments
+        $sections = $students->pluck('studentProfile.section')->filter()->unique();
+        $facultyAssignments = \App\Models\FacultySectionAssignment::whereIn('section', $sections)
+            ->with('faculty.facultyProfile')
+            ->get()
+            ->keyBy('section');
+
+        $rows = $students->through(function ($student) use ($facultyAssignments) {
+            $profile     = $student->studentProfile;
+            $i           = $student->activeInternship;
+            $supProfile  = $i?->supervisor?->supervisorProfile;
+            $lastJournal = $i?->journals->first();
+            $docsApproved= $i?->documents->where('status', 'approved')->count() ?? 0;
+            $docsTotal   = \App\Support\RequiredDocuments::count();
+
+            // Resolve faculty
+            $facultyName = 'Not Assigned';
+            if ($i && $i->faculty && $i->faculty->facultyProfile) {
+                $fp = $i->faculty->facultyProfile;
+                $facultyName = trim("{$fp->first_name} {$fp->last_name}");
+            } elseif ($profile && $profile->section) {
+                $assignment = $facultyAssignments->get($profile->section);
+                if ($assignment && $assignment->faculty && $assignment->faculty->facultyProfile) {
+                    $fp = $assignment->faculty->facultyProfile;
+                    $facultyName = trim("{$fp->first_name} {$fp->last_name}");
+                }
+            }
 
             return [
-                'internship_id'      => $i->id,
-                'student_name'       => $profile ? trim("{$profile->first_name} {$profile->last_name}") : '—',
+                'user_id'            => $student->id,
+                'internship_id'      => $i?->id,
+                'student_name'       => $profile ? trim("{$profile->first_name} {$profile->last_name}") : $student->username,
                 'student_number'     => $profile?->student_number ?? '—',
-                'program'            => $profile?->course_name ?? '—',
-                'status'             => $i->status,
+                'program'            => $profile?->course_name ?? $profile?->program ?? '—',
+                'section'            => $profile?->section ?? '—',
+                'sex'                => $student->sex ?? $profile?->sex ?? '—',
+                'faculty_name'       => $facultyName,
+                'status'             => $i?->status ?? 'unplaced',
                 'supervisor_name'    => $supProfile ? trim("{$supProfile->first_name} {$supProfile->last_name}") : 'Not Assigned',
-                'company'            => $i->company?->company_name ?? 'Not Assigned',
+                'company'            => $i?->company?->company_name ?? 'Not Assigned',
                 'last_journal_date'  => $lastJournal?->date?->toDateString(),
                 'journal_status'     => $lastJournal?->status ?? 'none',
                 'docs_approved'      => $docsApproved,
                 'docs_total'         => $docsTotal,
-                'docs_label'         => $docsApproved < $docsTotal ? ($docsTotal - $docsApproved) . ' Missing' : 'Complete',
-                'docs_status'        => $docsApproved >= $docsTotal ? 'complete' : 'missing',
-                'progress_percent'   => (float) ($i->target_hours > 0 ? round($i->total_hours_rendered / $i->target_hours * 100, 1) : 0),
-                'hours_rendered'     => (float) $i->total_hours_rendered,
-                'target_hours'       => $i->target_hours,
+                'docs_label'         => $docsTotal > 0 && $docsApproved < $docsTotal ? ($docsTotal - $docsApproved) . ' Missing' : 'Complete',
+                'docs_status'        => $docsTotal > 0 && $docsApproved >= $docsTotal ? 'complete' : 'missing',
+                'progress_percent'   => (float) ($i && $i->target_hours > 0 ? round($i->total_hours_rendered / $i->target_hours * 100, 1) : 0),
+                'hours_rendered'     => (float) ($i?->total_hours_rendered ?? 0),
+                'target_hours'       => $i?->target_hours ?? 0,
             ];
         });
 
@@ -103,107 +135,6 @@ class CoordinatorController extends Controller
                 'fully_completed'       => $fullyCompleted,
             ],
         ] + ApiResponse::list($rows)->getData(true));
-    }
-
-    /** GET /api/v1/coordinator/announcements */
-    public function announcements(Request $request)
-    {
-        $items = Announcement::with('author')
-            ->orderByDesc('is_pinned')
-            ->orderByDesc('created_at')
-            ->paginate(15);
-
-        $items->getCollection()->transform(fn (Announcement $a) => $a->toClientArray());
-
-        return ApiResponse::list($items);
-    }
-
-    /** POST /api/v1/coordinator/announcements — JSON or multipart with optional attachment. */
-    public function createAnnouncement(Request $request)
-    {
-        $request->validate([
-            'title'       => 'required|string|max:255',
-            'content'     => 'required|string',
-            'target_role' => 'required|string|in:all,student,supervisor,faculty,coordinator,director',
-            'category'    => 'nullable|string|in:'.implode(',', Announcement::CATEGORIES),
-            'is_pinned'   => 'boolean',
-            'expires_at'  => 'nullable|date|after:now',
-            'attachment'  => Announcement::attachmentValidationRules(),
-        ], Announcement::attachmentValidationMessages());
-
-        $announcement = Announcement::create([
-            'created_by'  => $request->user()->id,
-            'title'       => $request->title,
-            'content'     => $request->content,
-            'target_role' => $request->target_role,
-            'category'    => $request->input('category', 'general') ?: 'general',
-            'is_pinned'   => $request->boolean('is_pinned', false),
-            'expires_at'  => $request->expires_at,
-        ]);
-
-        if ($request->hasFile('attachment')) {
-            $announcement->storeUploadedAttachment($request->file('attachment'));
-            $announcement->save();
-        }
-
-        audit_log($request->user()->id, 'create_announcement', [
-            'title'          => $request->title,
-            'has_attachment' => $announcement->hasAttachment(),
-        ]);
-
-        return response()->json([
-            'message'      => 'Announcement created.',
-            'announcement' => $announcement->fresh('author')->toClientArray(),
-        ], 201);
-    }
-
-    /**
-     * PUT|POST /api/v1/coordinator/announcements/{id}
-     * POST multipart is used when replacing/removing an attachment (PHP file uploads need POST).
-     */
-    public function updateAnnouncement(Request $request, int $id)
-    {
-        $request->validate([
-            'title'             => 'required|string|max:255',
-            'content'           => 'required|string',
-            'target_role'       => 'required|in:all,student,supervisor,faculty,coordinator,director',
-            'category'          => 'nullable|string|in:'.implode(',', Announcement::CATEGORIES),
-            'is_pinned'         => 'boolean',
-            'expires_at'        => 'nullable|date',
-            'attachment'        => Announcement::attachmentValidationRules(),
-            'remove_attachment' => 'sometimes|boolean',
-        ], Announcement::attachmentValidationMessages());
-
-        $announcement = Announcement::findOrFail($id);
-        $announcement->fill($request->only(['title', 'content', 'target_role', 'expires_at']));
-        $announcement->category = $request->input('category', $announcement->category ?: 'general') ?: 'general';
-        $announcement->is_pinned = $request->boolean('is_pinned', false);
-
-        if ($request->boolean('remove_attachment') && !$request->hasFile('attachment')) {
-            $announcement->deleteStoredAttachment();
-            $announcement->clearAttachmentFields();
-        }
-
-        if ($request->hasFile('attachment')) {
-            $announcement->storeUploadedAttachment($request->file('attachment'));
-        }
-
-        $announcement->save();
-
-        return response()->json([
-            'message'      => 'Announcement updated.',
-            'announcement' => $announcement->fresh('author')->toClientArray(),
-        ]);
-    }
-
-    /** DELETE /api/v1/coordinator/announcements/{id} */
-    public function deleteAnnouncement(Request $request, int $id)
-    {
-        $announcement = Announcement::findOrFail($id);
-        $announcement->deleteStoredAttachment();
-        $announcement->delete();
-        audit_log($request->user()->id, 'delete_announcement', ['id' => $id]);
-        return response()->json(['message' => 'Announcement deleted.']);
     }
 
     /** GET /api/v1/coordinator/documents — coordinator-stage queue only */
@@ -227,6 +158,8 @@ class CoordinatorController extends Controller
 
         $this->assertCoordinatorOwns($doc->internship, $request->user()->id);
 
+        $sig = SignatureCapture::fromRequest($request, 'signatures/documents');
+
         $from = $doc->status;
         $doc->update([
             'status' => 'pending_faculty',
@@ -244,6 +177,9 @@ class CoordinatorController extends Controller
             'to_status' => 'pending_faculty',
             'remarks' => $request->remarks,
             'reviewed_by' => $request->user()->id,
+            'signer_name' => $sig['signer_name'],
+            'signature_path' => $sig['signature_path'],
+            'signed_at' => $sig['signed_at'],
         ]);
 
         $studentId = $doc->internship?->student_id;
@@ -253,7 +189,8 @@ class CoordinatorController extends Controller
                 'document_coordinator_approved',
                 'Document cleared by Coordinator',
                 "Your {$doc->document_type} passed coordinator review and awaits faculty verification.",
-                '/student/documents'
+                '/student/documents',
+                ['document_id' => $doc->id, 'document_type' => $doc->document_type]
             );
         }
 
@@ -264,7 +201,8 @@ class CoordinatorController extends Controller
                 'document_pending_faculty',
                 'Document awaiting your verification',
                 "{$doc->document_type} is ready for faculty verification.",
-                '/faculty/documents'
+                '/faculty/documents',
+                ['document_id' => $doc->id, 'document_type' => $doc->document_type]
             );
         }
 
@@ -311,7 +249,7 @@ class CoordinatorController extends Controller
                 'Document Rejected',
                 "Your {$doc->document_type} was rejected by the coordinator: {$request->remarks}",
                 '/student/documents',
-                ['remarks' => $request->remarks, 'document_type' => $doc->document_type]
+                ['document_id' => $doc->id, 'remarks' => $request->remarks, 'document_type' => $doc->document_type]
             );
         }
 
@@ -324,10 +262,17 @@ class CoordinatorController extends Controller
     {
         $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer']);
 
+        $actorId = $request->user()->id;
         $docs = Document::whereIn('id', $request->ids)
             ->where('current_stage', 'coordinator')
             ->whereIn('status', ['pending_review', 'resubmitted', 'under_review'])
-            ->get();
+            ->with('internship')
+            ->get()
+            ->filter(function (Document $doc) use ($actorId) {
+                $internship = $doc->internship;
+                return $internship
+                    && ($internship->coordinator_id === null || (int) $internship->coordinator_id === $actorId);
+            });
 
         foreach ($docs as $doc) {
             $from = $doc->status;
@@ -351,7 +296,8 @@ class CoordinatorController extends Controller
                     'document_coordinator_approved',
                     'Document cleared by Coordinator',
                     "Your {$doc->document_type} awaits faculty verification.",
-                    '/student/documents'
+                    '/student/documents',
+                    ['document_id' => $doc->id, 'document_type' => $doc->document_type]
                 );
             }
         }
@@ -370,9 +316,16 @@ class CoordinatorController extends Controller
             'remarks' => 'required|string|max:500',
         ]);
 
+        $actorId = $request->user()->id;
         $docs = Document::whereIn('id', $request->ids)
             ->where('current_stage', 'coordinator')
-            ->get();
+            ->with('internship')
+            ->get()
+            ->filter(function (Document $doc) use ($actorId) {
+                $internship = $doc->internship;
+                return $internship
+                    && ($internship->coordinator_id === null || (int) $internship->coordinator_id === $actorId);
+            });
 
         foreach ($docs as $doc) {
             $from = $doc->status;
@@ -401,7 +354,7 @@ class CoordinatorController extends Controller
                     'Document Rejected',
                     "Your {$doc->document_type} was rejected: {$request->remarks}",
                     '/student/documents',
-                    ['remarks' => $request->remarks, 'document_type' => $doc->document_type]
+                    ['document_id' => $doc->id, 'remarks' => $request->remarks, 'document_type' => $doc->document_type]
                 );
             }
         }
@@ -414,7 +367,9 @@ class CoordinatorController extends Controller
     /** GET /api/v1/coordinator/logbook */
     public function logbook(Request $request)
     {
+        $coordId = $request->user()->id;
         $journals = JournalEntry::where('status', 'submitted')
+            ->whereHas('internship', fn ($q) => $q->where('coordinator_id', $coordId))
             ->with(['internship.student.studentProfile'])
             ->orderByDesc('date')
             ->paginate(25);
@@ -429,7 +384,11 @@ class CoordinatorController extends Controller
             'feedback' => 'nullable|string|max:1000',
         ]);
 
-        $journal = JournalEntry::findOrFail($id);
+        $journal = JournalEntry::whereHas(
+            'internship',
+            fn ($q) => $q->where('coordinator_id', $request->user()->id)
+        )->findOrFail($id);
+
         $journal->update([
             'status'                 => $request->action,
             'faculty_feedback'       => $request->feedback,
@@ -443,11 +402,15 @@ class CoordinatorController extends Controller
     /** GET /api/v1/coordinator/records */
     public function records(Request $request)
     {
+        $coordId = $request->user()->id;
         $query = User::where('role', 'student')
+            ->whereHas('internshipsAsStudent', fn ($q) => $q->where('coordinator_id', $coordId))
             ->with([
                 'studentProfile',
                 'activeInternship.company',
-                'internshipsAsStudent' => fn($q) => $q->withCount(['attendance as validated_days' => fn($a) => $a->where('status', 'validated')]),
+                'internshipsAsStudent' => fn ($q) => $q
+                    ->where('coordinator_id', $coordId)
+                    ->withCount(['attendance as validated_days' => fn ($a) => $a->where('status', 'validated')]),
             ]);
 
         if ($request->boolean('archived')) {
@@ -516,51 +479,94 @@ class CoordinatorController extends Controller
             return response()->json(['message' => 'Student is already placed or cannot be placed at this time.'], 422);
         }
 
+        $faculty = User::findOrFail((int) $request->faculty_id);
+        if ($faculty->role !== 'faculty') {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => ['faculty_id' => ['The selected faculty must have the faculty role.']],
+            ], 422);
+        }
+
+        $supervisor = User::findOrFail((int) $request->supervisor_id);
+        if ($supervisor->role !== 'supervisor') {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => ['supervisor_id' => ['The selected user must be a company supervisor.']],
+            ], 422);
+        }
+
+        $company = Company::findOrFail((int) $request->company_id);
+        if (!$company->isEligibleForPlacement()) {
+            return response()->json([
+                'message' => $company->ineligibilityReason(),
+                'errors' => ['company_id' => [$company->ineligibilityReason()]],
+            ], 422);
+        }
+
         $profile = $internship->student?->studentProfile;
         $program = $internship->program
             ?: ($profile?->program ?: $profile?->course_name);
 
-        $internship->update([
-            'company_id'     => $request->company_id,
-            'faculty_id'     => $request->faculty_id,
-            'supervisor_id'  => $request->supervisor_id,
-            'coordinator_id' => $request->user()->id, // same assignment row that stores company_id
-            'program'        => $program,
-            'status'         => 'active',
-            'status_reason'  => 'Authorized deployment / placement by coordinator.',
-            'start_date'     => now(),
-        ]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $internship, $company, $program) {
+            $internship->update([
+                'company_id'     => $company->id,
+                'faculty_id'     => $request->faculty_id,
+                'supervisor_id'  => $request->supervisor_id,
+                'coordinator_id' => $request->user()->id,
+                'program'        => $program,
+                'status'         => 'active',
+                'status_reason'  => 'Authorized deployment / placement by coordinator.',
+                'start_date'     => now(),
+            ]);
 
-        \App\Models\InternshipStatusHistory::create([
-            'internship_id' => $internship->id,
-            'from_status' => 'pending_placement',
-            'to_status' => 'active',
-            'reason' => 'Authorized deployment / placement by coordinator.',
-            'changed_by' => $request->user()->id,
-        ]);
+            $company->consumeSlot();
+
+            \App\Models\InternshipStatusHistory::create([
+                'internship_id' => $internship->id,
+                'from_status' => 'pending_placement',
+                'to_status' => 'active',
+                'reason' => 'Authorized deployment / placement by coordinator.',
+                'changed_by' => $request->user()->id,
+            ]);
+        });
 
         Notification::notify(
             $internship->student_id,
             'placement_assigned',
             'Internship Placement Assigned',
             'You have been officially deployed. You may now start logging your hours.',
-            '/student/dashboard'
+            '/student/dashboard',
+            ['internship_id' => $internship->id]
         );
 
         audit_log($request->user()->id, 'assign_placement', ['internship_id' => $internship->id]);
 
-        return response()->json(['message' => 'Placement assigned successfully.', 'internship' => $internship]);
+        return response()->json([
+            'message' => 'Placement assigned successfully.',
+            'internship' => $internship->fresh(),
+        ]);
     }
 
     /** GET /api/v1/coordinator/absorption — completed internships needing / with outcomes */
     public function absorptionList(Request $request)
     {
-        $items = Internship::where('status', 'completed')
+        $perPage = min(100, max(10, (int) $request->query('per_page', 50)));
+
+        $paginator = Internship::where('status', 'completed')
+            ->where('coordinator_id', $request->user()->id)
             ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile'])
             ->orderByDesc('end_date')
-            ->get();
+            ->paginate($perPage);
 
-        return response()->json(['internships' => $items]);
+        return response()->json([
+            'internships' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
+            ],
+        ]);
     }
 
     /** PATCH /api/v1/coordinator/internships/{id}/absorption */
@@ -591,6 +597,33 @@ class CoordinatorController extends Controller
         ]);
 
         return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
+    }
+
+    /** GET /api/v1/coordinator/reports/overview — lightweight owned-internship stats */
+    public function reportsOverview(Request $request)
+    {
+        $coordId = $request->user()->id;
+
+        $owned = Internship::where('coordinator_id', $coordId);
+
+        $countsByStatus = (clone $owned)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $totalStudents = (clone $owned)->distinct()->count('student_id');
+
+        $pendingDocs = Document::query()
+            ->whereIn('status', ['pending_review', 'resubmitted', 'under_review'])
+            ->whereHas('internship', fn ($q) => $q->where('coordinator_id', $coordId))
+            ->count();
+
+        return response()->json([
+            'counts_by_status' => $countsByStatus,
+            'total_students'   => $totalStudents,
+            'pending_docs'     => $pendingDocs,
+            'generated_at'     => now()->toDateTimeString(),
+        ]);
     }
 
     /** GET /api/v1/coordinator/reports/student-summary */
@@ -644,12 +677,8 @@ class CoordinatorController extends Controller
         $this->applyReportFilters($query, $request);
         $internships = $query->get();
 
-        $requiredTypes = [
-            'Endorsement Letter', 'Application Form', 'MOA Document',
-            'Acceptance Letter', 'Medical Certificate', 'Parent Consent',
-            'Training Plan', 'Midterm Evaluation', 'Final Report',
-        ];
-        $requiredCount = count($requiredTypes);
+        $requiredTypes = \App\Support\RequiredDocuments::types();
+        $requiredCount = \App\Support\RequiredDocuments::count();
 
         $rows = $internships->map(fn($i) => [
             'student_name'    => trim(optional($i->student?->studentProfile)->first_name . ' ' . optional($i->student?->studentProfile)->last_name),

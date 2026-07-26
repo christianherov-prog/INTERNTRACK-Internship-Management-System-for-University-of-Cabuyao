@@ -18,13 +18,13 @@ return new class extends Migration {
             $table->string('email')->nullable();
             $table->string('contact_number')->nullable();
             $table->date('birthday')->nullable();
-            $table->enum('sex', ['Male', 'Female', 'Other'])->nullable();
+            $table->enum('sex', ['Male', 'Female'])->nullable()->comment('Official sex from iEnroll');
             $table->string('program')->nullable()->comment('e.g. BS Information Technology');
             $table->string('college')->nullable();
             $table->string('department')->nullable();
             $table->string('course_name')->nullable();
             $table->tinyInteger('year_level')->nullable();
-            $table->string('section')->nullable()->comment('e.g. 4-D');
+            $table->string('section')->nullable()->comment('UC section code e.g. 4ITA, 4ITB, 4ITC, 4ITD');
             $table->string('academic_year')->nullable()->comment('e.g. 2024-2025');
             $table->tinyInteger('semester')->nullable()->comment('1 or 2');
             $table->string('enrollment_status')->nullable()->comment('e.g. Enrolled, Irregular');

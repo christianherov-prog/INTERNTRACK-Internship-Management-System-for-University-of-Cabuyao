@@ -3,7 +3,7 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapGroups } from '../../utils/apiList'
-import { CURRENT_TERM } from '../../config/term'
+import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 
 const COMPETENCIES = [
   { key: 'technical_skills', label: 'Technical Skills' },
@@ -32,9 +32,21 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
   const [period, setPeriod] = useState('midterm')
   const [scores, setScores] = useState({})
   const [comments, setComments] = useState('')
+
   const setScore = (key, val) => setScores((prev) => ({ ...prev, [key]: val }))
   const allFilled = COMPETENCIES.every((c) => scores[c.key])
+  const canSubmit = allFilled
   const name = displayName(internship)
+
+  const handleLocalSubmit = async () => {
+    if (!canSubmit || processing) return
+
+    const fd = new FormData()
+    fd.append('evaluation_period', period)
+    COMPETENCIES.forEach((c) => fd.append(c.key, String(scores[c.key])))
+    if (comments.trim()) fd.append('general_comments', comments.trim())
+    onSubmit(internship.id, fd, period)
+  }
 
   return (
     <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -103,7 +115,7 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
                 {(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length).toFixed(2)} / 5.00
               </div>
             )}
-            <div>
+            <div className="mb-3">
               <label className="form-label fw-semibold">General Comments</label>
               <textarea
                 className="form-control"
@@ -119,8 +131,8 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
             <button
               type="button"
               className="btn btn-warning text-white"
-              onClick={() => onSubmit(internship.id, period, scores, comments)}
-              disabled={processing || !allFilled}
+              onClick={handleLocalSubmit}
+              disabled={processing || !canSubmit}
             >
               <i className={`fa fa-${processing ? 'spinner fa-spin' : 'paper-plane'} me-2`}></i>
               Submit Evaluation
@@ -133,6 +145,7 @@ function EvalModal({ internship, onClose, onSubmit, processing }) {
 }
 
 function SupervisorPerformanceEvaluation() {
+  const currentTerm = useCurrentTerm()
   const [groups, setGroups] = useState({ pending: [], completed: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -154,15 +167,11 @@ function SupervisorPerformanceEvaluation() {
 
   useEffect(() => { fetchData() }, [])
 
-  const handleSubmit = async (internshipId, period, scores, comments) => {
+  const handleSubmit = async (internshipId, formData, period) => {
     setProcessing(true)
     setMessage(null)
     try {
-      await api.post(`/supervisor/evaluations/${internshipId}`, {
-        evaluation_period: period,
-        general_comments: comments,
-        ...scores,
-      })
+      await api.post(`/supervisor/evaluations/${internshipId}`, formData)
       setMessage({
         type: 'success',
         text: `${period.charAt(0).toUpperCase() + period.slice(1)} evaluation submitted successfully.`,
@@ -179,7 +188,7 @@ function SupervisorPerformanceEvaluation() {
   const { pending, completed } = groups
 
   return (
-    <Layout title="Evaluations" subtitle={CURRENT_TERM} icon="fa-star" bodyClass="supervisor-page">
+    <Layout title="Evaluations" subtitle={currentTerm} icon="fa-star" bodyClass="supervisor-page">
       {error && <PageError message={error} onRetry={fetchData} />}
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible mb-3`}>

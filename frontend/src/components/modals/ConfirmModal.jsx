@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import ModalPortal from './ModalPortal'
 
 /**
  * Shared themed confirmation dialog (replaces window.confirm across roles).
@@ -79,58 +80,60 @@ function ConfirmModal({
     variant === 'danger' ? 'it-confirm-btn it-confirm-btn-danger' : 'it-confirm-btn it-confirm-btn-danger'
 
   return (
-    <div className="it-confirm-overlay" role="presentation" onClick={handleBackdropClick}>
-      <div
-        ref={dialogRef}
-        className="it-confirm-modal"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-      >
-        <div className="it-confirm-icon" aria-hidden="true">
-          <i className={`fa ${variant === 'danger' ? 'fa-exclamation-triangle' : 'fa-question-circle'}`} />
-        </div>
-        <h3 id={titleId} className="it-confirm-title">{title}</h3>
-        {message && (
-          <p id={descId} className="it-confirm-sub">{message}</p>
-        )}
-
-        {error && (
-          <div className="it-confirm-error" role="alert">
-            <i className="fa fa-exclamation-circle" aria-hidden="true" />
-            <span>{error}</span>
+    <ModalPortal>
+      <div className="it-confirm-overlay" role="presentation" onClick={handleBackdropClick}>
+        <div
+          ref={dialogRef}
+          className="it-confirm-modal"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={descId}
+        >
+          <div className="it-confirm-icon" aria-hidden="true">
+            <i className={`fa ${variant === 'danger' ? 'fa-exclamation-triangle' : 'fa-question-circle'}`} />
           </div>
-        )}
+          <h3 id={titleId} className="it-confirm-title">{title}</h3>
+          {message && (
+            <p id={descId} className="it-confirm-sub">{message}</p>
+          )}
 
-        <div className="it-confirm-actions">
-          <button
-            ref={cancelRef}
-            type="button"
-            className="it-confirm-btn it-confirm-btn-cancel"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className={confirmClass}
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <i className="fa fa-spinner fa-spin" aria-hidden="true" />
-                Working…
-              </>
-            ) : (
-              confirmLabel
-            )}
-          </button>
+          {error && (
+            <div className="it-confirm-error" role="alert">
+              <i className="fa fa-exclamation-circle" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="it-confirm-actions">
+            <button
+              ref={cancelRef}
+              type="button"
+              className="it-confirm-btn it-confirm-btn-cancel"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              {cancelLabel}
+            </button>
+            <button
+              type="button"
+              className={confirmClass}
+              onClick={onConfirm}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <i className="fa fa-spinner fa-spin" aria-hidden="true" />
+                  Working…
+                </>
+              ) : (
+                confirmLabel
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }
 

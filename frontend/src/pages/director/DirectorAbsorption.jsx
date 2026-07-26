@@ -25,6 +25,53 @@ function DirectorAbsorption() {
   const a = absorption ?? {}
   const byCompany = a.by_company ?? []
 
+  const stats = [
+    {
+      key: 'completed',
+      label: 'Completed',
+      value: a.completed_internships ?? 0,
+      icon: 'fa-graduation-cap',
+      tone: 'teal',
+    },
+    {
+      key: 'absorbed',
+      label: 'Absorbed',
+      value: a.absorbed ?? 0,
+      icon: 'fa-user-check',
+      tone: 'green',
+      valueClass: 'text-success',
+    },
+    {
+      key: 'not_hired',
+      label: 'Not Hired',
+      value: a.not_hired ?? 0,
+      icon: 'fa-user-xmark',
+      tone: 'red',
+      valueClass: 'text-danger',
+    },
+    {
+      key: 'rate',
+      label: 'Absorption Rate',
+      value: a.absorption_rate != null ? `${a.absorption_rate}%` : '—',
+      icon: 'fa-chart-pie',
+      tone: 'amber',
+    },
+    {
+      key: 'pending',
+      label: 'Pending confirmation',
+      value: a.pending ?? 0,
+      icon: 'fa-clock',
+      tone: 'amber',
+    },
+    {
+      key: 'declarations',
+      label: 'Student hire declarations',
+      value: a.student_declarations ?? 0,
+      icon: 'fa-file-signature',
+      tone: 'blue',
+    },
+  ]
+
   return (
     <Layout title="Absorption" subtitle="Hire outcomes across completed internships" icon="fa-user-check" bodyClass="director-page">
       {error && <PageError message={error} onRetry={load} />}
@@ -34,47 +81,31 @@ function DirectorAbsorption() {
       ) : !error && (
         <>
           <div className="row g-3 mb-4">
-            <div className="col-md-3 col-6">
-              <div className="content-card p-3 text-center h-100">
-                <div className="text-muted small">Completed</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{a.completed_internships ?? 0}</div>
-              </div>
-            </div>
-            <div className="col-md-3 col-6">
-              <div className="content-card p-3 text-center h-100">
-                <div className="text-muted small">Absorbed</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#16a34a' }}>{a.absorbed ?? 0}</div>
-              </div>
-            </div>
-            <div className="col-md-3 col-6">
-              <div className="content-card p-3 text-center h-100">
-                <div className="text-muted small">Not Hired</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#dc2626' }}>{a.not_hired ?? 0}</div>
-              </div>
-            </div>
-            <div className="col-md-3 col-6">
-              <div className="content-card p-3 text-center h-100">
-                <div className="text-muted small">Absorption Rate</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>
-                  {a.absorption_rate != null ? `${a.absorption_rate}%` : '—'}
+            {stats.slice(0, 4).map((s) => (
+              <div className="col-sm-6 col-xl-3" key={s.key}>
+                <div className="stat-card dir-absorption-stat h-100">
+                  <div className={`stat-icon ${s.tone}`}><i className={`fa ${s.icon}`} aria-hidden="true" /></div>
+                  <div>
+                    <div className={`stat-value ${s.valueClass || ''}`.trim()}>{s.value}</div>
+                    <div className="stat-label">{s.label}</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
 
           <div className="row g-3 mb-4">
-            <div className="col-md-6">
-              <div className="content-card p-3">
-                <div className="text-muted small mb-1">Pending confirmation</div>
-                <div className="fw-semibold" style={{ fontSize: '1.25rem' }}>{a.pending ?? 0}</div>
+            {stats.slice(4).map((s) => (
+              <div className="col-md-6" key={s.key}>
+                <div className="stat-card dir-absorption-stat h-100">
+                  <div className={`stat-icon ${s.tone}`}><i className={`fa ${s.icon}`} aria-hidden="true" /></div>
+                  <div>
+                    <div className={`stat-value ${s.valueClass || ''}`.trim()}>{s.value}</div>
+                    <div className="stat-label">{s.label}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="col-md-6">
-              <div className="content-card p-3">
-                <div className="text-muted small mb-1">Student hire declarations</div>
-                <div className="fw-semibold" style={{ fontSize: '1.25rem' }}>{a.student_declarations ?? 0}</div>
-              </div>
-            </div>
+            ))}
           </div>
 
           <div className="content-card">
@@ -102,9 +133,9 @@ function DirectorAbsorption() {
                       <tr key={row.company}>
                         <td className="fw-semibold">{row.company}</td>
                         <td>{row.completed}</td>
-                        <td><span className="badge bg-success">{row.absorbed}</span></td>
-                        <td><span className="badge bg-danger">{row.not_hired}</span></td>
-                        <td><span className="badge bg-warning text-dark">{row.pending}</span></td>
+                        <td><span className="badge bg-success rounded-pill">{row.absorbed}</span></td>
+                        <td><span className="badge bg-danger rounded-pill">{row.not_hired}</span></td>
+                        <td><span className="badge bg-warning text-dark rounded-pill">{row.pending}</span></td>
                         <td>{row.rate != null ? `${row.rate}%` : '—'}</td>
                       </tr>
                     ))}

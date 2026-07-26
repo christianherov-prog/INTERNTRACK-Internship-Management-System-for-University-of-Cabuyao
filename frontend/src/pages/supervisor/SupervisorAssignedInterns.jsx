@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
+import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { DEFAULT_TARGET_HOURS } from '../../config/hours'
@@ -50,10 +51,11 @@ function SupervisorAssignedInterns() {
           {loading ? (
             <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
           ) : interns.length === 0 ? (
-            <div className="text-center py-5 text-muted">
-              <i className="fa fa-user-slash fa-3x mb-3 d-block"></i>
-              No students assigned yet. A student invite + coordinator approval is required.
-            </div>
+            <EmptyState
+              icon="fa-user-slash"
+              title="No students assigned yet"
+              message="A student invite plus coordinator approval is required before interns appear here."
+            />
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">

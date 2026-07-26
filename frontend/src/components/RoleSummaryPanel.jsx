@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../services/api'
 import DashboardHeroBanner from './DashboardHeroBanner'
+import { formatYearSection } from '../utils/formatSection'
 
 /** Role-specific metric tiles rendered under the shared hero banner. */
 const ROLE_METRICS = {
@@ -52,7 +53,7 @@ function formatInternshipStatus(status) {
 
 /**
  * Fetches GET /dashboard/summary and renders the shared hero + role metrics.
- * Used on Director, Coordinator, Faculty, and Supervisor dashboards.
+ * Used on Director, Coordinator, Faculty, Supervisor, and MISD Admin dashboards.
  */
 function RoleSummaryPanel({ showMetrics = true }) {
   const [summary, setSummary] = useState(null)
@@ -95,12 +96,25 @@ function RoleSummaryPanel({ showMetrics = true }) {
 
     if (role === 'student') {
       meta = [
-        summary.section,
+        formatYearSection(summary.section, summary.year_level),
         summary.student_number ? `Student No. ${summary.student_number}` : null,
         summary.company_name || 'No company assigned',
       ]
       badges = [
         { text: formatInternshipStatus(summary.internship_status), variant: 'ongoing' },
+        { text: summary.current_term || '—', variant: 'term' },
+      ]
+    } else if (role === 'admin') {
+      // MISD Admin: office / employee ID / position (staff-style, not student fields).
+      meta = [
+        summary.position || summary.role_label,
+        summary.employee_number
+          ? `Employee No. ${summary.employee_number}`
+          : (summary.username ? `ID ${summary.username}` : null),
+        summary.office || 'MISD',
+      ]
+      badges = [
+        { text: summary.security_status || 'Standard', variant: 'ongoing' },
         { text: summary.current_term || '—', variant: 'term' },
       ]
     } else {

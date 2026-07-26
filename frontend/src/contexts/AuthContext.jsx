@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../services/api'
 import { withAvatarCacheBust } from '../utils/avatar'
+import { disconnectEcho } from '../services/echo'
 
 const AuthContext = createContext()
 
@@ -15,19 +16,38 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
 
-  // ── Restore session on page reload ──────────────────────────────────────────
+  // ── Restore session on page reload — revalidate via GET /auth/user ──────────
   useEffect(() => {
-    const token       = sessionStorage.getItem('interntrack_token')
-    const storedUser  = sessionStorage.getItem('interntrack_session')
+    const token = sessionStorage.getItem('interntrack_token')
 
-    if (token && storedUser) {
+    if (!token) {
+      setLoading(false)
+      return
+    }
+
+    // Optimistic paint from cache while the token is verified.
+    const storedUser = sessionStorage.getItem('interntrack_session')
+    if (storedUser) {
       try {
         setUser(JSON.parse(storedUser))
       } catch {
-        sessionStorage.clear()
+        sessionStorage.removeItem('interntrack_session')
       }
     }
-    setLoading(false)
+
+    api.get('/auth/user')
+      .then(({ data }) => {
+        setUser(data.user)
+        sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
+      })
+      .catch((err) => {
+        if (err.response?.status === 401) {
+          setUser(null)
+          sessionStorage.removeItem('interntrack_token')
+          sessionStorage.removeItem('interntrack_session')
+        }
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   // ── Login: authenticate against Laravel Sanctum API ─────────────────────────
@@ -58,22 +78,25 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const clearSession = () => {
+    disconnectEcho()
+    setUser(null)
+    sessionStorage.removeItem('interntrack_token')
+    sessionStorage.removeItem('interntrack_session')
+  }
+
   // ── Logout: revoke Sanctum token, then clear local session ──────────────────
   // Only clears frontend auth after the API succeeds (or the token is already 401).
   // Network / 5xx failures leave the session intact so a still-valid token isn't orphaned.
   const logout = async () => {
     try {
       await api.post('/auth/logout')
-      setUser(null)
-      sessionStorage.removeItem('interntrack_token')
-      sessionStorage.removeItem('interntrack_session')
+      clearSession()
       return { success: true }
     } catch (err) {
       // Token already invalid/revoked — safe to clear local state.
       if (err.response?.status === 401) {
-        setUser(null)
-        sessionStorage.removeItem('interntrack_token')
-        sessionStorage.removeItem('interntrack_session')
+        clearSession()
         return { success: true }
       }
 

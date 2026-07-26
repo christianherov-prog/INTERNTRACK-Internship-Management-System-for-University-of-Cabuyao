@@ -1,11 +1,42 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+﻿import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
+import QuickActionsPanel from '../../components/QuickActionsPanel'
 import PageError from '../../components/PageError'
 import { AnnouncementAttachmentView } from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
+
+const FACULTY_QUICK_ACTIONS = [
+  {
+    to: '/faculty/assigned-students',
+    title: 'View Assigned Students',
+    description: 'See progress and status of all your students',
+    icon: 'fa-users',
+    tone: 'blue',
+  },
+  {
+    to: '/faculty/journals',
+    title: 'Review Weekly Journals',
+    description: 'Read and approve student narrative reports',
+    icon: 'fa-book-open',
+    tone: 'green',
+  },
+  {
+    to: '/faculty/evaluations',
+    title: 'Submit Evaluations',
+    description: 'Midterm and final performance evaluations',
+    icon: 'fa-star',
+    tone: 'amber',
+  },
+  {
+    to: '/faculty/feedback',
+    title: 'Give Feedback',
+    description: 'Send remarks and guidance to students',
+    icon: 'fa-comment-dots',
+    tone: 'gray',
+  },
+]
 
 function FacultyDashboard() {
   const [data, setData]       = useState(null)
@@ -48,61 +79,8 @@ function FacultyDashboard() {
       ) : !error && (
         <>
           <div className="row">
-            {/* Quick Actions Panel */}
             <div className="col-lg-6 mb-4">
-              <div className="content-card h-100">
-                <div className="content-card-header bg-light">
-                  <i className="fa fa-bolt"></i>
-                  <h6 className="mb-0">Quick Actions</h6>
-                </div>
-                <div className="p-4">
-                  <div className="d-grid gap-3">
-                    <Link to="/faculty/assigned-students" className="btn btn-outline-primary text-start p-3 d-flex align-items-center">
-                      <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '40px', height: '40px' }}>
-                        <i className="fa fa-users"></i>
-                      </div>
-                      <div>
-                        <h6 className="mb-1 fw-bold">View Assigned Students</h6>
-                        <small className="text-muted">See progress and status of all your students</small>
-                      </div>
-                      <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                    </Link>
-
-                    <Link to="/faculty/journals" className="btn btn-outline-success text-start p-3 d-flex align-items-center">
-                      <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '40px', height: '40px' }}>
-                        <i className="fa fa-book-open"></i>
-                      </div>
-                      <div>
-                        <h6 className="mb-1 fw-bold">Review Weekly Journals</h6>
-                        <small className="text-muted">Read and approve student narrative reports</small>
-                      </div>
-                      <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                    </Link>
-
-                    <Link to="/faculty/evaluations" className="btn btn-outline-warning text-start p-3 d-flex align-items-center">
-                      <div className="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '40px', height: '40px' }}>
-                        <i className="fa fa-star"></i>
-                      </div>
-                      <div>
-                        <h6 className="mb-1 fw-bold">Submit Evaluations</h6>
-                        <small className="text-muted">Midterm and final performance evaluations</small>
-                      </div>
-                      <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                    </Link>
-
-                    <Link to="/faculty/feedback" className="btn btn-outline-secondary text-start p-3 d-flex align-items-center">
-                      <div className="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '40px', height: '40px' }}>
-                        <i className="fa fa-comment-dots"></i>
-                      </div>
-                      <div>
-                        <h6 className="mb-1 fw-bold">Give Feedback</h6>
-                        <small className="text-muted">Send remarks and guidance to students</small>
-                      </div>
-                      <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              <QuickActionsPanel actions={FACULTY_QUICK_ACTIONS} />
             </div>
 
             {/* Recent Activity Panel */}
