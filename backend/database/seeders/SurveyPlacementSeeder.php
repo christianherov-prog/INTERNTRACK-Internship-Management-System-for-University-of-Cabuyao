@@ -69,7 +69,7 @@ class SurveyPlacementSeeder extends Seeder
         $company = Company::where('moa_status', 'active')->orderBy('id')->first()
             ?? Company::orderBy('id')->first();
 
-        $studentUsernames = ['2300600', '2300592'];
+        $studentUsernames = [];
 
         foreach ($studentUsernames as $username) {
             $student = User::where('username', $username)->where('role', 'student')->first();
@@ -86,9 +86,9 @@ class SurveyPlacementSeeder extends Seeder
             if (!$internship) {
                 $internship = Internship::create([
                     'student_id' => $student->id,
-                    'academic_year' => '2025-2026',
-                    'semester' => 2,
-                    'term' => 'AY 2025-2026, Sem 2',
+                    'school_year' => '2025-2026',
+                    'semester' => '2nd Semester',
+                    'term' => 'AY 2025-2026, 2nd Semester',
                     'program' => 'BS Information Technology',
                     'status' => 'active',
                     'target_hours' => config('interntrack.target_hours', 500),

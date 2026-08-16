@@ -57,7 +57,7 @@ class DirectorAbsorptionTest extends TestCase
     public function test_student_declare_notifies_director(): void
     {
         $director = User::factory()->role('director')->create([
-            'username' => 'DIR-NOTIFY',
+            'faculty_number' => 'DIR-NOTIFY',
             'password' => Hash::make('password'),
             'is_active' => true,
         ]);

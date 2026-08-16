@@ -15,8 +15,9 @@ class InternshipStatusTest extends TestCase
 
     private function createUser(string $role, string $username, string $email): User
     {
+        $field = $role === 'student' ? 'student_number' : 'faculty_number';
         return User::create([
-            'username'  => $username,
+            $field      => $username,
             'email'     => $email,
             'password'  => Hash::make('password123'),
             'role'      => $role,
@@ -29,7 +30,7 @@ class InternshipStatusTest extends TestCase
         return Internship::create([
             'student_id'     => $student->id,
             'coordinator_id' => $coordinator?->id,
-            'academic_year'  => '2024-2025',
+            'school_year'  => '2024-2025',
             'semester'       => 2,
             'term'           => 'AY 2024-2025, Sem 2',
             'status'         => 'active',

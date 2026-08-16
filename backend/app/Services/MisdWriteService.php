@@ -27,7 +27,7 @@ class MisdWriteService
      * @param  array{
      *   student_number: string,
      *   section: string,
-     *   faculty_employee_number: string,
+     *   faculty_number: string,
      *   academic_year?: string|null,
      *   semester?: int|null,
      *   updated_by?: string|null,
@@ -40,13 +40,13 @@ class MisdWriteService
     {
         $studentNumber = strtoupper(trim((string) ($payload['student_number'] ?? '')));
         $section = FacultySectionAssignmentService::normalizeSection($payload['section'] ?? null);
-        $facultyEmp = strtoupper(trim((string) ($payload['faculty_employee_number'] ?? '')));
+        $facultyEmp = strtoupper(trim((string) ($payload['faculty_number'] ?? '')));
         $actorId = $payload['actor_user_id'] ?? null;
 
         $request = [
             'student_number'            => $studentNumber,
             'section'                   => $section,
-            'faculty_employee_number'   => $facultyEmp,
+            'faculty_number'            => $facultyEmp,
             'academic_year'             => $payload['academic_year'] ?? null,
             'semester'                  => isset($payload['semester']) ? (int) $payload['semester'] : null,
             'updated_by'                => $payload['updated_by'] ?? null,
@@ -54,7 +54,7 @@ class MisdWriteService
         ];
 
         if ($studentNumber === '' || !$section || $facultyEmp === '') {
-            $this->logSync('push', 'student_assignment', $studentNumber ?: null, 'failed', $actorId, $request, null, 'Missing student_number, section, or faculty_employee_number');
+            $this->logSync('push', 'student_assignment', $studentNumber ?: null, 'failed', $actorId, $request, null, 'Missing student_number, section, or faculty_number');
 
             return ['ok' => false, 'error' => 'Incomplete MISD write payload.', 'http_status' => 422];
         }

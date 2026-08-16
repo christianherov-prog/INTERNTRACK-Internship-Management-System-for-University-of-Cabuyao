@@ -1,8 +1,9 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 
 const STATUS_MAP = {
   submitted:      { cls: 'badge-pending',  label: 'Submitted' },
@@ -14,6 +15,7 @@ const STATUS_MAP = {
 const EMPTY_FORM = {
   week_number:        '',
   date:               '',
+  end_date:           '',
   activities_summary: '',   // ACCOMPLISHMENT
   challenges:         '',   // DIFFICULTIES ENCOUNTERED
   learnings:          '',   // NEW LEARNING / INSIGHTS
@@ -30,6 +32,7 @@ function StudentLogbook() {
   const [showForm, setShowForm]       = useState(false)
   const [editEntry, setEditEntry]     = useState(null) // journal entry being edited
   const [form, setForm]               = useState(EMPTY_FORM)
+  const [previewModal, setPreviewModal] = useState(null)
 
   const fetchJournals = () => {
     setLoading(true)
@@ -45,7 +48,7 @@ function StudentLogbook() {
 
   useEffect(() => { fetchJournals() }, [])
 
-  // â”€â”€ Form helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Form helpers ──────────────────────────────────────────────────────────
 
   const openNewEntry = () => {
     setForm(EMPTY_FORM)
@@ -58,6 +61,7 @@ function StudentLogbook() {
     setForm({
       week_number:        j.week_number ?? '',
       date:               j.date ?? '',
+      end_date:           j.end_date ?? '',
       activities_summary: j.activities_summary ?? '',
       challenges:         j.challenges ?? '',
       learnings:          j.learnings ?? '',
@@ -94,29 +98,26 @@ function StudentLogbook() {
     }
   }
 
-  // â”€â”€ PDF Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PDF Generation ────────────────────────────────────────────────────────
 
-  const generatePdf = async (weekNumber, internshipId) => {
-    setGenerating(weekNumber)
-    try {
-      const resp = await api.get('/student/journal/generate', {
-        params: { internship_id: internshipId, week_number: weekNumber },
-        responseType: 'blob',
-      })
-      const url  = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
-      const link = document.createElement('a')
-      link.href  = url
-      link.download = `Journal_Week${weekNumber}.pdf`
-      link.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      setMessage({ type: 'danger', text: 'Failed to generate PDF. Please try again.' })
-    } finally {
-      setGenerating(null)
-    }
+  const handlePreviewJournal = (j) => {
+    setPreviewModal({
+      type: 'journal',
+      data: {
+        studentName: j.student_name,
+        program: j.program,
+        companyName: j.company_name,
+        weekNumber: j.week_number ?? j.entry_number,
+        date: j.date,
+        endDate: j.end_date,
+        accomplishment: j.activities_summary,
+        difficulties: j.challenges,
+        insights: j.learnings,
+      }
+    })
   }
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   const statusBadge = (s) => {
     const { cls, label } = STATUS_MAP[s] ?? { cls: 'badge-pending', label: s }
@@ -138,14 +139,21 @@ function StudentLogbook() {
         </div>
       )}
 
+      <FormPreviewModal
+        isOpen={!!previewModal}
+        onClose={() => setPreviewModal(null)}
+        type={previewModal?.type}
+        data={previewModal?.data || {}}
+      />
+
       {/* Action bar */}
       <div className="d-flex justify-content-end align-items-center mb-4 gap-3 flex-wrap">
-        <button className="btn btn-green" onClick={openNewEntry}>
+        <button className="btn btn-primary" onClick={openNewEntry}>
           <i className="fa fa-plus me-2"></i>New Journal Entry
         </button>
       </div>
 
-      {/* â”€â”€ Entry Form â”€â”€ */}
+      {/* ── Entry Form ── */}
       {showForm && (
         <div className="content-card mb-4">
           <div className="content-card-header">
@@ -166,12 +174,19 @@ function StudentLogbook() {
               </div>
               <div className="col-md-9">
                 <label className="form-label fw-semibold">
-                  Week Date <span className="text-danger">*</span>
+                  Week Date Range <span className="text-danger">*</span>
                 </label>
-                <input
-                  type="date" name="date" className="form-control"
-                  value={form.date} onChange={handleChange} required
-                />
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="date" name="date" className="form-control"
+                    value={form.date} onChange={handleChange} required
+                  />
+                  <span className="text-muted">to</span>
+                  <input
+                    type="date" name="end_date" className="form-control"
+                    value={form.end_date} onChange={handleChange} required
+                  />
+                </div>
               </div>
             </div>
 
@@ -240,7 +255,7 @@ function StudentLogbook() {
         </div>
       )}
 
-      {/* â”€â”€ Journal List â”€â”€ */}
+      {/* ── Journal List ── */}
       <div className="content-card">
         <div className="content-card-header">
           <i className="fa fa-list-ul"></i>
@@ -319,12 +334,10 @@ function StudentLogbook() {
                     </button>
                     <button
                       className="btn btn-sm btn-outline-danger"
-                      onClick={() => generatePdf(j.week_number, j.internship_id)}
-                      disabled={generating === j.week_number}
-                      title="Generate Form 31 PDF"
+                      onClick={() => handlePreviewJournal(j)}
+                      title="Preview Journal Form"
                     >
-                      <i className={`fa fa-${generating === j.week_number ? 'spinner fa-spin' : 'file-pdf'} me-1`}></i>
-                      {generating === j.week_number ? 'Generating…' : 'PDF (FO-31)'}
+                      <i className="fa fa-eye me-1"></i>Preview
                     </button>
                   </div>
                 </div>

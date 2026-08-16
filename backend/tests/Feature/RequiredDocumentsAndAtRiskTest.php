@@ -16,6 +16,18 @@ class RequiredDocumentsAndAtRiskTest extends TestCase
 
     public function test_required_documents_total_is_thirteen(): void
     {
+        for ($i = 1; $i <= 13; $i++) {
+            \App\Models\OjtRequirementTemplate::create([
+                'name' => "Doc $i",
+                'type' => 'document',
+                'description' => "Doc $i desc",
+                'sort_order' => $i,
+            ]);
+        }
+        
+        // Clear cache so it reads from DB
+        \Illuminate\Support\Facades\Cache::forget('ojt_requirements_types');
+
         $this->assertSame(13, RequiredDocuments::count());
         $this->assertCount(13, RequiredDocuments::types());
     }
@@ -30,6 +42,20 @@ class RequiredDocumentsAndAtRiskTest extends TestCase
         $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
 
         Sanctum::actingAs($student);
+
+        \Illuminate\Support\Facades\Cache::forget('ojt_requirements_types');
+
+        for ($i = 1; $i <= 13; $i++) {
+            $template = \App\Models\OjtRequirementTemplate::create([
+                'name' => "Doc $i",
+                'type' => 'document',
+                'description' => "Doc $i",
+                'sort_order' => $i,
+            ]);
+            $template->targets()->create(['target_type' => 'program', 'target_id' => 'BSIT']);
+        }
+        
+        \Illuminate\Support\Facades\Cache::forget('ojt_requirements_types');
 
         $this->getJson('/api/v1/student/documents')
             ->assertOk()

@@ -1,17 +1,21 @@
 import RoleSettings from '../../components/RoleSettings'
+import SignatureUpload from '../../components/SignatureUpload'
 
 function SupervisorSettings() {
   return (
     <RoleSettings
       bodyClass="supervisor-page"
       subtitleLabel="Supervisor"
-      summaryNote="Keep your company contact details updated so interns and the university coordinator can reach you for attendance and evaluations. Supervisors are not in iEnroll, so you manage your own profile here."
-      accountIntro="Manage your HTE supervisor profile details used across intern monitoring and evaluations."
       notificationsIntro="Choose which intern-monitoring alerts you want to receive at your host training establishment."
       securityIntro="Update your password and strengthen account protection for your supervisor credentials."
       metaFields={[
-        { label: 'Host Company', key: 'company', fallback: 'Not assigned' },
-        { label: 'Position', key: 'position', fallback: 'Company Supervisor' },
+        { label: 'Host Company', key: 'company', fallback: 'Host Training Establishment' },
+        { label: 'Job Position', key: 'position', fallback: 'Company Supervisor' },
+        { label: 'Account Role', fallback: 'Industry Supervisor', value: () => 'Industry Supervisor' },
+        { label: 'Supervision Scope', fallback: 'HTE Practicum Program', value: () => 'HTE Practicum Program' },
+        { label: 'Official Email', key: 'email', fallback: '—' },
+        { label: 'Contact Number', key: 'contact', fallback: '—' },
+        { label: 'Account Status', fallback: 'Active HTE Partner', value: () => 'Active HTE Partner' },
         { label: 'Internship Term', key: 'term', fallback: 'AY 2025-2026, Sem 2' },
       ]}
       accountExtraFields={[
@@ -22,7 +26,6 @@ function SupervisorSettings() {
           type: 'select',
           options: ['Male', 'Female'],
           readOnly: false,
-          helperText: 'Required for industry supervisors (not in iEnroll).',
         },
       ]}
       defaultNotifications={{
@@ -47,7 +50,9 @@ function SupervisorSettings() {
           description: 'Reminders when midterm or final HTE evaluations are approaching.',
         },
       ]}
-    />
+    >
+      <SignatureUpload />
+    </RoleSettings>
   )
 }
 

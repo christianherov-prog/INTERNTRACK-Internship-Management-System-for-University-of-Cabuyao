@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { downloadCsv } from '../../utils/csv'
 
 /**
  * ReportExportModal
- * Reusable modal for previewing live report data before exporting to CSV.
+ * Reusable modal component for previewing live report data before exporting to CSV.
+ * Ensures all roles and reports share the exact same UI and preview pattern.
  *
  * Props:
  *   preview: { title?: string, filename: string, rows: Array<Object> } | null
@@ -30,8 +30,6 @@ function ReportExportModal({ preview, onClose }) {
   const filename = preview.filename || 'report-export'
   const title = preview.title || 'CSV Export Preview'
   const columns = rows.length > 0 ? Object.keys(rows[0]) : []
-  const downloadName = filename.endsWith('.csv') ? filename : `${filename}.csv`
-  const needsHorizontalScroll = columns.length > 4
 
   const handleConfirmDownload = () => {
     downloadCsv(filename, rows)
@@ -44,20 +42,28 @@ function ReportExportModal({ preview, onClose }) {
     }
   }
 
-  return createPortal(
+  return (
     <div
-      className="modal fade show d-block report-export-modal"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)', zIndex: 1060 }}
+      className="modal fade show d-flex align-items-center justify-content-center"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        zIndex: 10050,
+      }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="report-export-modal-title"
       onClick={handleBackdropClick}
     >
-      <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable report-export-dialog">
-        <div className="modal-content shadow-lg border-0">
+      <div className="modal-dialog modal-xl modal-dialog-scrollable w-100 m-3" style={{ pointerEvents: 'auto', maxWidth: '1140px' }}>
+        <div className="modal-content shadow-lg border-0" style={{ maxWidth: 'none', width: '100%' }}>
           <div className="modal-header bg-light py-3">
-            <h5 id="report-export-modal-title" className="modal-title d-flex align-items-center mb-0">
-              <i className="fa fa-file-csv text-success me-2" aria-hidden="true" />
+            <h5 className="modal-title d-flex align-items-center mb-0">
+              <i className="fa fa-file-csv text-success me-2"></i>
               <span>{title}</span>
             </h5>
             <button
@@ -65,62 +71,50 @@ function ReportExportModal({ preview, onClose }) {
               className="btn-close"
               onClick={onClose}
               aria-label="Close"
-            />
+            ></button>
           </div>
 
           <div className="modal-body p-4">
-            <div className="alert alert-interntrack py-2 px-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <small className="mb-0">
-                <i className="fa fa-info-circle me-1" aria-hidden="true" />
-                You are previewing the exact data (
-                <strong>{rows.length}</strong>{' '}
-                {rows.length === 1 ? 'row' : 'rows'}
-                ) that will be downloaded as <strong>{downloadName}</strong>.
+            <div className="alert alert-interntrack py-2 px-3 mb-3 d-flex flex-wrap justify-content-between align-items-center">
+              <small className="mb-1 mb-sm-0">
+                <i className="fa fa-info-circle me-1"></i>
+                You are previewing the exact data (<strong>{rows.length}</strong> {rows.length === 1 ? 'row' : 'rows'}) that will be downloaded as <strong>{filename.endsWith('.csv') ? filename : `${filename}.csv`}</strong>.
               </small>
               {columns.length > 0 && (
-                <span className="badge bg-success">{columns.length} Columns</span>
+                <span className="badge bg-success ms-auto">{columns.length} Columns</span>
               )}
             </div>
 
             {rows.length === 0 ? (
               <div className="text-center py-5 text-muted">
-                <i className="fa fa-folder-open fa-2x mb-2 d-block" aria-hidden="true" />
+                <i className="fa fa-folder-open fa-2x mb-2 d-block"></i>
                 No data rows available for this report export.
               </div>
             ) : (
-              <>
-                {needsHorizontalScroll && (
-                  <div className="report-export-scroll-hint" role="note">
-                    <i className="fa fa-arrows-alt-h" aria-hidden="true" />
-                    Scroll sideways to see all columns
-                    <span aria-hidden="true"> →</span>
-                  </div>
-                )}
-                <div className="report-export-table-wrap table-responsive border rounded">
-                  <table className="table table-sm table-hover table-striped table-bordered mb-0 report-export-table">
-                    <thead className="sticky-top">
-                      <tr>
-                        <th className="text-center report-export-rownum">#</th>
-                        {columns.map((col) => (
-                          <th key={col}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row, idx) => (
-                        <tr key={idx}>
-                          <td className="text-center text-muted fw-bold">{idx + 1}</td>
-                          {columns.map((col) => {
-                            const val = row[col]
-                            const displayVal = val !== null && val !== undefined ? String(val) : '—'
-                            return <td key={col}>{displayVal}</td>
-                          })}
-                        </tr>
+              <div className="table-responsive border rounded" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+                <table className="table table-sm table-hover table-striped table-bordered mb-0 text-nowrap" style={{ fontSize: '0.875rem' }}>
+                  <thead className="table-dark sticky-top" style={{ zIndex: 1 }}>
+                    <tr>
+                      <th className="text-center" style={{ width: '40px' }}>#</th>
+                      {columns.map((col) => (
+                        <th key={col}>{col}</th>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, idx) => (
+                      <tr key={idx}>
+                        <td className="text-center text-muted fw-bold">{idx + 1}</td>
+                        {columns.map((col) => {
+                          const val = row[col]
+                          const displayVal = val !== null && val !== undefined ? String(val) : '—'
+                          return <td key={col}>{displayVal}</td>
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
@@ -130,8 +124,7 @@ function ReportExportModal({ preview, onClose }) {
               className="btn btn-secondary btn-sm"
               onClick={onClose}
             >
-              <i className="fa fa-times me-1" aria-hidden="true" />
-              Cancel
+              <i className="fa fa-times me-1"></i>Cancel
             </button>
             <button
               type="button"
@@ -139,14 +132,12 @@ function ReportExportModal({ preview, onClose }) {
               onClick={handleConfirmDownload}
               disabled={rows.length === 0}
             >
-              <i className="fa fa-download me-1" aria-hidden="true" />
-              Confirm & Download CSV
+              <i className="fa fa-download me-1"></i>Confirm & Download CSV
             </button>
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }
 

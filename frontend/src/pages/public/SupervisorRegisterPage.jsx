@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '../../services/api'
 import { SUFFIX_OPTIONS, suffixToApi } from '../../utils/nameSuffix'
@@ -27,6 +27,7 @@ function SupervisorRegisterPage() {
     password: '',
     password_confirmation: '',
   })
+  const [acceptanceForms, setAcceptanceForms] = useState([])
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
@@ -59,11 +60,26 @@ function SupervisorRegisterPage() {
     setSubmitting(true)
     setErrors({})
     try {
-      const res = await api.post('/supervisor-register', {
-        ...form,
-        suffix: suffixToApi(form.suffix),
-        middle_name: form.middle_name?.trim() || null,
-        token,
+      const formData = new FormData()
+      Object.keys(form).forEach(key => {
+        let val = form[key]
+        if (key === 'suffix') {
+           val = suffixToApi ? suffixToApi(form.suffix) : form.suffix
+        } else if (key === 'middle_name') {
+           val = form.middle_name?.trim()
+        }
+        if (val != null) {
+           formData.append(key, val)
+        }
+      })
+      formData.append('token', token)
+      
+      acceptanceForms.forEach((file) => {
+        formData.append('acceptance_forms[]', file)
+      })
+
+      const res = await api.post('/supervisor-register', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       })
       setSuccess(res.data)
     } catch (err) {
@@ -120,10 +136,9 @@ function SupervisorRegisterPage() {
                     <i className="fa fa-user-graduate text-primary me-3 fa-lg"></i>
                     <div>
                       <small className="text-muted d-block">You are being invited by:</small>
-                      <strong>{context.student_name}</strong>
-                      <small className="text-muted ms-2">{context.program}</small>
-                      {context.term && <div className="text-muted small">Term: {context.term}</div>}
-                      {context.company_name && <div className="text-muted small">Company: {context.company_name}</div>}
+                      <strong>{context?.student_name}</strong>
+                      {context?.term && <div className="text-muted small">Term: {context?.term}</div>}
+                      {context?.company_name && <div className="text-muted small">Company: {context?.company_name}</div>}
                     </div>
                   </div>
                 </div>
@@ -158,7 +173,8 @@ function SupervisorRegisterPage() {
                         onChange={handleChange}
                       >
                         <option value="">N/A</option>
-                        {SUFFIX_OPTIONS.map(opt => (
+                        {/* Safely map SUFFIX_OPTIONS to prevent a crash if it's undefined */}
+                        {SUFFIX_OPTIONS?.map(opt => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
@@ -203,17 +219,31 @@ function SupervisorRegisterPage() {
                       value={form.company_id}
                       onChange={handleChange}
                       required
-                      disabled={!!context.company_locked}
+                      disabled={!!context?.company_locked}
                     >
                       <option value="">Select your company...</option>
-                      {context.companies?.map(c => (
+                      {context?.companies?.map(c => (
                         <option key={c.id} value={c.id}>{c.company_name}</option>
                       ))}
                     </select>
-                    {context.company_locked && (
+                    {context?.company_locked && (
                       <div className="form-text">Pre-filled from the student&apos;s placement — locked to that HTE.</div>
                     )}
                     {errors.company_id && <div className="invalid-feedback">{errors.company_id[0]}</div>}
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold">Acceptance Form (Proof of Placement) <span className="text-danger">*</span></label>
+                    <input 
+                      type="file" 
+                      className={`form-control ${errors.acceptance_forms ? 'is-invalid' : ''}`} 
+                      onChange={(e) => setAcceptanceForms(Array.from(e.target.files))} 
+                      multiple 
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      required
+                    />
+                    <div className="form-text">You can upload multiple files (PDF or images) as proof of the student's placement in your company.</div>
+                    {errors.acceptance_forms && <div className="invalid-feedback">{errors.acceptance_forms[0]}</div>}
                   </div>
 
                   <hr className="my-3" />
@@ -231,7 +261,7 @@ function SupervisorRegisterPage() {
                     </div>
                   </div>
 
-                  <button type="submit" className="btn btn-green w-100 py-2" disabled={submitting}>
+                  <button type="submit" className="btn btn-primary w-100 py-2" disabled={submitting}>
                     {submitting
                       ? <><i className="fa fa-spinner fa-spin me-2"></i>Submitting...</>
                       : <><i className="fa fa-paper-plane me-2"></i>Submit Registration</>

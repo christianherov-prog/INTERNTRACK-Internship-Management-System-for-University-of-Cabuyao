@@ -53,7 +53,7 @@ class DtrPdfController extends Controller
         $studentSignaturePath    = $this->getSignaturePath($student);
         $supervisorSignaturePath = $internship->supervisor ? $this->getSignaturePath($internship->supervisor) : null;
 
-        $pdf = Pdf::loadView('pdf.form30_dtr', [
+        return view('pdf.form30_dtr', [
             'internship'              => $internship,
             'studentProfile'          => $studentProfile,
             'supervisorProfile'       => $supervisorProfile,
@@ -63,11 +63,7 @@ class DtrPdfController extends Controller
             'month'                   => $startDate->format('F Y'),
             'studentSignature'        => $studentSignaturePath ? $this->signatureBase64($studentSignaturePath) : null,
             'supervisorSignature'     => $supervisorSignaturePath ? $this->signatureBase64($supervisorSignaturePath) : null,
-        ])->setPaper('letter', 'portrait');
-
-        $filename = 'DTR_' . ($studentProfile->student_number ?? $student->id) . '_' . $request->month . '.pdf';
-
-        return $pdf->download($filename);
+        ]);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

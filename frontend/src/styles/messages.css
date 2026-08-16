@@ -57,78 +57,19 @@
     min-height: 0;
   }
 
-  /* One pane at a time on phone/tablet — list OR thread */
-  .msg-inbox-grid:not(.has-active-thread) .msg-panel-thread {
-    display: none;
-  }
-
-  .msg-inbox-grid.has-active-thread .msg-panel-list {
-    display: none;
-  }
-
-  .msg-inbox-grid.has-active-thread .msg-panel-thread {
-    display: flex;
-    min-height: min(78vh, 640px);
-  }
-
   .msg-panel {
     min-height: min(70vh, 520px);
-  }
-
-  .msg-thread-back {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    flex: 0 0 auto;
-    min-width: 44px;
-    min-height: 40px;
-    padding: 0.35rem 0.7rem;
-    margin-right: 0.15rem;
-    border: 1px solid var(--border-soft, #d9e9de);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--green-dark, #0a5c2e);
-    font-size: 0.8rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .msg-thread-back:hover,
-  .msg-thread-back:focus-visible {
-    border-color: var(--green-main, #1a7a3f);
-    outline: none;
-  }
-
-  .msg-panel-header-thread .msg-thread-header-icon {
-    display: none;
-  }
-}
-
-@media (min-width: 992px) {
-  .msg-thread-back {
-    display: none;
   }
 }
 
 @media (max-width: 575.98px) {
   .msg-panel {
-    min-height: min(72vh, 560px);
+    min-height: min(62vh, 480px);
     border-radius: 10px;
   }
 
-  .msg-inbox-grid.has-active-thread .msg-panel-thread {
-    min-height: min(82vh, 680px);
-  }
-
   .msg-conv-list {
-    max-height: none;
-    flex: 1;
-  }
-
-  .msg-tab {
-    min-height: 40px;
-    padding: 0.45rem 1rem;
+    max-height: min(42vh, 360px);
   }
 }
 
@@ -284,7 +225,7 @@
   border-radius: 50%;
   background: linear-gradient(135deg, var(--green-dark, #0a5c2e), var(--green-mid, #2da058));
   color: #fff;
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -300,13 +241,26 @@
   display: block;
 }
 
+.msg-avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  user-select: none;
+}
+
 .msg-thread-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--green-dark, #0a5c2e), var(--green-mid, #2da058));
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;

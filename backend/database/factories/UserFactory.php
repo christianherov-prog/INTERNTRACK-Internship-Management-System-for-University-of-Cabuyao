@@ -16,10 +16,10 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'username' => strtoupper(fake()->unique()->bothify('USR-####')),
+            'student_number' => null,
+            'faculty_number' => null,
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
-            'role' => 'student',
             'is_active' => true,
             'notification_preferences' => null,
         ];
@@ -27,7 +27,14 @@ class UserFactory extends Factory
 
     public function role(string $role): static
     {
-        return $this->state(fn () => ['role' => $role]);
+        return $this->state(function (array $attributes) use ($role) {
+            $isStudent = $role === 'student';
+            return [
+                'role' => $role,
+                'student_number' => $isStudent ? (string) fake()->unique()->numberBetween(1000000, 9999999) : null,
+                'faculty_number' => !$isStudent ? strtoupper(fake()->unique()->bothify('FAC-####')) : null,
+            ];
+        });
     }
 
     public function student(): static

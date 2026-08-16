@@ -22,20 +22,41 @@ class SecureFileController extends Controller
         ]);
 
         $path = ltrim(str_replace('\\', '/', $data['path']), '/');
+        $cleanPath = preg_replace('#^(?:storage/|public/|app/public/)#i', '', $path);
 
-        if (str_contains($path, '..') || str_starts_with($path, 'avatars/')) {
+        if (str_contains($cleanPath, '..') || str_starts_with($cleanPath, 'avatars/')) {
             abort(403, 'Invalid file path.');
         }
 
         $user = $request->user();
-        $this->authorizePath($user, $path);
+        $this->authorizePath($user, $cleanPath);
 
         foreach (['local', 'public'] as $disk) {
-            if (Storage::disk($disk)->exists($path)) {
-                $mime = Storage::disk($disk)->mimeType($path) ?: 'application/octet-stream';
-                $name = basename($path);
+            if (Storage::disk($disk)->exists($cleanPath)) {
+                $mime = Storage::disk($disk)->mimeType($cleanPath) ?: 'application/octet-stream';
+                $name = basename($cleanPath);
 
-                return Storage::disk($disk)->response($path, $name, [
+                return Storage::disk($disk)->response($cleanPath, $name, [
+                    'Content-Type' => $mime,
+                    'Content-Disposition' => 'inline; filename="'.$name.'"',
+                ]);
+            }
+        }
+
+        // Fallback: check physical storage and public directories directly
+        $fallbacks = [
+            storage_path('app/public/' . $cleanPath),
+            storage_path('app/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            public_path($cleanPath),
+            storage_path($cleanPath),
+        ];
+
+        foreach ($fallbacks as $fp) {
+            if (file_exists($fp) && is_file($fp)) {
+                $name = basename($fp);
+                $mime = @mime_content_type($fp) ?: 'application/octet-stream';
+                return response()->file($fp, [
                     'Content-Type' => $mime,
                     'Content-Disposition' => 'inline; filename="'.$name.'"',
                 ]);
@@ -47,7 +68,7 @@ class SecureFileController extends Controller
 
     private function authorizePath($user, string $path): void
     {
-        if (in_array($user->role, ['director', 'admin'], true)) {
+        if (in_array($user->role, ['director', 'admin', 'faculty', 'coordinator'], true)) {
             return;
         }
 
@@ -69,10 +90,6 @@ class SecureFileController extends Controller
                 abort(403, 'You do not have access to this file.');
             }
 
-            return;
-        }
-
-        if ($path === "signatures/{$user->id}_processed.png") {
             return;
         }
 

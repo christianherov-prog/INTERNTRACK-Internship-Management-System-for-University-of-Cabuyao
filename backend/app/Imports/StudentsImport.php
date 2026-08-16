@@ -17,15 +17,15 @@ class StudentsImport implements ToCollection, WithHeadingRow
     protected $facultyId;
     protected $section;
     protected $program;
-    protected $academicYear;
+    protected $schoolYear;
     protected $semester;
 
-    public function __construct($facultyId, $section, $program, $academicYear, $semester)
+    public function __construct(int $facultyId, string $section, string $program, string $schoolYear, string $semester)
     {
         $this->facultyId = $facultyId;
         $this->section = $section;
         $this->program = $program;
-        $this->academicYear = $academicYear;
+        $this->schoolYear = $schoolYear;
         $this->semester = $semester;
     }
 
@@ -36,14 +36,14 @@ class StudentsImport implements ToCollection, WithHeadingRow
             'faculty_user_id' => $this->facultyId,
             'section'         => $this->section,
             'program'         => $this->program,
-            'academic_year'   => $this->academicYear,
+            'school_year'     => $this->schoolYear,
             'semester'        => $this->semester,
         ], [
             'is_active' => true,
         ]);
 
         $facultyProfile = \App\Models\FacultyProfile::where('user_id', $this->facultyId)->first();
-        $facultyEmp = $facultyProfile?->employee_number ?? 'FAC-1001';
+        $facultyEmp = $facultyProfile?->faculty_number ?? 'FAC-1001';
 
         $errors = [];
         foreach ($rows as $index => $row) {
@@ -71,7 +71,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
             $user = User::firstOrCreate(
                 ['email' => $row['email']],
                 [
-                    'username' => $row['student_id'],
+                    'student_number' => $row['student_id'],
                     'password' => Hash::make($row['student_id']), // Default password is ID
                     'role'     => 'student',
                     'is_active'=> true,
@@ -88,7 +88,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
                     'middle_name'    => $row['middle_name'] ?? null,
                     'program'        => $this->program,
                     'section'        => $this->section,
-                    'academic_year'  => $this->academicYear,
+                    'school_year'    => $this->schoolYear,
                     'semester'       => $this->semester,
                     'email'          => $row['email'],
                 ]
@@ -98,8 +98,8 @@ class StudentsImport implements ToCollection, WithHeadingRow
             app(\App\Services\MisdWriteService::class)->updateStudentSectionFaculty([
                 'student_number'          => (string) $row['student_id'],
                 'section'                 => $this->section,
-                'faculty_employee_number' => $facultyEmp,
-                'academic_year'           => $this->academicYear,
+                'faculty_number'          => $facultyEmp,
+                'school_year'             => $this->schoolYear,
                 'semester'                => $this->semester,
                 'updated_by'              => 'excel_upload',
                 'reason'                  => 'Class list upload by faculty/admin',

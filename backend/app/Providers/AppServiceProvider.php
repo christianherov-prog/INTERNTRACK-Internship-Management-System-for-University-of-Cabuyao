@@ -6,6 +6,7 @@ use App\Models\Internship;
 use App\Policies\InternshipPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -14,11 +15,20 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Contracts\MisdRepositoryInterface::class, function ($app) {
+            if (config('interntrack.misd_use_mock', true)) {
+                return new \App\Services\MockMisdRepository();
+            }
+            return new \App\Repositories\LiveMisdRepository(
+                config('interntrack.misd_api_base_url')
+            );
+        });
     }
 
     public function boot(): void
     {
+        Model::preventLazyLoading(! app()->isProduction());
+
         Gate::policy(Internship::class, InternshipPolicy::class);
 
         RateLimiter::for('login', function (Request $request) {

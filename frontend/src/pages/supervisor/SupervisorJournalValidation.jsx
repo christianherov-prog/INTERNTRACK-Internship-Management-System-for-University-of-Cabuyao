@@ -1,17 +1,17 @@
-﻿import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../components/AuthenticatedFile'
+import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 
-function ReviewModal({ journal, onClose, onSubmit, processing }) {
+function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
   const [action, setAction]   = useState('approved')
   const [feedback, setFeedback] = useState('')
   const isImage = journal.file_path && !journal.file_path.endsWith('.pdf')
   const isPdf   = journal.file_path && journal.file_path.endsWith('.pdf')
-  return createPortal(
+  return (
     <div className="modal show d-block" tabIndex="-1" style={{background:'rgba(0,0,0,0.4)'}}>
       <div className="modal-dialog modal-xl modal-dialog-centered">
         <div className="modal-content">
@@ -30,25 +30,25 @@ function ReviewModal({ journal, onClose, onSubmit, processing }) {
             </div>
 
             {/* File Preview */}
-            {journal.file_path ? (
+            <div className="mb-3 text-center">
+              <button type="button" onClick={onPreview} className="btn btn-outline-primary">
+                <i className="fa fa-eye me-2"></i>Preview Journal Form
+              </button>
+              {isPdf && (
+                <AuthenticatedFileLink path={journal.file_path} className="btn btn-outline-danger ms-2">
+                  <i className="fa fa-file-pdf me-2"></i>Open PDF
+                </AuthenticatedFileLink>
+              )}
+            </div>
+
+            {journal.file_path && isImage && (
               <div className="mb-3 text-center">
-                {isImage ? (
-                  <AuthenticatedFileImage
-                    path={journal.file_path}
-                    alt="Journal Form"
-                    style={{ maxWidth: '100%', maxHeight: '500px', border: '1px solid #ddd', borderRadius: '4px' }}
-                  />
-                ) : isPdf ? (
-                  <div>
-                    <p className="text-muted small mb-2">PDF Journal Form (PNC:AA-FO-31)</p>
-                    <AuthenticatedFileLink path={journal.file_path} className="btn btn-outline-danger">
-                      <i className="fa fa-file-pdf me-2"></i>Open PDF to Review
-                    </AuthenticatedFileLink>
-                  </div>
-                ) : null}
+                <AuthenticatedFileImage path={journal.file_path} alt="Journal" style={{ maxWidth: '100%', maxHeight: '500px', border: '1px solid #ddd', borderRadius: '4px' }} />
               </div>
-            ) : (
-              <div className="alert alert-warning">No file uploaded for this journal entry.</div>
+            )}
+
+            {!journal.file_path && (
+              <div className="alert alert-info">No supplementary file uploaded for this journal entry.</div>
             )}
 
             <div className="mb-3">
@@ -56,11 +56,11 @@ function ReviewModal({ journal, onClose, onSubmit, processing }) {
               <div className="d-flex gap-3">
                 <div className="form-check">
                   <input type="radio" className="form-check-input" id="approve" checked={action === 'approved'} onChange={() => setAction('approved')} />
-                  <label className="form-check-label" htmlFor="approve">âœ… Approve</label>
+                  <label className="form-check-label" htmlFor="approve">✅ Approve</label>
                 </div>
                 <div className="form-check">
                   <input type="radio" className="form-check-input" id="revise" checked={action === 'needs_revision'} onChange={() => setAction('needs_revision')} />
-                  <label className="form-check-label" htmlFor="revise">ðŸ”„ Needs Revision</label>
+                  <label className="form-check-label" htmlFor="revise">🔄 Needs Revision</label>
                 </div>
               </div>
             </div>
@@ -80,7 +80,7 @@ function ReviewModal({ journal, onClose, onSubmit, processing }) {
           <div className="modal-footer">
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button
-              className="btn btn-green"
+              className="btn btn-primary"
               onClick={() => onSubmit(journal.id, action, feedback)}
               disabled={processing || (action === 'needs_revision' && !feedback.trim())}
             >
@@ -89,8 +89,7 @@ function ReviewModal({ journal, onClose, onSubmit, processing }) {
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   )
 }
 
@@ -101,6 +100,7 @@ function SupervisorJournalValidation() {
   const [processing, setProcessing] = useState(false)
   const [message, setMessage]       = useState(null)
   const [modal, setModal]           = useState(null)
+  const [previewModal, setPreviewModal] = useState(null)
 
   const fetchJournals = () => {
     setLoading(true)
@@ -128,6 +128,25 @@ function SupervisorJournalValidation() {
     } finally { setProcessing(false) }
   }
 
+  const handlePreviewJournal = (j) => {
+    const profile = j.internship?.student?.studentProfile || j.internship?.student?.student_profile
+    const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+    setPreviewModal({
+      type: 'journal',
+      data: {
+        studentName: name,
+        program: profile?.program?.code || profile?.program?.name || profile?.program || '—',
+        companyName: j.internship?.company?.company_name || '—',
+        weekNumber: j.week_number ?? j.entry_number,
+        date: j.date,
+        endDate: j.end_date,
+        accomplishment: j.activities_summary,
+        difficulties: j.challenges,
+        insights: j.learnings,
+      }
+    })
+  }
+
   return (
     <Layout title="Journal Validation" subtitle="Weekly PNC:AA-FO-31 Review" icon="fa-book-open-reader" bodyClass="supervisor-page">
       {error && <PageError message={error} onRetry={fetchJournals} />}
@@ -143,9 +162,16 @@ function SupervisorJournalValidation() {
           journal={modal}
           onClose={() => setModal(null)}
           onSubmit={handleReview}
+          onPreview={() => handlePreviewJournal(modal)}
           processing={processing}
         />
       )}
+      <FormPreviewModal
+        isOpen={!!previewModal}
+        onClose={() => setPreviewModal(null)}
+        type={previewModal?.type}
+        data={previewModal?.data || {}}
+      />
 
       <div className="content-card">
         <div className="content-card-header">
@@ -191,7 +217,7 @@ function SupervisorJournalValidation() {
                       )}
                     </div>
                   </div>
-                  <button className="btn btn-sm btn-green ms-3 flex-shrink-0" onClick={() => setModal(j)}>
+                  <button className="btn btn-sm btn-primary ms-3 flex-shrink-0" onClick={() => setModal(j)}>
                     <i className="fa fa-pen me-1"></i>Review
                   </button>
                 </div>

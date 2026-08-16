@@ -15,7 +15,7 @@ class NotificationPreferenceTest extends TestCase
     private function student(array $prefs): User
     {
         return User::create([
-            'username' => 'STU-PREF-'.uniqid(),
+            'student_number' => 'STU-PREF-'.uniqid(),
             'email' => 'pref-'.uniqid().'@example.com',
             'password' => Hash::make('password123'),
             'role' => 'student',

@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
+use App\Contracts\MisdRepositoryInterface;
+use App\Models\StudentProfile;
+use App\Models\FacultyProfile;
 
 /**
  * In-process mock of the University of Cabuyao MISD (iEnroll) API.
@@ -13,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
  * Section/faculty assignment writes persist in cache overrides so coordinator
  * push-backs survive within the demo session.
  */
-class MockMisdRepository
+class MockMisdRepository implements MisdRepositoryInterface
 {
     private const OVERRIDE_CACHE_KEY = 'mock_misd.student_assignment_overrides';
 
@@ -21,70 +24,8 @@ class MockMisdRepository
     public function students(): array
     {
         return [
-            '2021-00123' => [
-                'student_id'        => 1001,
-                'student_number'    => '2021-00123',
-                'first_name'        => 'Juan',
-                'middle_name'       => 'Santos',
-                'last_name'         => 'dela Cruz',
-                'suffix'            => 'Jr.',
-                'email'             => 'juan.delacruz@uc.edu.ph',
-                'contact_number'    => '09171234567',
-                'birthday'          => '2003-05-14',
-                'sex'               => 'Male',
-                'program'           => 'BS Information Technology',
-                'college'           => 'College of Computing Studies',
-                'department'        => 'Information Technology',
-                'course_name'       => 'BS Information Technology',
-                'year_level'        => 4,
-                'section'           => '4ITA',
-                'academic_year'     => '2025-2026',
-                'semester'          => 2,
-                'enrollment_status' => 'Enrolled',
-            ],
-            '2021-00456' => [
-                'student_id'        => 1002,
-                'student_number'    => '2021-00456',
-                'first_name'        => 'Maria',
-                'middle_name'       => 'Reyes',
-                'last_name'         => 'Santos',
-                'email'             => 'maria.santos@uc.edu.ph',
-                'contact_number'    => '09189876543',
-                'birthday'          => '2003-02-28',
-                'sex'               => 'Female',
-                'program'           => 'BS Computer Science',
-                'college'           => 'College of Computing Studies',
-                'department'        => 'Computer Science',
-                'course_name'       => 'BS Computer Science',
-                'year_level'        => 4,
-                'section'           => '4ITB',
-                'academic_year'     => '2025-2026',
-                'semester'          => 2,
-                'enrollment_status' => 'Enrolled',
-            ],
-            '2021-00789' => [
-                'student_id'        => 1003,
-                'student_number'    => '2021-00789',
-                'first_name'        => 'Carlo',
-                'middle_name'       => 'Bautista',
-                'last_name'         => 'Mendoza',
-                'email'             => 'carlo.mendoza@uc.edu.ph',
-                'contact_number'    => '09201112233',
-                'birthday'          => '2002-11-10',
-                'sex'               => 'Male',
-                'program'           => 'BS Information Technology',
-                'college'           => 'College of Computing Studies',
-                'department'        => 'Information Technology',
-                'course_name'       => 'BS Information Technology',
-                'year_level'        => 4,
-                'section'           => '4ITC',
-                'academic_year'     => '2025-2026',
-                'semester'          => 2,
-                'enrollment_status' => 'Enrolled',
-            ],
             // Capstone demo accounts (same IDs as StudentAccountsSeeder)
             '2300600' => [
-                'student_id'        => 2300600,
                 'student_number'    => '2300600',
                 'first_name'        => 'Christian Hero',
                 'middle_name'       => 'Aboy',
@@ -93,54 +34,49 @@ class MockMisdRepository
                 'contact_number'    => '09123456789',
                 'birthday'          => '2000-01-01',
                 'sex'               => 'Male',
-                'program'           => 'BS Information Technology',
-                'college'           => 'College of Computing Studies',
-                'department'        => 'Information Technology',
-                'course_name'       => 'BS Information Technology',
+                'program'           => 'Bachelor of Science in Information Technology',
+                'department'        => 'College of Computing Studies',
+                'course_description'=> 'IT Practicum (500 hours)',
                 'year_level'        => 4,
-                'section'           => '4ITD',
+                'section'           => '4IT-D',
                 'academic_year'     => '2025-2026',
-                'semester'          => 1,
+                'semester'          => '2nd Semester',
+                'enrollment_status' => 'Enrolled',
+            ],
+            '2300590' => [
+                'student_number'    => '2300590',
+                'first_name'        => 'John',
+                'middle_name'       => null,
+                'last_name'         => 'Taac-Taac',
+                'email'             => 'john.taactaac@uc.edu.ph',
+                'contact_number'    => '09175550590',
+                'birthday'          => '2001-05-15',
+                'sex'               => 'Male',
+                'program'           => 'Bachelor of Science in Information Technology',
+                'department'        => 'College of Computing Studies',
+                'course_description'=> 'IT Practicum (500 hours)',
+                'year_level'        => 4,
+                'section'           => '4IT-D',
+                'academic_year'     => '2025-2026',
+                'semester'          => '2nd Semester',
                 'enrollment_status' => 'Enrolled',
             ],
             '2300592' => [
-                'student_id'        => 2300592,
                 'student_number'    => '2300592',
                 'first_name'        => 'Clarence',
                 'middle_name'       => null,
                 'last_name'         => 'Montealegre',
                 'email'             => 'clarence.montealegre@uc.edu.ph',
-                'contact_number'    => null,
-                'birthday'          => null,
+                'contact_number'    => '09175550592',
+                'birthday'          => '2001-08-20',
                 'sex'               => 'Male',
-                'program'           => 'BS Information Technology',
-                'college'           => 'College of Computing Studies',
-                'department'        => 'Information Technology',
-                'course_name'       => 'BS Information Technology',
+                'program'           => 'Bachelor of Science in Information Technology',
+                'department'        => 'College of Computing Studies',
+                'course_description'=> 'IT Practicum (500 hours)',
                 'year_level'        => 4,
-                'section'           => '4ITD',
+                'section'           => '4IT-D',
                 'academic_year'     => '2025-2026',
-                'semester'          => 1,
-                'enrollment_status' => 'Enrolled',
-            ],
-            '2300590' => [
-                'student_id'        => 2300590,
-                'student_number'    => '2300590',
-                'first_name'        => 'Angel Luis',
-                'middle_name'       => 'Rafols',
-                'last_name'         => 'Taac-Taac',
-                'email'             => 'angel.taactaac@uc.edu.ph',
-                'contact_number'    => null,
-                'birthday'          => null,
-                'sex'               => 'Male',
-                'program'           => 'BS Information Technology',
-                'college'           => 'College of Computing Studies',
-                'department'        => 'Information Technology',
-                'course_name'       => 'BS Information Technology',
-                'year_level'        => 4,
-                'section'           => '4ITD',
-                'academic_year'     => '2025-2026',
-                'semester'          => 2,
+                'semester'          => '2nd Semester',
                 'enrollment_status' => 'Enrolled',
             ],
         ];
@@ -150,116 +86,63 @@ class MockMisdRepository
     public function faculty(): array
     {
         return [
-            'FAC-001' => [
-                'faculty_id'        => 2001,
-                'employee_number'   => 'FAC-001',
-                'first_name'        => 'Andrea',
-                'middle_name'       => 'Cruz',
-                'last_name'         => 'Reyes',
-                'email'             => 'a.reyes@uc.edu.ph',
-                'contact_number'    => '09175557890',
-                'sex'               => 'Female',
-                'department'        => 'Information Technology',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'Assistant Professor',
+            'ADMIN-MISD-001' => [
+                'faculty_number'    => 'ADMIN-MISD-001',
+                'first_name'        => 'MISD',
+                'middle_name'       => null,
+                'last_name'         => 'Administrator',
+                'email'             => 'misd.admin@uc.edu.ph',
+                'contact_number'    => '09175557800',
+                'sex'               => 'Male',
+                'department'        => 'Management Information Systems Department',
+                'position'          => 'MISD Administrator',
                 'employment_status' => 'Regular',
             ],
-            'FAC-002' => [
-                'faculty_id'        => 2002,
-                'employee_number'   => 'FAC-002',
-                'first_name'        => 'Roberto',
-                'middle_name'       => 'Garcia',
-                'last_name'         => 'Lim',
-                'email'             => 'r.lim@uc.edu.ph',
-                'contact_number'    => '09189993456',
+            'ADMIN-1001' => [
+                'faculty_number'    => 'ADMIN-1001',
+                'first_name'        => 'MISD',
+                'middle_name'       => null,
+                'last_name'         => 'Administrator',
+                'email'             => 'misd.admin@uc.edu.ph',
+                'contact_number'    => '09175557800',
                 'sex'               => 'Male',
-                'department'        => 'Computer Science',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'Associate Professor',
+                'department'        => 'Management Information Systems Department',
+                'position'          => 'MISD Administrator',
                 'employment_status' => 'Regular',
             ],
             'FAC-1001' => [
-                'faculty_id'        => 2101,
-                'employee_number'   => 'FAC-1001',
+                'faculty_number'    => 'FAC-1001',
                 'first_name'        => 'Marvin',
-                'middle_name'       => 'M.',
-                'last_name'         => 'Bicua',
-                'suffix'            => 'Sr.',
-                'email'             => 'm.bicua@uc.edu.ph',
+                'middle_name'       => 'M',
+                'last_name'         => 'Bicuña',
+                'email'             => 'm.bicuna@uc.edu.ph',
                 'contact_number'    => '09175557890',
                 'sex'               => 'Male',
-                'department'        => 'Information Technology',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'OJT Teacher',
-                'employment_status' => 'Regular',
-            ],
-            'FAC-1002' => [
-                'faculty_id'        => 2102,
-                'employee_number'   => 'FAC-1002',
-                'first_name'        => 'Andrea',
-                'middle_name'       => null,
-                'last_name'         => 'Reyes',
-                'email'             => 'a.reyes@uc.edu.ph',
-                'contact_number'    => null,
-                'sex'               => 'Female',
-                'department'        => 'Information Technology',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'OJT Teacher',
-                'employment_status' => 'Regular',
-            ],
-            'FAC-1003' => [
-                'faculty_id'        => 2103,
-                'employee_number'   => 'FAC-1003',
-                'first_name'        => 'Roberto',
-                'middle_name'       => null,
-                'last_name'         => 'Lim',
-                'email'             => 'r.lim@uc.edu.ph',
-                'contact_number'    => null,
-                'sex'               => 'Male',
-                'department'        => 'Information Technology',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'OJT Teacher',
-                'employment_status' => 'Regular',
-            ],
-            'FAC-1004' => [
-                'faculty_id'        => 2104,
-                'employee_number'   => 'FAC-1004',
-                'first_name'        => 'Maria',
-                'middle_name'       => null,
-                'last_name'         => 'Santos',
-                'email'             => 'm.santos@uc.edu.ph',
-                'contact_number'    => null,
-                'sex'               => 'Female',
-                'department'        => 'Information Technology',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'OJT Teacher',
+                'department'        => 'College of Computing Studies',
+                'position'          => 'CCS Faculty',
                 'employment_status' => 'Regular',
             ],
             'COR-1001' => [
-                'faculty_id'        => 2201,
-                'employee_number'   => 'COR-1001',
+                'faculty_number'    => 'COR-1001',
                 'first_name'        => 'Arcelito',
                 'middle_name'       => 'C.',
                 'last_name'         => 'Quiatchon',
                 'email'             => 'a.quiatchon@uc.edu.ph',
                 'contact_number'    => '09175557891',
                 'sex'               => 'Male',
-                'department'        => 'CCS',
-                'college'           => 'College of Computing Studies',
-                'position'          => 'Coordinator',
+                'department'        => 'College of Computing Studies',
+                'position'          => 'CCS Coordinator',
                 'employment_status' => 'Regular',
             ],
             'DIR-1001' => [
-                'faculty_id'        => 3001,
-                'employee_number'   => 'DIR-1001',
+                'faculty_number'    => 'DIR-1001',
                 'first_name'        => 'Gina',
                 'middle_name'       => 'M.',
                 'last_name'         => 'Oloresisimo',
                 'email'             => 'g.oloresisimo@uc.edu.ph',
                 'contact_number'    => '09175557892',
                 'sex'               => 'Female',
-                'department'        => 'Director',
-                'college'           => 'University Administration',
+                'department'        => 'Placement, Alumni, & Linkages Department',
                 'position'          => 'PALD Director',
                 'employment_status' => 'Regular',
             ],
@@ -291,8 +174,31 @@ class MockMisdRepository
         }
 
         if (!$row) {
-            // UC formats: 20XX-XXXXX or 7-digit student numbers (e.g. 2300600)
-            if (preg_match('/^20\d{2}-\d{5}$/', $key) || preg_match('/^\d{7}$/', $key)) {
+            // Check if profile already exists in DB before generating generic placeholder
+            $existingProfile = StudentProfile::where('student_number', $key)->first();
+            if ($existingProfile && $existingProfile->first_name && $existingProfile->first_name !== 'UC') {
+                $row = [
+                    'student_id'        => $existingProfile->id,
+                    'student_number'    => $existingProfile->student_number,
+                    'first_name'        => $existingProfile->first_name,
+                    'middle_name'       => $existingProfile->middle_name,
+                    'last_name'         => $existingProfile->last_name,
+                    'suffix'            => $existingProfile->suffix,
+                    'email'             => $existingProfile->email,
+                    'contact_number'    => $existingProfile->contact_number,
+                    'birthday'          => $existingProfile->birthday,
+                    'sex'               => $existingProfile->sex,
+                    'program'           => $existingProfile->program?->name ?? 'Bachelor of Science in Information Technology',
+                    'department'        => $existingProfile->department?->name ?? 'College of Computing Studies',
+                    'course_description'=> $existingProfile->course_description ?? 'IT Practicum (500 hours)',
+                    'year_level'        => $existingProfile->year_level ?? 4,
+                    'section'           => $existingProfile->section ?? '4IT-D',
+                    'academic_year'     => $existingProfile->school_year ?? '2025-2026',
+                    'semester'          => $existingProfile->semester ?? '2nd Semester',
+                    'enrollment_status' => $existingProfile->enrollment_status ?? 'Enrolled',
+                ];
+                $catalogKey = $key;
+            } elseif (preg_match('/^20\d{2}-\d{5}$/', $key) || preg_match('/^\d{7}$/', $key)) {
                 $row = $this->generateGenericStudent($key);
                 $catalogKey = $key;
             }
@@ -335,48 +241,48 @@ class MockMisdRepository
 
         $overrides = $this->assignmentOverrides();
         $overrides[$key] = [
-            'section'                         => $section,
-            'faculty_adviser_employee_number' => $facultyEmp,
-            'faculty_adviser_name'            => trim(($faculty['first_name'] ?? '') . ' ' . ($faculty['last_name'] ?? '')),
-            'academic_year'                   => $academicYear ?? ($existing['academic_year'] ?? null),
-            'semester'                        => $semester ?? ($existing['semester'] ?? null),
-            'updated_by'                      => $updatedBy,
-            'reason'                          => $reason,
-            'updated_at'                      => now()->toIso8601String(),
+            'section'            => $section,
+            'faculty_adviser_id' => $facultyEmp,
+            'updated_at'         => now()->toIso8601String(),
+            'updated_by'         => $updatedBy,
+            'reason'             => $reason,
         ];
         Cache::forever(self::OVERRIDE_CACHE_KEY, $overrides);
 
-        return $this->findStudent($key);
+        return $this->findStudent($studentNumber);
+    }
+
+    /**
+     * Clear mock assignment overrides (tests / reset demo).
+     */
+    public function clearAssignmentOverrides(): void
+    {
+        Cache::forget(self::OVERRIDE_CACHE_KEY);
     }
 
     /** @return array<string, array<string, mixed>> */
     private function assignmentOverrides(): array
     {
-        $raw = Cache::get(self::OVERRIDE_CACHE_KEY, []);
-
-        return is_array($raw) ? $raw : [];
+        return Cache::get(self::OVERRIDE_CACHE_KEY, []);
     }
 
-    /**
-     * @param  array<string, mixed>  $row
-     * @return array<string, mixed>
-     */
-    private function applyAssignmentOverride(array $row, string $lookupKey): array
+    private function applyAssignmentOverride(array $row, string $catalogKey): array
     {
         $overrides = $this->assignmentOverrides();
-        $studentNumber = strtoupper(trim((string) ($row['student_number'] ?? $lookupKey)));
-        $override = $overrides[$studentNumber]
-            ?? $overrides[strtoupper(trim($lookupKey))]
+        $normKey = strtoupper(trim($catalogKey));
+        $override = $overrides[$normKey]
+            ?? $overrides[$row['student_number'] ?? '']
             ?? null;
 
-        if (!is_array($override)) {
+        if (!$override) {
             return $row;
         }
 
-        foreach (['section', 'academic_year', 'semester', 'faculty_adviser_employee_number', 'faculty_adviser_name'] as $field) {
-            if (array_key_exists($field, $override) && $override[$field] !== null && $override[$field] !== '') {
-                $row[$field] = $override[$field];
-            }
+        if (!empty($override['section'])) {
+            $row['section'] = $override['section'];
+        }
+        if (!empty($override['faculty_adviser_id'])) {
+            $row['faculty_adviser_id'] = $override['faculty_adviser_id'];
         }
 
         return $row;
@@ -386,31 +292,47 @@ class MockMisdRepository
     {
         $key = strtoupper(trim($employeeNumber));
         $faculty = $this->faculty();
-
         if (isset($faculty[$key])) {
             return $faculty[$key];
         }
 
-        if (preg_match('/^(FAC|DIR|COORD|COR|EMP|MISD|ADMIN)-[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $key)) {
+        // Check if profile exists in DB
+        $existingProfile = FacultyProfile::where('faculty_number', $key)->first();
+        if ($existingProfile && $existingProfile->first_name && $existingProfile->first_name !== 'UC') {
+            return [
+                'faculty_id'        => $existingProfile->id,
+                'faculty_number'    => $existingProfile->faculty_number,
+                'first_name'        => $existingProfile->first_name,
+                'middle_name'       => $existingProfile->middle_name,
+                'last_name'         => $existingProfile->last_name,
+                'suffix'            => $existingProfile->suffix,
+                'email'             => $existingProfile->email,
+                'contact_number'    => $existingProfile->contact_number,
+                'department'        => $existingProfile->department?->name ?? 'College of Computing Studies',
+                'position'          => $existingProfile->position ?? 'Faculty',
+                'employment_status' => $existingProfile->employment_status ?? 'Regular',
+                'sex'               => $existingProfile->sex,
+            ];
+        }
+
+        // Allow any standard faculty format
+        if (preg_match('/^(FAC|COR|COORD|DIR|MISD|ADMIN|EMP)-[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $key)) {
             return $this->generateGenericFaculty($key);
         }
 
         return null;
     }
 
-    /** @return list<array<string, mixed>> */
-    public function allStudents(): array
+    public function allStudents(array $filters = []): array
     {
-        $out = [];
-        foreach ($this->students() as $id => $row) {
-            $out[] = $this->applyAssignmentOverride($row, (string) $id);
-        }
-
-        return $out;
+        $rows = array_values(array_map(
+            fn ($k) => $this->findStudent((string) $k),
+            array_keys($this->students())
+        ));
+        return array_filter($rows);
     }
 
-    /** @return list<array<string, mixed>> */
-    public function allFaculty(): array
+    public function allFaculty(array $filters = []): array
     {
         return array_values($this->faculty());
     }
@@ -428,14 +350,13 @@ class MockMisdRepository
             'contact_number'    => null,
             'birthday'          => null,
             'sex'               => null,
-            'program'           => 'BS Information Technology',
-            'college'           => 'College of Computing Studies',
-            'department'        => 'Information Technology',
-            'course_name'       => 'BS Information Technology',
+            'program'           => 'Bachelor of Science in Information Technology',
+            'department'        => 'College of Computing Studies',
+            'course_description'=> 'IT Practicum (500 hours)',
             'year_level'        => 4,
-            'section'           => '4ITD',
-            'academic_year'     => '2025-2026',
-            'semester'          => 1,
+            'section'           => '4IT-D',
+            'school_year'       => '2025-2026',
+            'semester'          => '2nd Semester',
             'enrollment_status' => 'Enrolled',
         ];
     }
@@ -457,15 +378,14 @@ class MockMisdRepository
 
         return [
             'faculty_id'        => rand(9000, 9999),
-            'employee_number'   => $employeeNumber,
+            'faculty_number'    => $employeeNumber,
             'first_name'        => 'UC',
             'middle_name'       => null,
             'last_name'         => ucfirst(strtolower($prefix)),
             'suffix'            => null,
             'email'             => strtolower(str_replace('-', '.', $employeeNumber)) . '@uc.edu.ph',
             'contact_number'    => null,
-            'department'        => $department,
-            'college'           => 'University of Cabuyao',
+            'department'        => 'University of Cabuyao',
             'position'          => $position,
             'employment_status' => 'Regular',
             'sex'               => null,

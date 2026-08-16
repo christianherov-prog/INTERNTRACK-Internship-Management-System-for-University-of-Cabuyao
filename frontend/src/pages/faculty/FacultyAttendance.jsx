@@ -4,10 +4,11 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
+import { formatStudentName } from '../../utils/formatName'
 
 function studentName(log) {
-  const p = log?.internship?.student?.student_profile || log?.internship?.student?.studentProfile
-  if (p) return `${p.first_name || ''} ${p.last_name || ''}`.trim()
+  if (log?.internship?.student) return formatStudentName(log.internship.student)
+  if (log?.student) return formatStudentName(log.student)
   return log?.internship?.student?.username || '—'
 }
 
@@ -56,42 +57,22 @@ function FacultyAttendance() {
     <Layout title="Attendance Monitoring" subtitle={CURRENT_TERM} icon="fa-calendar-check" bodyClass="faculty-page">
       {error && <PageError message={error} onRetry={fetchAttendance} />}
 
-      <div className="content-card mb-3">
-        <div className="content-card-header">
-          <i className="fa fa-filter"></i>
-          <h6>Filters</h6>
-        </div>
-        <div className="p-3 row g-3">
-          <div className="col-md-4">
-            <label className="form-label fw-semibold">Student</label>
-            <select
-              className="form-select"
-              value={internshipId}
-              onChange={(e) => setInternshipId(e.target.value)}
-            >
-              <option value="">All assigned students</option>
-              {students.map((s) => {
-                const p = s.student?.student_profile || s.student?.studentProfile
-                const name = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : (s.student?.username || `Internship #${s.id}`)
-                return <option key={s.id} value={s.id}>{name}</option>
-              })}
-            </select>
-          </div>
-          <div className="col-md-4">
-            <label className="form-label fw-semibold">Status</label>
-            <select
-              className="form-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="validated">Validated</option>
-              <option value="rejected">Rejected</option>
-              <option value="flagged">Flagged</option>
-            </select>
-          </div>
-        </div>
+      {/* Filters */}
+      <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
+        <select className="form-select form-select-sm text-secondary" style={{ width: 260 }} value={internshipId} onChange={(e) => setInternshipId(e.target.value)}>
+          <option value="">All Assigned Students</option>
+          {students.map((s) => {
+            const name = formatStudentName(s.student) || `Internship #${s.id}`
+            return <option key={s.id} value={s.id}>{name}</option>
+          })}
+        </select>
+        <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="validated">Validated</option>
+          <option value="rejected">Rejected</option>
+          <option value="flagged">Flagged</option>
+        </select>
       </div>
 
       <div className="content-card">

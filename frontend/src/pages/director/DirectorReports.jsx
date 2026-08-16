@@ -1,71 +1,60 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
-import { downloadCsv } from '../../utils/csv'
+import ReportExportModal from '../../components/modals/ReportExportModal'
 
 const REPORT_TYPES = [
   {
     key: 'internship-summary',
-    title: 'Internship Summary',
+    title: 'Internship Summary Report',
     icon: 'fa-graduation-cap',
-    color: 'green',
-    desc: 'Interns by academic program — ongoing vs completed from live analytics.',
+    color: 'blue',
+    desc: 'Interns by program (ongoing vs completed) from live analytics.',
   },
   {
     key: 'company-partnerships',
-    title: 'Company Partnerships',
+    title: 'Company Partnerships Report',
     icon: 'fa-building',
     color: 'teal',
-    desc: 'Top partner companies ranked by current intern placement count.',
+    desc: 'Top partner companies by intern count and industry.',
   },
   {
     key: 'moa-status',
     title: 'MOA Status Report',
     icon: 'fa-file-signature',
     color: 'amber',
-    desc: 'Counts of partner companies grouped by MOA status.',
+    desc: 'Counts of partner companies by Memorandum of Agreement status.',
   },
   {
-    key: 'placement-trends',
-    title: '3-Year Placement Trends',
-    icon: 'fa-chart-line',
-    color: 'blue',
-    desc: 'Company placements aggregated across the last three academic years.',
+    key: 'ched-annual',
+    title: 'CHED Annual Report',
+    icon: 'fa-file-contract',
+    color: 'green',
+    desc: 'Aggregated HTE data (Total Interns, Completed, Ongoing, MOA) for CHED compliance.',
   },
 ]
 
-function formatGeneratedAt(date = new Date()) {
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-}
-
-function InternshipSummaryTable({ rows }) {
-  if (!rows.length) {
-    return <EmptyState icon="fa-graduation-cap" title="No program data" message="Internship summary will appear once placements exist." />
+function InternshipSummaryTable({ data }) {
+  if (!data || data.length === 0) {
+    return <EmptyState icon="fa-graduation-cap" title="No internship data" message="No ongoing or completed internships recorded yet." />
   }
   return (
     <div className="table-responsive">
-      <table className="table table-sm table-bordered align-middle dir-reports-table">
+      <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
-          <tr>
-            <th>#</th>
-            <th>Program</th>
-            <th className="text-center">Ongoing</th>
-            <th className="text-center">Completed</th>
-            <th className="text-center">Total</th>
-          </tr>
+          <tr><th>Program</th><th>Ongoing</th><th>Completed</th><th>Total</th></tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.Program} className={i % 2 === 1 ? 'dir-reports-row-alt' : undefined}>
-              <td>{i + 1}</td>
-              <td className="fw-semibold">{r.Program}</td>
-              <td className="text-center">{r.Ongoing}</td>
-              <td className="text-center">{r.Completed}</td>
-              <td className="text-center fw-semibold">{r.Total}</td>
+          {data.map((r, i) => (
+            <tr key={i}>
+              <td className="fw-semibold">{r.program ?? 'Unknown'}</td>
+              <td>{r.ongoing ?? 0}</td>
+              <td>{r.completed ?? 0}</td>
+              <td>{r.count ?? 0}</td>
             </tr>
           ))}
         </tbody>
@@ -74,32 +63,94 @@ function InternshipSummaryTable({ rows }) {
   )
 }
 
-function CompanyPartnershipsTable({ rows }) {
-  if (!rows.length) {
-    return <EmptyState icon="fa-building" title="No company data" message="Partnerships appear once companies have placements." />
+function CompanyPartnershipsTable({ data }) {
+  if (!data || data.length === 0) {
+    return <EmptyState icon="fa-building" title="No company data" message="No partner companies with interns found." />
   }
   return (
     <div className="table-responsive">
-      <table className="table table-sm table-bordered align-middle dir-reports-table">
+      <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
+        <thead className="table-light">
+          <tr><th>#</th><th>Company</th><th>Industry</th><th>MOA Status</th><th>Interns</th></tr>
+        </thead>
+        <tbody>
+          {data.map((r, i) => (
+            <tr key={i}>
+              <td>{i + 1}</td>
+              <td className="fw-semibold">{r.company_name}</td>
+              <td>{r.industry ?? '—'}</td>
+              <td>
+                <span className={`badge ${r.moa_status === 'active' ? 'bg-success' : r.moa_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
+                  {r.moa_status ? r.moa_status.toUpperCase() : '—'}
+                </span>
+              </td>
+              <td>{r.internships_count ?? 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function MoaStatusTable({ data }) {
+  const entries = Object.entries(data || {})
+  if (entries.length === 0) {
+    return <EmptyState icon="fa-file-signature" title="No MOA data" message="No MOA records available." />
+  }
+  return (
+    <div className="table-responsive">
+      <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
+        <thead className="table-light">
+          <tr><th>MOA Status</th><th>Count</th></tr>
+        </thead>
+        <tbody>
+          {entries.map(([status, count], i) => (
+            <tr key={i}>
+              <td className="fw-semibold text-uppercase">{status}</td>
+              <td>{count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ChedAnnualTable({ data }) {
+  if (!data || data.length === 0) {
+    return <EmptyState icon="fa-file-contract" title="No CHED data" message="No valid CHED report records found." />
+  }
+  return (
+    <div className="table-responsive">
+      <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
           <tr>
             <th>#</th>
-            <th>Company</th>
+            <th>Company / HTE</th>
+            <th>Address</th>
             <th>Industry</th>
             <th>MOA Status</th>
-            <th className="text-center">Interns</th>
+            <th>Total Interns</th>
+            <th>Ongoing</th>
+            <th>Completed</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.Company}-${i}`} className={i % 2 === 1 ? 'dir-reports-row-alt' : undefined}>
+          {data.map((r, i) => (
+            <tr key={i}>
               <td>{i + 1}</td>
-              <td className="fw-semibold">{r.Company}</td>
-              <td>{r.Industry}</td>
+              <td className="fw-semibold">{r.company_name}</td>
+              <td className="text-muted text-truncate" style={{ maxWidth: '200px' }} title={r.address}>{r.address || '—'}</td>
+              <td>{r.industry || '—'}</td>
               <td>
-                <span className="badge bg-secondary text-capitalize">{r['MOA Status']}</span>
+                <span className={`badge ${r.moa_status === 'active' ? 'bg-success' : r.moa_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
+                  {r.moa_status ? r.moa_status.toUpperCase() : '—'}
+                </span>
               </td>
-              <td className="text-center fw-semibold">{r.Interns}</td>
+              <td className="fw-bold">{r.total_interns ?? 0}</td>
+              <td>{r.ongoing ?? 0}</td>
+              <td>{r.completed ?? 0}</td>
             </tr>
           ))}
         </tbody>
@@ -108,360 +159,200 @@ function CompanyPartnershipsTable({ rows }) {
   )
 }
 
-function MoaStatusTable({ rows }) {
-  if (!rows.length) {
-    return <EmptyState icon="fa-file-signature" title="No MOA data" message="MOA status counts appear once partner companies are recorded." />
-  }
-  return (
-    <div className="table-responsive">
-      <table className="table table-sm table-bordered align-middle dir-reports-table">
-        <thead className="table-light">
-          <tr>
-            <th>#</th>
-            <th>Status</th>
-            <th className="text-center">Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.Status} className={i % 2 === 1 ? 'dir-reports-row-alt' : undefined}>
-              <td>{i + 1}</td>
-              <td className="fw-semibold text-capitalize">{r.Status}</td>
-              <td className="text-center fw-semibold">{r.Count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function PlacementTrendsTable({ rows, years }) {
-  if (!rows.length) {
-    return <EmptyState icon="fa-chart-line" title="No placement trends" message="No placement data for the last three academic years." />
-  }
-  return (
-    <div className="table-responsive">
-      <table className="table table-sm table-bordered align-middle dir-reports-table">
-        <thead className="table-light">
-          <tr>
-            <th>#</th>
-            <th>Company</th>
-            <th>Industry</th>
-            {years.map((y) => (
-              <th key={y} className="text-center">{y}</th>
-            ))}
-            <th className="text-center">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.Company}-${i}`} className={i % 2 === 1 ? 'dir-reports-row-alt' : undefined}>
-              <td>{i + 1}</td>
-              <td className="fw-semibold">{r.Company}</td>
-              <td>{r.Industry}</td>
-              {years.map((y) => (
-                <td key={y} className="text-center">{r[y] ?? 0}</td>
-              ))}
-              <td className="text-center fw-semibold">{r.Total}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {years.length > 0 && (
-        <p className="dir-reports-trends-note mb-0 mt-2">
-          Aggregated via SQL GROUP BY company + academic year. Years: {years.join(', ')}.
-        </p>
-      )}
-    </div>
-  )
-}
-
-function buildInternshipSummaryRows(byProgram) {
-  return (byProgram ?? []).map((p) => ({
-    Program: p.program ?? 'Unknown',
-    Ongoing: p.ongoing ?? 0,
-    Completed: p.completed ?? 0,
-    Total: p.count ?? 0,
-  }))
-}
-
-function buildCompanyRows(topCompanies) {
-  return (topCompanies ?? []).map((c) => ({
-    Company: c.company_name,
-    Industry: c.industry ?? '—',
-    'MOA Status': c.moa_status ?? '—',
-    Interns: c.internships_count ?? 0,
-  }))
-}
-
-function buildMoaRows(moaByStatus) {
-  return Object.entries(moaByStatus ?? {}).map(([status, count]) => ({
-    Status: status,
-    Count: count,
-  }))
-}
-
-function buildTrendRows(trendCompanies, years) {
-  return (trendCompanies ?? []).map((c) => {
-    const row = {
-      Company: c.company_name,
-      Industry: c.industry ?? '—',
-    }
-    years.forEach((y) => { row[y] = c.years?.[y] ?? 0 })
-    row.Total = c.total
-    return row
-  })
-}
-
-function DirectorReports() {
-  const [stats, setStats] = useState({})
-  const [overviewLoading, setOverviewLoading] = useState(true)
-  const [overviewError, setOverviewError] = useState(null)
+function DirectorReports({ embedded = false }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [activeReport, setActiveReport] = useState(null)
-  const [reportRows, setReportRows] = useState([])
-  const [trendYears, setTrendYears] = useState([])
-  const [generatedAt, setGeneratedAt] = useState(null)
-  const [reportLoading, setReportLoading] = useState(false)
-  const [reportError, setReportError] = useState(null)
+  const [generating, setGenerating] = useState(false)
+  const [chedData, setChedData] = useState(null)
+  const [exportPreview, setExportPreview] = useState(null)
 
-  const loadOverview = () => {
-    setOverviewLoading(true)
-    setOverviewError(null)
+  const load = () => {
+    setLoading(true)
+    setError(null)
     api.get('/director/dashboard')
-      .then((res) => {
-        setStats(res.data?.stats ?? {})
-      })
-      .catch((err) => {
-        setOverviewError(err.response?.data?.message || 'Failed to load overview.')
-        setStats({})
-      })
-      .finally(() => setOverviewLoading(false))
+      .then((dash) => setData(dash.data))
+      .catch((err) => setError(err.response?.data?.message || 'Failed to load reports overview.'))
+      .finally(() => setLoading(false))
   }
 
-  useEffect(() => { loadOverview() }, [])
+  useEffect(() => { load() }, [])
+
+  const stats = data?.stats ?? {}
+  const byProgram = data?.by_program ?? []
+  const topCompanies = data?.top_companies ?? []
+  const moaByStatus = data?.moa_by_status ?? {}
 
   const generateReport = async (key) => {
     setActiveReport(key)
-    setReportLoading(true)
-    setReportError(null)
-    setReportRows([])
-    setTrendYears([])
-    setGeneratedAt(null)
-
-    try {
-      if (key === 'placement-trends') {
-        const res = await api.get('/director/reports/placement-trends')
-        const years = res.data?.academic_years ?? []
-        const rows = buildTrendRows(res.data?.by_company ?? [], years)
-        setTrendYears(years)
-        setReportRows(rows)
-      } else {
-        const res = await api.get('/director/dashboard')
-        const data = res.data ?? {}
-        setStats(data.stats ?? {})
-
-        if (key === 'internship-summary') {
-          setReportRows(buildInternshipSummaryRows(data.by_program))
-        } else if (key === 'company-partnerships') {
-          setReportRows(buildCompanyRows(data.top_companies))
-        } else if (key === 'moa-status') {
-          setReportRows(buildMoaRows(data.moa_by_status))
-        }
+    if (key === 'ched-annual') {
+      if (chedData) return // Already loaded
+      setGenerating(true)
+      try {
+        const res = await api.get('/director/reports/ched-data')
+        setChedData(res.data.rows ?? [])
+      } catch (err) {
+        alert(err.response?.data?.message || 'Failed to fetch CHED data')
+        setActiveReport(null)
+      } finally {
+        setGenerating(false)
       }
-      setGeneratedAt(formatGeneratedAt())
-    } catch (err) {
-      setReportError(err.response?.data?.message || 'Failed to generate report.')
-      setReportRows([])
-      setTrendYears([])
-      setGeneratedAt(null)
-    } finally {
-      setReportLoading(false)
     }
   }
 
+  // Set preview state to display ReportExportModal
   const handleExportCsv = () => {
-    if (!activeReport || !reportRows.length) return
-    const meta = REPORT_TYPES.find((r) => r.key === activeReport)
-    const filenames = {
-      'internship-summary': 'internship-summary-by-program',
-      'company-partnerships': 'company-partnerships',
-      'moa-status': 'moa-status-summary',
-      'placement-trends': 'placement-trends-3yr',
+    let rows = []
+    let filename = ''
+    let title = ''
+
+    if (activeReport === 'internship-summary') {
+      title = 'Internship Summary Report'
+      filename = 'internship-summary-report'
+      rows = byProgram.map(r => ({
+        Program: r.program ?? 'Unknown',
+        Ongoing: r.ongoing ?? 0,
+        Completed: r.completed ?? 0,
+        Total: r.count ?? 0
+      }))
+    } else if (activeReport === 'company-partnerships') {
+      title = 'Company Partnerships Report'
+      filename = 'company-partnerships-report'
+      rows = topCompanies.map(r => ({
+        Company: r.company_name,
+        Industry: r.industry ?? '-',
+        'MOA Status': r.moa_status ?? '-',
+        Interns: r.internships_count ?? 0
+      }))
+    } else if (activeReport === 'moa-status') {
+      title = 'MOA Status Distribution Report'
+      filename = 'moa-status-report'
+      rows = Object.entries(moaByStatus).map(([status, count]) => ({
+        Status: status,
+        Count: count
+      }))
+    } else if (activeReport === 'ched-annual') {
+      title = 'CHED Annual Report'
+      filename = 'ched-annual-report'
+      rows = (chedData || []).map(r => ({
+        'Company / HTE': r.company_name,
+        Address: r.address,
+        Industry: r.industry,
+        'MOA Status': r.moa_status,
+        'Total Interns': r.total_interns,
+        Ongoing: r.ongoing,
+        Completed: r.completed
+      }))
     }
-    downloadCsv(filenames[activeReport] || meta?.title || 'director-report', reportRows)
+
+    if (rows.length === 0) return
+
+    setExportPreview({ title, filename, rows })
   }
 
-  const handlePrint = () => {
-    window.print()
-  }
+  const printRef = useRef(null)
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'Director_Report'
+  })
 
-  const activeMeta = REPORT_TYPES.find((r) => r.key === activeReport)
+  const Wrapper = embedded ? 'div' : Layout
+  const wrapperProps = embedded ? { className: "embedded-view" } : { title: "Reports", subtitle: CURRENT_TERM, icon: "fa-chart-bar", bodyClass: "director-page" }
 
   return (
-    <Layout title="Reports" subtitle={CURRENT_TERM} icon="fa-chart-bar" bodyClass="director-page dir-reports-page">
-      {(overviewError || reportError) && (
-        <PageError
-          message={reportError || overviewError}
-          onRetry={() => {
-            if (activeReport) generateReport(activeReport)
-            else loadOverview()
-          }}
-        />
-      )}
+    <Wrapper {...wrapperProps}>
+      {error && <PageError message={error} onRetry={load} />}
 
-      <div className="dir-reports">
-        <section className="dir-reports-section dir-reports-overview" aria-labelledby="dir-reports-overview">
-          <div className="dir-reports-section-head">
-            <h2 id="dir-reports-overview" className="dir-reports-section-title">Overview</h2>
-            <p className="dir-reports-section-sub">Live placement and partnership snapshot for the current term.</p>
-          </div>
-
-          {overviewLoading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted" /></div>
-          ) : (
-            <div className="row g-3">
-              <div className="col-sm-6 col-xl-3">
-                <div className="stat-card dir-reports-stat">
-                  <div className="stat-icon green"><i className="fa fa-users" aria-hidden="true" /></div>
-                  <div>
-                    <div className="stat-value">{stats.active_interns ?? 0}</div>
-                    <div className="stat-label">Active Interns</div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-6 col-xl-3">
-                <div className="stat-card dir-reports-stat">
-                  <div className="stat-icon teal"><i className="fa fa-building" aria-hidden="true" /></div>
-                  <div>
-                    <div className="stat-value">{stats.partner_companies ?? 0}</div>
-                    <div className="stat-label">Partner Companies</div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-6 col-xl-3">
-                <div className="stat-card dir-reports-stat">
-                  <div className="stat-icon blue"><i className="fa fa-trophy" aria-hidden="true" /></div>
-                  <div>
-                    <div className="stat-value">{stats.completed ?? 0}</div>
-                    <div className="stat-label">Completed</div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-6 col-xl-3">
-                <div className="stat-card dir-reports-stat">
-                  <div className="stat-icon amber"><i className="fa fa-chart-pie" aria-hidden="true" /></div>
-                  <div>
-                    <div className="stat-value">{stats.placement_rate ?? 0}%</div>
-                    <div className="stat-label">Placement Rate</div>
-                  </div>
-                </div>
-              </div>
+      {loading ? (
+        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+      ) : !error && (
+        <>
+          <div className="row g-3 mb-4">
+            <div className="col-sm-6 col-xl-3">
+              <div className="stat-card"><div className="stat-icon green"><i className="fa fa-users"></i></div><div><div className="stat-value">{stats.active_interns ?? 0}</div><div className="stat-label">Active Interns</div></div></div>
             </div>
-          )}
-        </section>
-
-        <section className="dir-reports-section dir-reports-cards-section" aria-labelledby="dir-reports-generate">
-          <div className="dir-reports-section-head">
-            <h2 id="dir-reports-generate" className="dir-reports-section-title">Generate a report</h2>
-            <p className="dir-reports-section-sub">Select a report type to view it inline, then export or print.</p>
+            <div className="col-sm-6 col-xl-3">
+              <div className="stat-card"><div className="stat-icon teal"><i className="fa fa-building"></i></div><div><div className="stat-value">{stats.partner_companies ?? 0}</div><div className="stat-label">Partner Companies</div></div></div>
+            </div>
+            <div className="col-sm-6 col-xl-3">
+              <div className="stat-card"><div className="stat-icon blue"><i className="fa fa-trophy"></i></div><div><div className="stat-value">{stats.completed ?? 0}</div><div className="stat-label">Completed</div></div></div>
+            </div>
+            <div className="col-sm-6 col-xl-3">
+              <div className="stat-card"><div className="stat-icon amber"><i className="fa fa-chart-pie"></i></div><div><div className="stat-value">{stats.placement_rate ?? 0}%</div><div className="stat-label">Placement Rate</div></div></div>
+            </div>
           </div>
 
-          <div className="row g-3 dir-reports-card-row">
-            {REPORT_TYPES.map((r) => {
-              const selected = activeReport === r.key
-              return (
-                <div key={r.key} className="col-sm-6 col-xl-3">
-                  <div
-                    className={`content-card h-100 dir-reports-gen-card ${selected ? 'is-selected' : ''}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => generateReport(r.key)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        generateReport(r.key)
-                      }
-                    }}
-                  >
-                    <div className="p-3 text-center h-100 d-flex flex-column">
-                      <div className={`stat-icon ${r.color} mx-auto mb-2 dir-reports-gen-icon`}>
-                        <i className={`fa ${r.icon}`} aria-hidden="true" />
-                      </div>
-                      <div className="fw-semibold mb-1">{r.title}</div>
-                      <p className="text-muted mb-3 flex-grow-1 dir-reports-gen-desc">{r.desc}</p>
-                      <button
-                        type="button"
-                        className={`btn btn-sm ${selected ? 'btn-green' : 'btn-outline-green'}`}
-                        onClick={(e) => { e.stopPropagation(); generateReport(r.key) }}
-                        disabled={reportLoading && selected}
-                      >
-                        {reportLoading && selected
-                          ? <><i className="fa fa-spinner fa-spin me-1" aria-hidden="true" />Generating…</>
-                          : <><i className="fa fa-play me-1" aria-hidden="true" />Generate</>}
-                      </button>
+          <h6 className="fw-semibold mb-3">Available Reports</h6>
+          <div className="row g-3 mb-4">
+            {REPORT_TYPES.map((r) => (
+              <div key={r.key} className="col-md-6 col-lg-3">
+                <div 
+                  className={`content-card h-100 d-flex flex-column ${activeReport === r.key ? 'border-2 border-primary' : ''}`}
+                  style={{ cursor: 'pointer' }} 
+                  onClick={() => generateReport(r.key)}
+                >
+                  <div className="p-3 text-center d-flex flex-column h-100">
+                    <div className={`stat-icon ${r.color} mx-auto mb-2`} style={{ width: 48, height: 48, fontSize: '1.3rem' }}>
+                      <i className={`fa ${r.icon}`}></i>
                     </div>
+                    <div className="fw-semibold mb-1">{r.title}</div>
+                    <p className="text-muted mb-3 flex-grow-1" style={{ fontSize: '0.82rem' }}>{r.desc}</p>
+                    <button
+                      className={`btn btn-sm mt-auto ${activeReport === r.key ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={(e) => { e.stopPropagation(); generateReport(r.key) }}
+                      disabled={generating && activeReport === r.key}
+                    >
+                      {generating && activeReport === r.key 
+                        ? <><i className="fa fa-spinner fa-spin me-1"></i>Generating…</> 
+                        : <><i className="fa fa-play me-1"></i>Generate</>}
+                    </button>
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
-        </section>
 
-        {activeReport && (
-          <section className="dir-reports-section" aria-labelledby="dir-report-output-title">
-            <div className="content-card" id="report-output">
-              <div className="content-card-header d-print-none dir-reports-output-header">
-                <i className={`fa ${activeMeta?.icon}`} aria-hidden="true" />
-                <h6 id="dir-report-output-title">{activeMeta?.title}</h6>
-                {generatedAt && <small className="ms-auto text-muted">Generated: {generatedAt}</small>}
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-success ms-2"
-                  onClick={handleExportCsv}
-                  disabled={reportLoading || !reportRows.length}
-                >
-                  <i className="fa fa-file-csv me-1" aria-hidden="true" />
-                  Export CSV
+          {activeReport && (
+            <div className="content-card" id="report-output" ref={printRef}>
+              <div className="content-card-header d-print-none">
+                <i className={`fa ${REPORT_TYPES.find((r) => r.key === activeReport)?.icon}`}></i>
+                <h6>{REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h6>
+                <small className="ms-auto text-muted d-none d-md-block">Generated live</small>
+                <button className="btn btn-sm btn-outline-success ms-2" onClick={handleExportCsv} disabled={activeReport === 'ched-annual' && !chedData}>
+                  <i className="fa fa-file-csv me-1"></i>Export CSV
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary ms-2"
-                  onClick={handlePrint}
-                  disabled={reportLoading || !reportRows.length}
-                >
-                  <i className="fa fa-print me-1" aria-hidden="true" />
-                  Print / Save PDF
+                <button className="btn btn-sm btn-outline-secondary ms-2" onClick={handlePrint} disabled={activeReport === 'ched-annual' && !chedData}>
+                  <i className="fa fa-print me-1"></i>Print / Save PDF
                 </button>
               </div>
 
-              <div className="d-none d-print-block p-3 mb-3 border-bottom dir-reports-print-banner">
-                <h5 className="mb-0">INTERNTRACK — {activeMeta?.title}</h5>
-                <small className="text-muted">University of Cabuyao · {CURRENT_TERM} · Generated: {generatedAt}</small>
+              {/* Print-only header */}
+              <div className="d-none d-print-block p-4 border-bottom text-center">
+                <h4 className="fw-bold mb-1">{REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h4>
+                <div className="text-muted">Orb-BIT InternTrack | Director Dashboard | Term: {CURRENT_TERM}</div>
               </div>
 
               <div className="p-3">
-                {reportLoading ? (
-                  <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted" /></div>
-                ) : reportError ? (
-                  <EmptyState icon="fa-exclamation-triangle" title="Could not generate report" message={reportError} />
-                ) : (
-                  <>
-                    {activeReport === 'internship-summary' && <InternshipSummaryTable rows={reportRows} />}
-                    {activeReport === 'company-partnerships' && <CompanyPartnershipsTable rows={reportRows} />}
-                    {activeReport === 'moa-status' && <MoaStatusTable rows={reportRows} />}
-                    {activeReport === 'placement-trends' && (
-                      <PlacementTrendsTable rows={reportRows} years={trendYears} />
-                    )}
-                  </>
-                )}
+                {generating && activeReport === 'ched-annual' ? (
+                  <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+                ) : activeReport === 'internship-summary' ? (
+                  <InternshipSummaryTable data={byProgram} />
+                ) : activeReport === 'company-partnerships' ? (
+                  <CompanyPartnershipsTable data={topCompanies} />
+                ) : activeReport === 'moa-status' ? (
+                  <MoaStatusTable data={moaByStatus} />
+                ) : activeReport === 'ched-annual' ? (
+                  <ChedAnnualTable data={chedData} />
+                ) : null}
               </div>
             </div>
-          </section>
-        )}
-      </div>
-    </Layout>
+          )}
+        </>
+      )}
+      <ReportExportModal preview={exportPreview} onClose={() => setExportPreview(null)} />
+    </Wrapper>
   )
 }
 

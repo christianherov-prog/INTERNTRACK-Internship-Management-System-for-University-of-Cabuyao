@@ -4,12 +4,14 @@ use App\Support\NameParts;
 use Illuminate\Database\Eloquent\Model;
 class FacultyProfile extends Model {
     protected $fillable = [
-        'user_id', 'employee_number', 'first_name', 'middle_name', 'last_name', 'suffix',
-        'email', 'contact_number', 'sex', 'department', 'college', 'position',
+        'user_id', 'faculty_number', 'first_name', 'middle_name', 'last_name', 'suffix',
+        'email', 'contact_number', 'sex', 'department_id', 'position',
         'employment_status', 'synced_at',
     ];
     protected $casts = ['synced_at' => 'datetime'];
+    protected $appends = ['full_name'];
     public function user() { return $this->belongsTo(User::class); }
+    public function department() { return $this->belongsTo(Department::class); }
     public function getFullNameAttribute(): string
     {
         return NameParts::fromProfile($this) ?: trim("{$this->first_name} {$this->last_name}");

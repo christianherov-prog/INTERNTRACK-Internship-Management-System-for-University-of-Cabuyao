@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\SupervisorController;
 use App\Http\Controllers\Api\FacultyController;
 use App\Http\Controllers\Api\DirectorController;
 use App\Http\Controllers\Api\CoordinatorController;
-use App\Http\Controllers\Api\PortfolioController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SupervisorRegistrationController;
 use App\Http\Controllers\Api\DashboardController;
@@ -22,14 +21,20 @@ use App\Http\Controllers\Api\PublicAvatarController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\ClassListUploadController;
 use App\Http\Controllers\Api\RequirementController;
+use App\Http\Controllers\Api\RequirementTemplateController;
 use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\DtrPdfController;
 use App\Http\Controllers\Api\JournalPdfController;
+use App\Http\Controllers\Api\PortfolioPdfController;
+use App\Http\Controllers\Api\StudentPortfolioController;
+
+
 
 // ─── Public: Auth ─────────────────────────────────────────────────────────────
 Route::prefix('v1')->group(function () {
 
     Route::post('/auth/login',  [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('/auth/confirm-password-change', [AuthController::class, 'confirmPasswordChange'])->middleware('throttle:10,1');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::get('/auth/user',    [AuthController::class, 'user'])->middleware('auth:sanctum');
@@ -69,6 +74,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/signature',        [SignatureController::class, 'upload']);
         Route::delete('/auth/signature',      [SignatureController::class, 'destroy']);
         Route::get('/auth/signature/status',  [SignatureController::class, 'status']);
+        Route::get('/auth/signature/view',    [SignatureController::class, 'view']);
 
         // Role-aware dashboard summary (all portal roles including MISD admin)
         Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
@@ -107,24 +113,34 @@ Route::prefix('v1')->group(function () {
             Route::post('/logbook',              [StudentController::class, 'submitJournal']);
             Route::get('/documents',             [StudentController::class, 'documents']);
             Route::post('/documents/upload',     [StudentController::class, 'uploadDocument']);
+            Route::get('/requirements/{id}/template', [RequirementTemplateController::class, 'downloadTemplate']);
             Route::get('/evaluations',           [StudentController::class, 'evaluations']);
             Route::get('/records',               [StudentController::class, 'records']);
+            Route::get('/companies',             [StudentController::class, 'companies']);
+            Route::post('/applications',         [StudentController::class, 'applyCompany']);
+            Route::get('/applications',          [StudentController::class, 'applications']);
+            Route::post('/hte-requests',         [StudentController::class, 'submitHteRequest']);
+            Route::get('/hte-requests',          [StudentController::class, 'hteRequests']);
             Route::post('/absorption/declare',   [StudentController::class, 'declareAbsorption']);
-
-            // Portfolio Builder
-            Route::get('/portfolio', [PortfolioController::class, 'getPortfolio']);
-            Route::post('/portfolio', [PortfolioController::class, 'savePortfolio']);
-            Route::post('/portfolio/photos', [PortfolioController::class, 'uploadPhoto']);
-            Route::delete('/portfolio/photos/{id}', [PortfolioController::class, 'deletePhoto']);
 
             // Supervisor Invite (QR Code)
             Route::post('/supervisor-invite',       [SupervisorRegistrationController::class, 'generateInvite']);
             Route::get('/supervisor-invite/status',  [SupervisorRegistrationController::class, 'inviteStatus']);
 
             // PDF generation
-            Route::get('/dtr/generate',     [DtrPdfController::class, 'generate']);
-            Route::get('/journal/generate', [JournalPdfController::class, 'generate']);
+            Route::get('/dtr/generate',       [DtrPdfController::class, 'generate']);
+            Route::get('/journal/generate',   [JournalPdfController::class, 'generate']);
+            Route::get('/portfolio/generate', [PortfolioPdfController::class, 'generate']);
+
+            // Portfolio Builder
+            Route::get('/portfolio',               [StudentPortfolioController::class, 'show']);
+            Route::post('/portfolio',              [StudentPortfolioController::class, 'update']);
+            Route::get('/portfolio/builder',       [StudentPortfolioController::class, 'show']);
+            Route::post('/portfolio/builder',      [StudentPortfolioController::class, 'update']);
+            Route::post('/portfolio/photos',       [StudentPortfolioController::class, 'uploadPhoto']);
+            Route::delete('/portfolio/photos/{id}', [StudentPortfolioController::class, 'deletePhoto']);
         });
+
 
         // Supervisor
         Route::prefix('supervisor')->middleware('role:supervisor')->group(function () {
@@ -142,6 +158,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/feedback/{internshipId}',       [SupervisorController::class, 'submitFeedback']);
             Route::get('/absorption',                     [SupervisorController::class, 'absorptionList']);
             // Absorption finalize is Director-only; stub route removed from supervisor API surface.
+
+            // PDF generation for supervisor
+            Route::get('/dtr/generate',                   [DtrPdfController::class, 'generate']);
+            Route::get('/journal/generate',               [JournalPdfController::class, 'generate']);
         });
 
         // Faculty
@@ -163,6 +183,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/student-summary',     [FacultyController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance',          [FacultyController::class, 'reportCompliance']);
             Route::get('/reports/performance',         [FacultyController::class, 'reportPerformance']);
+            // Dynamic OJT Requirement Management
+            Route::get('/requirements/options',   [RequirementTemplateController::class, 'options']);
+            Route::get('/requirements',           [RequirementTemplateController::class, 'index']);
+            Route::post('/requirements',          [RequirementTemplateController::class, 'store']);
+            Route::match(['put', 'post'], '/requirements/{id}', [RequirementTemplateController::class, 'update']);
+            Route::delete('/requirements/{id}',   [RequirementTemplateController::class, 'destroy']);
 
             // PDF generation for faculty
             Route::get('/dtr/generate',     [DtrPdfController::class, 'generate']);
@@ -190,6 +216,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/internships/{id}/place',   [CoordinatorController::class, 'assignPlacement']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
             Route::patch('/internships/{id}/status', [InternshipStatusController::class, 'update']);
+            Route::get('/applications',              [CoordinatorController::class, 'applications']);
+            Route::patch('/applications/{id}/status',[CoordinatorController::class, 'updateApplicationStatus']);
+            Route::get('/hte-requests',              [CoordinatorController::class, 'hteRequests']);
+            Route::patch('/hte-requests/{id}/status',[CoordinatorController::class, 'updateHteRequestStatus']);
             Route::get('/absorption',                    [CoordinatorController::class, 'absorptionList']);
             // Absorption finalize is Director-only on V2; keep overview + filtered reports from develop.
             Route::get('/reports/overview',          [CoordinatorController::class, 'reportsOverview']);
@@ -207,21 +237,24 @@ Route::prefix('v1')->group(function () {
             Route::patch('/documents/{id}/reject',   [CoordinatorController::class, 'rejectDocument']);
 
             // Dynamic OJT Requirement Management
-            Route::get('/requirements',           [RequirementController::class, 'index']);
-            Route::post('/requirements',          [RequirementController::class, 'store']);
-            Route::put('/requirements/{id}',      [RequirementController::class, 'update']);
-            Route::delete('/requirements/{id}',   [RequirementController::class, 'destroy']);
+            Route::get('/requirements/options',   [RequirementTemplateController::class, 'options']);
+            Route::get('/requirements',           [RequirementTemplateController::class, 'index']);
+            Route::post('/requirements',          [RequirementTemplateController::class, 'store']);
+            Route::match(['put', 'post'], '/requirements/{id}', [RequirementTemplateController::class, 'update']);
+            Route::delete('/requirements/{id}',   [RequirementTemplateController::class, 'destroy']);
         });
 
         // Director
         Route::prefix('director')->middleware('role:director')->group(function () {
             Route::get('/dashboard',       [DirectorController::class, 'dashboard']);
+            Route::get('/evaluations',     [DirectorController::class, 'hteEvaluations']);
             Route::get('/analytics',       [DirectorController::class, 'analytics']);
             Route::get('/companies',       [DirectorController::class, 'companies']);
             Route::post('/companies',      [DirectorController::class, 'storeCompany']);
             Route::put('/companies/{id}',  [DirectorController::class, 'updateCompany']);
             Route::get('/moa-monitoring',  [DirectorController::class, 'moaMonitoring']);
             Route::get('/reports/placement-trends', [DirectorController::class, 'placementTrends']);
+            Route::get('/reports/ched-data',      [DirectorController::class, 'chedReportData']);
             Route::get('/records',         [DirectorController::class, 'records']);
             Route::get('/placement-options', [DirectorController::class, 'placementOptions']);
             Route::post('/internships/{id}/place', [DirectorController::class, 'assignPlacement']);

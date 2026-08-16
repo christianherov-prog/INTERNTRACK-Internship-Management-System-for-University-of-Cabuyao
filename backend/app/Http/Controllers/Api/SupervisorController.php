@@ -35,17 +35,11 @@ class SupervisorController extends Controller
                 ->where('status', 'pending')
                 ->count();
 
-        $pendingJournals = $internshipIds->isEmpty()
-            ? 0
-            : \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
-                ->where('status', 'submitted')
-                ->count();
-
         $pendingEvals = $internships->whereNotIn('id',
             Evaluation::where('evaluator_type', 'supervisor')->pluck('internship_id')->toArray()
         )->count();
 
-        // Get recent activity (last 5 validated attendance or approved journals)
+        // Recent activity — last 5 validated attendance records
         $recentAttendance = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
             ->where('status', 'validated')
             ->with(['internship.student.studentProfile'])
@@ -60,31 +54,46 @@ class SupervisorController extends Controller
                 'action_at' => $log->validated_at,
             ]);
 
-        $recentJournals = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
-            ->where('status', 'approved')
-            ->with(['internship.student.studentProfile'])
-            ->latest('supervisor_reviewed_at')
-            ->limit(5)
-            ->get()
-            ->map(fn($j) => [
-                'type' => 'journal',
-                'student' => $j->internship->student->studentProfile ? trim("{$j->internship->student->studentProfile->first_name} {$j->internship->student->studentProfile->last_name}") : $j->internship->student->username,
-                'week' => $j->week_number ?? $j->entry_number,
-                'action_at' => $j->supervisor_reviewed_at,
-            ]);
+        $recentActivity = $recentAttendance->sortByDesc('action_at')->take(5)->values();
 
-        $recentActivity = $recentAttendance->concat($recentJournals)
-            ->sortByDesc('action_at')
-            ->take(5)
-            ->values();
+        $supervisor = $request->user()->load('supervisorProfile');
+
+        $allInterns = Internship::where('supervisor_id', $supervisorId)
+            ->with(['student.studentProfile', 'evaluations' => function ($query) {
+                $query->where('evaluator_type', 'supervisor');
+            }])
+            ->get()
+            ->map(function($internship) {
+                $evals = $internship->evaluations;
+                $hasMidterm = $evals->contains('evaluation_period', 'midterm');
+                $hasFinal = $evals->contains('evaluation_period', 'final');
+                
+                return [
+                    'id' => $internship->id,
+                    'student' => $internship->student->studentProfile ? trim("{$internship->student->studentProfile->first_name} {$internship->student->studentProfile->last_name}") : $internship->student->username,
+                    'course' => $internship->student->studentProfile->program?->code ?? 'N/A',
+                    'status' => $internship->status,
+                    'hours_rendered' => $internship->total_hours_rendered,
+                    'target_hours' => $internship->target_hours,
+                    'evaluation_status' => [
+                        'midterm' => $hasMidterm,
+                        'final' => $hasFinal
+                    ]
+                ];
+            });
+
+        $completedEvaluations = Evaluation::where('evaluated_by', $supervisorId)
+            ->with(['internship.student.studentProfile'])
+            ->orderByDesc('created_at')
+            ->get();
 
         return response()->json([
-            'stats' => [
-                'assigned_interns'    => $internships->count(),
-                'pending_validations' => $pendingAttendance,
-                'journal_reviews'     => $pendingJournals,
-                'pending_evaluations' => $pendingEvals,
-            ],
+            'profile' => $supervisor->supervisorProfile,
+            'company_name' => $internships->first()?->company?->company_name ?? null,
+            'assigned_interns' => $allInterns,
+            'completed_evaluations' => $completedEvaluations,
+            'pending_attendance' => $pendingAttendance,
+            'pending_evals' => $pendingEvals,
             'recent_activity' => $recentActivity,
         ]);
     }
@@ -123,10 +132,13 @@ class SupervisorController extends Controller
                         'first_name' => $p->first_name,
                         'last_name' => $p->last_name,
                         'student_number' => $p->student_number,
-                        'course_name' => $p->course_name,
-                        'program' => $p->program,
+                        'course_name' => $p->program?->code,
+                        'program' => $p->program?->code,
                     ] : null,
                 ],
+                'attendance_logs' => \App\Models\AttendanceLog::where('internship_id', $i->id)
+                    ->orderBy('date', 'asc')
+                    ->get(),
             ];
         });
         $rows->setCollection($mapped);
@@ -294,6 +306,7 @@ class SupervisorController extends Controller
         $logs = \App\Models\AttendanceLog::whereIn('id', $request->ids)
             ->whereHas('internship', fn ($q) => $q->where('supervisor_id', $request->user()->id))
             ->where('status', 'pending')
+            ->with('internship')
             ->get();
 
         $eligible = $logs->filter(fn ($log) => (bool) $log->clock_out);
@@ -323,66 +336,11 @@ class SupervisorController extends Controller
         ]);
     }
 
-    /** GET /api/v1/supervisor/journals */
-    public function journals(Request $request)
-    {
-        $internshipIds = Internship::where('supervisor_id', $request->user()->id)->pluck('id');
-        $journals = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
-            ->where('status', 'submitted')
-            ->with(['internship.student.studentProfile'])
-            ->orderByDesc('date')
-            ->paginate(25);
+    /** GET /api/v1/supervisor/journals — REMOVED: Faculty now handles all journal reviews. */
+    // journals() method removed per Role-Task Matrix alignment.
 
-        return ApiResponse::list($journals);
-    }
-
-    /** PATCH /api/v1/supervisor/journals/{id}/review */
-    public function reviewJournal(Request $request, int $id)
-    {
-        $request->validate([
-            'action'   => 'required|in:approved,needs_revision',
-            'feedback' => 'nullable|string|max:1000',
-        ]);
-
-        $journal = \App\Models\JournalEntry::whereHas('internship', fn($q) => $q->where('supervisor_id', $request->user()->id))
-            ->findOrFail($id);
-
-        $journal->update([
-            'status'                  => $request->action,
-            'supervisor_feedback'     => $request->feedback,
-            'supervisor_reviewed_by'  => $request->user()->id,
-            'supervisor_reviewed_at'  => now(),
-        ]);
-
-        // Notify student of journal review outcome
-        $studentId = $journal->internship?->student_id;
-        if ($studentId) {
-            $weekLabel = 'Week ' . ($journal->week_number ?? $journal->entry_number ?? '—');
-            if ($request->action === 'approved') {
-                Notification::notify(
-                    $studentId,
-                    'journal_reviewed',
-                    "Journal Approved ✅",
-                    "Your {$weekLabel} journal was approved by your company supervisor.",
-                    '/student/logbook',
-                    ['journal_id' => $journal->id, 'week_number' => $journal->week_number, 'action' => 'approved']
-                );
-            } else {
-                Notification::notify(
-                    $studentId,
-                    'journal_reviewed',
-                    "Journal Needs Revision 🔄",
-                    "Your {$weekLabel} journal needs revision: " . ($request->feedback ?? 'Please check your entry.'),
-                    '/student/logbook',
-                    ['feedback' => $request->feedback]
-                );
-            }
-        }
-
-        audit_log($request->user()->id, 'review_journal', ['journal_id' => $id, 'action' => $request->action]);
-
-        return response()->json(['message' => 'Journal ' . $request->action . ' successfully.', 'journal' => $journal]);
-    }
+    /** PATCH /api/v1/supervisor/journals/{id}/review — REMOVED: Faculty now handles all journal reviews. */
+    // reviewJournal() method removed per Role-Task Matrix alignment.
 
     /** GET /api/v1/supervisor/evaluations */
     public function evaluations(Request $request)
@@ -397,9 +355,22 @@ class SupervisorController extends Controller
             ->get();
 
         $pending = Internship::whereIn('id', $internshipIds)
-            ->whereNotIn('id', $evaluations->pluck('internship_id'))
             ->with('student.studentProfile')
-            ->get();
+            ->get()
+            ->map(function ($internship) use ($evaluations) {
+                $internshipEvals = $evaluations->where('internship_id', $internship->id);
+                $hasFO24 = $internshipEvals->contains('form_type', 'FO-24');
+                $hasFO03 = $internshipEvals->contains('form_type', 'FO-03');
+                
+                $missing = [];
+                if (!$hasFO24) $missing[] = 'FO-24';
+                if (!$hasFO03) $missing[] = 'FO-03';
+                
+                $internship->missing_forms = $missing;
+                return $internship;
+            })
+            ->filter(fn ($i) => count($i->missing_forms) > 0)
+            ->values();
 
         return ApiResponse::groups(['completed' => $evaluations, 'pending' => $pending]);
     }
@@ -408,18 +379,10 @@ class SupervisorController extends Controller
     public function submitEvaluation(Request $request, int $internshipId)
     {
         $request->validate([
-            'evaluation_period'     => 'required|in:midterm,final',
-            'technical_skills'      => 'required|numeric|min:1|max:5',
-            'communication_skills'  => 'required|numeric|min:1|max:5',
-            'teamwork'              => 'required|numeric|min:1|max:5',
-            'initiative'            => 'required|numeric|min:1|max:5',
-            'work_ethics'           => 'required|numeric|min:1|max:5',
-            'attendance_punctuality'=> 'required|numeric|min:1|max:5',
-            'adaptability'          => 'required|numeric|min:1|max:5',
-            'problem_solving'       => 'required|numeric|min:1|max:5',
-            'strengths'             => 'nullable|string',
-            'areas_for_improvement' => 'nullable|string',
-            'general_comments'      => 'nullable|string',
+            'evaluation_period' => 'required|string',
+            'form_type'         => 'required|string',
+            'responses'         => 'required|array',
+            'general_comments'  => 'nullable|string',
         ]);
 
         $internship = Internship::where('supervisor_id', $request->user()->id)
@@ -433,18 +396,10 @@ class SupervisorController extends Controller
                 'internship_id' => $internship->id,
                 'evaluator_type' => 'supervisor',
                 'evaluation_period' => $period,
+                'form_type' => $request->input('form_type'),
             ],
             [
-                'technical_skills' => $request->input('technical_skills'),
-                'communication_skills' => $request->input('communication_skills'),
-                'teamwork' => $request->input('teamwork'),
-                'initiative' => $request->input('initiative'),
-                'work_ethics' => $request->input('work_ethics'),
-                'attendance_punctuality' => $request->input('attendance_punctuality'),
-                'adaptability' => $request->input('adaptability'),
-                'problem_solving' => $request->input('problem_solving'),
-                'strengths' => $request->input('strengths'),
-                'areas_for_improvement' => $request->input('areas_for_improvement'),
+                'responses' => $request->input('responses'),
                 'general_comments' => $request->input('general_comments'),
                 'evaluated_by' => $request->user()->id,
                 'submitted_at' => now(),

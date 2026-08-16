@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Company;
+use App\Models\Department;
 use App\Models\Internship;
+use App\Models\Program;
 use App\Models\StudentProfile;
 use App\Models\SupervisorProfile;
 use App\Models\User;
@@ -18,6 +20,32 @@ use Illuminate\Support\Facades\Hash;
  */
 class HireProgressDemoSeeder extends Seeder
 {
+    private function ensureDepartment(string $name): int
+    {
+        $name = trim($name);
+        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
+
+        $department = Department::firstOrCreate(
+            ['name' => $name],
+            ['code' => $code, 'is_active' => true]
+        );
+
+        return $department->id;
+    }
+
+    private function ensureProgram(string $name, int $departmentId): int
+    {
+        $name = trim($name);
+        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
+
+        $program = Program::firstOrCreate(
+            ['name' => $name],
+            ['department_id' => $departmentId, 'code' => $code, 'is_active' => true]
+        );
+
+        return $program->id;
+    }
+
     public function run(): void
     {
         $password = Hash::make('interntrack123');
@@ -61,57 +89,6 @@ class HireProgressDemoSeeder extends Seeder
 
         $demos = [
             [
-                'username' => 'DEMO-0000',
-                'first' => 'Ana',
-                'last' => 'Zero',
-                'email' => 'demo.zero@interntrack.local',
-                'hours' => 0,
-                'status' => 'active',
-                'absorption_status' => null,
-                'label' => '0% — just placed',
-            ],
-            [
-                'username' => 'DEMO-0025',
-                'first' => 'Ben',
-                'last' => 'Quarter',
-                'email' => 'demo.quarter@interntrack.local',
-                'hours' => 90,
-                'status' => 'active',
-                'absorption_status' => null,
-                'label' => '25% — early progress',
-            ],
-            [
-                'username' => 'DEMO-0050',
-                'first' => 'Cara',
-                'last' => 'Halfway',
-                'email' => 'demo.halfway@interntrack.local',
-                'hours' => 180,
-                'status' => 'active',
-                'absorption_status' => null,
-                'label' => '50% — mid internship',
-            ],
-            [
-                'username' => 'DEMO-0075',
-                'first' => 'Diego',
-                'last' => 'Pending',
-                'email' => 'demo.pending@interntrack.local',
-                'hours' => 360,
-                'status' => 'completed',
-                'absorption_status' => 'pending',
-                'label' => '75% — completed, awaiting hire confirmation',
-            ],
-            [
-                'username' => 'DEMO-0100H',
-                'first' => 'Elena',
-                'last' => 'Hired',
-                'email' => 'demo.hired@interntrack.local',
-                'hours' => 360,
-                'status' => 'completed',
-                'absorption_status' => 'absorbed',
-                'job_title' => 'Junior Developer',
-                'label' => '100% — absorbed / hired',
-            ],
-            [
                 'username' => 'DEMO-0100N',
                 'first' => 'Felix',
                 'last' => 'NotHired',
@@ -124,6 +101,9 @@ class HireProgressDemoSeeder extends Seeder
         ];
 
         foreach ($demos as $demo) {
+            $departmentId = $this->ensureDepartment('College of Computing Studies');
+            $programId = $this->ensureProgram('Bachelor of Science in Information Technology', $departmentId);
+
             $user = User::withTrashed()->updateOrCreate(
                 ['username' => $demo['username']],
                 [
@@ -147,14 +127,12 @@ class HireProgressDemoSeeder extends Seeder
                     'email' => $demo['email'],
                     'contact_number' => '09171234567',
                     'sex' => in_array($demo['first'], ['Ana', 'Mia'], true) ? 'Female' : 'Male',
-                    'program' => 'BS Information Technology',
-                    'college' => 'College of Computing Studies',
-                    'department' => 'Information Technology',
-                    'course_name' => 'BS Information Technology',
+                    'program_id' => $programId,
+                    'department_id' => $departmentId,
                     'year_level' => 4,
                     'section' => '4ITD',
-                    'academic_year' => '2025-2026',
-                    'semester' => 2,
+                    'school_year' => '2025-2026',
+                    'semester' => '2nd Semester',
                     'enrollment_status' => 'Enrolled',
                     'synced_at' => now(),
                 ]
@@ -165,10 +143,10 @@ class HireProgressDemoSeeder extends Seeder
                 'supervisor_id' => $supervisor->id,
                 'faculty_id' => $faculty->id,
                 'coordinator_id' => $coord->id,
-                'academic_year' => '2025-2026',
-                'semester' => 2,
-                'term' => 'AY 2025-2026, Sem 2 (Hire Progress Demo)',
-                'program' => 'BS Information Technology',
+                'school_year' => '2025-2026',
+                'semester' => '2nd Semester',
+                'term' => 'AY 2025-2026',
+                'program' => 'Bachelor of Science in Information Technology',
                 'target_hours' => 360,
                 'total_hours_rendered' => $demo['hours'],
                 'status' => $demo['status'],

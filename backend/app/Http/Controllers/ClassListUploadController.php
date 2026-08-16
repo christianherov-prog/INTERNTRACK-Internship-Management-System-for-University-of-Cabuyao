@@ -16,8 +16,8 @@ class ClassListUploadController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv',
             'section' => 'required|string',
             'program' => 'required|string',
-            'academic_year' => 'required|string',
-            'semester' => 'required|integer',
+            'school_year' => 'required|string',
+            'semester' => 'required|string',
             'faculty_user_id' => 'required|exists:users,id',
         ]);
 
@@ -32,7 +32,7 @@ class ClassListUploadController extends Controller
                     $request->faculty_user_id,
                     $request->section,
                     $request->program,
-                    $request->academic_year,
+                    $request->school_year,
                     $request->semester
                 ),
                 $request->file('file')

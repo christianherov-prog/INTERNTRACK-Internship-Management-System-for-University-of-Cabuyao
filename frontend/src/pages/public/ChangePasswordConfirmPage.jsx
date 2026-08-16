@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -77,7 +77,7 @@ function ChangePasswordConfirmPage() {
                 <i className="fa fa-exclamation-triangle fa-3x text-warning mb-3"></i>
                 <h5 className="fw-bold">Invalid Link</h5>
                 <p className="text-muted mb-4">This password confirmation link is missing required security tokens.</p>
-                <Link to="/" className="btn btn-green w-100 py-2">Return to Login</Link>
+                <Link to="/" className="btn btn-primary w-100 py-2">Return to Login</Link>
               </div>
             ) : successMsg ? (
               <div className="text-center py-4">

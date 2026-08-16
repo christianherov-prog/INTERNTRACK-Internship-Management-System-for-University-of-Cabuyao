@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
@@ -10,18 +10,6 @@ function absorptionBadge(status) {
   if (status === 'not_hired') return 'badge bg-danger'
   return 'badge bg-warning text-dark'
 }
-
-// Canonical app badge styling (matches Student Roster / Absorption tables)
-function historyStatusBadge(status) {
-  const s = (status || '').toLowerCase()
-  if (s === 'completed') return 'badge-status badge-completed'
-  if (['ongoing', 'active', 'placed'].includes(s)) return 'badge-status badge-active'
-  if (s === 'terminated') return 'badge-status badge-overdue'
-  return 'badge-status badge-pending'
-}
-
-// Subtle "not started yet" treatment for zero-state stat values
-const zeroValueStyle = { color: 'var(--text-light, #9ca3af)', fontWeight: 700 }
 
 function StudentRecords() {
   const [profile, setProfile] = useState(null)
@@ -73,6 +61,13 @@ function StudentRecords() {
       .finally(() => setDeclaringId(null))
   }
 
+  const programName =
+    profile?.program?.name ||
+    profile?.program?.code ||
+    (typeof profile?.program === 'string' ? profile?.program : null) ||
+    profile?.course_name ||
+    '—'
+
   return (
     <Layout title="My Records" subtitle="Internship History" icon="fa-folder-open" bodyClass="student-page">
       {error && <PageError message={error} onRetry={load} />}
@@ -84,97 +79,91 @@ function StudentRecords() {
       )}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5">
+          <i className="fa fa-spinner fa-spin fa-2x text-muted"></i>
+          <p className="text-muted mt-3 mb-0">Loading records…</p>
+        </div>
       ) : !error && (
         <>
+          {/* ── Stat Cards — uniform height & responsive sizing ── */}
           <div className="row g-3 mb-4">
-            <div className="col-sm-6 col-xl-3">
-              <div className="stat-card">
+            <div className="col-sm-6 col-xl-3 d-flex">
+              <div className="stat-card w-100 h-100">
                 <div className="stat-icon teal"><i className="fa fa-clock"></i></div>
-                <div>
-                  <div className="stat-value" style={totalHours === 0 ? zeroValueStyle : undefined}>{totalHours}</div>
+                <div className="d-flex flex-column justify-content-center min-w-0">
+                  <div className="stat-value">{totalHours}</div>
                   <div className="stat-label">Total Hours</div>
                 </div>
               </div>
             </div>
-            <div className="col-sm-6 col-xl-3">
-              <div className="stat-card">
+            <div className="col-sm-6 col-xl-3 d-flex">
+              <div className="stat-card w-100 h-100">
                 <div className="stat-icon green"><i className="fa fa-calendar-check"></i></div>
-                <div>
-                  <div className="stat-value" style={totalDays === 0 ? zeroValueStyle : undefined}>{totalDays}</div>
+                <div className="d-flex flex-column justify-content-center min-w-0">
+                  <div className="stat-value">{totalDays}</div>
                   <div className="stat-label">Validated Days</div>
                 </div>
               </div>
             </div>
-            <div className="col-sm-6 col-xl-3">
-              <div className="stat-card">
+            <div className="col-sm-6 col-xl-3 d-flex">
+              <div className="stat-card w-100 h-100">
                 <div className="stat-icon amber"><i className="fa fa-briefcase"></i></div>
-                <div>
-                  <div className="stat-value" style={history.length === 0 ? zeroValueStyle : undefined}>{history.length}</div>
+                <div className="d-flex flex-column justify-content-center min-w-0">
+                  <div className="stat-value">{history.length}</div>
                   <div className="stat-label">Placements</div>
                 </div>
               </div>
             </div>
-            <div className="col-sm-6 col-xl-3">
-              <div className="stat-card">
+            <div className="col-sm-6 col-xl-3 d-flex">
+              <div className="stat-card w-100 h-100">
                 <div className="stat-icon blue"><i className="fa fa-user-graduate"></i></div>
-                <div>
+                <div className="d-flex flex-column justify-content-center min-w-0 flex-grow-1">
                   <div
                     className="stat-value"
-                    style={{ fontSize: '1.1rem', ...((profile?.program || profile?.course_name) ? {} : zeroValueStyle) }}
+                    style={{
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      lineHeight: 1.25,
+                      color: '#111827',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal',
+                    }}
+                    title={programName}
                   >
-                    {profile?.program || profile?.course_name || '—'}
+                    {programName}
                   </div>
-                  <div className="stat-label">Program</div>
+                  <div className="stat-label mt-1">Program</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {active && (() => {
-            const rendered = Number(active.total_hours_rendered) || 0
-            const target = Number(active.target_hours) || DEFAULT_TARGET_HOURS
-            const pct = target > 0 ? Math.min(100, Math.round((rendered / target) * 100)) : 0
-            return (
-              <div className="content-card mb-4">
-                <div className="content-card-header">
-                  <i className="fa fa-circle-play"></i>
-                  <h6>Current Internship</h6>
-                </div>
-                <div className="p-3">
-                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div className="fw-semibold">{active.company?.company_name || 'No company assigned'}</div>
-                    <span className={historyStatusBadge(active.status)}>
-                      {(active.status || '').replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <div className="text-muted small mt-1">
+          {/* ── Active Internship ── */}
+          {active && (
+            <div className="content-card mb-4">
+              <div className="content-card-header">
+                <i className="fa fa-circle-play"></i>
+                <h6>Current Internship</h6>
+                <span className="ms-auto badge bg-success-subtle text-success fw-semibold" style={{ fontSize: '0.75rem', textTransform: 'capitalize' }}>
+                  {(active.status || '').replace(/_/g, ' ')}
+                </span>
+              </div>
+              <div className="p-3 d-flex align-items-start gap-3 flex-wrap">
+                <div>
+                  <div className="fw-semibold text-dark mb-1">{active.company?.company_name || 'No company assigned'}</div>
+                  <div className="text-muted small">
                     {active.term || '—'}
                   </div>
-                  <div className="mt-3">
-                    <div className="d-flex align-items-center justify-content-between mb-1">
-                      <span className="small fw-semibold text-muted">Hours Rendered</span>
-                      <span className="small fw-semibold">
-                        {rendered.toFixed(2)} / {target} hrs
-                      </span>
-                    </div>
-                    <div className="progress" style={{ height: '8px', borderRadius: '99px' }}>
-                      <div
-                        className="progress-bar bg-success"
-                        role="progressbar"
-                        style={{ width: `${pct}%` }}
-                        aria-valuenow={pct}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                      ></div>
-                    </div>
-                    <div className="small text-muted mt-1">{pct}% complete</div>
-                  </div>
+                </div>
+                <div className="ms-auto text-end">
+                  <div className="fw-bold text-dark">{active.total_hours_rendered || 0} <span className="fw-normal text-muted">/ {active.target_hours || DEFAULT_TARGET_HOURS} hrs</span></div>
+                  <div className="text-muted small">Hours rendered</div>
                 </div>
               </div>
-            )
-          })()}
+            </div>
+          )}
 
+          {/* ── Post-Completion Hire ── */}
           {completed.length > 0 && (
             <div className="content-card mb-4">
               <div className="content-card-header">
@@ -210,7 +199,7 @@ function StudentRecords() {
                           <td>
                             {!alreadyDeclared && (outcome === 'pending' || !row.absorption_status) && (
                               <button
-                                className="btn btn-sm btn-outline-green"
+                                className="btn btn-sm btn-outline-primary"
                                 disabled={declaringId === row.id}
                                 onClick={() => declareHired(row.id)}
                               >
@@ -230,10 +219,14 @@ function StudentRecords() {
             </div>
           )}
 
+          {/* ── Internship History ── */}
           <div className="content-card">
             <div className="content-card-header">
               <i className="fa fa-folder-open"></i>
               <h6>Internship History</h6>
+              <span className="ms-auto badge bg-secondary-subtle text-secondary fw-semibold" style={{ fontSize: '0.75rem' }}>
+                {history.length} record{history.length !== 1 ? 's' : ''}
+              </span>
             </div>
             <div className="table-card">
               <div className="table-responsive">
@@ -250,7 +243,8 @@ function StudentRecords() {
                   <tbody>
                     {history.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center text-muted py-4">
+                        <td colSpan={5} className="text-center text-muted py-5">
+                          <i className="fa fa-folder-open fa-2x d-block mb-2 text-muted"></i>
                           No internship records yet.
                         </td>
                       </tr>
@@ -259,11 +253,11 @@ function StudentRecords() {
                         <td className="fw-semibold">{row.company?.company_name || '—'}</td>
                         <td>{row.term || '—'}</td>
                         <td>
-                          <span className={historyStatusBadge(row.status)}>
+                          <span className={`badge-status ${row.status === 'ongoing' || row.status === 'active' ? 'badge-active' : 'badge-pending'}`}>
                             {(row.status || '—').replace(/_/g, ' ')}
                           </span>
                         </td>
-                        <td className="text-nowrap">{row.total_hours_rendered || 0}/{row.target_hours || DEFAULT_TARGET_HOURS}</td>
+                        <td>{row.total_hours_rendered || 0}/{row.target_hours || DEFAULT_TARGET_HOURS}</td>
                         <td>{row.validated_days ?? 0}</td>
                       </tr>
                     ))}

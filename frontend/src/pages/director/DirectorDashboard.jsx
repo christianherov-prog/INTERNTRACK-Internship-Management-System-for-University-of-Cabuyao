@@ -2,48 +2,9 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import EmptyState from '../../components/EmptyState'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
-import QuickActionsPanel from '../../components/QuickActionsPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
-
-const DIRECTOR_QUICK_ACTIONS = [
-  {
-    to: '/director/reports',
-    title: 'Reports & Analytics',
-    description: 'Generate placement and performance reports',
-    icon: 'fa-chart-bar',
-    tone: 'blue',
-  },
-  {
-    to: '/director/companies',
-    title: 'Company Partnerships',
-    description: 'Manage partner companies and contacts',
-    icon: 'fa-building',
-    tone: 'teal',
-  },
-  {
-    to: '/director/moa-monitoring',
-    title: 'MOA Monitoring',
-    description: 'Track MOA status and renewals',
-    icon: 'fa-file-signature',
-    tone: 'amber',
-  },
-  {
-    to: '/director/internships',
-    title: 'Student Roster & Placements',
-    description: 'View and manage internship placements',
-    icon: 'fa-users',
-    tone: 'green',
-  },
-  {
-    to: '/director/absorption',
-    title: 'Absorption Overview',
-    description: 'Finalize hire / absorption outcomes',
-    icon: 'fa-user-check',
-    tone: 'gray',
-  },
-]
 
 const MOA_COLORS = {
   active:      { bg: '#dcfce7', color: '#166534', label: 'Active' },
@@ -106,12 +67,6 @@ function MoaDonut({ moaByStatus }) {
 function CompetencyBars({ evalBreakdown }) {
   if (!evalBreakdown) return <p className="text-muted">No evaluation data.</p>
   const fields = [
-    { key: 'avg_technical',       label: 'Technical Skills' },
-    { key: 'avg_communication',   label: 'Communication' },
-    { key: 'avg_teamwork',        label: 'Teamwork' },
-    { key: 'avg_initiative',      label: 'Initiative' },
-    { key: 'avg_work_ethics',     label: 'Work Ethics' },
-    { key: 'avg_attendance',      label: 'Attendance' },
     { key: 'avg_overall',         label: 'Overall Average' },
   ]
   return (
@@ -173,25 +128,6 @@ function DirectorDashboard() {
       ) : !error && (
         <>
           <div className="row g-3 mb-4">
-            <div className="col-lg-6">
-              <QuickActionsPanel actions={DIRECTOR_QUICK_ACTIONS} />
-            </div>
-
-            {/* Evaluation Competency Averages — promoted next to Quick Actions to fill the row */}
-            <div className="col-lg-6">
-              <div className="content-card h-100">
-                <div className="content-card-header">
-                  <i className="fa fa-star"></i>
-                  <h6>Average Evaluation Scores</h6>
-                </div>
-                <div className="p-3">
-                  <CompetencyBars evalBreakdown={evalBreak} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="row g-3 mb-4">
             {/* Interns by Program */}
             <div className="col-lg-7">
               <div className="content-card h-100">
@@ -220,8 +156,21 @@ function DirectorDashboard() {
           </div>
 
           <div className="row g-3 mb-4">
+            {/* Evaluation Competency Averages */}
+            <div className="col-lg-6">
+              <div className="content-card h-100">
+                <div className="content-card-header">
+                  <i className="fa fa-star"></i>
+                  <h6>Average Evaluation Scores</h6>
+                </div>
+                <div className="p-3">
+                  <CompetencyBars evalBreakdown={evalBreak} />
+                </div>
+              </div>
+            </div>
+
             {/* Top Companies by Interns */}
-            <div className="col-12">
+            <div className="col-lg-6">
               <div className="content-card h-100">
                 <div className="content-card-header">
                   <i className="fa fa-building"></i>

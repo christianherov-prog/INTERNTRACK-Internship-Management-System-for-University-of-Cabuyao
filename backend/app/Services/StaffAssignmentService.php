@@ -21,19 +21,19 @@ class StaffAssignmentService
      * Assign (or promote) a user to director/coordinator.
      * Prefer MISD faculty lookup; fall back to manual profile fields.
      */
-    public function assign(string $employeeNumber, string $role, User $actor, array $manual = []): User
+    public function assign(string $facultyNumber, string $role, User $actor, array $manual = []): User
     {
         if (!in_array($role, ['director', 'coordinator'], true)) {
             throw ValidationException::withMessages(['role' => 'Role must be director or coordinator.']);
         }
 
-        $employeeNumber = strtoupper(trim($employeeNumber));
-        if ($employeeNumber === '') {
-            throw ValidationException::withMessages(['employee_number' => 'Employee number is required.']);
+        $facultyNumber = strtoupper(trim($facultyNumber));
+        if ($facultyNumber === '') {
+            throw ValidationException::withMessages(['faculty_number' => 'Faculty number is required.']);
         }
 
-        $misdData = $this->misd->fetchFaculty($employeeNumber);
-        $user = User::withTrashed()->where('username', $employeeNumber)->first();
+        $misdData = $this->misd->fetchFaculty($facultyNumber);
+        $user = User::withTrashed()->where('faculty_number', $facultyNumber)->first();
         $oldRole = $user?->role;
         $defaultPw = config('interntrack.default_password', 'interntrack123');
 
@@ -48,7 +48,7 @@ class StaffAssignmentService
             ]);
         } else {
             $user = User::create([
-                'username'  => $employeeNumber,
+                'faculty_number' => $facultyNumber,
                 'email'     => $manual['email'] ?? $misdData['email'] ?? null,
                 'password'  => Hash::make($defaultPw),
                 'role'      => $role,
@@ -56,13 +56,13 @@ class StaffAssignmentService
             ]);
         }
 
-        $this->upsertFacultyProfile($user, $employeeNumber, $misdData, $manual, $role);
+        $this->upsertFacultyProfile($user, $facultyNumber, $misdData, $manual, $role);
 
         $this->audit($actor, 'staff.assigned', $user, [
             'old_role' => $oldRole,
             'new_role' => $role,
         ], [
-            'employee_number' => $employeeNumber,
+            'faculty_number' => $facultyNumber,
             'source'          => !empty($misdData) ? 'misd' : 'manual',
         ]);
 
@@ -170,18 +170,18 @@ class StaffAssignmentService
             throw ValidationException::withMessages(['user' => 'MISD profile sync is only for faculty/staff accounts.']);
         }
 
-        $data = $this->misd->fetchFaculty($user->username);
+        $data = $this->misd->fetchFaculty($user->faculty_number);
         if (empty($data)) {
             // Clear cache and retry once
-            $this->misd->forgetFacultyCache($user->username);
-            $data = $this->misd->fetchFaculty($user->username);
+            $this->misd->forgetFacultyCache($user->faculty_number);
+            $data = $this->misd->fetchFaculty($user->faculty_number);
         }
 
         if (empty($data)) {
-            throw ValidationException::withMessages(['user' => 'No MISD faculty record found for ' . $user->username]);
+            throw ValidationException::withMessages(['user' => 'No MISD faculty record found for ' . $user->faculty_number]);
         }
 
-        $this->upsertFacultyProfile($user, $user->username, $data, [], $user->role);
+        $this->upsertFacultyProfile($user, $user->faculty_number, $data, [], $user->role);
         if (!empty($data['email'])) {
             $user->update(['email' => $data['email']]);
         }
@@ -207,16 +207,16 @@ class StaffAssignmentService
             'middle_name'     => $fp?->middle_name,
             'last_name'       => $fp?->last_name,
             'contact_number'  => $fp?->contact_number,
-            'department'      => $fp?->department,
-            'college'         => $fp?->college,
+            'department'      => $fp?->department?->name,
+            'department_id'   => $fp?->department_id,
             'position'        => $fp?->position,
-            'employee_number' => $fp?->employee_number ?? $user->username,
+            'faculty_number'  => $fp?->faculty_number ?? $user->username,
             'synced_at'       => optional($fp?->synced_at)?->toIso8601String(),
             'created_at'      => optional($user->created_at)?->toIso8601String(),
         ];
     }
 
-    private function upsertFacultyProfile(User $user, string $employeeNumber, array $misdData, array $manual, string $role): void
+    private function upsertFacultyProfile(User $user, string $facultyNumber, array $misdData, array $manual, string $role): void
     {
         $positionDefault = match ($role) {
             'director'    => 'PALD Director',
@@ -225,15 +225,28 @@ class StaffAssignmentService
             default       => 'Faculty',
         };
 
+        $deptStr = $manual['department'] ?? $misdData['department'] ?? ($role === 'director' ? 'PALD' : 'CCS');
+        $departmentId = null;
+        if (!empty($deptStr)) {
+            $dept = \App\Models\Department::where('code', $deptStr)
+                ->orWhere('name', $deptStr)
+                ->orWhere('name', 'like', "%{$deptStr}%")
+                ->orWhere('code', 'like', "%{$deptStr}%")
+                ->first();
+            $departmentId = $dept?->id;
+        }
+        if (!$departmentId) {
+            $departmentId = \App\Models\Department::where('code', 'CCS')->value('id') ?? \App\Models\Department::first()?->id;
+        }
+
         $payload = [
-            'employee_number'   => $employeeNumber,
+            'faculty_number'    => $facultyNumber,
             'first_name'        => $manual['first_name'] ?? $misdData['first_name'] ?? 'UC',
             'middle_name'       => $manual['middle_name'] ?? $misdData['middle_name'] ?? null,
             'last_name'         => $manual['last_name'] ?? $misdData['last_name'] ?? 'Staff',
             'email'             => $manual['email'] ?? $misdData['email'] ?? $user->email,
             'contact_number'    => $manual['contact_number'] ?? $misdData['contact_number'] ?? null,
-            'department'        => $manual['department'] ?? $misdData['department'] ?? ($role === 'director' ? 'Director' : 'CCS'),
-            'college'           => $manual['college'] ?? $misdData['college'] ?? 'University of Cabuyao',
+            'department_id'     => $departmentId,
             'position'          => $manual['position'] ?? $misdData['position'] ?? $positionDefault,
             'employment_status' => $misdData['employment_status'] ?? 'Regular',
             'synced_at'         => !empty($misdData) ? now() : null,

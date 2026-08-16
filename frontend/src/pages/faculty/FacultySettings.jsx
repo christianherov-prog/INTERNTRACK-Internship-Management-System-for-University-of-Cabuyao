@@ -1,28 +1,29 @@
 import RoleSettings from '../../components/RoleSettings'
+import SignatureUpload from '../../components/SignatureUpload'
 
 function FacultySettings() {
   return (
     <RoleSettings
       bodyClass="faculty-page"
       subtitleLabel="Faculty"
-      summaryNote="Your official faculty identity is synced from iEnroll. Update password and avatar here; request HR/MISD corrections for identity changes."
-      accountIntro="Official faculty profile from iEnroll. These fields are display-only in INTERNTRACK."
       notificationsIntro="Choose which faculty advising alerts you want to receive."
       securityIntro="Update your password and strengthen account protection for your school credentials."
       metaFields={[
-        { label: 'Employee Number', key: 'employee_number', fallback: '—' },
-        { label: 'Department', key: 'program', fallback: 'CCS' },
-        { label: 'College', key: 'college', fallback: '—' },
-        { label: 'Employment Status', key: 'employment_status', fallback: '—' },
-        { label: 'Position', key: 'position', fallback: 'Faculty Adviser' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, Sem 2' },
+        { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
+        { label: 'Department', key: 'department', fallback: 'College of Computing Studies' },
+        { label: 'Position / Title', key: 'position', fallback: 'CCS Faculty Supervisor' },
+        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular Faculty' },
+        { label: 'Assigned Role', fallback: 'Faculty Practicum Adviser', value: () => 'Faculty Practicum Adviser' },
+        { label: 'Official Email', key: 'email', fallback: '—' },
+        { label: 'Contact Number', key: 'contact', fallback: '—' },
+        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, 2nd Semester' },
       ]}
       accountExtraFields={[
         {
-          name: 'program',
+          name: 'department',
           label: 'Department',
           readOnly: true,
-          helperText: 'Synced from iEnroll — read-only.',
+
         },
         {
           name: 'sex',
@@ -30,7 +31,7 @@ function FacultySettings() {
           type: 'select',
           options: ['Male', 'Female'],
           readOnly: true,
-          helperText: 'Official record from iEnroll — cannot be edited here.',
+
         },
       ]}
       defaultNotifications={{
@@ -55,7 +56,9 @@ function FacultySettings() {
           description: 'Alerts when an advisee falls behind on hours, journals, or required submissions.',
         },
       ]}
-    />
+    >
+      <SignatureUpload />
+    </RoleSettings>
   )
 }
 

@@ -5,7 +5,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import ReportExportModal from '../../components/modals/ReportExportModal'
 
-function DirectorMOAMonitoring() {
+function DirectorMOAMonitoring({ embedded = false }) {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState(null)
@@ -58,8 +58,11 @@ function DirectorMOAMonitoring() {
     })
   }
 
+  const Wrapper = embedded ? 'div' : Layout;
+  const wrapperProps = embedded ? { className: "embedded-view" } : { title: "MOA Monitoring", subtitle: "Company MOA Status Overview", icon: "fa-file-signature", bodyClass: "director-page" };
+
   return (
-    <Layout title="MOA Monitoring" subtitle="Memorandum of Agreement Tracker" icon="fa-file-signature" bodyClass="director-page">
+    <Wrapper {...wrapperProps}>
       {error && <PageError message={error} onRetry={load} />}
 
       {/* Summary — shared .stat-card (same as Student/Coordinator) */}
@@ -114,7 +117,7 @@ function DirectorMOAMonitoring() {
         </div>
       </div>
       <ReportExportModal preview={exportPreview} onClose={() => setExportPreview(null)} />
-    </Layout>
+    </Wrapper>
   )
 }
 

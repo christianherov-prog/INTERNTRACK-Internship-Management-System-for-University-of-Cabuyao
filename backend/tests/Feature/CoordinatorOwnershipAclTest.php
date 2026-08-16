@@ -48,6 +48,7 @@ class CoordinatorOwnershipAclTest extends TestCase
             'week_number' => 1,
             'date' => now()->toDateString(),
             'status' => 'submitted',
+            'activities_summary' => 'Uploaded logbook file',
             'file_path' => 'journals/1/test.pdf',
         ]);
 

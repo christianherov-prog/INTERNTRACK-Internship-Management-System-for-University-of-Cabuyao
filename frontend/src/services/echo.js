@@ -116,7 +116,7 @@ export function subscribeUserNotifications(userId, onNotification) {
   const echo = getEcho()
   if (!echo || !userId) {
     notifyStatus(import.meta.env.VITE_REVERB_APP_KEY ? liveStatus : 'polling')
-    return () => {}
+    return () => { }
   }
 
   const channelName = `App.Models.User.${userId}`
@@ -130,7 +130,7 @@ export function subscribeUserNotifications(userId, onNotification) {
     }
   } catch {
     notifyStatus('polling')
-    return () => {}
+    return () => { }
   }
 }
 
@@ -138,7 +138,7 @@ export function subscribeUserNotifications(userId, onNotification) {
 export function subscribeConversation(conversationId, onMessage) {
   const echo = getEcho()
   if (!echo || !conversationId) {
-    return () => {}
+    return () => { }
   }
 
   const channelName = `conversation.${conversationId}`
@@ -152,6 +152,6 @@ export function subscribeConversation(conversationId, onMessage) {
     }
   } catch {
     notifyStatus('polling')
-    return () => {}
+    return () => { }
   }
 }

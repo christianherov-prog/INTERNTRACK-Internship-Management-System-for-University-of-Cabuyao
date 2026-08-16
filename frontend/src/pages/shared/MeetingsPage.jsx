@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
@@ -128,7 +128,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
                 <input className="form-control" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
             </div>
-            <button className="btn btn-green mt-3" disabled={saving}>
+            <button className="btn btn-primary mt-3" disabled={saving}>
               {saving ? 'Saving…' : 'Create meeting'}
             </button>
           </form>
@@ -179,7 +179,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
                             <button
                               key={v}
                               type="button"
-                              className={`btn btn-outline-green ${m.my_rsvp === v ? 'active' : ''}`}
+                              className={`btn btn-outline-primary ${m.my_rsvp === v ? 'active' : ''}`}
                               onClick={() => rsvp(m.id, v)}
                             >
                               {v}

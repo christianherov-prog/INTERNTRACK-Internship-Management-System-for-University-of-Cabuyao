@@ -139,8 +139,7 @@
   .coordinator-page .main-content {
     margin-left: 0;
     width: 100%;
-    margin-top: 0;
-    padding: calc(var(--topbar-h, 72px) + 18px) 16px 22px;
+    padding: 18px 16px;
   }
 
   .announcements-page .main-content,

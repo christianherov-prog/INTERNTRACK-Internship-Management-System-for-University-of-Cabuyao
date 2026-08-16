@@ -1,27 +1,28 @@
 import RoleSettings from '../../components/RoleSettings'
+import SignatureUpload from '../../components/SignatureUpload'
 
 function DirectorSettings() {
   return (
     <RoleSettings
       bodyClass="director-page"
       subtitleLabel="Director"
-      summaryNote="Your official director identity is synced from iEnroll. Update password and avatar here; request MISD corrections for identity changes."
-      accountIntro="Official PALD Director profile from iEnroll. These fields are display-only in INTERNTRACK."
       notificationsIntro="Choose which program-oversight alerts you want to receive."
       securityIntro="Update your password and strengthen account protection for your director credentials."
       metaFields={[
-        { label: 'Employee Number', key: 'employee_number', fallback: '—' },
-        { label: 'Office / Unit', key: 'program', fallback: 'PALD' },
-        { label: 'Employment Status', key: 'employment_status', fallback: '—' },
-        { label: 'Position', key: 'position', fallback: 'PALD Director' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, Sem 2' },
+        { label: 'Director ID', key: 'faculty_number', fallback: '—' },
+        { label: 'Office / Department', key: 'department', fallback: 'Placement, Alumni, & Linkages Department' },
+        { label: 'Designation', key: 'position', fallback: 'PALD Director' },
+        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular' },
+        { label: 'Oversight Scope', fallback: 'University-Wide Linkages & OJT', value: () => 'University-Wide Linkages & OJT' },
+        { label: 'Official Email', key: 'email', fallback: '—' },
+        { label: 'Contact Number', key: 'contact', fallback: '—' },
+        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, 2nd Semester' },
       ]}
       accountExtraFields={[
         {
-          name: 'program',
-          label: 'Office / Unit',
+          name: 'department',
+          label: 'Department',
           readOnly: true,
-          helperText: 'Synced from iEnroll — read-only.',
         },
         {
           name: 'sex',
@@ -60,7 +61,9 @@ function DirectorSettings() {
           description: 'Alerts when internships complete or students declare they were hired and need Director confirmation.',
         },
       ]}
-    />
+    >
+      <SignatureUpload />
+    </RoleSettings>
   )
 }
 

@@ -5,13 +5,13 @@ import ConfirmLogoutModal from './modals/ConfirmLogoutModal'
 
 const ROLE_NAV = {
   student: [
-    { section: 'MAIN', to: '/student/dashboard', icon: 'fa-tachometer-alt', text: 'Dashboard' },
-    { section: 'TOOLS', to: '/student/attendance', icon: 'fa-calendar-check', text: 'Attendance' },
-    { section: 'TOOLS', to: '/student/logbook', icon: 'fa-book', text: 'Logbook' },
+    { section: 'MAIN', to: '/student/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
+    { section: 'MAIN', to: '/student/companies', icon: 'fa-building', text: 'Placement Hub' },
+    { section: 'MAIN', to: '/student/attendance', icon: 'fa-user-clock', text: 'Attendance' },
+    { section: 'MAIN', to: '/student/logbook', icon: 'fa-book', text: 'Journal' },
     { section: 'TOOLS', to: '/student/documents', icon: 'fa-file-alt', text: 'Documents' },
+    { section: 'TOOLS', to: '/student/portfolio', icon: 'fa-folder-plus', text: 'My Portfolio' },
     { section: 'TOOLS', to: '/student/evaluations', icon: 'fa-star', text: 'Evaluations' },
-    { section: 'TOOLS', to: '/student/supervisor-invite', icon: 'fa-qrcode', text: 'Invite Supervisor' },
-    { section: 'TOOLS', to: '/student/portfolio', icon: 'fa-briefcase', text: 'Portfolio' },
     { section: 'TOOLS', to: '/student/records', icon: 'fa-folder-open', text: 'My Records' },
     { section: 'TOOLS', to: '/student/messages', icon: 'fa-comments', text: 'Messages' },
     { section: 'TOOLS', to: '/student/meetings', icon: 'fa-calendar', text: 'Meetings' },
@@ -21,9 +21,10 @@ const ROLE_NAV = {
   director: [
     { section: 'MAIN', to: '/director/dashboard', icon: 'fa-chart-pie', text: 'Dashboard' },
     { section: 'MAIN', to: '/director/companies', icon: 'fa-building', text: 'Companies' },
-    { section: 'MAIN', to: '/director/moa-monitoring', icon: 'fa-file-signature', text: 'MOA Monitoring' },
+    { section: 'MAIN', to: '/director/moa', icon: 'fa-file-signature', text: 'MOA Management' },
     { section: 'MAIN', to: '/director/reports', icon: 'fa-chart-bar', text: 'Reports' },
-    { section: 'MAIN', to: '/director/internships', icon: 'fa-users', text: 'Student Roster & Placements' },
+    { section: 'MAIN', to: '/director/hte-evaluations', icon: 'fa-star', text: 'HTE Evaluations' },
+    { section: 'MAIN', to: '/director/internships', icon: 'fa-users', text: 'Placement' },
     { section: 'MAIN', to: '/director/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/director/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
     { section: 'MAIN', to: '/director/messages', icon: 'fa-comments', text: 'Messages' },
@@ -35,24 +36,20 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/supervisor/assigned-interns', icon: 'fa-users', text: 'Assigned Students' },
     { section: 'MAIN', to: '/supervisor/attendance-validation', icon: 'fa-calendar-check', text: 'Attendance Validation' },
-    { section: 'MAIN', to: '/supervisor/journal-validation', icon: 'fa-book', text: 'Journal Review' },
+    // Journal Review removed from supervisor role — faculty handles all journal reviews.
     { section: 'MAIN', to: '/supervisor/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
     { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/supervisor/messages', icon: 'fa-comments', text: 'Messages' },
     { section: 'MAIN', to: '/supervisor/meetings', icon: 'fa-calendar', text: 'Meetings' },
-    { section: 'MAIN', to: '/supervisor/notifications', icon: 'fa-bell', text: 'Notifications' },
     { section: 'ACCOUNT', to: '/supervisor/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
   faculty: [
     { section: 'MAIN', to: '/faculty/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/faculty/assigned-students', icon: 'fa-users', text: 'Assigned Students' },
-    { section: 'TOOLS', to: '/faculty/attendance', icon: 'fa-calendar-check', text: 'Attendance' },
-    { section: 'TOOLS', to: '/faculty/journals', icon: 'fa-book', text: 'Journals' },
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
-    { section: 'TOOLS', to: '/faculty/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
-    { section: 'TOOLS', to: '/faculty/documents', icon: 'fa-file-circle-check', text: 'Document Verification' },
+    { section: 'TOOLS', to: '/faculty/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
     { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
     { section: 'TOOLS', to: '/faculty/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'TOOLS', to: '/faculty/messages', icon: 'fa-comments', text: 'Messages' },
@@ -63,6 +60,8 @@ const ROLE_NAV = {
   coordinator: [
     { section: 'MAIN', to: '/coordinator/monitoring', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/coordinator/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
+    { section: 'MAIN', to: '/coordinator/internship-management', icon: 'fa-briefcase', text: 'Internship Management' },
+    { section: 'MAIN', to: '/coordinator/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
     { section: 'MAIN', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
     { section: 'MAIN', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
@@ -137,7 +136,7 @@ function Sidebar() {
 
   return (
     <>
-      <aside className="sidebar">
+      <aside className="sidebar" style={{ width: '270px' }}>
         <div className="sidebar-brand">
           <div className="app-logo">
             <img src="/logo.jpg" alt="Logo" className="app-logo-img" />

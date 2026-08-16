@@ -158,9 +158,9 @@ class DashboardController extends Controller
 
         return array_merge($base, [
             'label'            => 'MISD DASHBOARD',
-            'employee_number'  => $profile?->employee_number ?: $user->username,
+            'faculty_number'   => $profile?->faculty_number ?: $user->username,
             'position'         => $profile?->position ?: 'MISD Administrator',
-            'office'           => $profile?->department ?: 'MISD',
+            'office'           => $profile?->department?->name ?: 'MISD',
             'security_status'  => $user->must_change_password ? 'Password change required' : 'Standard',
         ]);
     }

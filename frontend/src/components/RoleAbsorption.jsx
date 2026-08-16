@@ -1,7 +1,6 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from './Layout'
 import PageError from './PageError'
-import ModalPortal from './modals/ModalPortal'
 import api from '../services/api'
 
 function profileOf(student) {
@@ -35,9 +34,8 @@ function AbsorptionModal({ internship, apiBase, onClose, onSaved, declaredHiredE
   }
 
   return (
-    <ModalPortal>
     <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content">
           <form onSubmit={submit}>
             <div className="modal-header">
@@ -79,13 +77,12 @@ function AbsorptionModal({ internship, apiBase, onClose, onSaved, declaredHiredE
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-green" disabled={saving}>{saving ? 'Saving…' : 'Save Outcome'}</button>
+              <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Outcome'}</button>
             </div>
           </form>
         </div>
       </div>
     </div>
-    </ModalPortal>
   )
 }
 
@@ -180,7 +177,7 @@ function RoleAbsorption({
                       <td>{i.student_declared_hired ? <span className="badge bg-info text-dark">Yes</span> : '—'}</td>
                       <td><span className={badge(outcome)}>{outcome.replace('_', ' ')}</span></td>
                       <td>
-                        <button className="btn btn-sm btn-green" onClick={() => setModal(i)}>
+                        <button className="btn btn-sm btn-primary" onClick={() => setModal(i)}>
                           {outcome === 'pending' || !i.absorption_status ? 'Confirm' : 'Update'}
                         </button>
                       </td>

@@ -11,11 +11,12 @@ import { DEFAULT_TARGET_HOURS } from '../../config/hours'
 import { formatYearSection } from '../../utils/formatSection'
 
 function StudentDashboard() {
-  const [data, setData]     = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError]   = useState(null)
-  const chartRef            = useRef(null)
-  const chartInstance       = useRef(null)
+  const [error, setError] = useState(null)
+  const [certData, setCertData] = useState(null)
+  const chartRef = useRef(null)
+  const chartInstance = useRef(null)
 
   const load = () => {
     setLoading(true)
@@ -30,6 +31,14 @@ function StudentDashboard() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Fetch certificate eligibility whenever internship status changes
+  useEffect(() => {
+    if (!data) return
+    api.get('/student/certificate/eligibility')
+      .then(res => setCertData(res.data))
+      .catch(() => setCertData(null))
+  }, [data?.internship?.status])
 
   // Render Chart.js weekly hours bar chart
   useEffect(() => {
@@ -109,25 +118,44 @@ function StudentDashboard() {
 
       {internship?.status === 'completed' && (
         <div className="mb-3">
-          <button
-            type="button"
-            className="btn btn-success"
-            onClick={async () => {
-              try {
-                const res = await api.get('/student/certificates/completion', { responseType: 'blob' })
-                const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
-                const a = document.createElement('a')
-                a.href = url
-                a.download = 'completion-certificate.pdf'
-                a.click()
-                window.URL.revokeObjectURL(url)
-              } catch {
-                alert('Certificate is available only after your internship status is set to Completed.')
-              }
-            }}
-          >
-            <i className="fa fa-certificate me-2"></i>Download Completion Certificate
-          </button>
+          {certData?.eligible ? (
+            <div>
+              <button
+                type="button"
+                className="btn btn-success me-2"
+                onClick={async () => {
+                  try {
+                    const res = await api.get('/student/certificates/completion', { responseType: 'blob' })
+                    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'completion-certificate.pdf'
+                    a.click()
+                    window.URL.revokeObjectURL(url)
+                  } catch {
+                    alert('Certificate download failed. Please try again.')
+                  }
+                }}
+              >
+                <i className="fa fa-certificate me-2"></i>Download Completion Certificate
+              </button>
+              {certData?.issued_at && (
+                <small className="text-muted ms-2">Last downloaded: {new Date(certData.issued_at).toLocaleDateString()}</small>
+              )}
+            </div>
+          ) : (
+            <div className="alert alert-warning" style={{fontSize:'0.9rem'}}>
+              <div className="fw-semibold mb-2"><i className="fa fa-exclamation-triangle me-2"></i>Certificate Not Yet Available</div>
+              <ul className="mb-0 ps-3">
+                {(certData?.checklist || []).map((item, i) => (
+                  <li key={i} style={{color: item.passed ? '#16a34a' : '#dc2626'}}>
+                    <i className={`fa ${item.passed ? 'fa-check-circle' : 'fa-times-circle'} me-1`}></i>
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -137,7 +165,7 @@ function StudentDashboard() {
           <div className="stat-card">
             <div className="stat-icon teal"><i className="fa fa-clock"></i></div>
             <div>
-              <div className="stat-value">{s.hours_rendered ?? 0}<span style={{fontSize:'0.7em',fontWeight:400}}>/{s.target_hours ?? DEFAULT_TARGET_HOURS}</span></div>
+              <div className="stat-value">{s.hours_rendered ?? 0}<span style={{ fontSize: '0.7em', fontWeight: 400 }}>/{s.target_hours ?? DEFAULT_TARGET_HOURS}</span></div>
               <div className="stat-label">Hours Rendered</div>
             </div>
           </div>
@@ -164,7 +192,7 @@ function StudentDashboard() {
           <div className="stat-card">
             <div className="stat-icon blue"><i className="fa fa-file-alt"></i></div>
             <div>
-              <div className="stat-value">{s.docs_submitted ?? 0}<span style={{fontSize:'0.7em',fontWeight:400}}>/{s.docs_total ?? 9}</span></div>
+              <div className="stat-value">{s.docs_submitted ?? 0}<span style={{ fontSize: '0.7em', fontWeight: 400 }}>/{s.docs_total ?? 13}</span></div>
               <div className="stat-label">Docs Submitted</div>
             </div>
           </div>
@@ -181,47 +209,67 @@ function StudentDashboard() {
               <h6>Quick Overview</h6>
             </div>
             <div className="px-3 pb-3">
-              <div className="overview-item mb-3">
-                <div className="overview-label">Completed Hours</div>
-                <div className="overview-value-row">
-                  <span className="overview-value">{s.hours_rendered ?? 0}/{s.target_hours ?? DEFAULT_TARGET_HOURS} hrs</span>
-                  <span className="overview-percent">{Math.round(((s.hours_rendered ?? 0) / (s.target_hours ?? DEFAULT_TARGET_HOURS)) * 100)}%</span>
-                </div>
-                <div className="progress" style={{height:'10px',borderRadius:'6px',marginTop:'8px'}}>
-                  <div
-                    className="progress-bar"
-                    style={{width:`${Math.round(((s.hours_rendered ?? 0) / (s.target_hours ?? DEFAULT_TARGET_HOURS)) * 100)}%`, background:'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius:'6px'}}
-                  ></div>
-                </div>
-              </div>
-              
-              <div className="overview-item mb-3">
-                <div className="overview-label">Document Compliance</div>
-                <div className="overview-value-row">
-                  <span className="overview-value">{s.docs_submitted ?? 0} of {s.docs_total ?? 9} files</span>
-                  <span className="overview-percent">{s.doc_compliance ?? 0}%</span>
-                </div>
-                <div className="progress" style={{height:'10px',borderRadius:'6px',marginTop:'8px'}}>
-                  <div
-                    className="progress-bar"
-                    style={{width:`${s.doc_compliance ?? 0}%`, background:'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius:'6px'}}
-                  ></div>
-                </div>
-              </div>
-              
-              <div className="overview-item">
-                <div className="overview-label">Evaluation Score</div>
-                <div className="overview-value-row">
-                  <span className="overview-value">Pending Review</span>
-                  <span className="overview-percent">—</span>
-                </div>
-                <div className="progress" style={{height:'10px',borderRadius:'6px',marginTop:'8px',background:'#e5e7eb'}}>
-                  <div
-                    className="progress-bar"
-                    style={{width:'0%', background:'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius:'6px'}}
-                  ></div>
-                </div>
-              </div>
+              {(() => {
+                const targetHours = s.target_hours ?? DEFAULT_TARGET_HOURS
+                const hoursRendered = s.hours_rendered ?? 0
+                const hoursPct = targetHours > 0 ? Math.min(100, Math.max(0, Math.round((hoursRendered / targetHours) * 100))) : 0
+
+                const docsTotal = s.docs_total ?? 13
+                const docsSubmitted = s.docs_submitted ?? 0
+                const docCompliance = Math.min(100, Math.max(0, s.doc_compliance ?? (docsTotal > 0 ? Math.round((docsSubmitted / docsTotal) * 100) : 0)))
+
+                const evalScore = s.evaluation_score != null ? Math.min(100, Math.max(0, Math.round(s.evaluation_score))) : null
+
+                return (
+                  <>
+                    <div className="overview-item mb-3">
+                      <div className="overview-label">Completed Hours</div>
+                      <div className="overview-value-row">
+                        <span className="overview-value">{hoursRendered}/{targetHours} hrs</span>
+                        <span className="overview-percent">{hoursPct}%</span>
+                      </div>
+                      <div className="progress" style={{ height: '10px', borderRadius: '6px', marginTop: '8px' }}>
+                        <div
+                          className="progress-bar"
+                          style={{ width: `${hoursPct}%`, background: 'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius: '6px' }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="overview-item mb-3">
+                      <div className="overview-label">Document Compliance</div>
+                      <div className="overview-value-row">
+                        <span className="overview-value">{docsSubmitted} of {docsTotal} files</span>
+                        <span className="overview-percent">{docCompliance}%</span>
+                      </div>
+                      <div className="progress" style={{ height: '10px', borderRadius: '6px', marginTop: '8px' }}>
+                        <div
+                          className="progress-bar"
+                          style={{ width: `${docCompliance}%`, background: 'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius: '6px' }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="overview-item">
+                      <div className="overview-label">Evaluation Score</div>
+                      <div className="overview-value-row">
+                        <span className="overview-value">
+                          {evalScore != null ? `${evalScore}%` : 'Pending Review'}
+                        </span>
+                        <span className="overview-percent">
+                          {evalScore != null ? `${evalScore}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="progress" style={{ height: '10px', borderRadius: '6px', marginTop: '8px', background: '#e5e7eb' }}>
+                        <div
+                          className="progress-bar"
+                          style={{ width: `${evalScore ?? 0}%`, background: 'linear-gradient(90deg,#1a7a3f,#2da058)', borderRadius: '6px' }}
+                        ></div>
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </div>
         </div>

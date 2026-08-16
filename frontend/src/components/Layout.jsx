@@ -13,13 +13,6 @@ function Layout({ children, title, subtitle, icon, bodyClass = '' }) {
       document.body.className = `page-body ${user.role}-page ${bodyClass}`.trim()
     }
 
-    const overlay = document.querySelector('.sidebar-overlay')
-    if (!overlay) {
-      const newOverlay = document.createElement('div')
-      newOverlay.className = 'sidebar-overlay'
-      document.body.appendChild(newOverlay)
-    }
-
     return () => {
       document.body.classList.remove('sidebar-open')
     }
@@ -28,6 +21,7 @@ function Layout({ children, title, subtitle, icon, bodyClass = '' }) {
   return (
     <>
       <Sidebar />
+      <div className="sidebar-overlay" onClick={() => document.body.classList.remove('sidebar-open')} />
       <Topbar title={title} subtitle={subtitle} icon={icon} />
       <main className="main-content">
         {children}

@@ -4,12 +4,11 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 
+import { formatStudentName } from '../../utils/formatName'
+
 function studentName(entry) {
-  const p = entry?.internship?.student?.student_profile
-    || entry?.internship?.student?.studentProfile
-    || entry?.student?.student_profile
-    || entry?.student?.studentProfile
-  if (p) return `${p.first_name || ''} ${p.last_name || ''}`.trim()
+  if (entry?.internship?.student) return formatStudentName(entry.internship.student)
+  if (entry?.student) return formatStudentName(entry.student)
   return entry?.internship?.student?.username || entry?.student?.username || '—'
 }
 
@@ -23,6 +22,7 @@ function SupervisorFeedback() {
   const [internshipId, setInternshipId] = useState('')
   const [feedback, setFeedback] = useState('')
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
 
   const load = () => {
     setLoading(true)
@@ -129,6 +129,15 @@ function SupervisorFeedback() {
           <i className="fa fa-comment-dots"></i>
           <h6>Recent Feedback</h6>
         </div>
+        
+        {/* Filters */}
+        <div className="p-3 border-bottom bg-light">
+          <div className="input-group input-group-sm" style={{ width: 260 }}>
+            <span className="input-group-text bg-white text-muted border-end-0"><i className="fa fa-search"></i></span>
+            <input className="form-control border-start-0 ps-0" placeholder="Search by student name…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+        </div>
+
         <div className="table-card">
           {loading ? (
             <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
@@ -144,11 +153,21 @@ function SupervisorFeedback() {
                   </tr>
                 </thead>
                 <tbody>
-                  {feedbackRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-center text-muted py-4">No feedback submitted yet.</td>
-                    </tr>
-                  ) : feedbackRows.map((row) => (
+                  {(() => {
+                    const filtered = feedbackRows.filter(row => {
+                      if (!search) return true
+                      return studentName(row).toLowerCase().includes(search.toLowerCase())
+                    })
+                    
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={4} className="text-center text-muted py-4">No feedback matches your search.</td>
+                        </tr>
+                      )
+                    }
+
+                    return filtered.map((row) => (
                     <tr key={row.id}>
                       <td className="fw-semibold">{studentName(row)}</td>
                       <td>{row.week_number ?? row.entry_number ?? '—'}</td>
@@ -159,7 +178,8 @@ function SupervisorFeedback() {
                           : '—'}
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  })()}
                 </tbody>
               </table>
             </div>

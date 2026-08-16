@@ -18,7 +18,7 @@ class FacultyController extends Controller
     {
         $facultyId  = $request->user()->id;
         $sections   = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-        $assignedStudentsCount = User::where('role', 'student')
+        $assignedStudentsCount = User::inDepartment()->where('role', 'student')
             ->where(function ($q) use ($facultyId, $sections) {
                 $q->whereHas('studentProfile', function ($p) use ($sections) {
                     $p->whereIn('section', $sections);
@@ -30,7 +30,7 @@ class FacultyController extends Controller
             ->where('is_active', true)
             ->count();
 
-        $internships = Internship::where('faculty_id', $facultyId)
+        $internships = Internship::inDepartment()->where('faculty_id', $facultyId)
             ->whereIn('status', ['ongoing', 'active', 'for_evaluation'])
             ->with('student.studentProfile')
             ->get();
@@ -94,7 +94,7 @@ class FacultyController extends Controller
         $facultyId = $request->user()->id;
         $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
 
-        $query = User::where('role', 'student')
+        $query = User::inDepartment()->where('role', 'student')
             ->where(function ($q) use ($facultyId, $sections) {
                 $q->whereHas('studentProfile', function ($p) use ($sections) {
                     $p->whereIn('section', $sections);
@@ -103,7 +103,7 @@ class FacultyController extends Controller
                     $i->where('faculty_id', $facultyId);
                 });
             })
-            ->with(['studentProfile', 'activeInternship.company', 'activeInternship.supervisor.supervisorProfile']);
+            ->with(['studentProfile.program', 'activeInternship.company', 'activeInternship.supervisor.supervisorProfile', 'activeInternship.attendance']);
 
         if ($request->boolean('archived')) {
             $query->where('is_active', false);
@@ -122,10 +122,10 @@ class FacultyController extends Controller
                 'user_id' => $student->id,
                 'student_id' => $student->id,
                 'status' => $internship?->status ?? 'unplaced',
-                'program' => $internship?->program ?? $profile?->course_name ?? $profile?->program ?? '—',
+                'program' => $internship?->program ?? $profile?->program?->name ?? '—',
                 'section' => $profile?->section ?? '—',
-                'company' => $internship?->company ?? null,
-                'supervisor' => $internship?->supervisor ?? null,
+                'company' => $internship?->company?->company_name ?? null,
+                'supervisor' => $internship?->supervisor?->supervisorProfile?->full_name ?? null,
                 'student' => [
                     'id' => $student->id,
                     'username' => $student->username,
@@ -134,6 +134,7 @@ class FacultyController extends Controller
                     'is_active' => $student->is_active,
                     'student_profile' => $profile,
                 ],
+                'attendance_logs' => $internship?->attendance?->sortBy('date')->values() ?? [],
             ];
         });
 
@@ -148,15 +149,21 @@ class FacultyController extends Controller
     {
         $request->validate(['archived' => 'required|boolean']);
 
-        $assigned = Internship::where('faculty_id', $request->user()->id)
-            ->where('student_id', $userId)
-            ->exists();
+        $facultyId = $request->user()->id;
+        $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
+        $student = User::where('role', 'student')->findOrFail($userId);
+
+        $assigned = $sections->contains($student->studentProfile?->section)
+            || Internship::inDepartment()->where('faculty_id', $facultyId)
+                ->where('student_id', $userId)
+                ->exists();
 
         if (!$assigned) {
             return response()->json(['message' => 'You can only archive students assigned to you.'], 403);
         }
-
-        $student = User::where('role', 'student')->findOrFail($userId);
+        if (!User::inDepartment()->where('id', $userId)->exists()) {
+            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+        }
         $student->is_active = !$request->boolean('archived');
         $student->save();
 
@@ -180,18 +187,21 @@ class FacultyController extends Controller
      */
     public function studentProgress(Request $request, int $userId)
     {
-        $student = User::where('role', 'student')->with('studentProfile')->findOrFail($userId);
+        $student = User::where('role', 'student')->with('studentProfile.program')->findOrFail($userId);
+        if (!User::inDepartment()->where('id', $userId)->exists()) {
+            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+        }
         
         $facultyId = $request->user()->id;
         $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
         $isAssigned = $sections->contains($student->studentProfile?->section)
-            || Internship::where('faculty_id', $facultyId)->where('student_id', $userId)->exists();
+            || Internship::inDepartment()->where('faculty_id', $facultyId)->where('student_id', $userId)->exists();
 
         if (!$isAssigned) {
             abort(403, 'Student is not assigned to you.');
         }
 
-        $internship = Internship::where('student_id', $userId)
+        $internship = Internship::inDepartment()->where('student_id', $userId)
             ->with(['company', 'supervisor.supervisorProfile', 'documents', 'journals'])
             ->latest()
             ->first();
@@ -202,7 +212,7 @@ class FacultyController extends Controller
                     'id'            => $student->id,
                     'name'          => $student->studentProfile?->full_name ?? $student->username,
                     'student_number'=> $student->studentProfile?->student_number,
-                    'program'       => $student->studentProfile?->program ?? $student->studentProfile?->course_name,
+                    'program'       => $student->studentProfile?->program?->code,
                     'section'       => $student->studentProfile?->section,
                 ],
                 'internship'      => null,
@@ -223,6 +233,7 @@ class FacultyController extends Controller
                     'last_status' => null,
                     'items'       => [],
                 ],
+                'attendance_logs' => [],
             ]);
         }
 
@@ -240,12 +251,17 @@ class FacultyController extends Controller
         $journalCount  = $journals->count();
         $lastJournal   = $journals->sortByDesc('created_at')->first();
 
+        // Get all attendance logs for the DTR preview
+        $attendanceLogs = \App\Models\AttendanceLog::where('internship_id', $internship->id)
+            ->orderBy('date', 'asc')
+            ->get();
+
         return response()->json([
             'student'         => [
                 'id'            => $internship->student->id,
                 'name'          => $internship->student->studentProfile?->full_name ?? $internship->student->username,
                 'student_number'=> $internship->student->studentProfile?->student_number,
-                'program'       => $internship->student->studentProfile?->program,
+                'program'       => $internship->student->studentProfile?->program?->code,
                 'section'       => $internship->student->studentProfile?->section,
             ],
             'internship'      => [
@@ -279,12 +295,14 @@ class FacultyController extends Controller
                     'id'           => $j->id,
                     'week'         => $j->week_number,
                     'date'         => $j->date,
+                    'end_date'     => $j->end_date,
                     'status'       => $j->status,
                     'accomplishment' => $j->activities_summary,
                     'difficulties'   => $j->challenges,
                     'insights'       => $j->learnings,
                 ])->values(),
             ],
+            'attendance_logs' => $attendanceLogs,
         ]);
     }
 
@@ -295,7 +313,7 @@ class FacultyController extends Controller
      */
     public function attendance(Request $request)
     {
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
+        $internshipIds = Internship::inDepartment()->where('faculty_id', $request->user()->id)->pluck('id');
 
         $query = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
             ->with(['internship.student.studentProfile', 'internship.company'])
@@ -319,7 +337,7 @@ class FacultyController extends Controller
 
     public function journals(Request $request)
     {
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
+        $internshipIds = Internship::inDepartment()->where('faculty_id', $request->user()->id)->pluck('id');
         $journals = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
             ->whereIn('status', ['submitted', 'approved', 'needs_revision'])
             ->with(['internship.student.studentProfile'])
@@ -330,9 +348,17 @@ class FacultyController extends Controller
 
     public function reviewJournal(Request $request, int $id)
     {
-        $request->validate(['action' => 'required|in:approved,needs_revision', 'feedback' => 'nullable|string|max:1000']);
+        $request->validate(['action' => 'required|in:approved,needs_revision', 'feedback' => 'nullable|string|max:1000', 'score' => 'nullable|numeric|min:0|max:100']);
         $journal = \App\Models\JournalEntry::whereHas('internship', fn($q) => $q->where('faculty_id', $request->user()->id))->findOrFail($id);
-        $journal->update(['status' => $request->action, 'faculty_feedback' => $request->feedback, 'faculty_reviewed_by' => $request->user()->id, 'faculty_reviewed_at' => now()]);
+        
+        $updateData = ['status' => $request->action, 'faculty_feedback' => $request->feedback, 'faculty_reviewed_by' => $request->user()->id, 'faculty_reviewed_at' => now()];
+        if ($request->has('score') && $request->action === 'approved') {
+            $updateData['score'] = $request->score;
+        } elseif ($request->action !== 'approved') {
+            $updateData['score'] = null; // Clear score if not approved
+        }
+        
+        $journal->update($updateData);
 
         // Notify student
         $studentId = $journal->internship?->student_id;
@@ -354,59 +380,66 @@ class FacultyController extends Controller
         return response()->json(['message' => 'Journal ' . $request->action . '.', 'journal' => $journal]);
     }
 
-    public function evaluations(Request $request)
+    public function studentJournalHistory(Request $request, int $studentId)
     {
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
-        $evaluations   = \App\Models\Evaluation::whereIn('internship_id', $internshipIds)->where('evaluator_type', 'faculty')->with('internship.student.studentProfile')->get();
-        $pending       = Internship::whereIn('id', $internshipIds)->whereNotIn('id', $evaluations->pluck('internship_id'))->with('student.studentProfile')->get();
-        return ApiResponse::groups(['completed' => $evaluations, 'pending' => $pending]);
+        $journals = \App\Models\JournalEntry::whereHas('internship', function($q) use ($request, $studentId) {
+            $q->where('faculty_id', $request->user()->id)->where('student_id', $studentId);
+        })
+        ->orderBy('week_number', 'asc')
+        ->orderBy('entry_number', 'asc')
+        ->get();
+
+        return response()->json($journals);
     }
 
-    public function submitEvaluation(Request $request, int $internshipId)
+    public function evaluations(Request $request)
     {
-        $request->validate([
-            'evaluation_period' => 'required|in:midterm,final',
-            'technical_skills' => 'required|numeric|min:1|max:5',
-            'communication_skills' => 'required|numeric|min:1|max:5',
-            'teamwork' => 'required|numeric|min:1|max:5',
-            'initiative' => 'required|numeric|min:1|max:5',
-            'work_ethics' => 'required|numeric|min:1|max:5',
-            'attendance_punctuality' => 'required|numeric|min:1|max:5',
-            'adaptability' => 'required|numeric|min:1|max:5',
-            'problem_solving' => 'required|numeric|min:1|max:5',
-            'general_comments' => 'nullable|string',
-        ]);
+        $facultyId = $request->user()->id;
+        $internshipIds = Internship::inDepartment()->where('faculty_id', $facultyId)->pluck('id');
+        
+        // Get unique available sections from assigned students for the frontend filter
+        $availableSections = \App\Models\StudentProfile::whereHas('user.internshipsAsStudent', function($q) use ($internshipIds) {
+            $q->whereIn('id', $internshipIds);
+        })->whereNotNull('section')->distinct()->pluck('section');
 
-        $sig = SignatureCapture::fromRequest($request, 'signatures/evaluations');
+        // Faculty sees only FO-24 (Supervisor performance rating — official basis for grading)
+        $query = Internship::inDepartment()
+            ->where('faculty_id', $facultyId)
+            ->with([
+                'student.studentProfile',
+                'company',
+                'supervisor.supervisorProfile',
+                'evaluations' => function ($q) {
+                    $q->whereIn('form_type', ['FO-24']);
+                },
+            ]);
 
-        $internship = Internship::where('faculty_id', $request->user()->id)->findOrFail($internshipId);
-        $eval = new \App\Models\Evaluation([
-            'evaluation_period' => $request->input('evaluation_period'),
-            'technical_skills' => $request->input('technical_skills'),
-            'communication_skills' => $request->input('communication_skills'),
-            'teamwork' => $request->input('teamwork'),
-            'initiative' => $request->input('initiative'),
-            'work_ethics' => $request->input('work_ethics'),
-            'attendance_punctuality' => $request->input('attendance_punctuality'),
-            'adaptability' => $request->input('adaptability'),
-            'problem_solving' => $request->input('problem_solving'),
-            'general_comments' => $request->input('general_comments'),
-            'signer_name' => $sig['signer_name'],
-            'signature_path' => $sig['signature_path'],
-            'signed_at' => $sig['signed_at'],
+        // Apply filters
+        if ($request->filled('section')) {
+            $query->whereHas('student.studentProfile', function ($q) use ($request) {
+                $q->where('section', $request->input('section'));
+            });
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->whereHas('student.studentProfile', function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+            
+        $internships = $query->get();
+            
+        return response()->json([
+            'internships' => $internships,
+            'available_sections' => $availableSections
         ]);
-        $eval->internship_id = $internship->id;
-        $eval->evaluator_type = 'faculty';
-        $eval->evaluated_by = $request->user()->id;
-        $eval->submitted_at = now();
-        $eval->computeScores();
-        $eval->save();
-        return response()->json(['message' => 'Evaluation submitted.', 'evaluation' => $eval], 201);
     }
 
     public function feedback(Request $request)
     {
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
+        $internshipIds = Internship::inDepartment()->where('faculty_id', $request->user()->id)->pluck('id');
         $journals = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)->whereNotNull('faculty_feedback')->with('internship.student.studentProfile')->orderByDesc('faculty_reviewed_at')->paginate(20);
         return ApiResponse::list($journals);
     }
@@ -415,6 +448,9 @@ class FacultyController extends Controller
     {
         $request->validate(['feedback' => 'required|string|min:5']);
         $internship = Internship::where('faculty_id', $request->user()->id)->findOrFail($internshipId);
+        if (!Internship::inDepartment()->where('id', $internshipId)->exists()) {
+            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+        }
         $journal = $internship->journals()->latest('date')->first();
         if ($journal) {
             $journal->update(['faculty_feedback' => $request->feedback, 'faculty_reviewed_by' => $request->user()->id, 'faculty_reviewed_at' => now()]);
@@ -422,109 +458,23 @@ class FacultyController extends Controller
         return response()->json(['message' => 'Feedback submitted.']);
     }
 
-    /** GET /api/v1/faculty/documents — faculty-stage queue for assigned students only */
+    /** GET /api/v1/faculty/documents */
     public function documents(Request $request)
     {
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
+        $facultyId = $request->user()->id;
+
+        // Only show documents for requirements created by this faculty
+        $facultyReqs = \App\Models\OjtRequirementTemplate::where('created_by', $facultyId)->pluck('name');
+
+        $internshipIds = Internship::inDepartment()->where('faculty_id', $facultyId)->pluck('id');
 
         $docs = \App\Models\Document::whereIn('internship_id', $internshipIds)
-            ->where('current_stage', 'faculty')
-            ->where('status', 'pending_faculty')
-            ->with(['internship.student.studentProfile', 'reviews'])
-            ->orderBy('submitted_at')
+            ->whereIn('document_type', $facultyReqs)
+            ->with(['internship.student.studentProfile'])
+            ->orderByDesc('submitted_at')
             ->paginate(25);
 
         return ApiResponse::list($docs);
-    }
-
-    /** PATCH /api/v1/faculty/documents/{id}/verify — final approval */
-    public function verifyDocument(Request $request, int $id)
-    {
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
-        $doc = \App\Models\Document::whereIn('internship_id', $internshipIds)
-            ->where('current_stage', 'faculty')
-            ->where('status', 'pending_faculty')
-            ->findOrFail($id);
-
-        $from = $doc->status;
-        $doc->update([
-            'status' => 'approved',
-            'current_stage' => 'done',
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-            'remarks' => $request->remarks,
-        ]);
-
-        \App\Models\DocumentReview::create([
-            'document_id' => $doc->id,
-            'stage' => 'faculty',
-            'action' => 'approve',
-            'from_status' => $from,
-            'to_status' => 'approved',
-            'remarks' => $request->remarks,
-            'reviewed_by' => $request->user()->id,
-        ]);
-
-        if ($doc->internship?->student_id) {
-            Notification::notify(
-                $doc->internship->student_id,
-                'document_approved',
-                'Document Fully Approved',
-                "Your {$doc->document_type} has been verified by faculty and is fully approved.",
-                '/student/documents',
-                ['document_id' => $doc->id, 'document_type' => $doc->document_type]
-            );
-        }
-
-        audit_log($request->user()->id, 'verify_document_faculty', ['document_id' => $id]);
-
-        return response()->json(['message' => 'Document fully approved.', 'document' => $doc]);
-    }
-
-    /** PATCH /api/v1/faculty/documents/{id}/reject */
-    public function rejectDocument(Request $request, int $id)
-    {
-        $request->validate(['remarks' => 'required|string|max:500']);
-
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
-        $doc = \App\Models\Document::whereIn('internship_id', $internshipIds)
-            ->where('current_stage', 'faculty')
-            ->where('status', 'pending_faculty')
-            ->findOrFail($id);
-
-        $from = $doc->status;
-        $doc->update([
-            'status' => 'rejected',
-            'current_stage' => 'done',
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-            'remarks' => $request->remarks,
-        ]);
-
-        \App\Models\DocumentReview::create([
-            'document_id' => $doc->id,
-            'stage' => 'faculty',
-            'action' => 'reject',
-            'from_status' => $from,
-            'to_status' => 'rejected',
-            'remarks' => $request->remarks,
-            'reviewed_by' => $request->user()->id,
-        ]);
-
-        if ($doc->internship?->student_id) {
-            Notification::notify(
-                $doc->internship->student_id,
-                'document_rejected',
-                'Document Rejected by Faculty',
-                "Your {$doc->document_type} was rejected: {$request->remarks}",
-                '/student/documents',
-                ['document_id' => $doc->id, 'document_type' => $doc->document_type, 'remarks' => $request->remarks]
-            );
-        }
-
-        audit_log($request->user()->id, 'reject_document_faculty', ['document_id' => $id]);
-
-        return response()->json(['message' => 'Document rejected.', 'document' => $doc]);
     }
 
     /** GET /api/v1/faculty/reports/student-summary — assigned students only */
@@ -533,7 +483,7 @@ class FacultyController extends Controller
         $facultyId = $request->user()->id;
         $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
 
-        $users = User::where('role', 'student')
+        $users = User::inDepartment()->where('role', 'student')
             ->where(function ($q) use ($facultyId, $sections) {
                 $q->whereHas('studentProfile', function ($p) use ($sections) {
                     $p->whereIn('section', $sections);
@@ -543,7 +493,7 @@ class FacultyController extends Controller
                 });
             })
             ->with([
-                'studentProfile', 
+                'studentProfile.program', 
                 'activeInternship.company',
                 'activeInternship' => function($q) {
                     $q->withCount([
@@ -561,7 +511,7 @@ class FacultyController extends Controller
             return [
                 'student_name' => trim(($p->first_name ?? '').' '.($p->last_name ?? '')),
                 'student_number' => $u->username,
-                'program' => $p->course_name ?? $p->program ?? $i?->program ?? '—',
+                'program' => $p->program?->code ?? $i?->program ?? '—',
                 'company' => $i->company?->company_name ?? '—',
                 'status' => $i?->status ?? 'unplaced',
                 'hours_rendered' => (float) ($i?->total_hours_rendered ?? 0),
@@ -592,7 +542,7 @@ class FacultyController extends Controller
         $facultyId = $request->user()->id;
         $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
 
-        $users = User::where('role', 'student')
+        $users = User::inDepartment()->where('role', 'student')
             ->where(function ($q) use ($facultyId, $sections) {
                 $q->whereHas('studentProfile', function ($p) use ($sections) {
                     $p->whereIn('section', $sections);
@@ -601,7 +551,7 @@ class FacultyController extends Controller
                     $i->where('faculty_id', $facultyId);
                 });
             })
-            ->with(['studentProfile', 'activeInternship.documents'])
+            ->with(['studentProfile.program', 'activeInternship.documents'])
             ->get();
 
         $rows = $users->map(function ($u) use ($requiredCount, $requiredTypes) {
@@ -611,7 +561,7 @@ class FacultyController extends Controller
             
             return [
                 'student_name' => trim((optional($u->studentProfile)->first_name ?? '').' '.(optional($u->studentProfile)->last_name ?? '')),
-                'program' => $u->studentProfile?->course_name ?? '—',
+                'program' => $u->studentProfile?->program?->code ?? '-',
                 'approved_docs' => $approvedDocsCount,
                 'required_docs' => $requiredCount,
                 'compliance_pct' => $requiredCount > 0 ? round($approvedDocsCount / $requiredCount * 100) : 0,
@@ -632,7 +582,7 @@ class FacultyController extends Controller
         $facultyId = $request->user()->id;
         $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
 
-        $users = User::where('role', 'student')
+        $users = User::inDepartment()->where('role', 'student')
             ->where(function ($q) use ($facultyId, $sections) {
                 $q->whereHas('studentProfile', function ($p) use ($sections) {
                     $p->whereIn('section', $sections);
@@ -641,13 +591,13 @@ class FacultyController extends Controller
                     $i->where('faculty_id', $facultyId);
                 });
             })
-            ->with(['studentProfile', 'activeInternship'])
+            ->with(['studentProfile.program', 'activeInternship'])
             ->get();
 
         $byProgram = $users
             ->groupBy(function ($u) {
                 foreach ([
-                    $u->studentProfile?->course_name,
+                    $u->studentProfile?->program?->code,
                     $u->activeInternship?->program,
                 ] as $value) {
                     $value = trim((string) $value);
@@ -673,15 +623,10 @@ class FacultyController extends Controller
             ->sortBy('program')
             ->values();
 
-        $internshipIds = Internship::where('faculty_id', $request->user()->id)->pluck('id');
+        $internshipIds = Internship::inDepartment()->where('faculty_id', $request->user()->id)->pluck('id');
         $evalAvg = \App\Models\Evaluation::whereIn('internship_id', $internshipIds)
             ->selectRaw('
                 evaluator_type,
-                AVG(technical_skills) as avg_technical,
-                AVG(communication_skills) as avg_communication,
-                AVG(teamwork) as avg_teamwork,
-                AVG(initiative) as avg_initiative,
-                AVG(work_ethics) as avg_work_ethics,
                 AVG(average_score) as avg_overall
             ')
             ->groupBy('evaluator_type')

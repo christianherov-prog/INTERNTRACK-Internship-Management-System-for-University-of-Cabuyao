@@ -12,8 +12,29 @@ class InternshipAccess
 {
     public static function canView(User $user, Internship $internship): bool
     {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if (in_array($user->role, ['director', 'coordinator', 'faculty'], true)) {
+            $userDept = $user->facultyProfile?->department;
+            $internship->loadMissing('student.studentProfile');
+            $studentDept = $internship->student?->studentProfile?->department;
+
+            if ($userDept && $studentDept) {
+                $isEngineering = stripos($userDept, 'Engineering') !== false || stripos($userDept, 'COE') !== false;
+                if ($isEngineering) {
+                    if (stripos($studentDept, 'Engineering') === false && stripos($studentDept, 'COE') === false) {
+                        return false;
+                    }
+                } elseif ($userDept !== $studentDept) {
+                    return false;
+                }
+            }
+        }
+
         return match ($user->role) {
-            'director', 'admin' => true,
+            'director' => true, // Assuming department check above passed
             'student' => (int) $internship->student_id === (int) $user->id,
             'supervisor' => (int) $internship->supervisor_id === (int) $user->id,
             'faculty' => (int) $internship->faculty_id === (int) $user->id,
@@ -34,9 +55,9 @@ class InternshipAccess
      */
     public static function internshipIdFromPath(string $path): ?int
     {
-        $path = ltrim($path, '/');
+        $path = preg_replace('#^(?:storage/|public/|app/public/)#i', '', ltrim($path, '/'));
 
-        if (preg_match('#^(?:journals|internships|portfolios|messages)/(\d+)/#', $path, $m)) {
+        if (preg_match('#^(?:journals|internships|portfolios|messages|documents)/(\d+)/#', $path, $m)) {
             return (int) $m[1];
         }
 

@@ -141,7 +141,7 @@ function NotificationBell() {
       {open && (
         <div
           className="dropdown-menu show shadow"
-          style={{ right: 0, left: 'auto', minWidth: 'min(340px, calc(100vw - 1.5rem))', maxWidth: 'calc(100vw - 1.5rem)', maxHeight: '400px', overflowY: 'auto', top: '32px', position: 'absolute', zIndex: 9999 }}
+          style={{ right: 0, left: 'auto', minWidth: '340px', maxHeight: '400px', overflowY: 'auto', top: '32px', position: 'absolute', zIndex: 9999 }}
         >
           <div className="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
             <span className="fw-semibold">Notifications</span>

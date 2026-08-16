@@ -1,83 +1,177 @@
-/* ============================================================
-   PORTFOLIO PRINT CSS
-   Handles both on-screen A4 preview and browser Print-to-PDF
-   ============================================================ */
+/* ==========================================================
+   INTERNTRACK PORTFOLIO PRINT CSS
+   Word-like A4 Layout
+   ========================================================== */
 
-/* ── A4 page on screen ── */
-@media screen {
-  .a4-page {
-    width: 210mm;
-    min-height: 297mm;
+/* ===========================
+   GLOBAL PAGE STYLE (Web Preview)
+   =========================== */
+
+.a4-page {
+    width: 210mm !important;
+
+    /* FIX: Make height flexible for the web preview so long forms don't cut off */
+    min-height: 297mm !important;
+    height: max-content !important;
+    max-height: none !important;
+
     margin: 20px auto;
-    background: #fff;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-    padding: 20mm 18mm;
+    background: #ffffff;
     box-sizing: border-box;
-    position: relative;
-  }
+
+    /* Microsoft Word Normal Margin */
+    padding: 1.27cm 1.27cm 1.8cm 1.27cm !important;
+    position: relative !important;
+
+    /* FIX: Allow overflow on the web preview so you can scroll down */
+    overflow: visible !important;
+
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 
-/* ── Print rules ── */
-@media print {
-  /* Hide browser header and footer (URL, date, title) */
-  @page {
-    size: A4;
-    margin: 0;
-  }
-
-  /* Reset everything */
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-  body, #root {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #fff !important;
-  }
-
-  /* Hide UI chrome */
-  .no-print { display: none !important; }
-
-  /* Each a4-page becomes exactly one printed page */
-  .a4-page {
-    width: 210mm !important;
+.cover-page-banner {
     height: 297mm !important;
-    min-height: unset !important;
-    margin: 0 !important;
-    padding: 20mm 18mm !important; /* This compensates for the @page margin: 0 */
-    box-shadow: none !important;
+    max-height: 297mm !important;
+    min-height: 297mm !important;
+    overflow: hidden !important;
+}
+
+/* ===========================
+   SCREEN PREVIEW
+   =========================== */
+
+@media screen {
+    body {
+        background: #e5e5e5;
+    }
+
+    .a4-page {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .18);
+    }
+}
+
+/* ===========================
+   PRINT SETTINGS (Physical Printer)
+   =========================== */
+
+@media print {
+
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    html,
+    body,
+    #root {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .a4-page {
+        width: 210mm !important;
+
+        /* RESTORE STRICT PRINT HEIGHT: Forces standard A4 sizes for paper */
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+
+        margin: 0 !important;
+        padding: 1.27cm 1.27cm 1.8cm 1.27cm !important;
+        box-shadow: none;
+
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        position: relative !important;
+
+        /* RESTORE CLIP: Hides overflowing content when actually printing */
+        overflow: hidden !important;
+    }
+
+    .a4-page:last-child {
+        page-break-after: auto !important;
+    }
+
+}
+
+/* ===========================
+   PAGE BREAK & NATURAL FLOW
+   =========================== */
+
+.page-break {
     page-break-after: always !important;
     break-after: page !important;
-    overflow: hidden !important;
-    position: relative !important;
-    background-size: cover !important;
-    background-position: center !important;
-  }
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
 
-  /* Last page: no page break after */
-  .a4-page:last-child {
+.force-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+}
+
+/* Ensure headings don't become orphaned at the bottom of a page */
+.portfolio-document h1,
+.portfolio-document h2,
+.portfolio-document h3,
+.portfolio-document h4,
+.portfolio-document h5,
+.portfolio-document h6 {
     page-break-after: avoid !important;
     break-after: avoid !important;
-  }
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
 }
 
-/* ── Force page break helper ── */
-.page-break {
-  page-break-after: always;
-  break-after: page;
+/* Avoid slicing photos, diagrams, cards, or dashed boxes across page breaks */
+.portfolio-document img,
+.portfolio-document [style*="dashed"],
+.portfolio-document [style*="border"],
+.portfolio-document .content-card,
+.portfolio-document .portfolio-upload-tile {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
 }
 
-/* ── Portfolio document typography ── */
+/* Let blocks and paragraphs flow naturally across page boundaries ONLY when not a locked card/container */
+.portfolio-document p,
+.portfolio-document section,
+.portfolio-document article,
+.portfolio-document table,
+.portfolio-document tr,
+.portfolio-document td,
+.portfolio-document li {
+    page-break-inside: auto;
+    break-inside: auto;
+}
+
+/* ===========================
+   DOCUMENT TYPOGRAPHY
+   =========================== */
+
 .portfolio-document {
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 11pt;
-  color: #000;
-  line-height: 1.6;
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #000;
 }
 
 .portfolio-document p {
-  text-align: justify;
-  text-indent: 0.5in;
-  margin-bottom: 10px;
+    margin: 0 0 10px 0;
+    text-align: justify;
+    text-indent: .5in;
 }
 
 .portfolio-document h1,
@@ -85,197 +179,95 @@
 .portfolio-document h3,
 .portfolio-document h4,
 .portfolio-document h5 {
-  text-align: center;
+    margin: 0;
+    text-align: center;
 }
 
-/* ── Table of Contents ── */
+/* ===========================
+   TABLE OF CONTENTS
+   =========================== */
+
 .toc-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
 .toc-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 6px;
-  font-size: 10.5pt;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 6px;
+    font-size: 10.5pt;
 }
 
 .toc-list li span:first-child {
-  flex-grow: 1;
-  border-bottom: 1px dotted #555;
-  margin-right: 8px;
-  padding-bottom: 2px;
+    flex: 1;
+    border-bottom: 1px dotted #444;
+    margin-right: 8px;
+    padding-bottom: 2px;
 }
 
-/* ── Page Numbers ── */
+/* ===========================
+   CHAPTER III
+   =========================== */
+
+.chapter3-content {
+    padding-bottom: 18mm;
+}
+
+.chapter3-section {
+    margin-bottom: 20px;
+}
+
+.chapter3-section p {
+    margin-bottom: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* ===========================
+   PAGE NUMBER (AUTOMATIC SEQUENTIAL COUNTING)
+   =========================== */
+
 body {
-  counter-reset: portfolio-page -3; /* i, ii, iii... then 1 */
+    counter-reset: a4-page-counter !important;
+}
+
+.a4-page {
+    counter-increment: a4-page-counter;
 }
 
 .page-number {
-  position: absolute;
-  bottom: 15mm;
-  right: 18mm;
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 11pt;
+    position: absolute;
+    bottom: 1cm;
+    right: 1.27cm;
+    font-size: 0 !important;
+    /* Hide out-of-order text */
+    color: transparent !important;
+    font-family: Arial, sans-serif;
+    line-height: 1;
 }
 
-/* Keep Chapter III body clear of the absolute page number */
-.chapter3-content {
-  padding-bottom: 18mm;
-}
-.chapter3-section p {
-  margin-bottom: 0;
-  overflow-wrap: break-word;
-  word-break: break-word;
+.page-number::after {
+    content: counter(a4-page-counter);
+    font-size: 10pt !important;
+    color: #000 !important;
 }
 
-.page-number::before {
-  counter-increment: portfolio-page;
-  content: counter(portfolio-page);
+/* ===========================
+   IMAGES
+   =========================== */
+
+img {
+    max-width: 100%;
+    height: auto;
 }
 
-.page-number.roman::before {
-  content: counter(portfolio-page, lower-roman);
+table {
+    border-collapse: collapse;
 }
 
-/* ============================================================
-   MOCKUP TEMPLATE STYLES
-   ============================================================ */
-/* Page 1: Cover Page */
-.cover-page {
-  background-image: url('/images/cover-bg.jpg');
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  padding: 0 !important;
+* {
+    box-sizing: border-box;
 }
-
-.cover-text {
-  position: absolute;
-  top: 65%;
-  right: 10%;
-  text-align: right;
-  color: #666;
-}
-
-.cover-text h1 {
-  font-size: 3rem;
-  font-weight: bold;
-  color: #888;
-  margin-bottom: 0.5rem;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.cover-text p {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #aaa;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Page 2: Narrative Page */
-.narrative-page {
-  background-image: url('/images/title-bg.jpg');
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  padding: 0 !important;
-}
-
-.narrative-content {
-  position: absolute;
-  top: 45%;
-  left: 10%;
-  width: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 1rem;
-  border-radius: 8px;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.narrative-content h2 {
-  font-size: 1.4rem;
-  margin-bottom: 0.5rem;
-  font-weight: normal;
-  text-align: left;
-}
-
-.narrative-content p {
-  font-size: 1.1rem;
-  margin-bottom: 0.2rem;
-  text-align: left;
-}
-
-.narrative-content .student-name {
-  font-weight: bold;
-  margin-top: 1rem;
-  font-size: 1.2rem;
-}
-
-/* Page 3: Title Page */
-.title-page {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 4rem !important;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.title-page-content {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.title-page p {
-  margin-bottom: 1.5rem;
-  font-size: 1.2rem;
-  text-align: center;
-  text-indent: 0;
-}
-
-.title-page h3 {
-  margin-bottom: 2rem;
-  font-size: 1.3rem;
-  text-align: center;
-}
-
-.title-page-logo {
-  position: absolute;
-  bottom: 2rem;
-  left: 2rem;
-  width: 100px;
-}
-
-/* Page 4: Table of Contents */
-.toc-page {
-  padding: 4rem !important;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.toc-header {
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 2rem;
-  font-size: 1.2rem;
-}
-
-.toc-content {
-  line-height: 1.8;
-  font-size: 1.1rem;
-}
-
-.toc-content ul {
-  list-style-type: none;
-  padding-left: 2rem;
-}
-
-.toc-content li {
-  margin-bottom: 0.5rem;
-}
-

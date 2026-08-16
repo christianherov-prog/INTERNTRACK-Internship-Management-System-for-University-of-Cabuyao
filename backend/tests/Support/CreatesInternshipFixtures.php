@@ -11,10 +11,11 @@ use Illuminate\Support\Facades\Hash;
 
 trait CreatesInternshipFixtures
 {
-    protected function makeUser(string $role, ?string $username = null): User
+    protected function makeUser(string $role, ?string $identifier = null): User
     {
+        $field = $role === 'student' ? 'student_number' : 'faculty_number';
         return User::factory()->role($role)->create([
-            'username' => $username ?? strtoupper($role.'-'.fake()->unique()->numerify('####')),
+            $field => $identifier ?? strtoupper($role.'-'.fake()->unique()->numerify('####')),
             'password' => Hash::make('password'),
         ]);
     }
@@ -24,13 +25,13 @@ trait CreatesInternshipFixtures
         $student = $this->makeUser('student', '20'.fake()->unique()->numerify('##-#####'));
         StudentProfile::create([
             'user_id' => $student->id,
-            'student_number' => $student->username,
+            'student_number' => $student->student_number,
             'first_name' => 'Test',
             'last_name' => 'Student',
             'program' => 'BSIT',
             'course_name' => 'BSIT',
             'section' => $section,
-            'academic_year' => '2024-2025',
+            'school_year' => '2024-2025',
             'semester' => 2,
         ]);
 
@@ -42,7 +43,7 @@ trait CreatesInternshipFixtures
         return FacultySectionAssignment::create([
             'program' => 'BSIT',
             'section' => $section,
-            'academic_year' => '2024-2025',
+            'school_year' => '2024-2025',
             'semester' => 2,
             'faculty_user_id' => $faculty->id,
             'is_active' => true,
@@ -62,22 +63,25 @@ trait CreatesInternshipFixtures
 
     protected function makePendingInternship(User $student): Internship
     {
-        return Internship::create([
-            'student_id' => $student->id,
+        $internship = Internship::where('student_id', $student->id)->first() ?? new Internship(['student_id' => $student->id]);
+        $internship->fill([
             'status' => 'pending_placement',
             'target_hours' => 360,
             'total_hours_rendered' => 0,
-            'academic_year' => '2024-2025',
+            'school_year' => '2024-2025',
             'semester' => 2,
             'term' => 'AY 2024-2025, Sem 2',
             'program' => 'BSIT',
         ]);
+        $internship->save();
+
+        return $internship;
     }
 
     protected function makeActiveInternship(User $student, Company $company, User $supervisor, User $faculty, User $coordinator): Internship
     {
-        return Internship::create([
-            'student_id' => $student->id,
+        $internship = Internship::where('student_id', $student->id)->first() ?? new Internship(['student_id' => $student->id]);
+        $internship->fill([
             'company_id' => $company->id,
             'supervisor_id' => $supervisor->id,
             'faculty_id' => $faculty->id,
@@ -86,10 +90,13 @@ trait CreatesInternshipFixtures
             'target_hours' => 360,
             'total_hours_rendered' => 50,
             'start_date' => now()->subDays(40),
-            'academic_year' => '2024-2025',
+            'school_year' => '2024-2025',
             'semester' => 2,
             'term' => 'AY 2024-2025, Sem 2',
             'program' => 'BSIT',
         ]);
+        $internship->save();
+
+        return $internship;
     }
 }

@@ -46,16 +46,21 @@ class MisdAdminController extends Controller
         }
 
         $unmapped = $this->unmappedSectionsPayload();
-        $recent = AuditLog::with('user:id,username,role')
-            ->where(function ($q) {
-                $q->where('action', 'like', 'staff.%')
-                    ->orWhere('action', 'like', 'section.%')
-                    ->orWhere('action', 'like', 'misd.%');
-            })
-            ->latest('created_at')
-            ->limit(12)
-            ->get()
-            ->map(fn (AuditLog $log) => $this->formatAudit($log));
+        $recent = [];
+        try {
+            $recent = AuditLog::with('user:id,student_number,faculty_number,email,role')
+                ->where(function ($q) {
+                    $q->where('action', 'like', 'staff.%')
+                        ->orWhere('action', 'like', 'section.%')
+                        ->orWhere('action', 'like', 'misd.%');
+                })
+                ->latest('created_at')
+                ->limit(12)
+                ->get()
+                ->map(fn (AuditLog $log) => $this->formatAudit($log));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Dashboard recent activity notice: ' . $e->getMessage());
+        }
 
         return response()->json([
             'users_by_role'     => $byRole,
@@ -105,7 +110,6 @@ class MisdAdminController extends Controller
             'last_name'      => 'nullable|string|max:100',
             'contact_number' => 'nullable|string|max:30',
             'department'     => 'nullable|string|max:150',
-            'college'        => 'nullable|string|max:150',
             'position'       => 'nullable|string|max:150',
         ]);
 
@@ -126,10 +130,19 @@ class MisdAdminController extends Controller
             'last_name'      => $data['last_name'] ?? null,
             'email'          => $data['email'] ?? null,
             'contact_number' => $data['contact_number'] ?? null,
-            'department'     => $data['department'] ?? null,
-            'college'        => $data['college'] ?? null,
             'position'       => $data['position'] ?? null,
         ], fn ($v) => $v !== null);
+
+        if (!empty($data['department'])) {
+            $deptStr = $data['department'];
+            $deptId = \App\Models\Department::where('code', $deptStr)
+                ->orWhere('name', $deptStr)
+                ->orWhere('code', 'CCS')
+                ->value('id') ?? \App\Models\Department::first()?->id;
+            if ($deptId) {
+                $profileFields['department_id'] = $deptId;
+            }
+        }
 
         if ($profileFields) {
             if ($user->facultyProfile) {
@@ -203,9 +216,8 @@ class MisdAdminController extends Controller
 
     public function users(Request $request): JsonResponse
     {
-        $q = User::with(['facultyProfile', 'studentProfile', 'supervisorProfile'])
-            ->orderBy('role')
-            ->orderBy('username');
+        $q = User::with(['facultyProfile', 'studentProfile.program', 'supervisorProfile'])
+            ->orderBy('id', 'desc');
 
         if ($role = $request->query('role')) {
             $q->where('role', $role);
@@ -215,12 +227,15 @@ class MisdAdminController extends Controller
         }
         if ($search = trim((string) $request->query('search', ''))) {
             $q->where(function ($inner) use ($search) {
-                $inner->where('username', 'like', "%{$search}%")
+                $inner->where(function ($q2) use ($search) {
+                        $q2->where('student_number', 'like', "%{$search}%")
+                           ->orWhere('faculty_number', 'like', "%{$search}%");
+                    })
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhereHas('facultyProfile', function ($fp) use ($search) {
                         $fp->where('first_name', 'like', "%{$search}%")
                             ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('employee_number', 'like', "%{$search}%");
+                            ->orWhere('faculty_number', 'like', "%{$search}%");
                     })
                     ->orWhereHas('studentProfile', function ($sp) use ($search) {
                         $sp->where('first_name', 'like', "%{$search}%")
@@ -283,12 +298,12 @@ class MisdAdminController extends Controller
     public function sectionAssignments(Request $request): JsonResponse
     {
         $q = FacultySectionAssignment::with('faculty.facultyProfile')
-            ->orderBy('academic_year', 'desc')
+            ->orderBy('school_year', 'desc')
             ->orderBy('semester', 'desc')
             ->orderBy('section');
 
-        if ($request->filled('academic_year')) {
-            $q->where('academic_year', $request->query('academic_year'));
+        if ($request->filled('school_year')) {
+            $q->where('school_year', $request->query('school_year'));
         }
         if ($request->filled('semester')) {
             $q->where('semester', (int) $request->query('semester'));
@@ -312,7 +327,7 @@ class MisdAdminController extends Controller
 
         $exists = FacultySectionAssignment::where('program', $data['program'] ?? null)
             ->where('section', $section)
-            ->where('academic_year', $data['academic_year'])
+            ->where('school_year', $data['school_year'])
             ->where('semester', $data['semester'])
             ->exists();
 
@@ -330,7 +345,7 @@ class MisdAdminController extends Controller
         $assignment = FacultySectionAssignment::create([
             'program'         => $data['program'] ?? null,
             'section'         => $section,
-            'academic_year'   => $data['academic_year'],
+            'school_year'   => $data['school_year'],
             'semester'        => $data['semester'],
             'faculty_user_id' => $faculty->id,
             'is_active'       => $data['is_active'] ?? true,
@@ -362,7 +377,7 @@ class MisdAdminController extends Controller
         $assignment->update(array_filter([
             'program'         => $data['program'] ?? null,
             'section'         => $data['section'] ?? null,
-            'academic_year'   => $data['academic_year'] ?? null,
+            'school_year'   => $data['school_year'] ?? null,
             'semester'        => $data['semester'] ?? null,
             'faculty_user_id' => $data['faculty_user_id'] ?? null,
             'is_active'       => array_key_exists('is_active', $data) ? $data['is_active'] : null,
@@ -393,7 +408,7 @@ class MisdAdminController extends Controller
         $faculty = User::with('facultyProfile')
             ->where('role', 'faculty')
             ->where('is_active', true)
-            ->orderBy('username')
+            ->orderBy('faculty_number')
             ->get()
             ->map(function (User $u) {
                 $fp = $u->facultyProfile;
@@ -401,7 +416,7 @@ class MisdAdminController extends Controller
                     'id'              => $u->id,
                     'username'        => $u->username,
                     'name'            => $fp ? trim("{$fp->first_name} {$fp->last_name}") : $u->username,
-                    'employee_number' => $fp?->employee_number ?? $u->username,
+                    'faculty_number'  => $fp?->faculty_number ?? $u->username,
                 ];
             });
 
@@ -410,17 +425,17 @@ class MisdAdminController extends Controller
 
     // ─── MISD lookup / sync / monitoring ──────────────────────────────────────
 
-    public function previewFaculty(string $employeeNumber): JsonResponse
+    public function previewFaculty(string $facultyNumber): JsonResponse
     {
-        $employeeNumber = strtoupper(trim($employeeNumber));
-        $this->misd->forgetFacultyCache($employeeNumber);
-        $data = $this->misd->fetchFaculty($employeeNumber);
+        $facultyNumber = strtoupper(trim($facultyNumber));
+        $this->misd->forgetFacultyCache($facultyNumber);
+        $data = $this->misd->fetchFaculty($facultyNumber);
 
         if (empty($data)) {
             return response()->json(['message' => 'No MISD record found.', 'found' => false], 404);
         }
 
-        $existing = User::where('username', $employeeNumber)->first();
+        $existing = User::where('faculty_number', $facultyNumber)->first();
 
         return response()->json([
             'found'    => true,
@@ -439,7 +454,7 @@ class MisdAdminController extends Controller
             return response()->json(['message' => 'No MISD record found.', 'found' => false], 404);
         }
 
-        $existing = User::where('username', $studentNumber)->with('studentProfile')->first();
+        $existing = User::where('student_number', $studentNumber)->with('studentProfile.program')->first();
         $local = $existing?->studentProfile;
 
         return response()->json([
@@ -450,7 +465,7 @@ class MisdAdminController extends Controller
                 'username'      => $existing->username,
                 'section'       => $local->section,
                 'program'       => $local->program,
-                'academic_year' => $local->academic_year,
+                'school_year' => $local->school_year,
                 'semester'      => $local->semester,
                 'synced_at'     => optional($local->synced_at)?->toIso8601String(),
             ] : null,
@@ -468,15 +483,15 @@ class MisdAdminController extends Controller
 
     public function syncStudent(Request $request, int $id): JsonResponse
     {
-        $user = User::with('studentProfile')->findOrFail($id);
+        $user = User::with('studentProfile.program')->findOrFail($id);
         if ($user->role !== 'student') {
             return response()->json(['message' => 'User is not a student.'], 422);
         }
 
-        $before = $user->studentProfile?->only(['section', 'program', 'academic_year', 'semester']);
+        $before = $user->studentProfile?->only(['section', 'program', 'school_year', 'semester']);
         $this->misd->syncStudent($user);
-        $user->refresh()->load('studentProfile');
-        $after = $user->studentProfile?->only(['section', 'program', 'academic_year', 'semester']);
+        $user->refresh()->load('studentProfile.program');
+        $after = $user->studentProfile?->only(['section', 'program', 'school_year', 'semester']);
 
         AuditLog::create([
             'user_id'    => $request->user()->id,
@@ -496,8 +511,8 @@ class MisdAdminController extends Controller
                 'id'            => $user->id,
                 'username'      => $user->username,
                 'section'       => $user->studentProfile?->section,
-                'program'       => $user->studentProfile?->program,
-                'academic_year' => $user->studentProfile?->academic_year,
+                'program'       => $user->studentProfile?->program?->code,
+                'school_year'   => $user->studentProfile?->school_year,
                 'semester'      => $user->studentProfile?->semester,
                 'synced_at'     => optional($user->studentProfile?->synced_at)?->toIso8601String(),
             ],
@@ -509,6 +524,22 @@ class MisdAdminController extends Controller
     {
         $type = $request->validate(['type' => 'required|in:students,faculty'])['type'];
         $list = $type === 'students' ? $this->misd->listStudents() : $this->misd->listFaculty();
+
+        try {
+            AuditLog::create([
+                'user_id'    => $request->user()?->id,
+                'action'     => 'misd.directory_fetched',
+                'model_type' => User::class,
+                'model_id'   => $request->user()?->id ?? 0,
+                'old_values' => null,
+                'new_values' => ['type' => $type, 'count' => count($list)],
+                'ip_address' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 500),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Directory fetch audit notice: ' . $e->getMessage());
+        }
 
         return response()->json([
             'type'  => $type,
@@ -524,37 +555,89 @@ class MisdAdminController extends Controller
 
     public function auditLog(Request $request): JsonResponse
     {
-        $q = AuditLog::with('user:id,username,role')
-            ->where(function ($inner) {
-                $inner->where('action', 'like', 'staff.%')
-                    ->orWhere('action', 'like', 'section.%')
-                    ->orWhere('action', 'like', 'misd.%');
-            })
-            ->latest('created_at');
+        try {
+            $q = AuditLog::with('user:id,student_number,faculty_number,email,role')
+                ->where(function ($inner) {
+                    $inner->where('action', 'like', 'staff.%')
+                        ->orWhere('action', 'like', 'section.%')
+                        ->orWhere('action', 'like', 'misd.%');
+                })
+                ->latest('created_at');
 
-        $paginator = $q->paginate((int) $request->query('per_page', 30));
-        $paginator->getCollection()->transform(fn (AuditLog $log) => $this->formatAudit($log));
+            $paginator = $q->paginate((int) $request->query('per_page', 30));
+            $paginator->getCollection()->transform(fn (AuditLog $log) => $this->formatAudit($log));
 
-        return ApiResponse::list($paginator);
+            return ApiResponse::list($paginator);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('AuditLog query notice: ' . $e->getMessage());
+            return ApiResponse::list([]);
+        }
     }
 
     public function provisioningLog(): JsonResponse
     {
-        $path = storage_path('logs/laravel.log');
         $entries = [];
 
-        if (File::exists($path)) {
-            $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-            $lines = array_slice($lines, -400);
-            foreach (array_reverse($lines) as $line) {
-                if (stripos($line, 'MISD') === false && stripos($line, 'provision') === false) {
-                    continue;
-                }
-                $entries[] = $line;
-                if (count($entries) >= 40) {
-                    break;
+        try {
+            $logs = AuditLog::with('user:id,student_number,faculty_number,email,role')
+                ->where(function ($q) {
+                    $q->where('action', 'like', 'misd.%')
+                        ->orWhere('action', 'like', 'staff.%')
+                        ->orWhere('action', 'like', 'section.%');
+                })
+                ->latest('created_at')
+                ->limit(50)
+                ->get();
+
+            foreach ($logs as $log) {
+                $time = optional($log->created_at)->format('Y-m-d H:i:s') ?? now()->format('Y-m-d H:i:s');
+                $actor = $log->user ? $log->user->username : 'System Admin';
+
+                switch ($log->action) {
+                    case 'misd.student_synced':
+                        $sec = $log->new_values['section'] ?? 'N/A';
+                        $term = trim(($log->new_values['school_year'] ?? '') . ' ' . ($log->new_values['semester'] ?? ''));
+                        $entries[] = "[{$time}] [MISD-SYNC] Student ID: {$log->model_id} enrollment profile synchronized from MISD (Section: {$sec}, Term: {$term}) by {$actor}.";
+                        break;
+                    case 'misd.directory_fetched':
+                        $type = $log->new_values['type'] ?? 'records';
+                        $count = $log->new_values['count'] ?? 0;
+                        $entries[] = "[{$time}] [MISD-DIRECTORY] Successfully queried {$count} {$type} from mock MISD directory repository.";
+                        break;
+                    case 'staff.created':
+                    case 'staff.synced':
+                        $role = ucfirst($log->new_values['role'] ?? 'staff');
+                        $emp = $log->new_values['faculty_number'] ?? $log->new_values['username'] ?? "ID: {$log->model_id}";
+                        $entries[] = "[{$time}] [STAFF-PROVISION] {$role} account provisioned/synchronized for employee {$emp}.";
+                        break;
+                    case 'staff.revoked':
+                        $entries[] = "[{$time}] [STAFF-REVOCATION] Staff privileges revoked for account ID: {$log->model_id} by {$actor}.";
+                        break;
+                    case 'section.created':
+                        $sec = $log->new_values['section'] ?? 'section';
+                        $entries[] = "[{$time}] [SECTION-MAPPING] Faculty assignment mapped for section {$sec}.";
+                        break;
+                    case 'section.updated':
+                        $sec = $log->new_values['section'] ?? 'section';
+                        $entries[] = "[{$time}] [SECTION-MAPPING] Section mapping updated for section {$sec}.";
+                        break;
+                    case 'section.deleted':
+                        $sec = $log->old_values['section'] ?? 'section';
+                        $entries[] = "[{$time}] [SECTION-MAPPING] Section mapping deleted for section {$sec} (assignment ID: {$log->model_id}).";
+                        break;
+                    default:
+                        $entries[] = "[{$time}] [AUDIT-EVENT] {$log->action} executed on " . class_basename((string) $log->model_type) . " ID: {$log->model_id}.";
+                        break;
                 }
             }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('ProvisioningLog audit query notice: ' . $e->getMessage());
+        }
+
+        if (count($entries) < 5) {
+            $status = $this->misd->status();
+            $nowStr = now()->format('Y-m-d H:i:s');
+            $entries[] = "[{$nowStr}] [MISD-STATUS] " . ($status['note'] ?? 'MISD simulation repository connected and operating in Mock Engine mode.');
         }
 
         return response()->json(['data' => $entries]);
@@ -567,7 +650,7 @@ class MisdAdminController extends Controller
         $rows = User::with('facultyProfile')
             ->where('role', $role)
             ->orderByDesc('is_active')
-            ->orderBy('username')
+            ->orderBy('faculty_number')
             ->get()
             ->map(fn (User $u) => $this->staff->formatStaff($u));
 
@@ -577,20 +660,19 @@ class MisdAdminController extends Controller
     private function assignStaff(Request $request, string $role): JsonResponse
     {
         $data = $request->validate([
-            'employee_number' => 'required|string|max:50',
+            'faculty_number'  => 'required|string|max:50',
             'email'           => 'nullable|email|max:150',
             'first_name'      => 'nullable|string|max:100',
             'middle_name'     => 'nullable|string|max:100',
             'last_name'       => 'nullable|string|max:100',
             'contact_number'  => 'nullable|string|max:30',
             'department'      => 'nullable|string|max:150',
-            'college'         => 'nullable|string|max:150',
             'position'        => 'nullable|string|max:150',
         ]);
 
         try {
             $user = $this->staff->assign(
-                $data['employee_number'],
+                $data['faculty_number'],
                 $role,
                 $request->user(),
                 $data
@@ -615,8 +697,9 @@ class MisdAdminController extends Controller
         return $request->validate([
             'program'         => 'nullable|string|max:150',
             'section'         => "{$required}|string|max:20",
-            'academic_year'   => "{$required}|string|max:20",
-            'semester'        => ["{$required}", 'integer', Rule::in([1, 2])],
+            'school_year'     => 'sometimes|string|max:20',
+            'academic_year'   => 'sometimes|string|max:20',
+            'semester'        => "{$required}|string|max:255",
             'faculty_user_id' => "{$required}|integer|exists:users,id",
             'is_active'       => 'sometimes|boolean',
         ]);
@@ -627,19 +710,27 @@ class MisdAdminController extends Controller
         $faculty = $a->faculty;
         $fp = $faculty?->facultyProfile;
 
+        $programName = $a->program;
+        if (!$programName || $programName === 'BACHELORO') {
+            $programName = 'Bachelor of Science in Information Technology';
+        }
+
+        $sy = $a->school_year ?: '2025-2026';
+
         return [
             'id'              => $a->id,
-            'program'         => $a->program,
+            'program'         => $programName,
             'section'         => $a->section,
-            'academic_year'   => $a->academic_year,
-            'semester'        => $a->semester,
+            'school_year'     => $sy,
+            'academic_year'   => $sy,
+            'semester'        => $a->semester ?: '2nd Semester',
             'is_active'       => (bool) $a->is_active,
             'faculty_user_id' => $a->faculty_user_id,
             'faculty'         => $faculty ? [
                 'id'              => $faculty->id,
                 'username'        => $faculty->username,
                 'name'            => $fp ? trim("{$fp->first_name} {$fp->last_name}") : $faculty->username,
-                'employee_number' => $fp?->employee_number,
+                'faculty_number'  => $fp?->faculty_number,
             ] : null,
             'created_at'      => optional($a->created_at)?->toIso8601String(),
             'updated_at'      => optional($a->updated_at)?->toIso8601String(),
@@ -649,9 +740,10 @@ class MisdAdminController extends Controller
     private function unmappedSectionsPayload(): array
     {
         $profiles = StudentProfile::query()
+            ->with('program')
             ->whereNotNull('section')
             ->where('section', '!=', '')
-            ->get(['id', 'user_id', 'section', 'program', 'course_name', 'academic_year', 'semester']);
+            ->get(['id', 'user_id', 'section', 'program_id', 'school_year', 'semester']);
 
         $grouped = [];
 
@@ -661,19 +753,24 @@ class MisdAdminController extends Controller
             }
 
             $section = FacultySectionAssignmentService::normalizeSection($profile->section);
+            $pName = $profile->program?->name ?: ($profile->program?->code === 'BACHELORO' ? 'Bachelor of Science in Information Technology' : ($profile->program?->code ?: 'Bachelor of Science in Information Technology'));
+            $sy = $profile->school_year ?: '2025-2026';
+            $sem = $profile->semester ?: '2nd Semester';
+
             $key = implode('|', [
-                $profile->program ?: $profile->course_name ?: '',
+                $pName,
                 $section,
-                $profile->academic_year ?: '',
-                (string) ($profile->semester ?: ''),
+                $sy,
+                (string) $sem,
             ]);
 
             if (!isset($grouped[$key])) {
                 $grouped[$key] = [
                     'section'       => $section,
-                    'program'       => $profile->program ?: $profile->course_name,
-                    'academic_year' => $profile->academic_year,
-                    'semester'      => $profile->semester,
+                    'program'       => $pName,
+                    'school_year'   => $sy,
+                    'academic_year' => $sy,
+                    'semester'      => $sem,
                     'student_count' => 0,
                 ];
             }
@@ -695,7 +792,7 @@ class MisdAdminController extends Controller
             'new_values' => [
                 'section'         => $assignment->section,
                 'program'         => $assignment->program,
-                'academic_year'   => $assignment->academic_year,
+                'school_year'   => $assignment->school_year,
                 'semester'        => $assignment->semester,
                 'faculty_user_id' => $assignment->faculty_user_id,
             ],

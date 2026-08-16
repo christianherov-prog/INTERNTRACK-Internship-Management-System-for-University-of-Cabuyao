@@ -3,20 +3,10 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapGroups } from '../../utils/apiList'
-import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { StudentInternPerformanceForm } from '../../components/evaluations/StudentInternPerformanceForm'
 
-const COMPETENCIES = [
-  { key: 'technical_skills', label: 'Technical Skills' },
-  { key: 'communication_skills', label: 'Communication Skills' },
-  { key: 'teamwork', label: 'Teamwork' },
-  { key: 'initiative', label: 'Initiative' },
-  { key: 'work_ethics', label: 'Work Ethics' },
-  { key: 'attendance_punctuality', label: 'Attendance & Punctuality' },
-  { key: 'adaptability', label: 'Adaptability' },
-  { key: 'problem_solving', label: 'Problem Solving' },
-]
-
-const RATING_LABELS = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Very Good', 5: 'Excellent' }
+import { HTEToUniversityEvaluationForm } from '../../components/evaluations/HTEToUniversityEvaluationForm'
+import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 
 function profileOf(entity) {
   return entity?.student?.student_profile || entity?.student?.studentProfile || null
@@ -25,133 +15,51 @@ function profileOf(entity) {
 function displayName(entity) {
   const p = profileOf(entity)
   if (p) return `${p.first_name || ''} ${p.last_name || ''}`.trim()
-  return entity?.student?.username || '—'
+  return entity?.student?.username || ''
 }
 
-function EvalModal({ internship, onClose, onSubmit, processing }) {
-  const [period, setPeriod] = useState('midterm')
-  const [scores, setScores] = useState({})
-  const [comments, setComments] = useState('')
-
-  const setScore = (key, val) => setScores((prev) => ({ ...prev, [key]: val }))
-  const allFilled = COMPETENCIES.every((c) => scores[c.key])
-  const canSubmit = allFilled
-  const name = displayName(internship)
-
-  const handleLocalSubmit = async () => {
-    if (!canSubmit || processing) return
-
-    const fd = new FormData()
-    fd.append('evaluation_period', period)
-    COMPETENCIES.forEach((c) => fd.append(c.key, String(scores[c.key])))
-    if (comments.trim()) fd.append('general_comments', comments.trim())
-    onSubmit(internship.id, fd, period)
-  }
+function EvalModal({ internship, activeForm, onClose, onSubmit, processing }) {
+  const formTitle = activeForm === 'FO-24' 
+    ? 'Student Performance (FO-24)' 
+    : 'Program Evaluation (FO-03)'
 
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              <i className="fa fa-star me-2 text-warning"></i>
-              Supervisor Evaluation — {name}
-            </h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Evaluation Period</label>
-              <div className="d-flex gap-3">
-                {['midterm', 'final'].map((p) => (
-                  <div key={p} className="form-check">
-                    <input
-                      type="radio"
-                      className="form-check-input"
-                      id={`sup_period_${p}`}
-                      checked={period === p}
-                      onChange={() => setPeriod(p)}
-                    />
-                    <label className="form-check-label text-capitalize" htmlFor={`sup_period_${p}`}>{p}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="table-responsive mb-3">
-              <table className="table table-bordered table-sm align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th>Competency</th>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <th key={n} className="text-center">
-                        {n}<br /><small className="text-muted fw-normal">{RATING_LABELS[n]}</small>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPETENCIES.map((c) => (
-                    <tr key={c.key}>
-                      <td className="fw-semibold">{c.label}</td>
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <td key={n} className="text-center">
-                          <input
-                            type="radio"
-                            name={c.key}
-                            checked={scores[c.key] === n}
-                            onChange={() => setScore(c.key, n)}
-                            className="form-check-input"
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {Object.keys(scores).length > 0 && (
-              <div className="alert alert-info py-2">
-                <strong>Average Score: </strong>
-                {(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length).toFixed(2)} / 5.00
-              </div>
-            )}
-            <div className="mb-3">
-              <label className="form-label fw-semibold">General Comments</label>
-              <textarea
-                className="form-control"
-                rows={3}
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                placeholder="Optional overall comments…"
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button
-              type="button"
-              className="btn btn-warning text-white"
-              onClick={handleLocalSubmit}
-              disabled={processing || !canSubmit}
-            >
-              <i className={`fa fa-${processing ? 'spinner fa-spin' : 'paper-plane'} me-2`}></i>
-              Submit Evaluation
-            </button>
-          </div>
+    <div className="modal show d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="modal-content modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: '950px' }}>
+        <div className="modal-header bg-white pb-3 pt-3 px-4 border-bottom flex-shrink-0 align-items-center justify-content-between w-100">
+          <h5 className="modal-title fw-bold text-primary mb-0">{formTitle}</h5>
+          <button type="button" className="btn-close" onClick={onClose} aria-label="Close"></button>
         </div>
-      </div>
+        <div className="modal-body bg-light p-4">
+      {activeForm === 'FO-24' ? (
+        <StudentInternPerformanceForm 
+          internship={internship} 
+          onSubmit={(data) => onSubmit(internship.id, data, data.evaluation_period)} 
+          processing={processing} 
+        />
+      ) : (
+        <HTEToUniversityEvaluationForm 
+          internship={internship} 
+          onSubmit={(data) => onSubmit(internship.id, data, data.evaluation_period)} 
+          processing={processing} 
+        />
+      )}
     </div>
+    
+  </div>
+  
+</div>
   )
 }
 
-function SupervisorPerformanceEvaluation() {
-  const currentTerm = useCurrentTerm()
+export default function SupervisorPerformanceEvaluation() {
+  const [modal, setModal] = useState(null)
+  const [previewEval, setPreviewEval] = useState(null)
   const [groups, setGroups] = useState({ pending: [], completed: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [message, setMessage] = useState(null)
-  const [modal, setModal] = useState(null)
 
   const fetchData = () => {
     setLoading(true)
@@ -167,107 +75,167 @@ function SupervisorPerformanceEvaluation() {
 
   useEffect(() => { fetchData() }, [])
 
-  const handleSubmit = async (internshipId, formData, period) => {
+  const handleSubmit = async (internshipId, data, period) => {
     setProcessing(true)
     setMessage(null)
     try {
-      await api.post(`/supervisor/evaluations/${internshipId}`, formData)
+      // Send as JSON
+      await api.post(`/supervisor/evaluations/${internshipId}`, data)
       setMessage({
         type: 'success',
-        text: `${period.charAt(0).toUpperCase() + period.slice(1)} evaluation submitted successfully.`,
+        text: `Evaluation submitted successfully.`,
       })
       setModal(null)
       fetchData()
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Submission failed.' })
+      setMessage({
+        type: 'danger',
+        text: err.response?.data?.message || 'Failed to submit evaluation.',
+      })
     } finally {
       setProcessing(false)
     }
   }
 
-  const { pending, completed } = groups
+  if (loading) {
+    return (
+      <Layout role="supervisor">
+        <div className="d-flex justify-content-center py-5"><div className="spinner-border text-primary"></div></div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return <Layout role="supervisor"><PageError message={error} onRetry={fetchData} /></Layout>
+  }
 
   return (
-    <Layout title="Evaluations" subtitle={currentTerm} icon="fa-star" bodyClass="supervisor-page">
-      {error && <PageError message={error} onRetry={fetchData} />}
-      {message && (
-        <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
-          {message.text}
-          <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
-        </div>
-      )}
-      {modal && (
-        <EvalModal internship={modal} onClose={() => setModal(null)} onSubmit={handleSubmit} processing={processing} />
-      )}
+    <Layout title="Performance Evaluations" subtitle="Assessing Student Learning, Progress, and Growth" icon="fa-star" role="supervisor">
+      <div className="container-fluid py-4 max-w-7xl">  
+        {message && (
+          <div className={`alert alert-${message.type} alert-dismissible fade show`} role="alert">
+            {message.text}
+            <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
+          </div>
+        )}
 
-      {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
-      ) : !error && (
-        <>
-          <div className="content-card mb-4">
-            <div className="content-card-header">
-              <i className="fa fa-clock text-warning"></i>
-              <h6>Pending Evaluations</h6>
-              <span className="ms-auto badge bg-warning text-dark">{pending.length}</span>
-            </div>
-            <div className="table-card">
-              {pending.length === 0 ? (
-                <div className="text-center py-3 text-muted">No pending evaluations.</div>
-              ) : pending.map((i) => {
-                const p = profileOf(i)
-                return (
-                  <div key={i.id} className="p-3 border-bottom d-flex align-items-center justify-content-between">
-                    <div>
-                      <div className="fw-semibold">{displayName(i)}</div>
-                      <div className="text-muted" style={{ fontSize: '0.82rem' }}>
-                        {p?.course_name ?? '—'} · {i.total_hours_rendered}/{i.target_hours} hrs
-                      </div>
-                    </div>
-                    <button type="button" className="btn btn-sm btn-warning text-white" onClick={() => setModal(i)}>
-                      <i className="fa fa-star me-1"></i>Evaluate
-                    </button>
+        <div className="row g-4">
+          <div className="col-12 col-xl-6">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-header bg-white border-bottom py-3">
+                <h6 className="mb-0 fw-bold d-flex align-items-center">
+                  <i className="fa fa-clock text-warning me-2"></i> Pending Evaluations
+                  <span className="badge bg-warning ms-auto rounded-pill">{groups.pending.length}</span>
+                </h6>
+              </div>
+              <div className="card-body p-0">
+                {groups.pending.length === 0 ? (
+                  <div className="text-center text-muted p-5">
+                    <i className="fa fa-check-circle fa-2x mb-3 d-block text-success"></i>
+                    All caught up! No pending evaluations.
                   </div>
-                )
-              })}
+                ) : (
+                  <ul className="list-group list-group-flush">
+                    {groups.pending.map((internship) => (
+                      <li key={internship.id} className="list-group-item p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                          <div className="fw-bold mb-1">{displayName(internship)}</div>
+                          <div className="text-muted small mb-1">
+                            {internship.program?.name || internship.program?.code || (typeof internship.program === 'string' ? internship.program : null) || profileOf(internship)?.program?.name || profileOf(internship)?.program?.code || (typeof profileOf(internship)?.program === 'string' ? profileOf(internship)?.program : null) || profileOf(internship)?.course_name || '—'}
+                          </div>
+                          <div className="text-muted small">
+                            Status: <span className="text-uppercase">{internship.status}</span>
+                          </div>
+                        </div>
+                        <div className="d-flex flex-column gap-2 align-items-end">
+                          {(!internship.missing_forms || internship.missing_forms.includes('FO-24')) && (
+                            <button className="btn btn-primary btn-sm px-3 rounded-pill text-start" 
+                            style={{fontSize: '0.80rem', whiteSpace: 'normal', lineHeight: '1.2'}}
+                            onClick={() => setModal({ internship, activeForm: 'FO-24' })}>
+                              <i className="fa fa-edit me-1"></i> Evaluate STUDENT INTERN PERFORMANCE EVALUATION FORM
+                            </button>
+                          )}
+                          {(!internship.missing_forms || internship.missing_forms.includes('FO-03')) && (
+                            <button className="btn btn-outline-primary btn-sm px-3 rounded-pill text-start" 
+                              style={{fontSize: '8pt', whiteSpace: 'normal', lineHeight: '1.2', textTransform: 'uppercase'}}
+                              onClick={() => setModal({ internship, activeForm: 'FO-03' })}>
+                              <i className="fa fa-edit me-1"></i> Evaluate HTE Evaluation to the University Internship Program
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="content-card">
-            <div className="content-card-header">
-              <i className="fa fa-check-circle text-success"></i>
-              <h6>Completed Evaluations</h6>
-              <span className="ms-auto badge bg-success">{completed.length}</span>
-            </div>
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th>Student</th><th>Period</th><th>Technical</th><th>Comm.</th>
-                    <th>Teamwork</th><th>Average</th><th>Rating</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {completed.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center text-muted py-3">No completed evaluations.</td></tr>
-                  ) : completed.map((ev) => (
-                    <tr key={ev.id}>
-                      <td className="fw-semibold">{displayName(ev.internship || {})}</td>
-                      <td><span className="badge bg-secondary text-capitalize">{ev.evaluation_period}</span></td>
-                      <td>{ev.technical_skills}</td>
-                      <td>{ev.communication_skills}</td>
-                      <td>{ev.teamwork}</td>
-                      <td><strong>{ev.average_score}</strong></td>
-                      <td><span className="badge bg-info">{ev.rating ?? '—'}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="col-12 col-xl-6">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-header bg-white border-bottom py-3">
+                <h6 className="mb-0 fw-bold d-flex align-items-center">
+                  <i className="fa fa-check-double text-success me-2"></i> Completed Evaluations
+                  <span className="badge bg-success ms-auto rounded-pill">{groups.completed.length}</span>
+                </h6>
+              </div>
+              <div className="card-body p-0">
+                {groups.completed.length === 0 ? (
+                  <div className="text-center text-muted p-5">
+                    No evaluations completed yet.
+                  </div>
+                ) : (
+                  <ul className="list-group list-group-flush">
+                    {groups.completed.map((ev) => (
+                      <li key={ev.id} className="list-group-item p-4">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <div>
+                            <span className="fw-bold">{displayName(ev.internship)}</span>
+                            <span className="badge bg-secondary ms-2" style={{ fontSize: '0.75rem' }}>{ev.form_type}</span>
+                          </div>
+                          <span className={`badge ${
+                            ev.rating === 'Failed' ? 'bg-danger' : 
+                            ev.rating === 'Excellent' ? 'bg-success' : 'bg-primary'
+                          } rounded-pill`}>
+                            {ev.rating || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="row text-sm text-muted g-2">
+                          <div className="col-6">Period: <span className="text-body text-capitalize">{ev.evaluation_period}</span></div>
+                          <div className="col-6">Score: <span className="text-body fw-semibold">{ev.average_score}</span></div>
+                          <div className="col-12 d-flex justify-content-between align-items-center">
+                            <span>Submitted: {new Date(ev.submitted_at).toLocaleDateString()}</span>
+                            <button className="btn btn-sm btn-outline-primary" onClick={() => setPreviewEval(ev)}>
+                              <i className="fa fa-print me-1"></i> Preview Form
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
-        </>
+        </div>
+      </div>
+
+      {modal && (
+        <EvalModal
+          internship={modal.internship}
+          activeForm={modal.activeForm}
+          onClose={() => setModal(null)}
+          onSubmit={handleSubmit}
+          processing={processing}
+        />
       )}
+
+      <FormPreviewModal 
+        isOpen={!!previewEval} 
+        onClose={() => setPreviewEval(null)} 
+        type={previewEval?.form_type || 'FO-24'} 
+        data={{ evalData: previewEval, internship: previewEval?.internship }} 
+      />
     </Layout>
   )
 }
-
-export default SupervisorPerformanceEvaluation

@@ -3,6 +3,7 @@ import Layout from '../../components/Layout'
 import ConfirmModal from '../../components/modals/ConfirmModal'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
+import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 
 function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-page' }) {
   const [pending, setPending] = useState([])
@@ -115,6 +116,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                     <th>Position</th>
                     <th>Company</th>
                     <th>Student</th>
+                    <th>Forms</th>
                     <th>Registered</th>
                     <th className="text-center">Actions</th>
                   </tr>
@@ -136,6 +138,23 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                           <small>
                             {studentP ? `${studentP.first_name} ${studentP.last_name}` : inv.student?.username || '—'}
                           </small>
+                        </td>
+                        <td>
+                          {inv.internship?.documents?.length > 0 ? (
+                            inv.internship.documents.map(doc => (
+                              <div key={doc.id} className="mb-1">
+                                <AuthenticatedFileLink 
+                                  path={doc.file_path}
+                                  className="btn btn-sm btn-outline-primary"
+                                  title={doc.file_name}
+                                >
+                                  <i className="fa fa-file-alt me-1"></i> View Form
+                                </AuthenticatedFileLink>
+                              </div>
+                            ))
+                          ) : (
+                            <small className="text-muted">None</small>
+                          )}
                         </td>
                         <td><small>{new Date(inv.updated_at).toLocaleDateString('en-PH')}</small></td>
                         <td className="text-center">

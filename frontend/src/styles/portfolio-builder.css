@@ -1,0 +1,535 @@
+/* ============================================================
+   PORTFOLIO BUILDER — Premium UI Stylesheet
+   Scoped to .portfolio-* classes to avoid side effects.
+   ============================================================ */
+
+/* ── Root tokens (portfolio-local) ── */
+:root {
+  --pb-green:     #16a34a;
+  --pb-green-lt:  #dcfce7;
+  --pb-green-dk:  #14532d;
+  --pb-blue:      #2563eb;
+  --pb-blue-lt:   #eff6ff;
+  --pb-warn:      #f59e0b;
+  --pb-warn-lt:   #fef3c7;
+  --pb-danger:    #dc2626;
+  --pb-danger-lt: #fee2e2;
+  --pb-gray:      #64748b;
+  --pb-gray-lt:   #f1f5f9;
+  --pb-shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --pb-shadow-md: 0 4px 16px rgba(0,0,0,.10);
+  --pb-shadow-lg: 0 8px 32px rgba(0,0,0,.14);
+  --pb-radius:    12px;
+  --pb-radius-sm: 8px;
+}
+
+/* ── Outer wrapper (Balanced 1260px container for natural form & grid proportions) ── */
+.portfolio-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1260px;
+  margin: 0 auto;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHAPTER CARDS (Ch I, Ch III, utilities)
+   ═══════════════════════════════════════════════════════════ */
+.portfolio-chapter-card {
+  border: none !important;
+  border-radius: var(--pb-radius) !important;
+  box-shadow: var(--pb-shadow-md) !important;
+  overflow: hidden;
+  transition: box-shadow .2s ease;
+  width: 100%;
+}
+.portfolio-chapter-card:hover {
+  box-shadow: var(--pb-shadow-lg) !important;
+}
+.portfolio-chapter-card .content-card-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 14px 22px;
+}
+.portfolio-chapter-card .content-card-header h6 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: .3px;
+}
+
+/* ── Chapter I header accent ── */
+.portfolio-chapter1-accent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Form field labels & inputs ── */
+.portfolio-field-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+  letter-spacing: .1px;
+}
+.portfolio-field-input {
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: var(--pb-radius-sm) !important;
+  font-size: 13.5px !important;
+  color: #1e293b !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+  background: #fff !important;
+  padding: 8px 12px !important;
+}
+.portfolio-field-input:focus {
+  border-color: var(--pb-blue) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15) !important;
+  outline: none !important;
+}
+.portfolio-field-input::placeholder {
+  color: #94a3b8 !important;
+  font-size: 13px;
+}
+
+/* ── 2-column fields row ── */
+.portfolio-fields-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .portfolio-fields-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Chapter 3 note banner ── */
+.portfolio-chapter3-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--pb-blue-lt);
+  border: 1px solid #bfdbfe;
+  border-radius: var(--pb-radius-sm);
+  font-size: 12.5px;
+  color: #1e40af;
+}
+.portfolio-chapter3-note i { margin-top: 2px; flex-shrink: 0; }
+
+/* ── Character count ── */
+.portfolio-char-count {
+  text-align: right;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  transition: color .15s;
+}
+.portfolio-char-count.warn  { color: var(--pb-warn); font-weight: 600; }
+.portfolio-char-count.over  { color: var(--pb-danger); font-weight: 700; }
+
+/* ═══════════════════════════════════════════════════════════
+   UTILITY ROW & GUIDELINE CARDS
+   ═══════════════════════════════════════════════════════════ */
+.portfolio-utility-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+@media (max-width: 768px) {
+  .portfolio-utility-row { grid-template-columns: 1fr; }
+}
+
+/* ── Chapter 2 / Journal card ── */
+.portfolio-chapter2-card {
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: var(--pb-radius) !important;
+  box-shadow: var(--pb-shadow-sm) !important;
+  border-top: 3.5px solid var(--pb-blue) !important;
+  background: #fff;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.portfolio-chapter2-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 8px;
+}
+.portfolio-chapter2-stat strong {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--pb-blue);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.portfolio-chapter2-stat span {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+.portfolio-panel-text {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Tips / Guideline card ── */
+.portfolio-tips-card {
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: var(--pb-radius) !important;
+  box-shadow: var(--pb-shadow-sm) !important;
+  border-top: 3.5px solid #f59e0b !important;
+  background: #fff;
+  width: 100%;
+}
+.portfolio-tips-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.portfolio-tips-list li {
+  font-size: 12.8px;
+  color: #475569;
+  line-height: 1.7;
+  margin-bottom: 6px;
+}
+.portfolio-tips-list li:last-child {
+  margin-bottom: 0;
+}
+.portfolio-tips-list li::marker { color: #f59e0b; }
+
+/* ═══════════════════════════════════════════════════════════
+   FORM ACTIONS (sticky bar at bottom of form)
+   ═══════════════════════════════════════════════════════════ */
+.portfolio-form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 14px 20px;
+  background: #fff;
+  border-radius: var(--pb-radius);
+  box-shadow: 0 -2px 10px rgba(0,0,0,.06), var(--pb-shadow-sm);
+  border: 1px solid #e2e8f0;
+  position: sticky;
+  bottom: 16px;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APPENDIX SECTION & UPLOAD GRIDS
+   ═══════════════════════════════════════════════════════════ */
+.portfolio-appendix-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.portfolio-appendix-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.portfolio-appendix-group {
+  margin-bottom: 8px;
+}
+.portfolio-appendix-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 0 0 8px 2px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+/* ── Upload grid (Centered rows, auto-fit columns with strict uniform heights) ── */
+.portfolio-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 340px));
+  justify-content: center;
+  gap: 20px;
+  align-items: stretch;
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .portfolio-upload-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Single upload tile (Flex Column, Fixed Footer Button) ── */
+.portfolio-upload-tile {
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: var(--pb-radius-sm) !important;
+  box-shadow: var(--pb-shadow-sm) !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  transition: border-color .2s, box-shadow .2s;
+  overflow: hidden;
+  background: #fff;
+}
+.portfolio-upload-tile:hover {
+  border-color: var(--pb-blue) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10), var(--pb-shadow-sm) !important;
+}
+.portfolio-upload-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  min-height: 48px;
+}
+.portfolio-upload-tile-head h6 {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.35;
+}
+.portfolio-upload-tip {
+  color: #94a3b8;
+  cursor: help;
+  flex-shrink: 0;
+  font-size: 13px;
+  transition: color .15s;
+}
+.portfolio-upload-tip:hover { color: var(--pb-blue); }
+
+.portfolio-upload-tile-body {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 14px !important;
+  flex: 1 !important;
+  justify-content: space-between !important;
+}
+.portfolio-upload-tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 52px;
+}
+.portfolio-upload-empty {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+  text-align: center;
+  margin: 6px 0;
+}
+.portfolio-upload-hint {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.45;
+  margin: 0;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 8px;
+}
+.portfolio-upload-files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.portfolio-upload-file-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--pb-green-lt);
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+}
+.portfolio-upload-btn-wrap {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+.portfolio-upload-btn {
+  font-size: 12px !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  transition: background .15s, border-color .15s, transform .1s !important;
+}
+.portfolio-upload-btn:active { transform: scale(.97) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   LOGO THUMBNAIL HELPER
+   ═══════════════════════════════════════════════════════════ */
+.portfolio-logo-thumb {
+  max-width: 100%;
+  max-height: 50px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+/* ── Form section wrapper ── */
+.portfolio-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── HTE info fields row (Name + Address side by side) ── */
+.portfolio-hte-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .portfolio-hte-row { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PORTFOLIO PROGRESS HEADER & TABS BAR
+   ═══════════════════════════════════════════════════════════ */
+.portfolio-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--pb-radius);
+  padding: 14px 20px;
+  box-shadow: var(--pb-shadow-sm);
+  flex-wrap: wrap;
+}
+
+.portfolio-progress-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.portfolio-progress-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.portfolio-progress-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.portfolio-progress-total {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.portfolio-progress-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.portfolio-progress-divider {
+  width: 1px;
+  height: 28px;
+  background: #e2e8f0;
+}
+
+.portfolio-progress-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 160px;
+  max-width: 320px;
+}
+
+.portfolio-progress-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.portfolio-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.portfolio-progress-pct {
+  font-size: 14px;
+  font-weight: 700;
+  color: #16a34a;
+  min-width: 38px;
+}
+
+.portfolio-progress-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Placement & Portfolio Tabs Bar ── */
+.placement-tabs-bar {
+  display: flex;
+  gap: 6px;
+  background: #f0f4f1;
+  padding: 6px;
+  border-radius: 12px;
+  width: fit-content;
+  flex-wrap: wrap;
+}
+.placement-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+.placement-tab-btn:hover {
+  background: rgba(255,255,255,0.7);
+  color: #374151;
+}
+.placement-tab-btn.active {
+  background: #fff;
+  color: #157938;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.placement-tab-count {
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  min-width: 20px;
+  text-align: center;
+}
+.placement-tab-count.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+

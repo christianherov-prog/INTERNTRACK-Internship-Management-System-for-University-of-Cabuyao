@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
@@ -26,14 +26,13 @@ function MisdStaffPage({ role }) {
   const [preview, setPreview] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [form, setForm] = useState({
-    employee_number: '',
+    faculty_number: '',
     first_name: '',
     middle_name: '',
     last_name: '',
     email: '',
     contact_number: '',
     department: '',
-    college: '',
     position: '',
   })
 
@@ -50,14 +49,13 @@ function MisdStaffPage({ role }) {
 
   const openForm = () => {
     setForm({
-      employee_number: '',
+      faculty_number: '',
       first_name: '',
       middle_name: '',
       last_name: '',
       email: '',
       contact_number: '',
       department: '',
-      college: '',
       position: isDirector ? 'PALD Director' : 'Practicum Coordinator',
     })
     setPreview(null)
@@ -66,7 +64,7 @@ function MisdStaffPage({ role }) {
   }
 
   const lookupMisd = async () => {
-    const emp = form.employee_number.trim().toUpperCase()
+    const emp = form.faculty_number.trim().toUpperCase()
     if (!emp) return
     setPreviewLoading(true)
     setPreview(null)
@@ -76,14 +74,13 @@ function MisdStaffPage({ role }) {
       const m = res.data.misd || {}
       setForm((p) => ({
         ...p,
-        employee_number: emp,
+        faculty_number: emp,
         first_name: m.first_name || p.first_name,
         middle_name: m.middle_name || p.middle_name,
         last_name: m.last_name || p.last_name,
         email: m.email || p.email,
         contact_number: m.contact_number || p.contact_number,
         department: m.department || p.department,
-        college: m.college || p.college,
         position: m.position || p.position,
       }))
     } catch (err) {
@@ -100,7 +97,7 @@ function MisdStaffPage({ role }) {
     try {
       await api.post(assignPath, {
         ...form,
-        employee_number: form.employee_number.trim().toUpperCase(),
+        faculty_number: form.faculty_number.trim().toUpperCase(),
       })
       setMessage({ type: 'success', text: `${isDirector ? 'Director' : 'Coordinator'} assigned successfully.` })
       setShowForm(false)
@@ -169,120 +166,148 @@ function MisdStaffPage({ role }) {
       )}
 
       <div className="d-flex justify-content-end mb-3">
-        <button className="btn btn-green" onClick={openForm}>
+        <button className="btn btn-success rounded-3 fw-semibold px-3.5 py-2" onClick={openForm}>
           <i className="fa fa-plus me-2"></i>Assign {isDirector ? 'Director' : 'Coordinator'}
         </button>
       </div>
 
       {showForm && (
-        <div className="content-card mb-4">
-          <div className="content-card-header">
-            <i className="fa fa-user-plus"></i>
-            <h6>Assign {isDirector ? 'Director' : 'Coordinator'}</h6>
+        <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
+          <div className="card-header bg-transparent border-0 px-4 pt-3.5 pb-2">
+            <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
+              <i className="fa fa-user-plus text-success"></i>
+              Assign {isDirector ? 'Director' : 'Coordinator'}
+            </h6>
           </div>
-          <form className="p-3" onSubmit={handleAssign}>
+          <form className="p-4 pt-2" onSubmit={handleAssign}>
             <div className="row g-3">
               <div className="col-md-6">
-                <label className="form-label fw-semibold">Employee Number <span className="text-danger">*</span></label>
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>
+                  Faculty / Employee Number <span className="text-danger">*</span>
+                </label>
                 <div className="input-group">
                   <input
-                    className="form-control"
-                    value={form.employee_number}
-                    onChange={(e) => setForm((p) => ({ ...p, employee_number: e.target.value }))}
+                    className="form-control rounded-start-3"
+                    value={form.faculty_number}
+                    onChange={(e) => setForm((p) => ({ ...p, faculty_number: e.target.value }))}
                     placeholder={isDirector ? 'DIR-1002' : 'COR-1002'}
                     required
                   />
-                  <button type="button" className="btn btn-outline-secondary" onClick={lookupMisd} disabled={previewLoading}>
-                    {previewLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Lookup MISD'}
+                  <button type="button" className="btn btn-outline-success fw-semibold rounded-end-3" onClick={lookupMisd} disabled={previewLoading}>
+                    {previewLoading ? <i className="fa fa-spinner fa-spin me-1"></i> : <i className="fa fa-magnifying-glass me-1"></i>}
+                    Lookup MISD
                   </button>
                 </div>
               </div>
               <div className="col-md-3">
-                <label className="form-label fw-semibold">First Name</label>
-                <input className="form-control" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} />
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>First Name</label>
+                <input className="form-control rounded-3" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} />
               </div>
               <div className="col-md-3">
-                <label className="form-label fw-semibold">Last Name</label>
-                <input className="form-control" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} />
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Last Name</label>
+                <input className="form-control rounded-3" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} />
               </div>
               <div className="col-md-4">
-                <label className="form-label fw-semibold">Email</label>
-                <input type="email" className="form-control" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Email Address</label>
+                <input type="email" className="form-control rounded-3" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
               </div>
               <div className="col-md-4">
-                <label className="form-label fw-semibold">Department</label>
-                <input className="form-control" value={form.department} onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))} />
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Department / College</label>
+                <input className="form-control rounded-3" value={form.department} onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))} />
               </div>
               <div className="col-md-4">
-                <label className="form-label fw-semibold">Position</label>
-                <input className="form-control" value={form.position} onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))} />
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Official Position</label>
+                <input className="form-control rounded-3" value={form.position} onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))} />
               </div>
             </div>
 
             {preview && (
-              <div className={`alert ${preview.found ? 'alert-info' : 'alert-warning'} mt-3 mb-0`}>
+              <div className={`alert ${preview.found ? 'alert-info' : 'alert-warning'} mt-3 mb-0 rounded-3 border-0`} style={{ fontSize: '0.86rem' }}>
                 {preview.found ? (
                   <>
-                    MISD match: <strong>{preview.misd?.first_name} {preview.misd?.last_name}</strong>
-                    {preview.existing && <> · Existing account role: <code>{preview.existing.role}</code></>}
+                    <i className="fa fa-circle-check me-1.5 text-info"></i>
+                    MISD Match Found: <strong>{preview.misd?.first_name} {preview.misd?.last_name}</strong>
+                    {preview.existing && <> · Existing Account Role: <code className="bg-white px-1.5 py-0.5 rounded">{preview.existing.role}</code></>}
                   </>
                 ) : (
-                  <>{preview.message} You can still assign with manual details.</>
+                  <>
+                    <i className="fa fa-triangle-exclamation me-1.5"></i>
+                    {preview.message} You can still assign with manual details.
+                  </>
                 )}
               </div>
             )}
 
-            <div className="mt-3">
-              <button type="submit" className="btn btn-success me-2" disabled={saving}>
-                <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>
-                {saving ? 'Saving…' : 'Confirm Assign'}
+            <div className="mt-3.5 d-flex gap-2">
+              <button type="submit" className="btn btn-success rounded-3 fw-semibold px-3.5" disabled={saving}>
+                <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-1.5`}></i>
+                {saving ? 'Saving…' : 'Confirm & Assign'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="button" className="btn btn-light border rounded-3 fw-semibold px-3" onClick={() => setShowForm(false)}>
+                Cancel
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      <div className="content-card">
-        <div className="content-card-header"><i className="fa fa-table"></i><h6>All {title}</h6></div>
+      <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+        <div className="card-header bg-transparent border-0 px-4 pt-3.5 pb-2 d-flex align-items-center justify-content-between">
+          <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
+            <i className={`fa ${isDirector ? 'fa-user-tie' : 'fa-user-check'} text-success`}></i>
+            All Registered {title}
+          </h6>
+          <span className="badge bg-light text-secondary border fw-semibold px-2.5 py-1" style={{ fontSize: '0.75rem' }}>
+            {rows.length} {rows.length === 1 ? 'account' : 'accounts'}
+          </span>
+        </div>
         <div className="table-responsive">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
           ) : (
-            <table className="table table-hover mb-0">
-              <thead>
+            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem' }}>
+              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #eef2f6' }}>
                 <tr>
-                  <th>Name</th>
-                  <th>Employee ID</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Last Login</th>
-                  <th className="text-center">Actions</th>
+                  <th className="text-uppercase text-muted fw-semibold py-3 px-4" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Staff Name</th>
+                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Employee ID</th>
+                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Official Email</th>
+                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Account Status</th>
+                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Last Login</th>
+                  <th className="text-uppercase text-muted fw-semibold py-3 px-4 text-center" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center text-muted py-4">No {title.toLowerCase()} yet.</td></tr>
+                  <tr>
+                    <td colSpan={6} className="text-center text-muted py-5">
+                      <i className="fa-regular fa-folder-open fa-2x mb-2 d-block opacity-40"></i>
+                      No {title.toLowerCase()} accounts registered yet.
+                    </td>
+                  </tr>
                 ) : rows.map((row) => (
                   <tr key={row.id}>
-                    <td className="fw-semibold">{row.name}</td>
-                    <td><code>{row.username}</code></td>
-                    <td>{row.email || '—'}</td>
-                    <td>
-                      <span className={`badge ${row.is_active ? 'bg-success' : 'bg-secondary'}`}>
+                    <td className="px-4 py-3 fw-bold text-dark">{row.name}</td>
+                    <td className="px-3 py-3">
+                      <span className="badge bg-light text-dark border font-monospace fw-semibold" style={{ fontSize: '0.75rem' }}>
+                        {row.username}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-muted">{row.email || '—'}</td>
+                    <td className="px-3 py-3">
+                      <span className={`badge ${row.is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} fw-bold px-2.5 py-1 rounded-pill`} style={{ fontSize: '0.75rem' }}>
                         {row.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td>{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
-                    <td className="text-center">
+                    <td className="px-3 py-3 text-muted">{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
+                    <td className="px-4 py-3 text-center">
                       <div className="btn-group btn-group-sm">
-                        <button className="btn btn-outline-green" title="Sync from MISD" onClick={() => sync(row)}>
-                          <i className="fa fa-sync"></i>
+                        <button className="btn btn-outline-success" title="Sync from MISD" onClick={() => sync(row)}>
+                          <i className="fa fa-rotate"></i>
                         </button>
                         <button className="btn btn-outline-secondary" title="Reset password" onClick={() => resetPw(row)}>
                           <i className="fa fa-key"></i>
                         </button>
-                        <button className="btn btn-outline-warning" title={row.is_active ? 'Deactivate' : 'Activate'} onClick={() => toggleActive(row)}>
+                        <button className={`btn btn-outline-${row.is_active ? 'warning' : 'success'}`} title={row.is_active ? 'Deactivate' : 'Activate'} onClick={() => toggleActive(row)}>
                           <i className={`fa fa-${row.is_active ? 'ban' : 'check'}`}></i>
                         </button>
                         <button className="btn btn-outline-danger" title="Revoke" onClick={() => revoke(row)}>

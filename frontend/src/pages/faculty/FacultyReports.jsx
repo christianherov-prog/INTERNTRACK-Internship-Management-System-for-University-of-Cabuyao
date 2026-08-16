@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
@@ -264,6 +265,12 @@ function FacultyReports() {
     }
   }
 
+  const printRef = useRef(null)
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'Faculty_Report'
+  })
+
   return (
     <Layout title="Reports" subtitle="Assigned students only" icon="fa-chart-bar" bodyClass="faculty-page reports-page">
       {error && <PageError message={error} onRetry={() => activeReport && generateReport(activeReport)} />}
@@ -272,11 +279,8 @@ function FacultyReports() {
         {REPORT_TYPES.map((r) => (
           <div key={r.key} className="col-md-4">
             <div
-              className={`content-card h-100 ${activeReport === r.key ? 'border-2' : ''}`}
-              style={{
-                cursor: 'pointer',
-                borderColor: activeReport === r.key ? 'var(--green-main, #1a7a3f)' : undefined,
-              }}
+              className={`content-card h-100 ${activeReport === r.key ? 'border-2 border-primary' : ''}`}
+              style={{ cursor: 'pointer' }}
               onClick={() => generateReport(r.key)}
             >
               <div className="p-3 text-center">
@@ -286,7 +290,7 @@ function FacultyReports() {
                 <div className="fw-semibold mb-1">{r.title}</div>
                 <p className="text-muted mb-3" style={{ fontSize: '0.82rem' }}>{r.desc}</p>
                 <button
-                  className={`btn btn-sm ${activeReport === r.key ? 'btn-green' : 'btn-outline-green'}`}
+                  className={`btn btn-sm ${activeReport === r.key ? 'btn-primary' : 'btn-outline-primary'}`}
                   onClick={(e) => { e.stopPropagation(); generateReport(r.key) }}
                   disabled={loading && activeReport === r.key}
                 >
@@ -301,7 +305,7 @@ function FacultyReports() {
       </div>
 
       {activeReport && (
-        <div className="content-card" id="report-output">
+        <div className="content-card" id="report-output" ref={printRef}>
           <div className="content-card-header d-print-none">
             <i className={`fa ${REPORT_TYPES.find((r) => r.key === activeReport)?.icon}`}></i>
             <h6>{REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h6>
@@ -309,7 +313,7 @@ function FacultyReports() {
             <button className="btn btn-sm btn-outline-success ms-2" onClick={handleExportCsv} disabled={!reportData}>
               <i className="fa fa-file-csv me-1"></i>Export CSV
             </button>
-            <button className="btn btn-sm btn-outline-secondary ms-2" onClick={() => window.print()}>
+            <button className="btn btn-sm btn-outline-secondary ms-2" onClick={handlePrint}>
               <i className="fa fa-print me-1"></i>Print / Save PDF
             </button>
           </div>

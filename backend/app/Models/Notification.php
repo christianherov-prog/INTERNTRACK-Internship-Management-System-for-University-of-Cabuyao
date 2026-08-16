@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Events\NotificationCreated;
+use App\Mail\InternTrackNotificationMail;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Mail;
 
 class Notification extends Model
 {
@@ -112,6 +114,27 @@ class Notification extends Model
         } catch (\Throwable) {
             // Broadcasting is optional (e.g. no Reverb / queue in tests).
         }
+
+        // ── Email delivery for high-priority event types ──────────────────
+        $emailTypes = [
+            'document_rejected',
+            'document_approved',
+            'supervisor_approved',
+            'supervisor_rejected',
+            'placement_assigned',
+            'journal_needs_revision',
+            'evaluation_submitted',
+        ];
+
+        if (in_array(strtolower($type), $emailTypes) && $user->email) {
+            try {
+                Mail::to($user->email)
+                    ->queue(new InternTrackNotificationMail($title, $message, $link));
+            } catch (\Throwable) {
+                // Email delivery is non-blocking — never fail the request.
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         return $notification;
     }

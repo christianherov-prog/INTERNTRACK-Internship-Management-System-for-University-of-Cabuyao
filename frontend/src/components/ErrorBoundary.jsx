@@ -45,6 +45,11 @@ class ErrorBoundary extends Component {
               An unexpected error occurred while rendering this page. You can try again
               or reload the application.
             </p>
+            <div className="alert alert-danger text-start small mb-4" style={{ wordBreak: 'break-all' }}>
+              <strong>Error:</strong> {this.state.error?.toString()}
+              <br/><br/>
+              <strong>Stack:</strong> {this.state.error?.stack}
+            </div>
             <div className="d-flex gap-2 justify-content-center flex-wrap">
               <button type="button" className="btn btn-outline-secondary" onClick={this.handleReset}>
                 Try again

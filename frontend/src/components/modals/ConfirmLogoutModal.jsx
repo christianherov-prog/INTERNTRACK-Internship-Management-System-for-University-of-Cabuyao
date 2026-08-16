@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef } from 'react'
-import ModalPortal from './ModalPortal'
 
 /**
  * Themed logout confirmation modal (replaces window.confirm).
@@ -73,65 +72,63 @@ function ConfirmLogoutModal({ open, loading = false, error = null, onCancel, onC
   }
 
   return (
-    <ModalPortal>
+    <div
+      className="it-confirm-overlay"
+      role="presentation"
+      onClick={handleBackdropClick}
+    >
       <div
-        className="it-confirm-overlay"
-        role="presentation"
-        onClick={handleBackdropClick}
+        ref={dialogRef}
+        className="it-confirm-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
       >
-        <div
-          ref={dialogRef}
-          className="it-confirm-modal"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          aria-describedby={descId}
-        >
-          <div className="it-confirm-icon" aria-hidden="true">
-            <i className="fa fa-sign-out-alt" />
-          </div>
-          <h3 id={titleId} className="it-confirm-title">Log out of INTERNTRACK?</h3>
-          <p id={descId} className="it-confirm-sub">
-            You will need to sign in again to access your internship portal.
-          </p>
+        <div className="it-confirm-icon it-confirm-icon-danger" aria-hidden="true">
+          <i className="fa fa-sign-out-alt" />
+        </div>
+        <h3 id={titleId} className="it-confirm-title">Log out of INTERNTRACK?</h3>
+        <p id={descId} className="it-confirm-sub">
+          You will need to sign in again to access your internship portal.
+        </p>
 
-          {error && (
-            <div className="it-confirm-error" role="alert">
-              <i className="fa fa-exclamation-circle" aria-hidden="true" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="it-confirm-actions">
-            <button
-              ref={cancelRef}
-              type="button"
-              className="it-confirm-btn it-confirm-btn-cancel"
-              onClick={onCancel}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              ref={confirmRef}
-              type="button"
-              className="it-confirm-btn it-confirm-btn-danger"
-              onClick={onConfirm}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <i className="fa fa-spinner fa-spin" aria-hidden="true" />
-                  Logging out…
-                </>
-              ) : (
-                'Log Out'
-              )}
-            </button>
+        {error && (
+          <div className="it-confirm-error" role="alert">
+            <i className="fa fa-exclamation-circle" aria-hidden="true" />
+            <span>{error}</span>
           </div>
+        )}
+
+        <div className="it-confirm-actions">
+          <button
+            ref={cancelRef}
+            type="button"
+            className="it-confirm-btn it-confirm-btn-cancel"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            ref={confirmRef}
+            type="button"
+            className="it-confirm-btn it-confirm-btn-danger"
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <i className="fa fa-spinner fa-spin" aria-hidden="true" />
+                Logging out…
+              </>
+            ) : (
+              'Log Out'
+            )}
+          </button>
         </div>
       </div>
-    </ModalPortal>
+    </div>
   )
 }
 

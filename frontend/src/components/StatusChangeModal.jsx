@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
-import ModalPortal from './modals/ModalPortal'
 
 const SCOPE_STATUSES = [
   { value: 'active', label: 'Active' },
@@ -82,7 +81,6 @@ function StatusChangeModal({ internshipId, studentName, currentStatus, apiBase =
   }
 
   return (
-    <ModalPortal>
     <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
       <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content">
@@ -149,7 +147,7 @@ function StatusChangeModal({ internshipId, studentName, currentStatus, apiBase =
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-              <button type="submit" className="btn btn-green" disabled={saving || reason.trim().length < 5}>
+              <button type="submit" className="btn btn-primary" disabled={saving || reason.trim().length < 5}>
                 {saving ? 'Saving…' : 'Update Status'}
               </button>
             </div>
@@ -157,7 +155,6 @@ function StatusChangeModal({ internshipId, studentName, currentStatus, apiBase =
         </div>
       </div>
     </div>
-    </ModalPortal>
   )
 }
 

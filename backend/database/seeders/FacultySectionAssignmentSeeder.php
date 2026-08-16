@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Department;
 use App\Models\FacultyProfile;
 use App\Models\FacultySectionAssignment;
 use App\Models\User;
@@ -9,30 +10,57 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Maps UC BSIT section codes (4ITA–4ITD) to faculty supervisors per AY/Sem.
- * Coordinators do not pick faculty at placement — this table drives auto-assignment.
+ * Maps UC section codes to faculty supervisors per AY/Sem.
+ *
+ * Login credential: username = faculty_number (e.g. FAC-1001), password = interntrack123
+ *
+ * Section format: 1IT-A, 1IT-B, 1IT-C
+ *                 2IT-A, 2IT-B, 2IT-C
+ *                 3IT-A, 3IT-B, 3IT-C
+ *                 4IT-A, 4IT-B, 4IT-C
  */
 class FacultySectionAssignmentSeeder extends Seeder
 {
+    private function ensureDepartment(string $name): int
+    {
+        $name = trim($name);
+        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
+
+        $department = Department::firstOrCreate(
+            ['name' => $name],
+            ['code' => $code, 'is_active' => true]
+        );
+
+        return $department->id;
+    }
+
     public function run(): void
     {
-        $pw = Hash::make('interntrack123');
-        $program = 'BS Information Technology';
-        $ay = '2025-2026';
-        $sem = 1;
+        $pw  = Hash::make('interntrack123');
+        $ay  = '2025-2026';
+        $sem = '2nd Semester';
 
+        // ─── Faculty accounts ──────────────────────────────────────────────────
         $facultyRows = [
-            ['username' => 'FAC-1001', 'section' => '4ITD', 'first' => 'Marvin', 'last' => 'Bicua', 'emp' => 'FAC-1001', 'sex' => 'Male'],
-            ['username' => 'FAC-1002', 'section' => '4ITC', 'first' => 'Andrea', 'last' => 'Reyes', 'emp' => 'FAC-1002', 'sex' => 'Female'],
-            ['username' => 'FAC-1003', 'section' => '4ITB', 'first' => 'Roberto', 'last' => 'Lim', 'emp' => 'FAC-1003', 'sex' => 'Male'],
-            ['username' => 'FAC-1004', 'section' => '4ITA', 'first' => 'Maria', 'last' => 'Santos', 'emp' => 'FAC-1004', 'sex' => 'Female'],
+            [
+                'faculty_number' => 'FAC-1001',
+                'email'          => 'm.bicua@uc.edu.ph',
+                'first_name'     => 'Marvin',
+                'middle_name'    => 'M.',
+                'last_name'      => 'Bicua',
+                'sex'            => 'Male',
+                'department'     => 'College of Computing Studies',
+                'position'       => 'CCS Faculty',
+                'sections'       => ['4IT-A', '4IT-B', '4IT-C', '4IT-D'],
+            ],
         ];
 
         foreach ($facultyRows as $row) {
+            // Username for faculty/staff = faculty_number
             $user = User::withTrashed()->updateOrCreate(
-                ['username' => $row['username']],
+                ['faculty_number' => $row['faculty_number']],
                 [
-                    'email'      => strtolower(str_replace('-', '.', $row['username'])) . '@uc.edu.ph',
+                    'email'      => $row['email'],
                     'password'   => $pw,
                     'role'       => 'faculty',
                     'is_active'  => true,
@@ -47,61 +75,35 @@ class FacultySectionAssignmentSeeder extends Seeder
             FacultyProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'employee_number'   => $row['emp'],
-                    'first_name'        => $row['first'],
-                    'middle_name'       => null,
-                    'last_name'         => $row['last'],
-                    'email'             => strtolower(str_replace('-', '.', $row['username'])) . '@uc.edu.ph',
+                    'faculty_number'    => $row['faculty_number'],
+                    'first_name'        => $row['first_name'],
+                    'middle_name'       => $row['middle_name'] ?? 'N/A',
+                    'last_name'         => $row['last_name'],
+                    'email'             => $row['email'],
                     'sex'               => $row['sex'],
-                    'department'        => 'Information Technology',
-                    'college'           => 'College of Computing Studies',
-                    'position'          => 'OJT Teacher',
+                    'department_id'     => $this->ensureDepartment($row['department']),
+                    'position'          => $row['position'],
                     'employment_status' => 'Regular',
                     'synced_at'         => now(),
                 ]
             );
 
-            FacultySectionAssignment::updateOrCreate(
-                [
-                    'program'       => $program,
-                    'section'       => $row['section'],
-                    'academic_year' => $ay,
-                    'semester'      => $sem,
-                ],
-                [
-                    'faculty_user_id' => $user->id,
-                    'is_active'       => true,
-                ]
-            );
-        }
-
-        // Demo mappings for mock MISD students (AY 2025-2026 Sem 2)
-        $demoAy = '2025-2026';
-        $demoSem = 2;
-        $demoMap = [
-            '4ITA' => User::where('username', 'FAC-1004')->first(),
-            '4ITB' => User::where('username', 'FAC-1003')->first(),
-            '4ITC' => User::where('username', 'FAC-1002')->first(),
-        ];
-
-        foreach ($demoMap as $section => $facultyUser) {
-            if (!$facultyUser) {
-                continue;
+            // Assign sections to this faculty for the current AY/Sem
+            foreach ($row['sections'] as $section) {
+                FacultySectionAssignment::updateOrCreate(
+                    [
+                        'section'       => $section,
+                        'school_year' => $ay,
+                        'semester'      => $sem,
+                    ],
+                    [
+                        'faculty_user_id' => $user->id,
+                        'is_active'       => true,
+                    ]
+                );
             }
-            FacultySectionAssignment::updateOrCreate(
-                [
-                    'program'       => $program,
-                    'section'       => $section,
-                    'academic_year' => $demoAy,
-                    'semester'      => $demoSem,
-                ],
-                [
-                    'faculty_user_id' => $facultyUser->id,
-                    'is_active'       => true,
-                ]
-            );
         }
 
-        $this->command?->info('Section–faculty mappings seeded: 4ITA, 4ITB, 4ITC, 4ITD.');
+        $this->command?->info('✅ Faculty section assignments seeded. Login: username=FAC-1001, password=interntrack123');
     }
 }

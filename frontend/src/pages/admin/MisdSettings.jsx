@@ -1,4 +1,5 @@
 import RoleSettings from '../../components/RoleSettings'
+import SignatureUpload from '../../components/SignatureUpload'
 
 function MisdSettings() {
   return (
@@ -10,16 +11,19 @@ function MisdSettings() {
       notificationsIntro="Choose which system-administration alerts you want to receive."
       securityIntro="Update your password and protect MISD admin credentials."
       metaFields={[
-        { label: 'Employee Number', key: 'employee_number', fallback: '—' },
-        { label: 'Office / Unit', key: 'program', fallback: 'MISD' },
-        { label: 'Employment Status', key: 'employment_status', fallback: '—' },
-        { label: 'Position', key: 'position', fallback: 'MISD Administrator' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, Sem 2' },
+        { label: 'Administrator ID', key: 'faculty_number', fallback: '—' },
+        { label: 'Department', key: 'department', fallback: 'Management Information Systems Department' },
+        { label: 'Designation', key: 'position', fallback: 'MISD Administrator' },
+        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular' },
+        { label: 'System Access Level', fallback: 'Superadmin (Full Control)', value: () => 'Superadmin (Full Control)' },
+        { label: 'Official Email', key: 'email', fallback: '—' },
+        { label: 'Contact Number', key: 'contact', fallback: '—' },
+        { label: 'System Version', fallback: 'INTERNTRACK v1.0', value: () => 'INTERNTRACK v1.0' },
       ]}
       accountExtraFields={[
         {
-          name: 'program',
-          label: 'Office / Unit',
+          name: 'department',
+          label: 'Department',
           readOnly: true,
           helperText: 'Synced from iEnroll — read-only.',
         },
@@ -54,7 +58,9 @@ function MisdSettings() {
           description: 'Warn when enrolled students have sections without faculty mappings.',
         },
       ]}
-    />
+    >
+      <SignatureUpload />
+    </RoleSettings>
   )
 }
 

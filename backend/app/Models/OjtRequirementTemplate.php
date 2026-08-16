@@ -12,16 +12,31 @@ class OjtRequirementTemplate extends Model
         'category',     // pre-ojt, during, post-ojt, general
         'sort_order',
         'is_active',
+        'template_file_path',
+        'drive_link',
+        'created_by',
+        'deadline',
     ];
 
     protected $casts = [
         'is_active'  => 'boolean',
         'sort_order' => 'integer',
+        'deadline'   => 'datetime',
     ];
 
     /** Scope to only active requirements */
     public function scopeActive($query)
     {
         return $query->where('is_active', true)->orderBy('sort_order');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function targets()
+    {
+        return $this->hasMany(RequirementTarget::class, 'requirement_template_id');
     }
 }

@@ -44,16 +44,12 @@ function FacultyDocuments() {
     if (!verifyModal) return
     setProcessing(verifyModal.id)
     try {
-      const fd = new FormData()
-      fd.append('_method', 'PATCH')
-      if (remarks) fd.append('remarks', remarks)
-
-      await api.post(`/faculty/documents/${verifyModal.id}/verify`, fd)
-      setMessage({ type: 'success', text: `Document ${verifyModal.document_type} verified and approved.` })
+      await api.post(`/faculty/documents/${verifyModal.id}/review`, { action: 'approve', remarks })
+      setMessage({ type: 'success', text: `Document "${verifyModal.document_type}" approved successfully.` })
       setVerifyModal(null)
       fetchDocs()
     } catch {
-      setMessage({ type: 'danger', text: 'Failed to verify document.' })
+      setMessage({ type: 'danger', text: 'Failed to approve document.' })
     } finally {
       setProcessing(null)
     }
@@ -63,7 +59,7 @@ function FacultyDocuments() {
     if (!remark.trim() || !remarkModal) return
     setProcessing(remarkModal.id)
     try {
-      await api.patch(`/faculty/documents/${remarkModal.id}/reject`, { remarks: remark })
+      await api.post(`/faculty/documents/${remarkModal.id}/review`, { action: 'reject', remarks: remark })
       setMessage({ type: 'warning', text: 'Document rejected.' })
       setRemarkModal(null)
       fetchDocs()
@@ -75,7 +71,7 @@ function FacultyDocuments() {
   }
 
   return (
-    <Layout title="Document Verification" subtitle="Faculty stage" icon="fa-file-circle-check" bodyClass="faculty-page">
+    <Layout title="Document Approval" subtitle="Faculty Approval Queue" icon="fa-file-circle-check" bodyClass="faculty-page">
       {loadError && <PageError message={loadError} onRetry={fetchDocs} />}
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
@@ -89,12 +85,12 @@ function FacultyDocuments() {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Verify Document</h5>
+                <h5 className="modal-title">Approve Document</h5>
                 <button className="btn-close" onClick={() => setVerifyModal(null)}></button>
               </div>
               <div className="modal-body">
                 <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  Confirm final faculty verification. This fully approves the document.
+                  Confirm approval of this document. The student will be notified once approved.
                 </p>
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Remarks (optional)</label>
@@ -115,7 +111,7 @@ function FacultyDocuments() {
                   disabled={processing === verifyModal.id}
                 >
                   <i className={`fa fa-${processing === verifyModal.id ? 'spinner fa-spin' : 'check'} me-2`}></i>
-                  Verify &amp; Approve
+                  Approve
                 </button>
               </div>
             </div>
@@ -153,7 +149,7 @@ function FacultyDocuments() {
           <span className="ms-auto badge bg-info text-dark">{docs.length} in queue</span>
         </div>
         <p className="px-3 pt-3 mb-0 text-muted" style={{ fontSize: '0.85rem' }}>
-          Documents uploaded by your assigned students arrive here directly for your verification and approval.
+          Documents uploaded by your assigned students appear here directly for your approval.
         </p>
         <div className="table-card">
           {loading ? (
@@ -161,8 +157,8 @@ function FacultyDocuments() {
           ) : docs.length === 0 ? (
             <EmptyState
               icon="fa-file-circle-check"
-              title="Queue is empty"
-              message="No documents are awaiting faculty verification right now."
+              title="No pending documents"
+              message="No documents are awaiting your approval right now."
             />
           ) : (
             <div className="table-responsive">
@@ -192,14 +188,22 @@ function FacultyDocuments() {
                             </AuthenticatedFileLink>
                           ) : '—'}
                         </td>
-                        <td><span className="badge bg-info text-dark">{documentStatusLabel('pending_faculty')}</span></td>
+                        <td><span className="badge bg-info text-dark">{documentStatusLabel(doc.status || 'pending_faculty')}</span></td>
                         <td className="text-center">
+                          {doc.file_path && (
+                            <AuthenticatedFileLink
+                              path={doc.file_path}
+                              className="btn btn-sm btn-info text-white me-2"
+                            >
+                              <i className="fa fa-eye me-1"></i>Preview
+                            </AuthenticatedFileLink>
+                          )}
                           <button
                             className="btn btn-sm btn-success me-2"
                             onClick={() => openVerifyModal(doc)}
                             disabled={processing === doc.id}
                           >
-                            <i className="fa fa-check me-1"></i>Verify
+                            <i className="fa fa-check me-1"></i>Approve
                           </button>
                           <button
                             className="btn btn-sm btn-danger"

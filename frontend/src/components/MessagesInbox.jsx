@@ -12,6 +12,7 @@ import PageError from './PageError'
 import ConfirmModal from './modals/ConfirmModal'
 import api from '../services/api'
 import { unwrapList } from '../utils/apiList'
+import { withAvatarCacheBust } from '../utils/avatar'
 import { useAuth } from '../contexts/AuthContext'
 import '../styles/messages.css'
 
@@ -111,8 +112,8 @@ function sameThread(a, b) {
 /** Photo when available; initials fallback (and onError for broken URLs). */
 function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
   const [broken, setBroken] = useState(false)
-  const label = peer?.avatar || initials(peer?.name)
-  const src = peer?.avatarUrl && !broken ? peer.avatarUrl : null
+  const label = (peer?.avatar || initials(peer?.name || peer?.username) || '?').trim() || '?'
+  const src = peer?.avatarUrl && !broken ? withAvatarCacheBust(peer.avatarUrl, peer.avatarVersion || peer.id) : null
 
   useEffect(() => {
     setBroken(false)
@@ -132,7 +133,7 @@ function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
           onError={() => setBroken(true)}
         />
       ) : (
-        label
+        <span className="msg-avatar-initials">{label}</span>
       )}
     </div>
   )
@@ -892,18 +893,6 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     return res.data
   }, [applyThreadPayload])
 
-  const closeThread = useCallback(() => {
-    rememberScroll()
-    setActive(null)
-    activeRef.current = null
-    setMessages([])
-    setThreadMeta(null)
-    setThreadPage(1)
-    setThreadLoading(false)
-    setSendError(null)
-    setSearchParams({}, { replace: true })
-  }, [rememberScroll, setSearchParams])
-
   const openThread = useCallback(async (thread, { replaceUrl = true } = {}) => {
     const same = sameThread(activeRef.current, thread)
 
@@ -1376,7 +1365,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           <div className="alert alert-danger py-2 mb-2" role="alert">{actionError}</div>
         )}
 
-        <div className={`msg-inbox-grid${active ? ' has-active-thread' : ''}`}>
+        <div className="msg-inbox-grid">
           <section className="msg-panel msg-panel-list" aria-label="Conversations">
             <header className="msg-panel-header">
               <i className="fa fa-inbox" aria-hidden="true" />
@@ -1401,16 +1390,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
           <section className="msg-panel msg-panel-thread" aria-label="Message thread">
             <header className="msg-panel-header msg-panel-header-thread">
-              <button
-                type="button"
-                className="msg-thread-back"
-                onClick={closeThread}
-                aria-label="Back to conversations"
-              >
-                <i className="fa fa-arrow-left" aria-hidden="true" />
-                <span>Back</span>
-              </button>
-              <i className="fa fa-comments msg-thread-header-icon" aria-hidden="true" />
+              <i className="fa fa-comments" aria-hidden="true" />
               <h6 className="msg-thread-title">
                 {headerPeer
                   ? (

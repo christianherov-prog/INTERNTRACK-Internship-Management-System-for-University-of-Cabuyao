@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import EmptyState from '../../components/EmptyState'
 import PageError from '../../components/PageError'
@@ -67,7 +67,7 @@ function DirectorCompanies() {
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
       <div className="d-flex justify-content-end mb-3">
-        <button className="btn btn-green" onClick={openCreate}><i className="fa fa-plus me-2"></i>Add Company</button>
+        <button className="btn btn-primary" onClick={openCreate}><i className="fa fa-plus me-2"></i>Add Company</button>
       </div>
 
       {/* Form */}
@@ -123,7 +123,7 @@ function DirectorCompanies() {
                       <td style={{fontSize:'0.82rem',color: c.moa_status === 'expired' ? '#dc2626' : '#64748b'}}>{c.moa_expiry_date ?? '—'}</td>
                       <td>{c.slots_available}</td>
                       <td className="text-center">
-                        <button className="btn btn-sm btn-outline-green" onClick={() => openEdit(c)}><i className="fa fa-pen"></i></button>
+                        <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(c)}><i className="fa fa-pen"></i></button>
                       </td>
                     </tr>
                   ))}

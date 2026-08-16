@@ -5,6 +5,7 @@ import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { formatStudentName } from '../../utils/formatName'
 
 function fmtTime(t) {
   if (!t) return '—'
@@ -21,6 +22,7 @@ function SupervisorAttendanceValidation() {
   const [selected, setSelected] = useState([])
   const [rejectModal, setRejectModal] = useState(null)
   const [remark, setRemark] = useState('')
+  const [search, setSearch] = useState('')
 
   const fetchAttendance = () => {
     setLoading(true)
@@ -72,10 +74,7 @@ function SupervisorAttendanceValidation() {
     }
   }
 
-  const profileName = (log) => {
-    const p = log.internship?.student?.student_profile || log.internship?.student?.studentProfile
-    return p ? `${p.first_name} ${p.last_name}` : '—'
-  }
+  const profileName = (log) => formatStudentName(log.internship)
 
   return (
     <Layout title="Attendance Validation" subtitle={currentTerm} icon="fa-user-check" bodyClass="supervisor-page">
@@ -120,6 +119,14 @@ function SupervisorAttendanceValidation() {
         </div>
       )}
 
+      {/* Filters */}
+      <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
+        <div className="input-group input-group-sm" style={{ width: 260 }}>
+          <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
+          <input className="form-control border-start-0 ps-0" placeholder="Search by student name…" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      </div>
+
       <div className="content-card">
         <div className="content-card-header">
           <i className="fa fa-clock"></i>
@@ -145,8 +152,19 @@ function SupervisorAttendanceValidation() {
             <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
           ) : attendance.length === 0 && !error ? (
             <EmptyState icon="fa-check-circle" title="No pending attendance" message="All clock records for your interns are validated." />
-          ) : attendance.length === 0 ? null : (
-            <div className="table-responsive">
+          ) : (() => {
+            const filtered = attendance.filter(a => {
+              if (!search) return true
+              return profileName(a).toLowerCase().includes(search.toLowerCase())
+            })
+
+            if (attendance.length > 0 && filtered.length === 0) {
+              return <div className="text-center py-4 text-muted">No attendance matches your search.</div>
+            }
+            if (filtered.length === 0) return null
+
+            return (
+              <div className="table-responsive">
               <table className="table table-hover mb-0 align-middle">
                 <thead>
                   <tr>
@@ -162,7 +180,7 @@ function SupervisorAttendanceValidation() {
                   </tr>
                 </thead>
                 <tbody>
-                  {attendance.map((log) => {
+                  {filtered.map((log) => {
                     const name = profileName(log)
                     return (
                       <tr key={log.id} className={selected.includes(log.id) ? 'table-active' : ''}>
@@ -205,7 +223,8 @@ function SupervisorAttendanceValidation() {
                 </tbody>
               </table>
             </div>
-          )}
+            )
+          })()}
         </div>
       </div>
     </Layout>

@@ -22,6 +22,10 @@ class Company extends Model
         'is_active' => 'boolean',
     ];
 
+    protected $appends = [
+        'moa_expires_in_days',
+    ];
+
     public function internships()
     {
         return $this->hasMany(Internship::class);
@@ -34,6 +38,29 @@ class Company extends Model
         }
 
         return now()->diffInDays($this->moa_expiry_date, false);
+    }
+
+    public function getTotalDeployedInternsAttribute(): int
+    {
+        return $this->internships()->count();
+    }
+
+    public function getTotalAcceptedInternsAttribute(): int
+    {
+        return $this->internships()->whereNotIn('status', ['pending_placement', 'withdrawn', 'terminated'])->count();
+    }
+
+    public function getTotalCompletedInternsAttribute(): int
+    {
+        return $this->internships()->where('status', 'completed')->count();
+    }
+
+    public function getTotalHiredInternsAttribute(): int
+    {
+        return $this->internships()->where(function ($query) {
+            $query->where('student_declared_hired', true)
+                  ->orWhere('absorption_status', 'hired');
+        })->count();
     }
 
     /** Companies that may receive a new placement. */

@@ -2,40 +2,49 @@
 
 namespace App\Support;
 
+use App\Models\OjtRequirementTemplate;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+
 /**
  * Single source of truth for required internship documents (UC Internship Manual).
- * Keep frontend StudentDocuments DOCUMENT_TYPES in sync via API required_types where possible.
  */
 final class RequiredDocuments
 {
-    /** @var list<string> */
-    public const DEFAULT_TYPES = [
-        'Curriculum Vitae (PNC:AA-FO-27)',
-        'Medical Clearance',
-        'Psychological Assessment Certificate',
-        'Notarized Student Internship Consent Form (PNC:AA-FO-28)',
-        'Student Internship Acceptance Form (PNC:AA-FO-29)',
-        'Application Letter',
-        'Recommendation Letter',
-        'MOA / LOA / TOR',
-        'Company Profile',
-        'Training Plan',
-        'Midterm Evaluation',
-        'Final Report',
-        'Certificate of Completion',
-    ];
+    /**
+     * Standard 13 UC Internship required documents according to the university manual.
+     * @return list<string>
+     */
+    public static function defaultTypes(): array
+    {
+        return [
+            'Registration Form',
+            'Medical Clearance',
+            'Psychological Assessment Certificate',
+            'Application Letter',
+            'Curriculum Vitae (PNC:AA-FO-27)',
+            'Internship Host Establishment Request for Recommendation Letter (PNC:AA-FO-26)',
+            'Student Internship Acceptance Form (PNC:AA-FO-29)',
+            'Notarized Student Internship Consent Form (PNC:AA-FO-28)',
+            'Internship Training Plan (PNC:AA-FO-25.3)',
+            'Student Internship Daily Time Record (PNC:AA-FO-30)',
+            'Memorandum of Agreement (MOA)',
+            'Internship / OJT Visitation Form',
+            'Certificate of Completion',
+        ];
+    }
 
     /** @return list<string> */
     public static function types(): array
     {
-        return \Illuminate\Support\Facades\Cache::remember('ojt_requirements_types', 3600, function () {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ojt_requirement_templates')) {
-                $dbTypes = \App\Models\OjtRequirementTemplate::active()->pluck('name')->toArray();
-                if (!empty($dbTypes)) {
-                    return $dbTypes;
+        return Cache::remember('ojt_requirements_types', 3600, function () {
+            if (Schema::hasTable('ojt_requirement_templates')) {
+                $names = OjtRequirementTemplate::active()->pluck('name')->toArray();
+                if (!empty($names)) {
+                    return $names;
                 }
             }
-            return self::DEFAULT_TYPES;
+            return self::defaultTypes();
         });
     }
 
@@ -57,6 +66,6 @@ final class RequiredDocuments
 
     public static function clearCache(): void
     {
-        \Illuminate\Support\Facades\Cache::forget('ojt_requirements_types');
+        Cache::forget('ojt_requirements_types');
     }
 }

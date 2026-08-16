@@ -7,7 +7,9 @@ use App\Models\AttendanceLog;
 use App\Models\JournalEntry;
 use App\Models\Document;
 use App\Models\Announcement;
+use App\Models\Notification;
 use App\Services\AbsorptionService;
+use App\Services\CertificateEligibilityService;
 use App\Support\ApiResponse;
 use App\Support\RequiredDocuments;
 use Illuminate\Http\Request;
@@ -21,29 +23,46 @@ class StudentController extends Controller
     {
         $user = $request->user();
         $internship = $user->activeInternship()
-            ->with(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile'])
+            ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile'])
             ->first();
 
         if (!$internship) {
             $profile = $user->studentProfile;
-            $ay = $profile?->academic_year ?: '2025-2026';
-            $sem = (int) ($profile?->semester ?: 2);
+            $ay = $profile?->school_year ?: '2025-2026';
+            $sem = $profile?->semester ?: '2nd Semester';
+            $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
             $internship = $user->internshipsAsStudent()->create([
                 'status' => 'pending_placement',
-                'academic_year' => $ay,
+                'school_year' => $ay,
                 'semester' => $sem,
-                'term' => "AY {$ay}, Sem {$sem}",
-                'program' => $profile?->program ?: $profile?->course_name,
+                'term' => "AY {$ay}, {$sem}",
+                'program' => $profile?->program?->code,
+                'faculty_id' => $facultyId,
                 'target_hours' => config('interntrack.target_hours', 500),
                 'total_hours_rendered' => 0
             ]);
-            $internship->load(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
-        } elseif (empty($internship->program)) {
-            // Backfill denormalized program from student profile when missing.
-            $profile = $user->studentProfile;
-            $program = $profile?->program ?: $profile?->course_name;
-            if ($program) {
-                $internship->forceFill(['program' => $program])->save();
+            if (!$internship->relationLoaded('student')) {
+                $internship->load(['student.studentProfile.program', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
+            }
+        } else {
+            $dirty = false;
+            if (empty($internship->program)) {
+                $profile = $user->studentProfile;
+                $program = $profile?->program?->code;
+                if ($program) {
+                    $internship->program = $program;
+                    $dirty = true;
+                }
+            }
+            if (empty($internship->faculty_id)) {
+                $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($user->studentProfile)?->id;
+                if ($facultyId) {
+                    $internship->faculty_id = $facultyId;
+                    $dirty = true;
+                }
+            }
+            if ($dirty) {
+                $internship->save();
             }
         }
 
@@ -62,7 +81,7 @@ class StudentController extends Controller
             'name'           => $name,
             'student_number' => $profile->student_number,
             'section'        => $profile->section,
-            'course_name'    => $profile->course_name,
+            'course_name'    => $profile->program?->code,
             'year_level'     => $profile->year_level,
         ];
     }
@@ -70,40 +89,86 @@ class StudentController extends Controller
     /** GET /api/v1/student/dashboard */
     public function dashboard(Request $request)
     {
-        $user       = $request->user()->load('studentProfile');
+        $user       = $request->user()->load('studentProfile.program');
         $internship = $this->internship($request)->load('company');
+        $profile    = $user->studentProfile;
 
         // Attendance stats
         $daysPresent     = $internship->attendance()->where('status', 'validated')->count();
         $hoursRendered   = (float) $internship->attendance()->where('status', 'validated')->sum('hours_rendered');
-        $targetHours     = $internship->target_hours;
-        $progressPercent = $targetHours > 0 ? round(($hoursRendered / $targetHours) * 100, 1) : 0;
+        $targetHours     = $internship->target_hours ?: config('interntrack.target_hours', 500);
+        $progressPercent = $targetHours > 0 ? (float) min(100, max(0, round(($hoursRendered / $targetHours) * 100, 1))) : 0.0;
 
         // Journal stats
         $journalCount = $internship->journals()->whereIn('status', ['submitted', 'approved'])->count();
 
-        // Document stats
-        $docsTotal     = max(1, \App\Models\OjtRequirementTemplate::where('is_active', true)->count());
-        $docsSubmitted = $internship->documents()->whereIn('status', ['pending_review', 'under_review', 'pending_faculty', 'approved', 'resubmitted'])->count();
-        $docCompliance = round(($docsSubmitted / $docsTotal) * 100);
+        // Document compliance stats (properly scoped to logged-in student)
+        $studentTargets = [
+            ['type' => 'student', 'id' => (string) $user->id]
+        ];
+        if ($profile) {
+            if ($profile->section) {
+                $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
+            }
+            $program = $profile->program?->code ?: ($profile->program?->name ?: 'BSIT');
+            if ($program) {
+                $studentTargets[] = ['type' => 'program', 'id' => $program];
+            }
+        }
 
-        // Evaluation score (average of both evaluations)
+        $matchingTemplates = \App\Models\OjtRequirementTemplate::where('is_active', true)
+            ->where(function($query) use ($studentTargets) {
+                $query->whereHas('targets', function($q) use ($studentTargets) {
+                    $q->where(function($subQ) use ($studentTargets) {
+                        foreach($studentTargets as $target) {
+                            $subQ->orWhere(function($targetQ) use ($target) {
+                                $targetQ->where('target_type', $target['type'])
+                                        ->where('target_id', $target['id']);
+                            });
+                        }
+                    });
+                })->orDoesntHave('targets');
+            })
+            ->orderBy('sort_order')
+            ->get();
+
+        $requiredDocTypes = $matchingTemplates->isNotEmpty()
+            ? $matchingTemplates->pluck('name')->unique()->values()->toArray()
+            : \App\Support\RequiredDocuments::defaultTypes();
+
+        $docsTotal = max(1, count($requiredDocTypes));
+
+        $validDocStatuses = ['pending_review', 'under_review', 'pending_faculty', 'approved', 'resubmitted', 'completed'];
+        $docsSubmitted = $internship->documents()
+            ->whereIn('document_type', $requiredDocTypes)
+            ->whereIn('status', $validDocStatuses)
+            ->distinct('document_type')
+            ->count('document_type');
+
+        $docCompliance = (int) min(100, max(0, round(($docsSubmitted / $docsTotal) * 100)));
+
+        // Evaluation score (average of both evaluations, scaled to 100%)
         $evalAvg = $internship->evaluations()->avg('average_score');
+        $evaluationScore = $evalAvg ? min(100.0, max(0.0, round($evalAvg * 20, 1))) : null;
 
-        // Weekly chart — last 8 weeks
-        $weeks  = collect();
+        // Weekly chart — last 8 weeks (single query)
+        $weekStart8 = now()->startOfWeek()->subWeeks(7);
+        $weekEnd0   = now()->endOfWeek();
+
+        $weeklyData = $internship->attendance()
+            ->where('status', 'validated')
+            ->whereBetween('date', [$weekStart8->toDateString(), $weekEnd0->toDateString()])
+            ->selectRaw('YEARWEEK(date, 1) as yw, SUM(hours_rendered) as total')
+            ->groupBy('yw')
+            ->pluck('total', 'yw');
+
         $labels = [];
         $hours  = [];
         for ($i = 7; $i >= 0; $i--) {
-            $weekStart = now()->startOfWeek()->subWeeks($i);
-            $weekEnd   = (clone $weekStart)->endOfWeek();
-            $label     = 'Wk ' . (8 - $i);
-            $wkHours   = (float) $internship->attendance()
-                ->where('status', 'validated')
-                ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
-                ->sum('hours_rendered');
-            $labels[] = $label;
-            $hours[]  = round($wkHours, 1);
+            $ws = now()->startOfWeek()->subWeeks($i);
+            $yw = $ws->format('oW'); // ISO year + week number, matching YEARWEEK(..., 1)
+            $labels[] = 'Wk ' . (8 - $i);
+            $hours[]  = round((float) ($weeklyData[$yw] ?? 0), 1);
         }
 
         // Announcements for student role
@@ -129,7 +194,7 @@ class StudentController extends Controller
                 'docs_total'       => $docsTotal,
                 'progress_percent' => $progressPercent,
                 'doc_compliance'   => $docCompliance,
-                'evaluation_score' => $evalAvg ? round($evalAvg * 20, 1) : null,
+                'evaluation_score' => $evaluationScore,
             ],
             'weekly_chart'  => ['labels' => $labels, 'hours' => $hours],
             'announcements' => $announcements,
@@ -149,6 +214,9 @@ class StudentController extends Controller
     public function attendance(Request $request)
     {
         $internship = $this->internship($request);
+        if (!$internship->supervisor_id) {
+            return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
+        }
         $logs = $internship->attendance()
             ->orderByDesc('date')
             ->paginate(20);
@@ -169,6 +237,9 @@ class StudentController extends Controller
     public function clockIn(Request $request)
     {
         $internship = $this->internship($request);
+        if (!$internship->supervisor_id) {
+            return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
+        }
         $today      = now()->toDateString();
 
         if ($internship->attendance()->whereDate('date', $today)->exists()) {
@@ -194,6 +265,9 @@ class StudentController extends Controller
     public function clockOut(Request $request)
     {
         $internship = $this->internship($request);
+        if (!$internship->supervisor_id) {
+            return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
+        }
         $today      = now()->toDateString();
         $log        = $internship->attendance()->whereDate('date', $today)->whereNull('clock_out')->firstOrFail();
 
@@ -226,9 +300,13 @@ class StudentController extends Controller
     public function submitJournal(Request $request)
     {
         $request->validate([
-            'week_number'    => 'required|integer|min:1|max:52',
-            'file'           => 'required|file|max:10240', // 10MB max, any file type
-            'notes'          => 'nullable|string',
+            'week_number'        => 'required|integer|min:1|max:52',
+            'date'               => 'required|date',
+            'end_date'           => 'required|date|after_or_equal:date',
+            'activities_summary' => 'required_without_all:challenges,learnings|string|nullable',
+            'challenges'         => 'required_without_all:activities_summary,learnings|string|nullable',
+            'learnings'          => 'required_without_all:activities_summary,challenges|string|nullable',
+            'notes'              => 'nullable|string',
         ]);
 
         $internship = $this->internship($request);
@@ -238,22 +316,22 @@ class StudentController extends Controller
             return response()->json(['message' => 'Journal for this week is already submitted or approved.'], 422);
         }
 
-        $path = $request->file('file')->store('journals/' . $internship->id, 'local');
+        $data = [
+            'entry_number'       => $request->week_number,
+            'week_number'        => $request->week_number,
+            'date'               => $request->date,
+            'end_date'           => $request->end_date,
+            'activities_summary' => $request->activities_summary,
+            'challenges'         => $request->challenges,
+            'learnings'          => $request->learnings,
+            'notes'              => $request->notes,
+            'status'             => 'submitted',
+        ];
 
         if ($journal) {
-            $journal->update([
-                'file_path'      => $path,
-                'notes'          => $request->notes,
-                'status'         => 'submitted'
-            ]);
+            $journal->update($data);
         } else {
-            $journal = $internship->journals()->create([
-                'entry_number'   => $request->week_number, // Fallback for legacy DB column
-                'week_number'    => $request->week_number,
-                'file_path'      => $path,
-                'notes'          => $request->notes,
-                'status'         => 'submitted',
-            ]);
+            $journal = $internship->journals()->create($data);
         }
 
         audit_log($request->user()->id, 'submit_journal', ['week_number' => $request->week_number]);
@@ -265,27 +343,107 @@ class StudentController extends Controller
     public function documents(Request $request)
     {
         $internship = $this->internship($request);
-        $required = \App\Models\OjtRequirementTemplate::where('is_active', true)->orderBy('sort_order')->pluck('name')->toArray();
+        $user = $request->user();
+        $profile = $user->studentProfile;
+
+        // Collect student's targets
+        $studentTargets = [
+            ['type' => 'student', 'id' => (string) $user->id]
+        ];
+
+        if ($profile) {
+            if ($profile->section) {
+                $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
+            }
+            $program = $profile->program?->code ?: 'BSIT';
+            if ($program) {
+                $studentTargets[] = ['type' => 'program', 'id' => $program];
+            }
+        }
+
+        // Fetch templates that have a matching target or are global
+        $templates = \App\Models\OjtRequirementTemplate::where('is_active', true)
+            ->where(function($query) use ($studentTargets) {
+                $query->whereHas('targets', function($q) use ($studentTargets) {
+                    $q->where(function($subQ) use ($studentTargets) {
+                        foreach($studentTargets as $target) {
+                            $subQ->orWhere(function($targetQ) use ($target) {
+                                $targetQ->where('target_type', $target['type'])
+                                        ->where('target_id', $target['id']);
+                            });
+                        }
+                    });
+                })->orDoesntHave('targets');
+            })
+            ->orderBy('sort_order')
+            ->get();
+
         $submitted = $internship->documents()->get()->keyBy('document_type');
 
-        $docs = collect($required)->map(function ($type) use ($submitted) {
-            $doc = $submitted->get($type);
-            return [
-                'document_type' => $type,
-                'status'        => $doc?->status ?? 'not_submitted',
-                'current_stage' => $doc?->current_stage ?? null,
-                'file_name'     => $doc?->file_name ?? null,
-                'submitted_at'  => $doc?->submitted_at?->toDateString() ?? null,
-                'remarks'       => $doc?->remarks ?? null,
-                'id'            => $doc?->id ?? null,
-                'file_path'     => $doc?->file_path ?? null,
-                'file_url'      => null,
-            ];
-        });
+        if ($templates->isEmpty()) {
+            $defaultNames = \App\Support\RequiredDocuments::defaultTypes();
+            $docs = collect($defaultNames)->map(function ($name) use ($submitted) {
+                $doc = $submitted->get($name);
+                $status = $doc?->status ?? 'not_submitted';
+                return [
+                    'template_id'   => null,
+                    'has_template'  => false,
+                    'template_link' => null,
+                    'document_type' => $name,
+                    'status'        => $status,
+                    'deadline'      => null,
+                    'is_missed'     => false,
+                    'file_name'     => $doc?->file_name ?? null,
+                    'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
+                    'remarks'       => $doc?->remarks ?? null,
+                    'id'            => $doc?->id ?? null,
+                    'file_path'     => $doc?->file_path ?? null,
+                    'drive_link'    => $doc?->drive_link ?? null,
+                    'file_url'      => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
+                ];
+            });
+            $docsTotal = count($defaultNames);
+            $requiredTypes = $defaultNames;
+        } else {
+            $docs = $templates->map(function ($template) use ($submitted) {
+                $type = $template->name;
+                $doc = $submitted->get($type);
+                
+                $status = $doc?->status ?? 'not_submitted';
+                $isMissed = false;
+
+                if ($template->deadline && now()->greaterThan($template->deadline)) {
+                    if (!$doc || $status === 'rejected' || $status === 'not_submitted') {
+                        $status = 'no_submission';
+                        $isMissed = true;
+                    }
+                }
+
+                return [
+                    'template_id'   => $template->id,
+                    'has_template'  => !empty($template->template_file_path),
+                    'template_link' => $template->drive_link,
+                    'document_type' => $type,
+                    'status'        => $status,
+                    'deadline'      => $template->deadline?->toIso8601String(),
+                    'is_missed'     => $isMissed,
+                    'file_name'     => $doc?->file_name ?? null,
+                    'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
+                    'remarks'       => $doc?->remarks ?? null,
+                    'id'            => $doc?->id ?? null,
+                    'file_path'     => $doc?->file_path ?? null,
+                    'drive_link'    => $doc?->drive_link ?? null,
+                    'file_url'      => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
+                ];
+            });
+            $docsTotal = count($templates);
+            $requiredTypes = $templates->pluck('name');
+        }
 
         $payload = ApiResponse::list($docs)->getData(true);
-        $payload['meta']['docs_total'] = count($required);
-        $payload['required_types'] = $required;
+        $payload['meta']['docs_total'] = $docsTotal;
+        $payload['meta']['internship_id'] = $internship->id;
+        $payload['required_types'] = $requiredTypes;
 
         return response()->json($payload);
     }
@@ -293,41 +451,107 @@ class StudentController extends Controller
     /** POST /api/v1/student/documents/upload */
     public function uploadDocument(Request $request)
     {
-        $validTypes = \App\Models\OjtRequirementTemplate::where('is_active', true)->pluck('name')->toArray();
+        $user = $request->user();
+        $profile = $user->studentProfile;
+
+        // Collect student's targets to scope valid requirements
+        $studentTargets = [
+            ['type' => 'student', 'id' => (string) $user->id]
+        ];
+
+        if ($profile) {
+            if ($profile->section) {
+                $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
+            }
+            $program = $profile->program?->code ?: 'BSIT';
+            if ($program) {
+                $studentTargets[] = ['type' => 'program', 'id' => $program];
+            }
+        }
+
+        $templates = \App\Models\OjtRequirementTemplate::where('is_active', true)
+            ->whereHas('targets', function($query) use ($studentTargets) {
+                $query->where(function($q) use ($studentTargets) {
+                    foreach($studentTargets as $target) {
+                        $q->orWhere(function($subQ) use ($target) {
+                            $subQ->where('target_type', $target['type'])
+                                 ->where('target_id', $target['id']);
+                        });
+                    }
+                });
+            })->get()->keyBy('name');
+
+        $validTypes = $templates->keys()->toArray();
+
         $request->validate([
             'document_type' => ['required', 'string', Rule::in($validTypes)],
-            'file'          => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'file'          => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
+            'drive_link'    => 'nullable|url|max:2048',
         ]);
 
-        $internship = $this->internship($request);
-        $file       = $request->file('file');
-        $path       = $file->store("internships/{$internship->id}/documents", 'local');
+        if (!$request->hasFile('file') && empty($request->drive_link)) {
+            return response()->json(['message' => 'Please provide either a file or a Google Drive link.'], 422);
+        }
 
-        // Update or create
+        $template = $templates->get($request->document_type);
+
+        if ($template && $template->deadline && now()->greaterThan($template->deadline)) {
+            return response()->json(['message' => 'The deadline for this requirement has expired.'], 403);
+        }
+
+        $internship = $this->internship($request);
+        
+        $path = null;
+        $fileName = null;
+        $fileSize = null;
+        $mimeType = null;
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $path = $file->store("internships/{$internship->id}/documents", 'local');
+            $fileName = $file->getClientOriginalName();
+            $fileSize = $file->getSize();
+            $mimeType = $file->getMimeType();
+        }
+
         $existing = $internship->documents()->where('document_type', $request->document_type)->first();
 
         if ($existing) {
-            Storage::disk('local')->delete($existing->file_path);
-            Storage::disk('public')->delete($existing->file_path);
-            $existing->update([
-                'file_path'     => $path,
-                'file_name'     => $file->getClientOriginalName(),
-                'file_size'     => $file->getSize(),
-                'mime_type'     => $file->getMimeType(),
-                'status'        => $existing->status === 'rejected' ? 'resubmitted' : 'pending_review',
+            $updateData = [
+                'status'        => 'pending',
                 'current_stage' => 'coordinator',
                 'submitted_at'  => now(),
                 'remarks'       => null,
-            ]);
+            ];
+
+            if ($request->hasFile('file')) {
+                if ($existing->file_path) {
+                    Storage::disk('local')->delete($existing->file_path);
+                    if (Storage::disk('public')->exists($existing->file_path)) {
+                        Storage::disk('public')->delete($existing->file_path);
+                    }
+                }
+                $updateData['file_path'] = $path;
+                $updateData['file_name'] = $fileName;
+                $updateData['file_size'] = $fileSize;
+                $updateData['mime_type'] = $mimeType;
+            }
+
+            if ($request->has('drive_link')) {
+                $updateData['drive_link'] = $request->drive_link;
+            }
+
+            $existing->update($updateData);
             $doc = $existing;
         } else {
             $doc = $internship->documents()->create([
                 'document_type' => $request->document_type,
                 'file_path'     => $path,
-                'file_name'     => $file->getClientOriginalName(),
-                'file_size'     => $file->getSize(),
-                'mime_type'     => $file->getMimeType(),
-                'status'        => 'pending_review',
+                'file_name'     => $fileName,
+                'file_size'     => $fileSize,
+                'mime_type'     => $mimeType,
+                'drive_link'    => $request->drive_link,
+                'status'        => 'pending',
                 'current_stage' => 'coordinator',
                 'submitted_at'  => now(),
             ]);
@@ -346,12 +570,49 @@ class StudentController extends Controller
         return ApiResponse::list($evaluations);
     }
 
+    /** POST /api/v1/student/evaluations */
+    public function submitEvaluation(Request $request)
+    {
+        $request->validate([
+            'evaluation_period' => 'required|string',
+            'form_type'         => 'required|in:FO-22,FO-23',
+            'responses'         => 'required|array',
+            'general_comments'  => 'nullable|string',
+        ]);
+
+        $internship = $this->internship($request);
+        $period = $request->input('evaluation_period');
+
+        $eval = \App\Models\Evaluation::updateOrCreate(
+            [
+                'internship_id' => $internship->id,
+                'evaluator_type' => 'student',
+                'evaluation_period' => $period,
+                'form_type' => $request->input('form_type'),
+            ],
+            [
+                'responses' => $request->input('responses'),
+                'general_comments' => $request->input('general_comments'),
+                'evaluated_by' => $request->user()->id,
+                'submitted_at' => now(),
+            ]
+        );
+        $eval->computeScores();
+        $eval->save();
+
+        audit_log($request->user()->id, 'submit_evaluation_student', [
+            'internship_id' => $internship->id,
+            'form_type' => $request->input('form_type'),
+        ]);
+
+        return response()->json(['message' => 'Evaluation submitted successfully.', 'evaluation' => $eval], 201);
+    }
+
     /** GET /api/v1/student/records */
     public function records(Request $request)
     {
-        $user    = $request->user()->load('studentProfile');
-        $history = $request->user()->internshipsAsStudent()
-            ->with('company')
+        $user    = $request->user()->load('studentProfile.program');
+        $history = $user->internshipsAsStudent()->with(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile'])->orderBy('school_year', 'desc')
             ->withCount(['attendance as validated_days' => fn($q) => $q->where('status', 'validated')])
             ->orderByDesc('created_at')
             ->get();
@@ -386,5 +647,73 @@ class StudentController extends Controller
             'message' => 'Your hire declaration was submitted. It stays pending until the PALD Director finalizes Absorbed / Not Hired.',
             'internship' => $updated,
         ]);
+    }
+
+    /**
+     * GET /api/v1/student/certificate/eligibility
+     * Returns whether the student is eligible for an OJT Completion Certificate,
+     * along with a checklist of individual requirements.
+     */
+    public function certificateEligibility(Request $request)
+    {
+        $internship = $this->internship($request);
+        $internship->load(['documents', 'evaluations']);
+
+        $eligible  = CertificateEligibilityService::isEligible($internship);
+        $checklist = CertificateEligibilityService::checklist($internship);
+
+        // If newly eligible and never issued, mark the flag
+        if ($eligible && !$internship->certificate_eligible) {
+            $internship->update(['certificate_eligible' => true]);
+        }
+
+        return response()->json([
+            'eligible'  => $eligible,
+            'issued_at' => $internship->certificate_issued_at,
+            'checklist' => $checklist,
+        ]);
+    }
+
+    public function companies()
+    {
+        $companies = \App\Models\Company::where('moa_status', 'active')->get();
+        return response()->json(['companies' => $companies]);
+    }
+
+    public function applications(Request $request)
+    {
+        $applications = $request->user()->internshipsAsStudent()
+            ->where('status', 'pending_placement')
+            ->with('company')
+            ->get();
+        return response()->json(['applications' => $applications]);
+    }
+
+    public function applyCompany(Request $request)
+    {
+        $request->validate(['company_id' => 'required|exists:companies,id']);
+        return response()->json(['message' => 'Application submitted. Please await coordinator approval.']);
+    }
+
+    public function hteRequests(Request $request)
+    {
+        $requests = \App\Models\HteRequest::where('student_id', $request->user()->id)->get();
+        return response()->json(['requests' => $requests]);
+    }
+
+    public function submitHteRequest(Request $request)
+    {
+        $data = $request->validate([
+            'company_name' => 'required|string',
+            'address' => 'required|string',
+            'contact_person' => 'required|string',
+            'contact_email' => 'required|email',
+            'contact_number' => 'required|string',
+            'remarks' => 'nullable|string',
+        ]);
+        $data['student_id'] = $request->user()->id;
+        $data['status'] = 'pending';
+        $req = \App\Models\HteRequest::create($data);
+        return response()->json(['message' => 'HTE Request submitted.', 'request' => $req]);
     }
 }

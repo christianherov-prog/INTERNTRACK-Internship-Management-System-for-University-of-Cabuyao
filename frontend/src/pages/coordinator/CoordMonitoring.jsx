@@ -1,51 +1,12 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
-import QuickActionsPanel from '../../components/QuickActionsPanel'
 import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import ReportExportModal from '../../components/modals/ReportExportModal'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
-
-const COORD_QUICK_ACTIONS = [
-  {
-    to: '/coordinator/records',
-    title: 'Student Records & Placements',
-    description: 'Place students and manage internship records',
-    icon: 'fa-folder-open',
-    tone: 'blue',
-  },
-  {
-    to: '/coordinator/announcements',
-    title: 'Announcements',
-    description: 'Post updates for students and staff',
-    icon: 'fa-bullhorn',
-    tone: 'amber',
-  },
-  {
-    to: '/coordinator/absorption',
-    title: 'Absorption',
-    description: 'Review hire declarations and outcomes',
-    icon: 'fa-user-check',
-    tone: 'green',
-  },
-  {
-    to: '/coordinator/reports',
-    title: 'Reports',
-    description: 'Generate monitoring and compliance reports',
-    icon: 'fa-chart-bar',
-    tone: 'teal',
-  },
-  {
-    to: '/coordinator/evaluations',
-    title: 'Evaluations',
-    description: 'Review evaluation and feedback submissions',
-    icon: 'fa-star',
-    tone: 'gray',
-  },
-]
 
 function CoordMonitoring() {
   const currentTerm = useCurrentTerm()
@@ -81,23 +42,6 @@ function CoordMonitoring() {
     const matchSex = sexFilter === 'all' || r.sex?.toLowerCase() === sexFilter.toLowerCase()
     return matchSearch && matchSection && matchSex
   })
-
-  // Interns needing coordinator attention — derived from the same live monitoring data.
-  // "At risk" mirrors the backend stat definition (live internship below 30% hours).
-  const LIVE_STATUSES = ['ongoing', 'active', 'placed', 'for_evaluation']
-  const attentionRows = allRows
-    .map(r => {
-      const atRisk = LIVE_STATUSES.includes(r.status) && r.target_hours > 0 && r.progress_percent < 30
-      const reasons = []
-      if (atRisk) reasons.push('Low progress')
-      if (r.docs_status === 'missing' && r.docs_label) reasons.push(r.docs_label + ' docs')
-      if (!r.last_journal_date) reasons.push('No journal yet')
-      else if (r.journal_status && r.journal_status !== 'approved') reasons.push('Journal ' + r.journal_status)
-      return { ...r, atRisk, reasons }
-    })
-    .filter(r => r.reasons.length > 0)
-    .sort((a, b) => (Number(b.atRisk) - Number(a.atRisk)) || (a.progress_percent - b.progress_percent))
-    .slice(0, 6)
 
   const progressColor = (pct) => {
     if (pct >= 75) return '#14b8a6'
@@ -138,62 +82,6 @@ function CoordMonitoring() {
           <div className="stat-card"><div className="stat-icon blue"><i className="fa fa-circle-check"></i></div><div><div className="stat-value">{s.fully_completed ?? 0}</div><div className="stat-label">Completed</div></div></div>
         </div>
       </div>
-      )}
-
-      {!error && (
-        <div className="row g-3 mb-4">
-          <div className="col-lg-6">
-            <QuickActionsPanel actions={COORD_QUICK_ACTIONS} />
-          </div>
-          <div className="col-lg-6">
-            <div className="content-card h-100">
-              <div className="content-card-header">
-                <i className="fa fa-triangle-exclamation"></i>
-                <h6>Interns Needing Attention</h6>
-              </div>
-              <div className="p-0">
-                {loading ? (
-                  <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
-                ) : attentionRows.length === 0 ? (
-                  <div className="text-center text-muted py-5">
-                    <i className="fa fa-circle-check fa-2x mb-2 d-block text-success"></i>
-                    <p className="mb-0">All interns are on track.</p>
-                  </div>
-                ) : (
-                  <ul className="list-group list-group-flush">
-                    {attentionRows.map(r => (
-                      <li key={r.user_id} className="list-group-item d-flex align-items-start gap-3 px-4 py-3">
-                        <div
-                          className={`rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 text-white ${r.atRisk ? 'bg-danger' : 'bg-warning'}`}
-                          style={{ width: 34, height: 34, fontSize: '0.85rem' }}
-                        >
-                          <i className={`fa ${r.atRisk ? 'fa-triangle-exclamation' : 'fa-clock'}`}></i>
-                        </div>
-                        <div className="flex-grow-1 min-w-0">
-                          <div className="fw-semibold" style={{ fontSize: '0.88rem' }}>{r.student_name}</div>
-                          <div className="text-muted" style={{ fontSize: '0.76rem' }}>
-                            {r.program} · {r.progress_percent}% hrs
-                          </div>
-                          <div className="mt-1 d-flex flex-wrap gap-1">
-                            {r.reasons.map((reason, i) => (
-                              <span
-                                key={i}
-                                className={`badge-status ${reason === 'Low progress' ? 'badge-overdue' : 'badge-pending'}`}
-                                style={{ fontSize: '0.66rem' }}
-                              >
-                                {reason}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Table */}

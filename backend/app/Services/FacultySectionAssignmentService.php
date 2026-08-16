@@ -42,10 +42,12 @@ class FacultySectionAssignmentService
             return null;
         }
 
+        $programName = is_object($profile->program) ? ($profile->program->name ?? $profile->program->code) : $profile->program;
+
         return $this->suggestFacultyForSection(
             $profile->section,
-            $profile->program ?: $profile->course_name,
-            $profile->academic_year,
+            $programName,
+            $profile->school_year,
             $profile->semester
         );
     }
@@ -56,35 +58,55 @@ class FacultySectionAssignmentService
     public function suggestFacultyForSection(
         ?string $section,
         ?string $program = null,
-        ?string $academicYear = null,
-        mixed $semester = null
+        ?string $schoolYear = null,
+        ?string $semester = null
     ): ?User {
-        $section = self::normalizeSection($section);
-        if (!$section) {
+        $normalized = self::normalizeSection($section);
+        if (!$normalized) {
             return null;
         }
 
-        $semester = (int) ($semester ?: 0);
+        $rawSection = $section;
+        $hyphenated = preg_replace('/^(\d+)([A-Z]+)-?([A-Z0-9]+)$/', '$1$2-$3', $normalized);
+        $sectionVariants = array_values(array_unique(array_filter([$rawSection, $normalized, $hyphenated])));
 
         $query = FacultySectionAssignment::query()
             ->where('is_active', true)
-            ->where('section', $section);
+            ->whereIn('section', $sectionVariants);
 
-        if ($academicYear) {
-            $query->where('academic_year', $academicYear);
+        if ($schoolYear) {
+            $query->where('school_year', $schoolYear);
         }
-        if ($semester > 0) {
-            $query->where('semester', $semester);
+        if ($semester) {
+            $semNum = (int) filter_var($semester, FILTER_SANITIZE_NUMBER_INT);
+            $semVariants = array_values(array_unique(array_filter([
+                $semester,
+                $semNum ? "{$semNum}" : null,
+                $semNum === 1 ? '1st Semester' : ($semNum === 2 ? '2nd Semester' : null),
+                $semNum ? "Sem {$semNum}" : null,
+            ])));
+            $query->whereIn('semester', $semVariants);
         }
 
         $assignment = (clone $query)
-            ->when($program, fn ($q) => $q->where('program', $program))
+            ->when($program, fn ($q) => $q->where(function ($sub) use ($program) {
+                $sub->where('program', $program)
+                    ->orWhere('program', 'like', "%{$program}%");
+            }))
             ->with('faculty.facultyProfile')
             ->first();
 
         if (!$assignment && $program) {
-            $assignment = $query
-                ->whereNull('program')
+            $assignment = (clone $query)
+                ->where(function ($sub) {
+                    $sub->whereNull('program')->orWhere('program', '');
+                })
+                ->with('faculty.facultyProfile')
+                ->first();
+        }
+
+        if (!$assignment) {
+            $assignment = (clone $query)
                 ->with('faculty.facultyProfile')
                 ->first();
         }
@@ -92,16 +114,12 @@ class FacultySectionAssignmentService
         if (!$assignment) {
             $assignment = FacultySectionAssignment::query()
                 ->where('is_active', true)
-                ->where('section', $section)
+                ->whereIn('section', $sectionVariants)
                 ->with('faculty.facultyProfile')
-                ->orderByDesc('academic_year')
-                ->orderByDesc('semester')
                 ->first();
         }
 
-        $faculty = $assignment?->faculty;
-
-        return ($faculty && $faculty->role === 'faculty' && $faculty->is_active) ? $faculty : null;
+        return $assignment?->faculty;
     }
 
     public function resolveFacultyForInternship(Internship $internship): ?User
@@ -119,7 +137,7 @@ class FacultySectionAssignmentService
         return User::where('role', 'faculty')
             ->where('is_active', true)
             ->with('facultyProfile')
-            ->orderBy('username')
+            ->orderBy('faculty_number')
             ->get()
             ->map(fn (User $u) => $this->formatFaculty($u))
             ->values()
@@ -141,7 +159,7 @@ class FacultySectionAssignmentService
             'id'              => $faculty->id,
             'username'        => $faculty->username,
             'name'            => $name !== '' ? $name : $faculty->username,
-            'employee_number' => $fp?->employee_number ?? $faculty->username,
+            'faculty_number'  => $fp?->faculty_number ?? $faculty->username,
         ];
     }
 
@@ -157,12 +175,64 @@ class FacultySectionAssignmentService
         return [
             'section'                   => $profile?->section,
             'section_normalized'        => self::normalizeSection($profile?->section),
-            'program'                   => $profile?->program ?: $profile?->course_name,
-            'academic_year'             => $profile?->academic_year,
+            'program'                   => $profile?->program,
+            'school_year'             => $profile?->school_year,
             'semester'                  => $profile?->semester,
             'resolved_faculty'          => $this->formatFaculty($faculty),
             'faculty_resolution_status' => $faculty ? 'resolved' : 'missing_mapping',
             'allowed_sections'          => self::SECTIONS,
         ];
+    }
+
+    /**
+     * Ensure all students in a section have an initialized internship record assigned to the section's faculty.
+     */
+    public function syncInternshipsForSection(
+        ?string $section,
+        ?string $program = null,
+        ?string $schoolYear = null,
+        ?string $semester = null
+    ): void {
+        $normalized = self::normalizeSection($section);
+        if (!$normalized) {
+            return;
+        }
+
+        $faculty = $this->suggestFacultyForSection($normalized, $program, $schoolYear, $semester);
+        $facultyId = $faculty?->id;
+
+        $profiles = StudentProfile::all()->filter(function ($p) use ($normalized) {
+            return self::normalizeSection($p->section) === $normalized;
+        });
+
+        foreach ($profiles as $profile) {
+            if (!$profile->user_id) {
+                continue;
+            }
+
+            $internship = Internship::where('student_id', $profile->user_id)->first();
+            if (!$internship) {
+                $user = User::find($profile->user_id);
+                if ($user && $user->role === 'student') {
+                    $prog = $profile->program ?: ($program ?: 'BSIT');
+                    $targetHours = 500;
+                    if (stripos($prog, 'Computer Science') !== false) $targetHours = 300;
+                    if (stripos($prog, 'Engineering') !== false || stripos($profile->department, 'Engineering') !== false) $targetHours = 240;
+
+                    $user->internshipsAsStudent()->create([
+                        'status' => 'pending_placement',
+                        'school_year' => $profile->school_year ?: ($schoolYear ?: '2025-2026'),
+                        'semester' => $profile->semester ?: ($semester ?: '2nd Semester'),
+                        'term' => "AY " . ($profile->school_year ?: ($schoolYear ?: '2025-2026')) . ", " . ($profile->semester ?: ($semester ?: '2nd Semester')),
+                        'program' => $prog,
+                        'faculty_id' => $facultyId,
+                        'target_hours' => $targetHours,
+                        'total_hours_rendered' => 0,
+                    ]);
+                }
+            } elseif ($facultyId && $internship->faculty_id !== $facultyId) {
+                $internship->forceFill(['faculty_id' => $facultyId])->saveQuietly();
+            }
+        }
     }
 }

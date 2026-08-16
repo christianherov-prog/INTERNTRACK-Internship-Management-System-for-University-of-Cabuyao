@@ -10,7 +10,7 @@ function fmtTime(t) {
   return String(t).slice(0, 5)
 }
 
-function StudentAttendance() {
+function StudentAttendance({ embedded = false }) {
   const currentTerm = useCurrentTerm()
   const [data, setData]           = useState(null)
   const [loading, setLoading]     = useState(true)
@@ -65,40 +65,20 @@ function StudentAttendance() {
   const todayStatus = data?.today_status ?? 'not_clocked_in'
   const logs = data?.attendance?.data ?? []
 
-  const generateDtr = async () => {
-    const internshipId = data?.internship_id
-    if (!internshipId) {
-      setMessage({ type: 'danger', text: 'No active internship found to generate DTR.' })
-      return
-    }
-    setGeneratingDtr(true)
-    try {
-      const resp = await api.get('/student/dtr/generate', {
-        params: { internship_id: internshipId, month: dtrMonth },
-        responseType: 'blob',
-      })
-      const url  = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
-      const link = document.createElement('a')
-      link.href  = url
-      link.download = `DTR_${dtrMonth}.pdf`
-      link.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      setMessage({ type: 'danger', text: 'Failed to generate DTR PDF. Please try again.' })
-    } finally {
-      setGeneratingDtr(false)
-    }
-  }
+  
 
   const statusBadge = (s) => {
     if (s === 'validated') return <span className="badge-status badge-active">Validated</span>
     if (s === 'pending') return <span className="badge-status badge-pending">Pending</span>
     if (s === 'rejected') return <span className="badge-status badge-inactive">Rejected</span>
-    return <span className="badge-status badge-pending">{s}</span>
+    return <span className="badge-status">{s}</span>
   }
 
+  const Wrapper = embedded ? 'div' : Layout;
+  const wrapperProps = embedded ? { className: "embedded-view" } : { title: "Attendance & Time Log", subtitle: currentTerm, icon: "fa-clock", bodyClass: "student-page" };
+
   return (
-    <Layout title="Attendance & Time Log" subtitle={currentTerm} icon="fa-clock" bodyClass="student-page">
+    <Wrapper {...wrapperProps}>
       {error && <PageError message={error} onRetry={fetchAttendance} />}
 
       <div className="content-card mb-4">
@@ -118,15 +98,7 @@ function StudentAttendance() {
               onChange={e => setDtrMonth(e.target.value)}
               title="Select month to generate DTR"
             />
-            <button
-              className="btn btn-sm btn-outline-danger"
-              onClick={generateDtr}
-              disabled={generatingDtr}
-              title="Download Form 30 DTR PDF"
-            >
-              <i className={`fa fa-${generatingDtr ? 'spinner fa-spin' : 'file-pdf'} me-1`}></i>
-              {generatingDtr ? 'Generating…' : 'DTR (FO-30)'}
-            </button>
+            
           </div>
         </div>
         <div className="p-4 text-center">
@@ -189,7 +161,7 @@ function StudentAttendance() {
           )}
         </div>
       </div>
-    </Layout>
+    </Wrapper>
   )
 }
 

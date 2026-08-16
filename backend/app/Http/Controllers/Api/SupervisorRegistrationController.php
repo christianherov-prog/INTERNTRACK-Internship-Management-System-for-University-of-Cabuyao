@@ -205,13 +205,13 @@ class SupervisorRegistrationController extends Controller
             $supCode = 'SUP-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
             // Prevent collision
-            while (User::where('username', $supCode)->exists()) {
+            while (User::where('faculty_number', $supCode)->exists()) {
                 $nextId++;
                 $supCode = 'SUP-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
             }
 
             $user = User::create([
-                'username'  => $supCode,
+                'faculty_number' => $supCode,
                 'email'     => $request->email,
                 'password'  => Hash::make($request->password),
                 'role'      => 'supervisor',
@@ -284,7 +284,7 @@ class SupervisorRegistrationController extends Controller
                 'student.studentProfile',
                 'supervisor.supervisorProfile',
                 'company',
-                'internship',
+                'internship.documents',
             ])
             ->orderByDesc('updated_at');
 
@@ -304,6 +304,7 @@ class SupervisorRegistrationController extends Controller
                 'supervisor.supervisorProfile',
                 'company',
                 'reviewer',
+                'internship.documents',
             ])
             ->orderByDesc('reviewed_at')
             ->limit(20);

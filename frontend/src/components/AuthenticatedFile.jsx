@@ -1,12 +1,31 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 
+const urlCache = new Map()
+const pendingRequests = new Map()
+
 async function fetchBlobUrl(path) {
-  const res = await api.get('/files/download', {
+  if (!path) return ''
+  if (urlCache.has(path)) {
+    return urlCache.get(path)
+  }
+  if (pendingRequests.has(path)) {
+    return pendingRequests.get(path)
+  }
+  const promise = api.get('/files/download', {
     params: { path },
     responseType: 'blob',
+  }).then((res) => {
+    const url = URL.createObjectURL(res.data)
+    urlCache.set(path, url)
+    pendingRequests.delete(path)
+    return url
+  }).catch((err) => {
+    pendingRequests.delete(path)
+    throw err
   })
-  return URL.createObjectURL(res.data)
+  pendingRequests.set(path, promise)
+  return promise
 }
 
 /** Opens a private storage file in a new tab using the Sanctum token. */
@@ -36,23 +55,22 @@ export function AuthenticatedFileLink({ path, children, className, style, title 
 }
 
 /** Loads a private image via authenticated download (Bearer token). */
-export function AuthenticatedFileImage({ path, alt = '', className, style }) {
-  const [src, setSrc] = useState('')
+export function AuthenticatedFileImage({ path, alt = '', className, style, fallback = null }) {
+  const [src, setSrc] = useState(() => (path && urlCache.has(path) ? urlCache.get(path) : ''))
 
   useEffect(() => {
     let active = true
-    let objectUrl = ''
     if (!path) {
       setSrc('')
       return undefined
     }
+    if (urlCache.has(path)) {
+      setSrc(urlCache.get(path))
+      return undefined
+    }
     fetchBlobUrl(path)
       .then((url) => {
-        if (!active) {
-          URL.revokeObjectURL(url)
-          return
-        }
-        objectUrl = url
+        if (!active) return
         setSrc(url)
       })
       .catch(() => {
@@ -60,10 +78,9 @@ export function AuthenticatedFileImage({ path, alt = '', className, style }) {
       })
     return () => {
       active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [path])
 
-  if (!src) return null
+  if (!src) return fallback || null
   return <img src={src} alt={alt} className={className} style={style} />
 }

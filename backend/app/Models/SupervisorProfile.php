@@ -7,6 +7,7 @@ class SupervisorProfile extends Model {
         'user_id', 'first_name', 'middle_name', 'last_name', 'suffix',
         'email', 'contact_number', 'sex', 'position',
     ];
+    protected $appends = ['full_name'];
     public function user() { return $this->belongsTo(User::class); }
     public function getFullNameAttribute(): string
     {

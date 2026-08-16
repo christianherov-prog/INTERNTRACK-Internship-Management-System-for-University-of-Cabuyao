@@ -127,9 +127,15 @@ class MisdIntegrationService
             'must_change_password' => true,
         ]);
 
+        $deptStr = $data['department'] ?? $data['college'] ?? 'CCS';
+        $departmentId = \App\Models\Department::where('code', $deptStr)
+            ->orWhere('name', $deptStr)
+            ->orWhere('code', 'CCS')
+            ->value('id') ?? \App\Models\Department::first()?->id;
+
         \App\Models\FacultyProfile::create([
             'user_id'           => $user->id,
-            'employee_number'   => strtoupper($employeeNumber),
+            'faculty_number'    => strtoupper($employeeNumber),
             'first_name'        => $data['first_name']       ?? 'Unknown',
             'middle_name'       => $data['middle_name']      ?? null,
             'last_name'         => $data['last_name']        ?? 'Faculty',
@@ -137,8 +143,7 @@ class MisdIntegrationService
             'email'             => $data['email']            ?? null,
             'contact_number'    => $data['contact_number']   ?? null,
             'sex'               => SexOptions::sanitize($data['sex'] ?? null),
-            'department'        => $data['department']       ?? null,
-            'college'           => $data['college']          ?? null,
+            'department_id'     => $departmentId,
             'position'          => $data['position']         ?? null,
             'employment_status' => $data['employment_status']?? 'Regular',
             'synced_at'         => now(),
@@ -149,7 +154,6 @@ class MisdIntegrationService
 
     private function provisionStaff(string $username, string $role, string $password): User
     {
-        // Coordinators / directors / admins: try MISD faculty-style payload for profile + sex
         $data = $this->fetchFaculty($username);
 
         $user = User::create([
@@ -162,9 +166,15 @@ class MisdIntegrationService
         ]);
 
         if (!empty($data) && in_array($role, ['faculty', 'coordinator', 'director', 'admin'], true)) {
+            $deptStr = $data['department'] ?? $data['college'] ?? ($role === 'director' ? 'PALD' : 'CCS');
+            $departmentId = \App\Models\Department::where('code', $deptStr)
+                ->orWhere('name', $deptStr)
+                ->orWhere('code', 'CCS')
+                ->value('id') ?? \App\Models\Department::first()?->id;
+
             \App\Models\FacultyProfile::create([
                 'user_id'           => $user->id,
-                'employee_number'   => strtoupper($username),
+                'faculty_number'    => strtoupper($username),
                 'first_name'        => $data['first_name']       ?? 'Unknown',
                 'middle_name'       => $data['middle_name']      ?? null,
                 'last_name'         => $data['last_name']        ?? ucfirst($role),
@@ -172,8 +182,7 @@ class MisdIntegrationService
                 'email'             => $data['email']            ?? null,
                 'contact_number'    => $data['contact_number']   ?? null,
                 'sex'               => SexOptions::sanitize($data['sex'] ?? null),
-                'department'        => $data['department']       ?? null,
-                'college'           => $data['college']          ?? null,
+                'department_id'     => $departmentId,
                 'position'          => $data['position']         ?? null,
                 'employment_status' => $data['employment_status']?? 'Regular',
                 'synced_at'         => now(),
@@ -194,15 +203,21 @@ class MisdIntegrationService
                 return $this->mock->findStudent($studentNumber) ?? [];
             }
 
-            $response = Http::timeout(10)
-                ->retry(3, 500)
-                ->get("{$this->baseUrl}/students/{$studentNumber}");
+            try {
+                $response = Http::timeout(5)
+                    ->get("{$this->baseUrl}/students/{$studentNumber}");
 
-            if ($response->failed()) {
-                Log::warning("MISD: student not found [{$studentNumber}]");
-                return [];
+                if ($response->successful()) {
+                    return (array) $response->json();
+                }
+
+                Log::warning("MISD fetchStudent failed for {$studentNumber}", [
+                    'status' => $response->status(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error("MISD fetchStudent exception for {$studentNumber}: " . $e->getMessage());
             }
-            return $response->json() ?? [];
+            return [];
         });
     }
 
@@ -217,15 +232,21 @@ class MisdIntegrationService
                 return $this->mock->findFaculty($employeeNumber) ?? [];
             }
 
-            $response = Http::timeout(10)
-                ->retry(3, 500)
-                ->get("{$this->baseUrl}/faculty/{$employeeNumber}");
+            try {
+                $response = Http::timeout(5)
+                    ->get("{$this->baseUrl}/faculty/{$employeeNumber}");
 
-            if ($response->failed()) {
-                Log::warning("MISD: faculty not found [{$employeeNumber}]");
-                return [];
+                if ($response->successful()) {
+                    return (array) $response->json();
+                }
+
+                Log::warning("MISD fetchFaculty failed for {$employeeNumber}", [
+                    'status' => $response->status(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error("MISD fetchFaculty exception for {$employeeNumber}: " . $e->getMessage());
             }
-            return $response->json() ?? [];
+            return [];
         });
     }
 
@@ -264,7 +285,7 @@ class MisdIntegrationService
             return;
         }
 
-        $employeeNumber = $user->facultyProfile?->employee_number ?: $user->username;
+        $employeeNumber = $user->facultyProfile?->faculty_number ?: $user->username;
         $this->forgetFacultyCache($employeeNumber);
         $data = $this->fetchFaculty($employeeNumber);
         if (empty($data)) {
@@ -276,11 +297,22 @@ class MisdIntegrationService
         if ($user->facultyProfile) {
             $allowed = [
                 'first_name', 'middle_name', 'last_name', 'suffix', 'email', 'contact_number',
-                'department', 'college', 'position', 'employment_status',
+                'position', 'employment_status',
             ];
             $payload = array_intersect_key($data, array_flip($allowed));
             $payload['sex'] = $sex;
             $payload['synced_at'] = now();
+
+            if (!empty($data['department']) || !empty($data['college'])) {
+                $deptStr = $data['department'] ?? $data['college'];
+                $deptId = \App\Models\Department::where('code', $deptStr)
+                    ->orWhere('name', $deptStr)
+                    ->orWhere('code', 'CCS')
+                    ->value('id');
+                if ($deptId) {
+                    $payload['department_id'] = $deptId;
+                }
+            }
             $user->facultyProfile->update($payload);
         }
 

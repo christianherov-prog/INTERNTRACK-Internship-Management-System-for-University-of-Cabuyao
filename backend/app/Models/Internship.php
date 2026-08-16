@@ -11,13 +11,14 @@ class Internship extends Model
 
     protected $fillable = [
         'student_id', 'company_id', 'supervisor_id', 'faculty_id', 'coordinator_id',
-        'academic_year', 'semester', 'term', 'program',
+        'school_year', 'semester', 'term', 'program',
         'target_hours', 'total_hours_rendered', 'status', 'status_reason',
         'start_date', 'end_date', 'expected_end_date',
         'termination_reason', 'final_grade', 'final_remarks',
         'absorption_status', 'absorbed_at', 'job_title', 'absorption_notes',
         'absorption_recorded_by', 'absorption_recorded_at', 'absorption_recorded_by_role',
         'student_declared_hired', 'student_declared_at', 'student_declaration_notes',
+        'certificate_eligible', 'certificate_issued_at',
     ];
 
     protected $casts = [
@@ -27,9 +28,11 @@ class Internship extends Model
         'absorbed_at'            => 'date',
         'absorption_recorded_at' => 'datetime',
         'student_declared_at'    => 'datetime',
-        'student_declared_hired' => 'boolean',
-        'total_hours_rendered'   => 'decimal:2',
-        'final_grade'            => 'decimal:2',
+        'student_declared_hired'  => 'boolean',
+        'certificate_eligible'    => 'boolean',
+        'certificate_issued_at'   => 'datetime',
+        'total_hours_rendered'    => 'decimal:2',
+        'final_grade'             => 'decimal:2',
     ];
 
     // ─── Relationships ─────────────────────────────────────────────────────────
@@ -61,11 +64,12 @@ class Internship extends Model
 
     public function portfolio()
     {
-        return $this->hasOne(Portfolio::class);
+        return $this->hasOne(StudentPortfolio::class);
     }
 
     public function statusHistories()
     {
+
         return $this->hasMany(InternshipStatusHistory::class);
     }
 
@@ -114,5 +118,50 @@ class Internship extends Model
             ->where('status', 'validated')
             ->sum('hours_rendered');
         $this->update(['total_hours_rendered' => $total]);
+    }
+
+    // ─── Scopes ────────────────────────────────────────────────────────────────
+    public function scopeInDepartment($query)
+    {
+        $user = auth()->user();
+        if (!$user) return $query;
+
+        // Admins see all
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+
+        // Coordinators/Faculty only see their own department's students
+        // Directors see ALL students (since 'director' isn't checked, the if ($deptId) ensures they see everything if they have no department, but wait: we want Director to see all)
+        if ($user->hasRole('director')) {
+            return $query;
+        }
+
+        $deptId = $user->facultyProfile?->department_id;
+        if ($deptId) {
+            return $query->whereHas('student.studentProfile', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        return $query;
+    }
+
+    protected static function booted(): void
+    {
+        $resolveFaculty = function (Internship $internship) {
+            if (empty($internship->faculty_id) && $internship->student_id) {
+                $user = \App\Models\User::with('studentProfile')->find($internship->student_id);
+                if ($user?->studentProfile) {
+                    $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($user->studentProfile)?->id;
+                    if ($facultyId) {
+                        $internship->faculty_id = $facultyId;
+                    }
+                }
+            }
+        };
+
+        static::creating($resolveFaculty);
+        static::updating($resolveFaculty);
     }
 }

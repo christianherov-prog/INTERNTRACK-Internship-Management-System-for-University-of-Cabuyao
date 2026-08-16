@@ -30,13 +30,11 @@ class MockMisdController extends Controller
             'birthday'          => '2003-05-14',
             'sex'               => 'Male',
             'program'           => 'BS Information Technology',
-            'college'           => 'College of Computing Studies',
-            'department'        => 'Information Technology',
-            'course_name'       => 'BS Information Technology',
-            'year_level'        => 4,
-            'section'           => '4-D',
-            'academic_year'     => '2025-2026',
-            'semester'          => 2,
+            'department'        => 'College of Computing Studies',
+            'year_level'        => '4th Year',
+            'section'           => '4IT-D',
+            'school_year'     => '2025-2026',
+            'semester'          => '2nd Semester',
             'enrollment_status' => 'Enrolled',
         ],
         '2021-00456' => [
@@ -50,13 +48,11 @@ class MockMisdController extends Controller
             'birthday'          => '2003-02-28',
             'sex'               => 'Female',
             'program'           => 'BS Computer Science',
-            'college'           => 'College of Computing Studies',
-            'department'        => 'Computer Science',
-            'course_name'       => 'BS Computer Science',
-            'year_level'        => 4,
-            'section'           => '4-A',
-            'academic_year'     => '2025-2026',
-            'semester'          => 2,
+            'department'        => 'College of Computing Studies',
+            'year_level'        => '4th Year',
+            'section'           => '4IT-A',
+            'school_year'     => '2025-2026',
+            'semester'          => '2nd Semester',
             'enrollment_status' => 'Enrolled',
         ],
         '2021-00789' => [
@@ -70,46 +66,60 @@ class MockMisdController extends Controller
             'birthday'          => '2002-11-10',
             'sex'               => 'Male',
             'program'           => 'BS Information Technology',
-            'college'           => 'College of Computing Studies',
-            'department'        => 'Information Technology',
-            'course_name'       => 'BS Information Technology',
-            'year_level'        => 4,
-            'section'           => '4-B',
-            'academic_year'     => '2025-2026',
-            'semester'          => 2,
+            'department'        => 'College of Computing Studies',
+            'year_level'        => '4th Year',
+            'section'           => '4IT-B',
+            'school_year'     => '2025-2026',
+            'semester'          => '2nd Semester',
             'enrollment_status' => 'Enrolled',
         ],
     ];
 
     /** All mock faculty keyed by employee number */
     private array $faculty = [
-        'FAC-001' => [
+        'FAC-1001' => [
             'faculty_id'        => 2001,
-            'employee_number'   => 'FAC-001',
-            'first_name'        => 'Andrea',
-            'middle_name'       => 'Cruz',
-            'last_name'         => 'Reyes',
-            'email'             => 'a.reyes@uc.edu.ph',
+            'faculty_number'    => 'FAC-1001',
+            'first_name'        => 'Marvin',
+            'middle_name'       => 'M',
+            'last_name'         => 'Bicua',
+            'email'             => 'm.bicua@uc.edu.ph',
             'contact_number'    => '09175557890',
-            'department'        => 'Information Technology',
-            'college'           => 'College of Computing Studies',
-            'position'          => 'Assistant Professor',
+            'sex'               => 'Male',
+            'department'        => 'College of Computing Studies',
+            'position'          => 'CCS Faculty',
             'employment_status' => 'Regular',
         ],
         'FAC-002' => [
             'faculty_id'        => 2002,
-            'employee_number'   => 'FAC-002',
+            'faculty_number'    => 'FAC-002',
             'first_name'        => 'Roberto',
             'middle_name'       => 'Garcia',
             'last_name'         => 'Lim',
             'email'             => 'r.lim@uc.edu.ph',
             'contact_number'    => '09189993456',
-            'department'        => 'Computer Science',
-            'college'           => 'College of Computing Studies',
+            'department'        => 'College of Computing Studies',
             'position'          => 'Associate Professor',
             'employment_status' => 'Regular',
         ],
     ];
+
+    /**
+     * GET /api/v1/mock-misd
+     */
+    public function index(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Mock MISD (iEnroll) API is running.',
+            'endpoints' => [
+                'GET /api/v1/mock-misd/students' => 'List all mock students',
+                'GET /api/v1/mock-misd/students/{studentNumber}' => 'Get specific mock student',
+                'GET /api/v1/mock-misd/faculty' => 'List all mock faculty',
+                'GET /api/v1/mock-misd/faculty/{employeeNumber}' => 'Get specific mock faculty',
+            ],
+            'status' => 'success'
+        ]);
+    }
 
     /**
      * GET /api/v1/mock-misd/students/{studentNumber}
@@ -178,14 +188,12 @@ class MockMisdController extends Controller
             'contact_number'    => null,
             'birthday'          => null,
             'sex'               => null,
-            'program'           => 'BS Information Technology',
-            'college'           => 'College of Computing Studies',
-            'department'        => 'Information Technology',
-            'course_name'       => 'BS Information Technology',
-            'year_level'        => 4,
+            'program'           => 'Bachelor of Science in Information Technology',
+            'department'        => 'College of Computing Studies',
+            'year_level'        => '4th Year',
             'section'           => null,
-            'academic_year'     => '2025-2026',
-            'semester'          => 2,
+            'school_year'     => '2025-2026',
+            'semester'          => '2nd Semester',
             'enrollment_status' => 'Enrolled',
         ];
     }

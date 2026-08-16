@@ -1,11 +1,11 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
 import StatusHistoryModal from '../../components/StatusHistoryModal'
-import ModalPortal from '../../components/modals/ModalPortal'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
+import { formatStudentName } from '../../utils/formatName'
 
 function AssignPlacementModal({ student, onClose, onAssigned }) {
   const [loading, setLoading] = useState(true)
@@ -49,9 +49,8 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
   }
 
   return (
-    <ModalPortal>
     <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content">
           <form onSubmit={handleSubmit}>
             <div className="modal-header">
@@ -88,7 +87,7 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-green" disabled={loading || saving}>
+              <button type="submit" className="btn btn-primary" disabled={loading || saving}>
                 {saving ? 'Assigning...' : 'Authorize Deployment'}
               </button>
             </div>
@@ -96,7 +95,6 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
         </div>
       </div>
     </div>
-    </ModalPortal>
   )
 }
 
@@ -133,23 +131,46 @@ function DirectorInternships() {
   const [certLoading, setCertLoading] = useState(null)
   const [archived, setArchived] = useState(false)
   const [archiveBusy, setArchiveBusy] = useState(null)
-  const [programSearch, setProgramSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
+  
+  const [departments, setDepartments] = useState([])
+  const [programs, setPrograms] = useState([])
+  
+  const [search, setSearch] = useState("")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [programFilter, setProgramFilter] = useState("all")
+  const [sectionFilter, setSectionFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+
+  useEffect(() => {
+    api.get('/academic/departments')
+      .then(res => setDepartments(res.data))
+      .catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    if (departmentFilter === 'all') {
+      api.get('/academic/programs')
+        .then(res => setPrograms(res.data))
+        .catch(console.error)
+    } else {
+      api.get('/academic/programs', { params: { department_id: departmentFilter } })
+        .then(res => setPrograms(res.data))
+        .catch(console.error)
+    }
+    setProgramFilter('all') // reset program when department changes
+  }, [departmentFilter])
 
   const fetchRecords = () => {
     setLoading(true)
-    api.get('/director/records', { params: { archived: archived ? 1 : 0, program: programSearch } })
+    api.get('/director/records', { params: { archived: archived ? 1 : 0 } })
       .then(res => setStudents(unwrapList(res.data).items))
       .catch(console.error)
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchRecords()
-    }, 400)
-    return () => clearTimeout(delayDebounceFn)
-  }, [archived, programSearch])
+    fetchRecords()
+  }, [archived])
 
   const toggleArchive = async (student) => {
     setArchiveBusy(student.id)
@@ -193,11 +214,19 @@ function DirectorInternships() {
     }
   }
   
-  const filteredStudents = students.filter(s => {
-    if (!searchInput) return true;
-    const q = searchInput.toLowerCase();
-    const name = s.student_profile ? `${s.student_profile.first_name} ${s.student_profile.last_name}` : s.username;
-    return name.toLowerCase().includes(q) || s.username.toLowerCase().includes(q);
+  const sections = ["all", ...new Set(students.map(s => s.student_profile?.section || "—").filter(x => x !== "—"))]
+
+  const filteredStudents = students.filter(student => {
+    const name = formatStudentName(student).toLowerCase()
+    const deptId = student.student_profile?.department_id || "none"
+    const progId = student.student_profile?.program_id || "none"
+    const sec = student.student_profile?.section || "—"
+    const st = student.active_internship?.status || "none"
+    return (!search || name.includes(search.toLowerCase()))
+      && (departmentFilter === "all" || deptId == departmentFilter)
+      && (programFilter === "all" || progId == programFilter)
+      && (sectionFilter === "all" || sec === sectionFilter)
+      && (statusFilter === "all" || st === statusFilter)
   })
 
   return (
@@ -244,28 +273,36 @@ function DirectorInternships() {
         />
       )}
 
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div className="btn-group" role="group" aria-label="Active or archived">
-          <button type="button" className={`btn btn-sm ${!archived ? 'btn-success' : 'btn-outline-success'}`} onClick={() => setArchived(false)}>Active</button>
-          <button type="button" className={`btn btn-sm ${archived ? 'btn-secondary' : 'btn-outline-secondary'}`} onClick={() => setArchived(true)}>Archived</button>
+      {/* Filters */}
+      <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
+        <div className="input-group input-group-sm" style={{ width: 220 }}>
+          <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
+          <input className="form-control border-start-0 ps-0" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="d-flex gap-2">
-            <input 
-              type="text" 
-              className="form-control form-control-sm" 
-              placeholder="Filter by Department/Program (e.g. BSIT)" 
-              value={programSearch} 
-              onChange={e => setProgramSearch(e.target.value)} 
-              style={{ width: '250px' }} 
-            />
-            <input 
-              type="text" 
-              className="form-control form-control-sm" 
-              placeholder="Search Student..." 
-              value={searchInput} 
-              onChange={e => setSearchInput(e.target.value)} 
-              style={{ width: '200px' }} 
-            />
+        <select className="form-select form-select-sm text-secondary" style={{ width: 140 }} value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}>
+          <option value="all">All Depts</option>
+          {departments.map(d => <option key={d.id} value={d.id}>{d.code}</option>)}
+        </select>
+        <select className="form-select form-select-sm text-secondary" style={{ width: 140 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
+          <option value="all">All Programs</option>
+          {programs.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
+        </select>
+        <select className="form-select form-select-sm text-secondary" style={{ width: 130 }} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
+          {sections.map(s => <option key={s} value={s}>{s === "all" ? "All Sections" : s}</option>)}
+        </select>
+        <select className="form-select form-select-sm text-secondary" style={{ width: 140 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="all">All Status</option>
+          <option value="ongoing">Active / Ongoing</option>
+          <option value="completed">Completed</option>
+          <option value="suspended">Suspended</option>
+          <option value="deferred">Deferred</option>
+          <option value="expelled">Expelled</option>
+          <option value="pending_placement">Pending Placement</option>
+        </select>
+        
+        <div className="ms-auto btn-group">
+          <button className={`btn btn-sm ${!archived ? "btn-primary" : "btn-outline-secondary"}`} onClick={() => setArchived(false)}>Active</button>
+          <button className={`btn btn-sm ${archived ? "btn-secondary" : "btn-outline-secondary"}`} onClick={() => setArchived(true)}>Archived</button>
         </div>
       </div>
 
@@ -273,13 +310,16 @@ function DirectorInternships() {
         <div className="content-card-header">
           <i className="fa fa-users"></i>
           <h6>{archived ? 'Archived Students' : 'Student Interns Roster (Cross-Department)'}</h6>
+          <span className="ms-auto badge bg-secondary">{filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="table-card">
           <div className="table-responsive">
             {loading ? (
               <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="text-center py-5 text-muted">No students match the selected filters.</div>
             ) : (
-              <table className="table table-hover mb-0 dir-roster-table">
+              <table className="table table-hover mb-0">
                 <thead>
                   <tr>
                     <th>Student Name</th>
@@ -287,25 +327,24 @@ function DirectorInternships() {
                     <th>Program</th>
                     <th>Company</th>
                     <th>Status</th>
-                    <th className="text-end">Actions</th>
+                    <th className="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.length === 0 ? (
-                    <tr><td colSpan="6" className="text-center py-4 text-muted">No students found.</td></tr>
-                  ) : (
-                    filteredStudents.map(s => {
-                      const profile = s.student_profile
-                      const internship = s.active_internship
-                      const name = profile ? `${profile.first_name} ${profile.last_name}` : s.username
-                      const st = internship?.status
-                      const canAssign = st === 'pending_placement'
+                  {filteredStudents.map(s => {
+                    const profile = s.student_profile
+                    const internship = s.active_internship
+                    const hasInternship = !!internship
+                    const name = formatStudentName(s)
+                    const st = internship?.status
 
-                      return (
-                        <tr key={s.id}>
-                          <td>{name}</td>
-                          <td>{profile?.student_number || s.username}</td>
-                          <td>{profile?.course_name || profile?.program || '—'}</td>
+                    return (
+                      <tr key={s.id}>
+                        <td>{name}</td>
+                        <td>{profile?.student_number || s.username}</td>
+                        <td>
+                        {s.student_profile?.program?.code ?? '—'}
+                      </td>
                           <td>{internship?.company?.company_name || '—'}</td>
                           <td>
                             <span className={`badge-status ${statusBadgeClass(st)}`}>
@@ -319,66 +358,52 @@ function DirectorInternships() {
                               </div>
                             )}
                           </td>
-                          <td className="text-end">
-                            <div className="dir-roster-actions" role="group" aria-label={`Actions for ${name}`}>
-                              <button
-                                type="button"
-                                className={`btn btn-sm ${archived ? 'btn-outline-success' : 'btn-outline-secondary'}`}
-                                title={archived ? 'Unarchive' : 'Archive'}
-                                disabled={archiveBusy === s.id}
-                                onClick={() => toggleArchive(s)}
-                              >
-                                <i className={`fa ${archived ? 'fa-box-open' : 'fa-box-archive'}`}></i>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${archived ? 'btn-outline-success' : 'btn-outline-secondary'} me-1`}
+                              title={archived ? 'Unarchive' : 'Archive'}
+                              disabled={archiveBusy === s.id}
+                              onClick={() => toggleArchive(s)}
+                            >
+                              <i className={`fa ${archived ? 'fa-box-open' : 'fa-box-archive'}`}></i>
+                            </button>
+                            {st === 'pending_placement' ? (
+                              <button className="btn btn-sm btn-primary me-1" onClick={() => setAssigning(s)}>
+                                <i className="fa fa-map-pin me-1"></i> Assign
                               </button>
-                              <button
-                                type="button"
-                                className={`btn btn-sm dir-roster-assign ${canAssign ? 'btn-green' : 'btn-outline-secondary'}`}
-                                disabled={!canAssign}
-                                title={canAssign ? 'Assign placement' : 'Assign available when status is Pending Placement'}
-                                onClick={() => canAssign && setAssigning(s)}
-                              >
-                                <i className="fa fa-map-pin me-1"></i>Assign
+                            ) : null}
+                            {internship?.id ? (
+                              <>
+                                <button
+                                  className="btn btn-sm btn-outline-primary me-1"
+                                  onClick={() => setStatusTarget({
+                                    internshipId: internship.id,
+                                    studentName: name,
+                                    status: st,
+                                  })}
+                                >
+                                  <i className="fa fa-tag me-1"></i> Status
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-secondary me-1"
+                                  onClick={() => setHistoryTarget({
+                                    internshipId: internship.id,
+                                    studentName: name,
+                                  })}
+                                >
+                                  <i className="fa fa-clock-rotate-left me-1"></i> History
+                                </button>
+                              </>
+                            ) : (
+                              <button className="btn btn-sm btn-outline-secondary" disabled>
+                                No internship
                               </button>
-                              {internship?.id ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-green"
-                                    onClick={() => setStatusTarget({
-                                      internshipId: internship.id,
-                                      studentName: name,
-                                      status: st,
-                                    })}
-                                  >
-                                    <i className="fa fa-tag me-1"></i>Status
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => setHistoryTarget({
-                                      internshipId: internship.id,
-                                      studentName: name,
-                                    })}
-                                  >
-                                    <i className="fa fa-clock-rotate-left me-1"></i>History
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button type="button" className="btn btn-sm btn-outline-secondary" disabled title="No internship">
-                                    <i className="fa fa-tag me-1"></i>Status
-                                  </button>
-                                  <button type="button" className="btn btn-sm btn-outline-secondary" disabled title="No internship">
-                                    <i className="fa fa-clock-rotate-left me-1"></i>History
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                            )}
                           </td>
                         </tr>
                       )
-                    })
-                  )}
+                    })}
                 </tbody>
               </table>
             )}

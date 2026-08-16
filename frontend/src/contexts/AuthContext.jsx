@@ -35,12 +35,15 @@ export function AuthProvider({ children }) {
       }
     }
 
-    api.get('/auth/user')
+    const controller = new AbortController()
+
+    api.get('/auth/user', { signal: controller.signal })
       .then(({ data }) => {
         setUser(data.user)
         sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
       })
       .catch((err) => {
+        if (err.name === 'CanceledError' || err.name === 'AbortError') return
         if (err.response?.status === 401) {
           setUser(null)
           sessionStorage.removeItem('interntrack_token')
@@ -48,6 +51,8 @@ export function AuthProvider({ children }) {
         }
       })
       .finally(() => setLoading(false))
+
+    return () => controller.abort()
   }, [])
 
   // ── Login: authenticate against Laravel Sanctum API ─────────────────────────
@@ -63,7 +68,6 @@ export function AuthProvider({ children }) {
       setUser(data.user)
       return { success: true, user: data.user }
     } catch (err) {
-      console.error("Login error:", err)
       const apiMessage = err.response?.data?.message
       const message =
         err.response?.status === 429

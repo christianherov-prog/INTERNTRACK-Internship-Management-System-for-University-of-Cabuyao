@@ -19,11 +19,6 @@ class SignatureController extends Controller
     {
         $request->validate([
             'signature' => 'required|image|mimes:png,jpg,jpeg|max:5120', // 5MB max
-        ], [
-            'signature.required' => 'Please select a signature image first.',
-            'signature.image' => 'Signature must be a PNG or JPG image.',
-            'signature.mimes' => 'Signature must be a PNG or JPG image.',
-            'signature.max' => 'Signature image must be 5MB or smaller.',
         ]);
 
         $user = auth()->user();
@@ -41,7 +36,6 @@ class SignatureController extends Controller
         return response()->json([
             'message'   => 'Signature uploaded and processed successfully.',
             'has_signature' => true,
-            'signature_path' => $storagePath,
         ]);
     }
 
@@ -69,8 +63,26 @@ class SignatureController extends Controller
         $path = "signatures/{$user->id}_processed.png";
 
         return response()->json([
-            'has_signature' => Storage::exists($path),
+            'has_signature'  => Storage::exists($path),
             'signature_path' => Storage::exists($path) ? $path : null,
+        ]);
+    }
+
+    /**
+     * GET /v1/auth/signature/view — return the storage path for preview
+     * The frontend fetches the actual file via /files/download?path=...
+     */
+    public function view()
+    {
+        $user = auth()->user();
+        $path = "signatures/{$user->id}_processed.png";
+
+        if (!Storage::exists($path)) {
+            return response()->json(['error' => 'No signature on file.'], 404);
+        }
+
+        return response()->json([
+            'signature_path' => $path,
         ]);
     }
 

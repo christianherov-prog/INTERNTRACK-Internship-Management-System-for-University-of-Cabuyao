@@ -15,7 +15,7 @@ class AuthTest extends TestCase
     private function createUser(array $overrides = []): User
     {
         return User::create(array_merge([
-            'username'  => 'STU-1001',
+            'student_number'  => 'STU-1001',
             'email'     => 'student@example.com',
             'password'  => Hash::make('password123'),
             'role'      => 'student',
@@ -87,4 +87,31 @@ class AuthTest extends TestCase
             ->getJson('/api/v1/auth/user')
             ->assertUnauthorized();
     }
+
+    public function test_forgot_password_generates_token_and_returns_success(): void
+    {
+        $user = $this->createUser();
+
+        $response = $this->postJson('/api/v1/auth/forgot-password', [
+            'identifier' => $user->student_number,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonFragment(['success' => true]);
+
+        $this->assertDatabaseHas('password_reset_tokens', [
+            'email' => $user->email,
+        ]);
+    }
+
+    public function test_forgot_password_unknown_identifier_returns_generic_success(): void
+    {
+        $response = $this->postJson('/api/v1/auth/forgot-password', [
+            'identifier' => 'NON-EXISTENT-ID',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonFragment(['success' => true]);
+    }
 }
+

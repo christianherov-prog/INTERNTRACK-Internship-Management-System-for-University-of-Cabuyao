@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
@@ -83,82 +83,136 @@ function MisdUsers() {
         </div>
       )}
 
-      <form className="content-card p-3 mb-3" onSubmit={applySearch}>
-        <div className="row g-2 align-items-end">
-          <div className="col-md-4">
-            <label className="form-label fw-semibold">Search</label>
-            <input className="form-control" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Username, name, email…" />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label fw-semibold">Role</label>
-            <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
-              {ROLES.map((r) => <option key={r || 'all'} value={r}>{r || 'All roles'}</option>)}
-            </select>
-          </div>
-          <div className="col-md-3">
-            <label className="form-label fw-semibold">Status</label>
-            <select className="form-select" value={active} onChange={(e) => setActive(e.target.value)}>
-              <option value="">All</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
-            </select>
-          </div>
-          <div className="col-md-2">
-            <button className="btn btn-green w-100" type="submit">Filter</button>
-          </div>
+      <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div className="card-body p-4">
+          <form onSubmit={applySearch}>
+            <div className="row g-3 align-items-end">
+              <div className="col-12 col-md-6 col-lg-4">
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Search User Accounts</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light border-end-0 text-muted rounded-start-3">
+                    <i className="fa fa-magnifying-glass"></i>
+                  </span>
+                  <input
+                    className="form-control border-start-0 rounded-end-3"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Username, full name, email…"
+                  />
+                </div>
+              </div>
+              <div className="col-12 col-sm-6 col-md-3 col-lg-3">
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Role Filter</label>
+                <select className="form-select rounded-3" value={role} onChange={(e) => setRole(e.target.value)}>
+                  {ROLES.map((r) => <option key={r || 'all'} value={r}>{r ? r.charAt(0).toUpperCase() + r.slice(1) : 'All User Roles'}</option>)}
+                </select>
+              </div>
+              <div className="col-12 col-sm-6 col-md-3 col-lg-3">
+                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Account Status</label>
+                <select className="form-select rounded-3" value={active} onChange={(e) => setActive(e.target.value)}>
+                  <option value="">All Statuses</option>
+                  <option value="true">Active Accounts Only</option>
+                  <option value="false">Inactive Accounts Only</option>
+                </select>
+              </div>
+              <div className="col-12 col-md-12 col-lg-2">
+                <button className="btn btn-success w-100 rounded-3 fw-semibold py-2" type="submit">
+                  <i className="fa fa-filter me-1.5"></i>Filter
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
 
-      <div className="content-card">
-        <div className="content-card-header">
-          <i className="fa fa-table"></i>
-          <h6>Accounts {meta?.total != null ? `(${meta.total})` : ''}</h6>
+      <div className="card border-0 shadow-sm rounded-4 bg-white mb-4">
+        <div className="card-header bg-transparent border-0 px-4 pt-4 pb-2 d-flex align-items-center justify-content-between">
+          <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
+            <i className="fa fa-users text-success"></i> Registered Accounts
+          </h6>
+          <span className="badge bg-light text-secondary border fw-semibold px-2.5 py-1" style={{ fontSize: '0.75rem' }}>
+            {meta?.total != null ? `${meta.total} Total Users` : 'All Accounts'}
+          </span>
         </div>
-        <div className="table-responsive">
-          {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
-          ) : (
-            <table className="table table-hover mb-0">
-              <thead>
-                <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th><th className="text-center">Actions</th></tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center text-muted py-4">No users found.</td></tr>
-                ) : rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="fw-semibold">{row.name}</td>
-                    <td><code>{row.username}</code></td>
-                    <td><span className="badge bg-light text-dark text-uppercase">{row.role}</span></td>
-                    <td>
-                      <span className={`badge ${row.is_active ? 'bg-success' : 'bg-secondary'}`}>
-                        {row.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
-                    <td className="text-center">
-                      <div className="btn-group btn-group-sm">
-                        <button className="btn btn-outline-secondary" title="Reset password" onClick={() => resetPw(row)}>
-                          <i className="fa fa-key"></i>
-                        </button>
-                        <button className="btn btn-outline-warning" title={row.is_active ? 'Deactivate' : 'Activate'} onClick={() => toggleActive(row)}>
-                          <i className={`fa fa-${row.is_active ? 'ban' : 'check'}`}></i>
-                        </button>
-                      </div>
-                    </td>
+        <div className="card-body px-4 pt-2 pb-4">
+          <div className="table-responsive border rounded-3 overflow-hidden">
+            {loading ? (
+              <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            ) : (
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem', minWidth: 780 }}>
+                <thead style={{ background: '#f8fafc', borderBottom: '1px solid #eef2f6' }}>
+                  <tr>
+                    <th className="text-uppercase text-muted fw-semibold py-3 px-4" style={{ fontSize: '0.72rem', letterSpacing: '0.05em', minWidth: 160 }}>User Name</th>
+                    <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em', minWidth: 120 }}>Username / ID</th>
+                    <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em', minWidth: 120 }}>Assigned Role</th>
+                    <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em', minWidth: 120 }}>Account Status</th>
+                    <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em', minWidth: 150 }}>Last Active</th>
+                    <th className="text-uppercase text-muted fw-semibold py-3 px-4 text-center" style={{ fontSize: '0.72rem', letterSpacing: '0.05em', width: 110, whiteSpace: 'nowrap' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center text-muted py-5">
+                        <i className="fa-regular fa-folder-open fa-2x mb-2 d-block opacity-40"></i>
+                        No user accounts found matching your query.
+                      </td>
+                    </tr>
+                  ) : rows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-4 py-3 fw-bold text-dark" style={{ whiteSpace: 'nowrap' }}>{row.name}</td>
+                      <td className="px-3 py-3" style={{ whiteSpace: 'nowrap' }}>
+                        <span className="badge bg-light text-dark border font-monospace fw-semibold" style={{ fontSize: '0.75rem' }}>
+                          {row.username}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3" style={{ whiteSpace: 'nowrap' }}>
+                        <span
+                          className="badge fw-semibold px-2.5 py-1 rounded-pill"
+                          style={{
+                            fontSize: '0.75rem',
+                            background: row.role === 'student' ? '#ecfdf5' : row.role === 'faculty' ? '#f0f9ff' : row.role === 'director' ? '#fffbeb' : row.role === 'coordinator' ? '#f5f3ff' : row.role === 'supervisor' ? '#f0fdfa' : '#f8fafc',
+                            color: row.role === 'student' ? '#157938' : row.role === 'faculty' ? '#0284c7' : row.role === 'director' ? '#d97706' : row.role === 'coordinator' ? '#7c3aed' : row.role === 'supervisor' ? '#0d9488' : '#475569',
+                            border: `1px solid ${row.role === 'student' ? '#a7f3d0' : row.role === 'faculty' ? '#bae6fd' : row.role === 'director' ? '#fde68a' : row.role === 'coordinator' ? '#ddd6fe' : row.role === 'supervisor' ? '#99f6e4' : '#e2e8f0'}`,
+                          }}
+                        >
+                          {row.role}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3" style={{ whiteSpace: 'nowrap' }}>
+                        <span className={`badge ${row.is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} fw-bold px-2.5 py-1 rounded-pill`} style={{ fontSize: '0.75rem' }}>
+                          {row.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-muted" style={{ whiteSpace: 'nowrap' }}>{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
+                      <td className="px-4 py-3 text-center" style={{ whiteSpace: 'nowrap' }}>
+                        <div className="btn-group btn-group-sm">
+                          <button className="btn btn-outline-secondary" title="Reset Password" onClick={() => resetPw(row)}>
+                            <i className="fa fa-key"></i>
+                          </button>
+                          <button className={`btn btn-outline-${row.is_active ? 'warning' : 'success'}`} title={row.is_active ? 'Deactivate' : 'Activate'} onClick={() => toggleActive(row)}>
+                            <i className={`fa fa-${row.is_active ? 'ban' : 'check'}`}></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {meta && meta.last_page > 1 && (
+            <div className="pt-3.5 d-flex justify-content-between align-items-center">
+              <button className="btn btn-sm btn-outline-success fw-semibold rounded-3 px-3" disabled={meta.current_page <= 1} onClick={() => load(meta.current_page - 1)}>
+                <i className="fa fa-chevron-left me-1"></i>Previous
+              </button>
+              <span className="text-muted fw-semibold" style={{ fontSize: '0.85rem' }}>Page {meta.current_page} of {meta.last_page}</span>
+              <button className="btn btn-sm btn-outline-success fw-semibold rounded-3 px-3" disabled={meta.current_page >= meta.last_page} onClick={() => load(meta.current_page + 1)}>
+                Next<i className="fa fa-chevron-right ms-1"></i>
+              </button>
+            </div>
           )}
         </div>
-        {meta && meta.last_page > 1 && (
-          <div className="p-3 d-flex justify-content-between align-items-center">
-            <button className="btn btn-sm btn-outline-secondary" disabled={meta.current_page <= 1} onClick={() => load(meta.current_page - 1)}>Prev</button>
-            <span className="text-muted">Page {meta.current_page} / {meta.last_page}</span>
-            <button className="btn btn-sm btn-outline-secondary" disabled={meta.current_page >= meta.last_page} onClick={() => load(meta.current_page + 1)}>Next</button>
-          </div>
-        )}
       </div>
     </Layout>
   )

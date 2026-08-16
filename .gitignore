@@ -37,6 +37,3 @@ tinker_check.php
 backend/storage/audit_discover.php
 backend/php-local.ini
 /logo.jpg
-backend/form.php
-frontend/snapshot.html
-**/snapshot.html

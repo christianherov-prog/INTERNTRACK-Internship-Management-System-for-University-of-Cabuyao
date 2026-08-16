@@ -108,8 +108,8 @@ function RoleSummaryPanel({ showMetrics = true }) {
       // MISD Admin: office / employee ID / position (staff-style, not student fields).
       meta = [
         summary.position || summary.role_label,
-        summary.employee_number
-          ? `Employee No. ${summary.employee_number}`
+        summary.faculty_number
+          ? `Faculty No. ${summary.faculty_number}`
           : (summary.username ? `ID ${summary.username}` : null),
         summary.office || 'MISD',
       ]

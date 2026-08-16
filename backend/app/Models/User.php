@@ -13,7 +13,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'username', 'email', 'password', 'role', 'sex', 'is_active', 'must_change_password',
+        'student_number', 'faculty_number', 'email', 'password', 'role', 'sex', 'is_active', 'must_change_password',
         'last_login_at', 'avatar_path', 'notification_preferences',
     ];
 
@@ -59,18 +59,6 @@ class User extends Authenticatable
                     ->latest();
     }
 
-    /**
-     * The internship whose portfolio the student may still build/edit.
-     * Includes 'completed' since the portfolio (final report & appendices)
-     * is typically finished during or right after wrap-up of the internship.
-     */
-    public function portfolioInternship()
-    {
-        return $this->hasOne(Internship::class, 'student_id')
-                    ->whereIn('status', ['ongoing', 'active', 'placed', 'for_evaluation', 'completed'])
-                    ->latest();
-    }
-
     /** Internships where this user is the supervisor */
     public function internshipsSupervised()
     {
@@ -98,12 +86,38 @@ class User extends Authenticatable
         });
     }
 
-    // ─── Helper Methods ───────────────────────────────────────────────────────
+    // ─── Scopes ─────────────────────────────────────────────────────────────
+    public function scopeInDepartment($query)
+    {
+        $user = auth()->user();
+        if (!$user) return $query;
+
+        // Directors/Admins see all
+        if ($user->hasRole('director') || $user->hasRole('admin')) {
+            return $query;
+        }
+
+        $deptId = $user->facultyProfile?->department_id;
+        if ($deptId) {
+            return $query->whereHas('studentProfile', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        return $query;
+    }
+
+    // ─── Helpers ───────────────────────────────────────────────────────────────
 
     public function getProfileNameAttribute(): string
     {
         $p = $this->studentProfile ?? $this->facultyProfile ?? $this->supervisorProfile;
-        return $p ? trim("{$p->first_name} {$p->last_name}") : $this->username;
+        return $p ? trim("{$p->first_name} {$p->last_name}") : ($this->student_number ?? $this->faculty_number ?? 'Unknown');
+    }
+
+    public function getUsernameAttribute(): ?string
+    {
+        return $this->student_number ?? $this->faculty_number ?? $this->email;
     }
 
     public function isStudent(): bool     { return $this->role === 'student'; }
@@ -112,6 +126,19 @@ class User extends Authenticatable
     public function isCoordinator(): bool { return $this->role === 'coordinator'; }
     public function isDirector(): bool    { return $this->role === 'director'; }
     public function isAdmin(): bool       { return $this->role === 'admin'; }
+
+    public function hasRole($roles): bool
+    {
+        if (is_array($roles)) {
+            return in_array($this->role, $roles);
+        }
+        return $this->role === $roles;
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return in_array($this->role, $roles);
+    }
 
     /** Whether this user wants inbox notifications for a Settings preference key. */
     public function wantsNotification(string $prefKey): bool

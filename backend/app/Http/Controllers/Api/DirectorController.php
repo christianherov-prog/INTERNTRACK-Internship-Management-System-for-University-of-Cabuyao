@@ -37,12 +37,6 @@ class DirectorController extends Controller
             ->get(['id', 'company_name', 'industry', 'moa_status']);
 
         $evalBreakdown = Evaluation::selectRaw('
-            AVG(technical_skills) as avg_technical,
-            AVG(communication_skills) as avg_communication,
-            AVG(teamwork) as avg_teamwork,
-            AVG(initiative) as avg_initiative,
-            AVG(work_ethics) as avg_work_ethics,
-            AVG(attendance_punctuality) as avg_attendance,
             AVG(average_score) as avg_overall
         ')->first();
 
@@ -109,6 +103,14 @@ class DirectorController extends Controller
         return response()->json(['message' => 'Company updated.', 'company' => $company]);
     }
 
+    public function destroyCompany(Request $request, int $id)
+    {
+        $company = Company::findOrFail($id);
+        $company->delete();
+        audit_log($request->user()->id, 'delete_company', ['company_id' => $id]);
+        return response()->json(['message' => 'Company removed.']);
+    }
+
     public function moaMonitoring(Request $request)
     {
         $companies = Company::orderBy('moa_expiry_date')->get()->map(fn($c) => [
@@ -126,12 +128,27 @@ class DirectorController extends Controller
         return ApiResponse::list($companies);
     }
 
+    public function reports(Request $request)
+    {
+        $programs = $this->internsByProgram()->map(fn ($row) => [
+            'program' => $row->program,
+            'total' => $row->count,
+            'completed' => $row->completed,
+            'avg_hours' => $row->avg_hours,
+        ])->values();
+
+        return response()->json([
+            'by_program' => $programs,
+            'absorption' => AbsorptionService::analytics(),
+        ]);
+    }
+
     /**
-     * Group internships by resolved academic program (internship → profile.program → course_name).
+     * Group internships by resolved academic program (internship → profile.program).
      */
     private function internsByProgram()
     {
-        return Internship::with('student.studentProfile')
+        return Internship::with('student.studentProfile.program')
             ->get()
             ->groupBy(fn (Internship $i) => $this->resolveProgram($i))
             ->map(function ($rows, $program) {
@@ -155,8 +172,7 @@ class DirectorController extends Controller
         $profile = $internship->student?->studentProfile;
         foreach ([
             $internship->program,
-            $profile?->program,
-            $profile?->course_name,
+            $profile?->program?->code,
         ] as $value) {
             $value = trim((string) $value);
             if ($value !== '') {
@@ -170,7 +186,7 @@ class DirectorController extends Controller
     /** GET /api/v1/director/internships — roster for status tagging */
     public function internships(Request $request)
     {
-        $rows = Internship::with(['student.studentProfile', 'company', 'coordinator.facultyProfile'])
+        $rows = Internship::with(['student.studentProfile.program', 'company', 'coordinator.facultyProfile'])
             ->latest()
             ->paginate(50);
 
@@ -187,7 +203,7 @@ class DirectorController extends Controller
                     'id' => $i->student_id,
                     'name' => $p ? trim("{$p->first_name} {$p->last_name}") : $i->student?->username,
                     'student_number' => $p?->student_number ?? $i->student?->username,
-                    'program' => $p?->program ?? $p?->course_name,
+                    'program' => $p?->program?->code ?? '—',
                 ],
             ];
         });
@@ -201,14 +217,14 @@ class DirectorController extends Controller
     {
         $query = User::where('role', 'student')
             ->with([
-                'studentProfile',
+                'studentProfile.program',
                 'activeInternship.company',
                 'internshipsAsStudent' => fn ($q) => $q
                     ->withCount(['attendance as validated_days' => fn ($a) => $a->where('status', 'validated')]),
             ]);
 
         if ($request->filled('program')) {
-            $query->whereHas('studentProfile', fn($q) => $q->where('course_name', $request->program)->orWhere('program', $request->program));
+            $query->whereHas('studentProfile', fn($q) => $q->where('program', $request->program));
         }
 
         if ($request->boolean('archived')) {
@@ -225,6 +241,9 @@ class DirectorController extends Controller
         $request->validate(['archived' => 'required|boolean']);
 
         $student = User::where('role', 'student')->findOrFail($userId);
+        if (!User::inDepartment()->where('id', $userId)->exists()) {
+            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+        }
         $student->is_active = !$request->boolean('archived');
         $student->save();
 
@@ -263,7 +282,10 @@ class DirectorController extends Controller
             'supervisor_id' => 'required|exists:users,id',
         ]);
 
-        $internship = Internship::with('student.studentProfile')->findOrFail($id);
+        $internship = Internship::with('student.studentProfile.program')->findOrFail($id);
+        if (!Internship::inDepartment()->where('id', $id)->exists()) {
+            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+        }
 
         if ($internship->status !== 'pending_placement') {
             return response()->json(['message' => 'Student is already placed or cannot be placed at this time.'], 422);
@@ -295,7 +317,7 @@ class DirectorController extends Controller
 
         $profile = $internship->student?->studentProfile;
         $program = $internship->program
-            ?: ($profile?->program ?: $profile?->course_name);
+            ?: ($profile?->program?->code);
 
         $internship->update([
             'company_id' => $company->id,
@@ -337,27 +359,27 @@ class DirectorController extends Controller
 
     private function placementTrendsPayload(): array
     {
-        $years = $this->lastThreeAcademicYears();
+        $years = $this->lastThreeSchoolYears();
 
         $rows = DB::table('internships')
             ->join('companies', 'companies.id', '=', 'internships.company_id')
-            ->whereIn('internships.academic_year', $years)
+            ->whereIn('internships.school_year', $years)
             ->whereNotNull('internships.company_id')
             ->whereNull('internships.deleted_at')
             ->selectRaw('
                 companies.id as company_id,
                 companies.company_name,
                 companies.industry,
-                internships.academic_year,
+                internships.school_year,
                 COUNT(*) as placement_count
             ')
             ->groupBy(
                 'companies.id',
                 'companies.company_name',
                 'companies.industry',
-                'internships.academic_year'
+                'internships.school_year'
             )
-            ->orderBy('internships.academic_year')
+            ->orderBy('internships.school_year')
             ->orderByDesc('placement_count')
             ->orderBy('companies.company_name')
             ->get();
@@ -374,7 +396,7 @@ class DirectorController extends Controller
                     'total'        => 0,
                 ];
             }
-            $byCompany[$id]['years'][$row->academic_year] = (int) $row->placement_count;
+            $byCompany[$id]['years'][$row->school_year] = (int) $row->placement_count;
             $byCompany[$id]['total'] += (int) $row->placement_count;
         }
 
@@ -384,7 +406,7 @@ class DirectorController extends Controller
             ->all();
 
         return [
-            'academic_years' => $years,
+            'school_years' => $years,
             'rows'           => $rows,
             'by_company'     => $companies,
             'generated_at'   => now()->toDateTimeString(),
@@ -392,14 +414,14 @@ class DirectorController extends Controller
     }
 
     /** e.g. [2025-2026, 2024-2025, 2023-2024] newest first. */
-    private function lastThreeAcademicYears(): array
+    private function lastThreeSchoolYears(): array
     {
-        $latest = Internship::query()
-            ->whereNotNull('academic_year')
-            ->orderByDesc('academic_year')
-            ->value('academic_year');
+        $latestYear = Internship::inDepartment()
+            ->whereNotNull('school_year')
+            ->orderByDesc('school_year')
+            ->value('school_year');
 
-        if ($latest && preg_match('/^(\d{4})-(\d{4})$/', $latest, $m)) {
+        if ($latestYear && preg_match('/^(\d{4})-(\d{4})$/', $latestYear, $m)) {
             $start = (int) $m[1];
         } else {
             $start = (int) now()->year - 1;
@@ -431,6 +453,9 @@ class DirectorController extends Controller
         ]);
 
         $internship = Internship::findOrFail($id);
+        if (!Internship::inDepartment()->where('id', $id)->exists()) {
+            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+        }
         $updated = AbsorptionService::recordOutcome(
             $internship,
             $request->user(),
@@ -448,5 +473,156 @@ class DirectorController extends Controller
         ]);
 
         return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
+    }
+
+    /** GET /api/v1/director/documents — oversight (all stages) */
+    public function documents(Request $request)
+    {
+        $docs = \App\Models\Document::with(['internship.student.studentProfile.program', 'reviews'])
+            ->whereNotIn('status', ['not_submitted'])
+            ->orderByDesc('submitted_at')
+            ->paginate(40);
+
+        return ApiResponse::list($docs);
+    }
+
+    public function hteEvaluations(Request $request)
+    {
+        return $this->evaluationsOverview($request);
+    }
+
+    public function evaluationsOverview(Request $request)
+    {
+        $formTypes = ['FO-24', 'FO-03', 'FO-22', 'FO-23'];
+
+        $query = Internship::with([
+            'student.studentProfile.program',
+            'company',
+            'supervisor.supervisorProfile',
+            'evaluations' => function ($q) use ($formTypes) {
+                $q->whereIn('form_type', $formTypes);
+            },
+        ])
+        ->whereHas('evaluations', function ($q) use ($formTypes) {
+            $q->whereIn('form_type', $formTypes);
+        });
+
+        // Apply filters
+        if ($request->filled('department_id') || $request->filled('program_id') || $request->filled('section')) {
+            $query->whereHas('student.studentProfile', function ($q) use ($request) {
+                if ($request->filled('department_id')) {
+                    $q->where('department_id', $request->input('department_id'));
+                }
+                if ($request->filled('program_id')) {
+                    $q->where('program_id', $request->input('program_id'));
+                }
+                if ($request->filled('section')) {
+                    $q->where('section', $request->input('section'));
+                }
+            });
+        }
+
+        // Summary stats across all evaluation types
+        $statsQuery = Evaluation::whereIn('form_type', $formTypes);
+        if ($request->filled('department_id') || $request->filled('program_id') || $request->filled('section')) {
+            $statsQuery->whereHas('internship.student.studentProfile', function ($q) use ($request) {
+                if ($request->filled('department_id')) {
+                    $q->where('department_id', $request->input('department_id'));
+                }
+                if ($request->filled('program_id')) {
+                    $q->where('program_id', $request->input('program_id'));
+                }
+                if ($request->filled('section')) {
+                    $q->where('section', $request->input('section'));
+                }
+            });
+        }
+
+        $stats = (clone $statsQuery)
+            ->selectRaw('COUNT(*) as total, AVG(average_score) as avg_score')
+            ->first();
+
+        $ratingCounts = (clone $statsQuery)
+            ->selectRaw('rating, COUNT(*) as count')
+            ->groupBy('rating')
+            ->pluck('count', 'rating');
+
+        $formCounts = (clone $statsQuery)
+            ->selectRaw('form_type, COUNT(*) as count')
+            ->groupBy('form_type')
+            ->pluck('count', 'form_type');
+
+        $internships = $query->orderByDesc('created_at')->paginate(20);
+
+        return response()->json([
+            'stats'        => $stats,
+            'rating_counts'=> $ratingCounts,
+            'form_counts'  => $formCounts,
+            'internships'  => $internships,
+        ]);
+    }
+
+    /**
+     * GET /api/v1/director/reports/ched-data
+     * Aggregates the data required for the CHED Annual Internship Report.
+     * Returns a list of all HTEs with their intern counts and program breakdown.
+     */
+    public function chedReportData(Request $request)
+    {
+        $year     = $request->input('school_year');
+        $semester = $request->input('semester');
+        $program  = $request->input('program');
+        $section  = $request->input('section');
+
+        $query = Internship::with(['student.studentProfile.program', 'company'])
+            ->whereNotNull('company_id');
+
+        if ($program)  { $query->where('program', $program); }
+        if ($section)  { $query->whereHas('student.studentProfile', fn($q) => $q->where('section', $section)); }
+        if ($year)     { $query->where('school_year', $year); }
+        if ($semester) { $query->where('semester', $semester); }
+
+        $internships = $query->get();
+
+        // Group by company
+        $byCompany = $internships->groupBy('company_id')->map(function ($group) {
+            $company = $group->first()->company;
+            $byProgram = $group->groupBy(fn($i) => $i->program ?? $i->student?->studentProfile?->program?->code ?? 'Unknown')
+                ->map->count()
+                ->sortKeys();
+
+            return [
+                'company_id'      => $company?->id,
+                'company_name'    => $company?->company_name ?? '—',
+                'address'         => $company?->address ?? '—',
+                'industry'        => $company?->industry ?? '—',
+                'moa_status'      => $company?->moa_status ?? '—',
+                'total_interns'   => $group->count(),
+                'completed'       => $group->where('status', 'completed')->count(),
+                'ongoing'         => $group->whereIn('status', ['ongoing', 'active'])->count(),
+                'by_program'      => $byProgram,
+            ];
+        })->values()->sortBy('company_name')->values();
+
+        // Summary totals
+        $totals = [
+            'total_companies' => $byCompany->count(),
+            'total_interns'   => $internships->count(),
+            'completed'       => $internships->where('status', 'completed')->count(),
+            'ongoing'         => $internships->whereIn('status', ['ongoing', 'active'])->count(),
+        ];
+
+        $schoolYears = Internship::distinct()->pluck('school_year')->sort()->values();
+        $semesters = Internship::distinct()->pluck('semester')->sort()->values();
+
+        return response()->json([
+            'internships'    => $query->paginate(20),
+            'school_years' => $schoolYears,
+            'semesters'      => $semesters,
+            'rows'           => $byCompany,
+            'totals'         => $totals,
+            'filters'        => ['school_year' => $year, 'semester' => $semester],
+            'generated_at'   => now()->toDateTimeString(),
+        ]);
     }
 }

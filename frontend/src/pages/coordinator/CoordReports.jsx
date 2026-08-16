@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useReactToPrint } from 'react-to-print'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
@@ -155,17 +156,15 @@ function PerformanceTable({ data }) {
           <div className="table-responsive">
             <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
               <thead className="table-light">
-                <tr><th>Evaluator</th><th>Technical</th><th>Communication</th><th>Teamwork</th><th>Initiative</th><th>Work Ethics</th><th>Overall</th></tr>
+                <tr>
+                  <th>Evaluator Type</th>
+                  <th>Overall Avg</th>
+                </tr>
               </thead>
               <tbody>
                 {evalAvg.map((e, i) => (
                   <tr key={i}>
                     <td className="text-capitalize fw-semibold">{e.evaluator_type}</td>
-                    <td>{parseFloat(e.avg_technical ?? 0).toFixed(2)}</td>
-                    <td>{parseFloat(e.avg_communication ?? 0).toFixed(2)}</td>
-                    <td>{parseFloat(e.avg_teamwork ?? 0).toFixed(2)}</td>
-                    <td>{parseFloat(e.avg_initiative ?? 0).toFixed(2)}</td>
-                    <td>{parseFloat(e.avg_work_ethics ?? 0).toFixed(2)}</td>
                     <td><strong>{parseFloat(e.avg_overall ?? 0).toFixed(2)}</strong></td>
                   </tr>
                 ))}
@@ -214,9 +213,11 @@ function CoordReports() {
       .catch(() => {})
   }, [])
 
-  const handlePrint = () => {
-    window.print()
-  }
+  const printRef = useRef(null)
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: 'Coord_Report'
+  })
 
   const handleExportCsv = () => {
     if (!reportData) return
@@ -265,7 +266,7 @@ function CoordReports() {
             <select className="form-select" value={programFilter} onChange={(e) => setProgramFilter(e.target.value)}>
               <option value="">All programs</option>
               {(filterOptions.programs ?? []).map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           </div>
@@ -289,7 +290,7 @@ function CoordReports() {
             {activeReport && (
               <button
                 type="button"
-                className="btn btn-outline-green ms-2"
+                className="btn btn-outline-primary ms-2"
                 onClick={() => generateReport(activeReport)}
                 disabled={loading}
               >
@@ -305,11 +306,8 @@ function CoordReports() {
         {REPORT_TYPES.map(r => (
           <div key={r.key} className="col-md-4">
             <div
-              className={`content-card h-100 cursor-pointer ${activeReport === r.key ? 'border-2' : ''}`}
-              style={{
-                cursor: 'pointer',
-                borderColor: activeReport === r.key ? 'var(--green-main, #1a7a3f)' : undefined,
-              }}
+              className={`content-card h-100 cursor-pointer ${activeReport === r.key ? 'border-2 border-primary' : ''}`}
+              style={{ cursor: 'pointer', borderColor: activeReport === r.key ? '#6366f1' : undefined }}
               onClick={() => generateReport(r.key)}
             >
               <div className="p-3 text-center">
@@ -319,7 +317,7 @@ function CoordReports() {
                 <div className="fw-semibold mb-1">{r.title}</div>
                 <p className="text-muted mb-3" style={{ fontSize: '0.82rem' }}>{r.desc}</p>
                 <button
-                  className={`btn btn-sm ${activeReport === r.key ? 'btn-green' : 'btn-outline-green'}`}
+                  className={`btn btn-sm ${activeReport === r.key ? 'btn-primary' : 'btn-outline-primary'}`}
                   onClick={e => { e.stopPropagation(); generateReport(r.key) }}
                   disabled={loading && activeReport === r.key}
                 >
@@ -335,7 +333,7 @@ function CoordReports() {
 
       {/* Report Output */}
       {activeReport && (
-        <div className="content-card" id="report-output">
+        <div className="content-card" id="report-output" ref={printRef}>
           <div className="content-card-header d-print-none">
             <i className={`fa ${REPORT_TYPES.find(r => r.key === activeReport)?.icon}`}></i>
             <h6>{REPORT_TYPES.find(r => r.key === activeReport)?.title}</h6>

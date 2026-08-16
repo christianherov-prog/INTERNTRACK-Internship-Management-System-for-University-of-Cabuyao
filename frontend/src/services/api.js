@@ -11,11 +11,14 @@ import { disconnectEcho } from './echo'
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1',
   headers: {
-    'Content-Type': 'application/json; charset=UTF-8',
+    'Content-Type': 'application/json',
     'Accept': 'application/json',
+
   },
   withCredentials: false,
 })
+
+
 
 // ── Request Interceptor: Attach Sanctum Token ─────────────────────────────────
 api.interceptors.request.use((config) => {
@@ -51,6 +54,11 @@ api.interceptors.response.use(
       sessionStorage.removeItem('interntrack_token')
       sessionStorage.removeItem('interntrack_session')
       window.location.href = '/'
+    }
+
+    if (status === 403) {
+      const detail = error.response?.data?.message || 'Access Denied: You do not have permission to access this resource.'
+      window.dispatchEvent(new CustomEvent('access-denied', { detail }))
     }
 
     return Promise.reject(error)
