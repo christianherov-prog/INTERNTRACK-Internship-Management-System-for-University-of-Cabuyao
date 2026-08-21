@@ -21,10 +21,10 @@ use Illuminate\Support\Facades\Hash;
  */
 class FacultySectionAssignmentSeeder extends Seeder
 {
-    private function ensureDepartment(string $name): int
+    private function ensureDepartment(string $name, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
 
         $department = Department::firstOrCreate(
             ['name' => $name],
@@ -32,6 +32,19 @@ class FacultySectionAssignmentSeeder extends Seeder
         );
 
         return $department->id;
+    }
+
+    private function ensureProgram(string $name, int $departmentId, ?string $code = null): int
+    {
+        $name = trim($name);
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
+
+        $program = Program::firstOrCreate(
+            ['name' => $name],
+            ['department_id' => $departmentId, 'code' => $code, 'is_active' => true]
+        );
+
+        return $program->id;
     }
 
     public function run(): void

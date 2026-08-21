@@ -23,10 +23,10 @@ use Illuminate\Support\Facades\Hash;
  */
 class DatabaseSeeder extends Seeder
 {
-    private function ensureDepartment(string $name): int
+    private function ensureDepartment(string $name, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
 
         $department = Department::firstOrCreate(
             ['name' => $name],
@@ -36,10 +36,10 @@ class DatabaseSeeder extends Seeder
         return $department->id;
     }
 
-    private function ensureProgram(string $name, int $departmentId): int
+    private function ensureProgram(string $name, int $departmentId, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
 
         $program = Program::firstOrCreate(
             ['name' => $name],
@@ -52,15 +52,30 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $pw = Hash::make('interntrack123');
-        $misdDepartmentId = $this->ensureDepartment('Management Information Systems Department');
-        $paldDepartmentId = $this->ensureDepartment('Placement, Alumni, & Linkages Department');
-        $ccsDepartmentId = $this->ensureDepartment('College of Computing Studies');
+        $misdDepartmentId = $this->ensureDepartment('Management Information Systems Department', 'MISD');
+        $paldDepartmentId = $this->ensureDepartment('Placement, Alumni, & Linkages Department', 'PALD');
+        $ccsDepartmentId = $this->ensureDepartment('College of Computing Studies', 'CCS');
+        
+        $coedDepartmentId = $this->ensureDepartment('College of Education', 'COED');
+        $this->ensureProgram('Bachelor of Secondary Education', $coedDepartmentId, 'BSED');
+        $this->ensureProgram('Bachelor of Elementary Education', $coedDepartmentId, 'BEED');
+
+        $coeDepartmentId = $this->ensureDepartment('College of Engineering', 'COE');
+        $this->ensureProgram('Bachelor of Science in Civil Engineering', $coeDepartmentId, 'BSCE');
+        $this->ensureProgram('Bachelor of Science in Computer Engineering', $coeDepartmentId, 'BSCPE');
 
         // ─── 1. Staff users (faculty_number = employee/faculty number) ──────────────
         $admin    = User::updateOrCreate(['faculty_number' => 'ADMIN-MISD-001'], ['email' => 'misd.admin@uc.edu.ph',     'password' => $pw, 'role' => 'admin',       'is_active' => true]);
         $director = User::updateOrCreate(['faculty_number' => 'DIR-1001'],       ['email' => 'g.oloresisimo@uc.edu.ph', 'password' => $pw, 'role' => 'director',    'is_active' => true]);
-        $coord    = User::updateOrCreate(['faculty_number' => 'COR-1001'],       ['email' => 'a.quiatchon@uc.edu.ph',   'password' => $pw, 'role' => 'coordinator', 'is_active' => true]);
-        $faculty  = User::updateOrCreate(['faculty_number' => 'FAC-1001'],       ['email' => 'm.bicuna@uc.edu.ph',       'password' => $pw, 'role' => 'faculty',     'is_active' => true]);
+        
+        $coordCcs   = User::updateOrCreate(['faculty_number' => 'COR-CCS-001'],  ['email' => 'a.quiatchon@uc.edu.ph',   'password' => $pw, 'role' => 'coordinator', 'is_active' => true]);
+        $facultyCcs = User::updateOrCreate(['faculty_number' => 'FAC-CCS-001'],  ['email' => 'm.bicuna@uc.edu.ph',      'password' => $pw, 'role' => 'faculty',     'is_active' => true]);
+
+        $coordCoed   = User::updateOrCreate(['faculty_number' => 'COR-COED-001'], ['email' => 'coord.coed@uc.edu.ph',   'password' => $pw, 'role' => 'coordinator', 'is_active' => true]);
+        $facultyCoed = User::updateOrCreate(['faculty_number' => 'FAC-COED-001'], ['email' => 'faculty.coed@uc.edu.ph', 'password' => $pw, 'role' => 'faculty',     'is_active' => true]);
+
+        $coordCoe    = User::updateOrCreate(['faculty_number' => 'COR-COE-001'],  ['email' => 'coord.coe@uc.edu.ph',    'password' => $pw, 'role' => 'coordinator', 'is_active' => true]);
+        $facultyCoe  = User::updateOrCreate(['faculty_number' => 'FAC-COE-001'],  ['email' => 'faculty.coe@uc.edu.ph',  'password' => $pw, 'role' => 'faculty',     'is_active' => true]);
 
         // ─── 2. Staff faculty profiles ────────────────────────────────────────
         FacultyProfile::updateOrCreate(['user_id' => $admin->id], [
@@ -89,8 +104,8 @@ class DatabaseSeeder extends Seeder
             'synced_at'         => now(),
         ]);
 
-        FacultyProfile::updateOrCreate(['user_id' => $coord->id], [
-            'faculty_number'    => 'COR-1001',
+        FacultyProfile::updateOrCreate(['user_id' => $coordCcs->id], [
+            'faculty_number'    => 'COR-CCS-001',
             'first_name'        => 'Arcelito',
             'middle_name'       => 'C.',
             'last_name'         => 'Quiatchon',
@@ -102,8 +117,8 @@ class DatabaseSeeder extends Seeder
             'synced_at'         => now(),
         ]);
 
-        FacultyProfile::updateOrCreate(['user_id' => $faculty->id], [
-            'faculty_number'    => 'FAC-1001',
+        FacultyProfile::updateOrCreate(['user_id' => $facultyCcs->id], [
+            'faculty_number'    => 'FAC-CCS-001',
             'first_name'        => 'Marvin',
             'middle_name'       => 'M.',
             'last_name'         => 'Bicuña',
@@ -111,6 +126,58 @@ class DatabaseSeeder extends Seeder
             'contact_number'    => '09175557891',
             'department_id'     => $ccsDepartmentId,
             'position'          => 'CCS Faculty',
+            'employment_status' => 'Regular',
+            'synced_at'         => now(),
+        ]);
+
+        FacultyProfile::updateOrCreate(['user_id' => $coordCoed->id], [
+            'faculty_number'    => 'COR-COED-001',
+            'first_name'        => 'COED',
+            'middle_name'       => null,
+            'last_name'         => 'Coordinator',
+            'email'             => 'coord.coed@uc.edu.ph',
+            'contact_number'    => '09175550001',
+            'department_id'     => $coedDepartmentId,
+            'position'          => 'COED Coordinator',
+            'employment_status' => 'Regular',
+            'synced_at'         => now(),
+        ]);
+
+        FacultyProfile::updateOrCreate(['user_id' => $facultyCoed->id], [
+            'faculty_number'    => 'FAC-COED-001',
+            'first_name'        => 'COED',
+            'middle_name'       => null,
+            'last_name'         => 'Faculty',
+            'email'             => 'faculty.coed@uc.edu.ph',
+            'contact_number'    => '09175550002',
+            'department_id'     => $coedDepartmentId,
+            'position'          => 'COED Faculty',
+            'employment_status' => 'Regular',
+            'synced_at'         => now(),
+        ]);
+
+        FacultyProfile::updateOrCreate(['user_id' => $coordCoe->id], [
+            'faculty_number'    => 'COR-COE-001',
+            'first_name'        => 'COE',
+            'middle_name'       => null,
+            'last_name'         => 'Coordinator',
+            'email'             => 'coord.coe@uc.edu.ph',
+            'contact_number'    => '09175550003',
+            'department_id'     => $coeDepartmentId,
+            'position'          => 'COE Coordinator',
+            'employment_status' => 'Regular',
+            'synced_at'         => now(),
+        ]);
+
+        FacultyProfile::updateOrCreate(['user_id' => $facultyCoe->id], [
+            'faculty_number'    => 'FAC-COE-001',
+            'first_name'        => 'COE',
+            'middle_name'       => null,
+            'last_name'         => 'Faculty',
+            'email'             => 'faculty.coe@uc.edu.ph',
+            'contact_number'    => '09175550004',
+            'department_id'     => $coeDepartmentId,
+            'position'          => 'COE Faculty',
             'employment_status' => 'Regular',
             'synced_at'         => now(),
         ]);
@@ -148,11 +215,11 @@ class DatabaseSeeder extends Seeder
         // ─── 6. Announcements ─────────────────────────────────────────────────
         Announcement::firstOrCreate(
             ['title' => 'Welcome to InternTrack!'],
-            ['created_by' => $coord->id, 'content' => 'Get started by browsing available MOA companies and selecting a supervisor.', 'target_role' => 'student', 'is_pinned' => true]
+            ['created_by' => $coordCcs->id, 'content' => 'Get started by browsing available MOA companies and selecting a supervisor.', 'target_role' => 'student', 'is_pinned' => true]
         );
         Announcement::firstOrCreate(
             ['title' => 'Orientation Schedule'],
-            ['created_by' => $coord->id, 'content' => 'Internship orientation will be held soon. Please wait for further announcements.', 'target_role' => 'all', 'is_pinned' => false]
+            ['created_by' => $coordCcs->id, 'content' => 'Internship orientation will be held soon. Please wait for further announcements.', 'target_role' => 'all', 'is_pinned' => false]
         );
 
         $this->command->info('');
@@ -160,13 +227,19 @@ class DatabaseSeeder extends Seeder
         $this->command->info('─────────────────────────────────────────────────────────────');
         $this->command->info('  ROLE          USERNAME/STUDENT NO.   PASSWORD');
         $this->command->info('─────────────────────────────────────────────────────────────');
-        $this->command->info('  Admin         ADMIN-MISD-001         interntrack123');
-        $this->command->info('  Director      DIR-1001               interntrack123');
-        $this->command->info('  Coordinator   COR-1001               interntrack123');
-        $this->command->info('  Faculty       FAC-1001               interntrack123');
-        $this->command->info('  Student (Valinado)    2300600        interntrack123 (Fresh/Pending)');
-        $this->command->info('  Student (Taac-Taac)   2300590        interntrack123 (Fresh/Pending)');
-        $this->command->info('  Student (Montealegre) 2300592        interntrack123 (Populated)');
+        $this->command->info('  Admin         ADMIN-MISD-001         interntrack123
+  Director      DIR-1001               interntrack123
+  Coord (CCS)   COR-CCS-001            interntrack123
+  Facul (CCS)   FAC-CCS-001            interntrack123
+  Coord (COED)  COR-COED-001           interntrack123
+  Facul (COED)  FAC-COED-001           interntrack123
+  Coord (COE)   COR-COE-001            interntrack123
+  Facul (COE)   FAC-COE-001            interntrack123
+  Stud (CCS)    2300600                interntrack123 (Fresh/Pending)
+  Stud (CCS)    2300590                interntrack123 (Fresh/Pending)
+  Stud (CCS)    2300592                interntrack123 (Populated)
+  Stud (COED)   2300601                interntrack123 (Fresh/Pending)
+  Stud (COE)    2300602                interntrack123 (Fresh/Pending)');
         $this->command->info('─────────────────────────────────────────────────────────────');
     }
 }

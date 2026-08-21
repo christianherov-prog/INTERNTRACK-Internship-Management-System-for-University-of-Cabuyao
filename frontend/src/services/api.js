@@ -27,6 +27,11 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
 
+  const selectedInternshipId = sessionStorage.getItem('interntrack_active_internship')
+  if (selectedInternshipId) {
+    config.headers['X-Internship-Id'] = selectedInternshipId
+  }
+
   // FormData uploads must let the browser set multipart boundaries.
   // Do not force Content-Type: application/json or multipart/form-data here.
   if (typeof FormData !== 'undefined' && config.data instanceof FormData) {

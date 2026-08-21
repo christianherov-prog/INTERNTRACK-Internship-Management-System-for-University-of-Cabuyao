@@ -3,8 +3,10 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 function StudentCompanies() {
+  const confirm = useConfirm()
   const [activeTab, setActiveTab] = useState('companies')
   const [companies, setCompanies] = useState([])
   const [applications, setApplications] = useState([])
@@ -42,7 +44,7 @@ function StudentCompanies() {
   useEffect(() => { loadData() }, [])
 
   const applyToCompany = async (companyId) => {
-    if (!window.confirm('Are you sure you want to apply to this company?')) return
+    if (!(await confirm({ message: 'Are you sure you want to apply to this company?' }))) return
     setSubmitting(true)
     setSuccessMsg(null)
     setError(null)

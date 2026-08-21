@@ -478,22 +478,22 @@ function RoleSettings({
                         <span className="text-muted fw-bold text-uppercase" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>
                           {user?.role === 'faculty' ? 'Advising Scope'
                             : user?.role === 'coordinator' ? 'Program Oversight'
-                            : user?.role === 'supervisor' ? 'Supervision Site'
-                            : user?.role === 'director' ? 'Oversight Scope'
-                            : 'System Authority'}
+                              : user?.role === 'supervisor' ? 'Supervision Site'
+                                : user?.role === 'director' ? 'Oversight Scope'
+                                  : 'System Authority'}
                         </span>
                         <span className="badge bg-success-subtle text-success fw-bold px-2.5 py-1 rounded-pill flex-shrink-0" style={{ fontSize: '0.72rem' }}>
                           {user?.role === 'admin' ? 'Superadmin'
                             : user?.role === 'director' ? 'University-Wide'
-                            : 'Active Term'}
+                              : 'Active Term'}
                         </span>
                       </div>
                       <div className="text-dark fw-bold mb-3" style={{ fontSize: '0.98rem', lineHeight: 1.35, wordBreak: 'break-word' }}>
                         {user?.role === 'faculty' ? (user?.term || 'AY 2025-2026, 2nd Semester')
                           : user?.role === 'coordinator' ? (typeof user?.department === 'object' ? user?.department?.name : (user?.department || 'College of Computing Studies'))
-                          : user?.role === 'supervisor' ? (user?.company || 'Host Training Establishment')
-                          : user?.role === 'director' ? 'Placement, Alumni, & Linkages'
-                          : 'Management Information Systems'}
+                            : user?.role === 'supervisor' ? (user?.company || 'Host Training Establishment')
+                              : user?.role === 'director' ? 'Placement, Alumni, & Linkages'
+                                : 'Management Information Systems'}
                       </div>
                       <div className="profile-overview-footer text-muted d-flex justify-content-between align-items-center flex-wrap gap-2" style={{ borderTop: '1px solid #eef2f6', paddingTop: '15px', marginTop: '4px', fontSize: '0.78rem' }}>
                         <span className="text-truncate">Status: <strong className="text-dark">{user?.employment_status || 'Verified Account'}</strong></span>

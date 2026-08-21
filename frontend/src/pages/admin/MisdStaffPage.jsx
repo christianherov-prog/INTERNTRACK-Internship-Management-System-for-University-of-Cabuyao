@@ -3,12 +3,14 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 /**
  * Shared staff roster for Directors and Coordinators.
  * role: 'director' | 'coordinator'
  */
 function MisdStaffPage({ role }) {
+  const confirm = useConfirm()
   const isDirector = role === 'director'
   const title = isDirector ? 'Directors' : 'Coordinators'
   const listPath = isDirector ? '/admin/directors' : '/admin/coordinators'
@@ -110,7 +112,7 @@ function MisdStaffPage({ role }) {
   }
 
   const toggleActive = async (row) => {
-    if (!window.confirm(`${row.is_active ? 'Deactivate' : 'Activate'} ${row.username}?`)) return
+    if (!(await confirm({ message: `${row.is_active ? 'Deactivate' : 'Activate'} ${row.username}?` }))) return
     setMessage(null)
     try {
       await api.put(`/admin/staff/${row.id}`, { is_active: !row.is_active })
@@ -122,7 +124,7 @@ function MisdStaffPage({ role }) {
   }
 
   const revoke = async (row) => {
-    if (!window.confirm(`Revoke ${row.username}? They will be deactivated.`)) return
+    if (!(await confirm({ message: `Revoke ${row.username}? They will be deactivated.`, variant: 'danger' }))) return
     setMessage(null)
     try {
       await api.post(`/admin/staff/${row.id}/revoke`, { mode: 'deactivate' })
@@ -145,7 +147,7 @@ function MisdStaffPage({ role }) {
   }
 
   const resetPw = async (row) => {
-    if (!window.confirm(`Reset password for ${row.username} to the system default?`)) return
+    if (!(await confirm({ message: `Reset password for ${row.username} to the system default?`, variant: 'danger' }))) return
     setMessage(null)
     try {
       await api.post(`/admin/staff/${row.id}/reset-password`)

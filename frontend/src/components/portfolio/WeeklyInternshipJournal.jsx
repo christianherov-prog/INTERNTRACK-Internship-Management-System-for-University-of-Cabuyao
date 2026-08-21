@@ -206,9 +206,15 @@ const WeeklyInternshipJournal = ({
                 <span style={styles.infoValue}>{program || 'BSIT / BSCS'}</span>
               </div>
             </div>
-            <div style={styles.infoRowBottom}>
-              <span style={styles.label}>DATE:</span>
-              <span style={styles.infoValue}>{displayDate}</span>
+            <div style={{ ...styles.infoRowTop, borderBottom: 'none' }}>
+              <div style={styles.infoCellLeft}>
+                <span style={styles.label}>DATE:</span>
+                <span style={styles.infoValue}>{displayDate}</span>
+              </div>
+              <div style={styles.infoCellRight}>
+                <span style={styles.label}>WEEK:</span>
+                <span style={styles.infoValue}>{weekNumber ? `WEEK ${weekNumber}` : ''}</span>
+              </div>
             </div>
           </div>
 

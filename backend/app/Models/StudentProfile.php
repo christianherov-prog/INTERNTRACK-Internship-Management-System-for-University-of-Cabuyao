@@ -30,7 +30,7 @@ class StudentProfile extends Model {
                 if (!$internship) {
                     $user = \App\Models\User::find($profile->user_id);
                     if ($user && $user->role === 'student') {
-                            $progName = $profile->program ? $profile->program->name : 'BSIT';
+                            $progName = $profile->program ? $profile->program->name : 'Bachelor of Science in Information Technology';
                             $deptName = $profile->department ? $profile->department->name : '';
                             
                             $targetHours = 500;

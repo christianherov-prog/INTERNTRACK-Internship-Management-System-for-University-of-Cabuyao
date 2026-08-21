@@ -61,9 +61,7 @@ CREATE TABLE `appendix_uploads` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `appendix_uploads_portfolio_id_requirement_id_unique` (`portfolio_id`,`requirement_id`),
-  KEY `appendix_uploads_requirement_id_foreign` (`requirement_id`),
-  CONSTRAINT `appendix_uploads_portfolio_id_foreign` FOREIGN KEY (`portfolio_id`) REFERENCES `portfolio` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `appendix_uploads_requirement_id_foreign` FOREIGN KEY (`requirement_id`) REFERENCES `appendix_requirements` (`id`) ON DELETE CASCADE
+  KEY `appendix_uploads_requirement_id_foreign` (`requirement_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `attendance_logs`;
@@ -122,8 +120,7 @@ CREATE TABLE `audit_logs` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `audit_logs_user_id_created_at_index` (`user_id`,`created_at`),
-  KEY `audit_logs_model_type_model_id_index` (`model_type`,`model_id`),
-  CONSTRAINT `audit_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `audit_logs_model_type_model_id_index` (`model_type`,`model_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `cache`;
@@ -184,9 +181,7 @@ CREATE TABLE `conversation_participants` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `conversation_participants_conversation_id_user_id_unique` (`conversation_id`,`user_id`),
-  KEY `conversation_participants_user_id_foreign` (`user_id`),
-  CONSTRAINT `conversation_participants_conversation_id_foreign` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `conversation_participants_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `conversation_participants_user_id_foreign` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `conversations`;
@@ -199,8 +194,22 @@ CREATE TABLE `conversations` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `conversations_internship_id_unique` (`internship_id`),
-  CONSTRAINT `conversations_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE
+  UNIQUE KEY `conversations_internship_id_unique` (`internship_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `departments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `departments` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `code` varchar(255) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `departments_name_unique` (`name`),
+  UNIQUE KEY `departments_code_unique` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `document_reviews`;
@@ -222,9 +231,7 @@ CREATE TABLE `document_reviews` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `document_reviews_reviewed_by_foreign` (`reviewed_by`),
-  KEY `document_reviews_document_id_created_at_index` (`document_id`,`created_at`),
-  CONSTRAINT `document_reviews_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `documents` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `document_reviews_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `document_reviews_document_id_created_at_index` (`document_id`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `documents`;
@@ -235,8 +242,9 @@ CREATE TABLE `documents` (
   `internship_id` bigint(20) unsigned NOT NULL,
   `document_type` varchar(255) NOT NULL,
   `week_number` int(10) unsigned DEFAULT NULL,
-  `file_path` varchar(255) NOT NULL,
-  `file_name` varchar(255) NOT NULL,
+  `drive_link` varchar(255) DEFAULT NULL,
+  `file_path` varchar(255) DEFAULT NULL,
+  `file_name` varchar(255) DEFAULT NULL,
   `file_size` varchar(255) DEFAULT NULL,
   `mime_type` varchar(255) DEFAULT NULL,
   `status` varchar(40) NOT NULL DEFAULT 'pending_review',
@@ -253,9 +261,7 @@ CREATE TABLE `documents` (
   PRIMARY KEY (`id`),
   KEY `documents_reviewed_by_foreign` (`reviewed_by`),
   KEY `documents_internship_id_document_type_index` (`internship_id`,`document_type`),
-  KEY `documents_status_index` (`status`),
-  CONSTRAINT `documents_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `documents_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `documents_status_index` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `evaluations`;
@@ -283,9 +289,7 @@ CREATE TABLE `evaluations` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_eval_per_period` (`internship_id`,`form_type`,`evaluator_type`,`evaluation_period`),
   KEY `evaluations_evaluated_by_foreign` (`evaluated_by`),
-  KEY `evaluations_internship_id_evaluation_period_evaluator_type_index` (`internship_id`,`evaluation_period`,`evaluator_type`),
-  CONSTRAINT `evaluations_evaluated_by_foreign` FOREIGN KEY (`evaluated_by`) REFERENCES `users` (`id`),
-  CONSTRAINT `evaluations_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE
+  KEY `evaluations_internship_id_evaluation_period_evaluator_type_index` (`internship_id`,`evaluation_period`,`evaluator_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `faculty_profiles`;
@@ -302,16 +306,16 @@ CREATE TABLE `faculty_profiles` (
   `email` varchar(255) DEFAULT NULL,
   `contact_number` varchar(255) DEFAULT NULL,
   `sex` enum('Male','Female') DEFAULT NULL,
-  `department` varchar(255) DEFAULT NULL COMMENT 'e.g Management Information Systems Department, College of Computer Studies',
   `position` varchar(255) DEFAULT NULL COMMENT 'e.g CCS Faculty Supervisor, CCS Coordinator, Director, MISD Administrator',
   `employment_status` varchar(255) DEFAULT NULL,
   `synced_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `department_id` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `faculty_profiles_faculty_number_unique` (`faculty_number`),
   KEY `faculty_profiles_user_id_foreign` (`user_id`),
-  CONSTRAINT `faculty_profiles_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `faculty_profiles_department_id_foreign` (`department_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `faculty_section_assignments`;
@@ -328,10 +332,9 @@ CREATE TABLE `faculty_section_assignments` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `fsa_program_section_term_unique` (`program`,`section`,`school_year`,`semester`),
+  UNIQUE KEY `fsa_program_section_term_unique` (`program`,`section`,`school_year`,`semester`) USING HASH,
   KEY `faculty_section_assignments_faculty_user_id_foreign` (`faculty_user_id`),
-  KEY `faculty_section_assignments_section_school_year_semester_index` (`section`,`school_year`,`semester`),
-  CONSTRAINT `faculty_section_assignments_faculty_user_id_foreign` FOREIGN KEY (`faculty_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `faculty_section_assignments_section_school_year_semester_index` (`section`,`school_year`,`semester`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `failed_jobs`;
@@ -365,8 +368,7 @@ CREATE TABLE `hte_requests` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `hte_requests_student_id_foreign` (`student_id`),
-  CONSTRAINT `hte_requests_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `hte_requests_student_id_foreign` (`student_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `internship_applications`;
@@ -382,9 +384,7 @@ CREATE TABLE `internship_applications` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `internship_applications_student_id_foreign` (`student_id`),
-  KEY `internship_applications_company_id_foreign` (`company_id`),
-  CONSTRAINT `internship_applications_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `internship_applications_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `internship_applications_company_id_foreign` (`company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `internship_status_histories`;
@@ -401,9 +401,7 @@ CREATE TABLE `internship_status_histories` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `internship_status_histories_changed_by_foreign` (`changed_by`),
-  KEY `internship_status_histories_internship_id_created_at_index` (`internship_id`,`created_at`),
-  CONSTRAINT `internship_status_histories_changed_by_foreign` FOREIGN KEY (`changed_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `internship_status_histories_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE
+  KEY `internship_status_histories_internship_id_created_at_index` (`internship_id`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `internships`;
@@ -454,13 +452,7 @@ CREATE TABLE `internships` (
   KEY `internships_student_id_school_year_semester_index` (`student_id`,`school_year`,`semester`),
   KEY `internships_status_index` (`status`),
   KEY `internships_absorption_recorded_by_foreign` (`absorption_recorded_by`),
-  KEY `internships_absorption_status_index` (`absorption_status`),
-  CONSTRAINT `internships_absorption_recorded_by_foreign` FOREIGN KEY (`absorption_recorded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `internships_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `internships_coordinator_id_foreign` FOREIGN KEY (`coordinator_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `internships_faculty_id_foreign` FOREIGN KEY (`faculty_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `internships_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `internships_supervisor_id_foreign` FOREIGN KEY (`supervisor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `internships_absorption_status_index` (`absorption_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `jobs`;
@@ -492,6 +484,7 @@ CREATE TABLE `journal_entries` (
   `learnings` text DEFAULT NULL COMMENT 'What the student learned',
   `challenges` text DEFAULT NULL,
   `status` enum('draft','submitted','approved','needs_revision','rejected') NOT NULL DEFAULT 'draft',
+  `score` int(11) DEFAULT NULL,
   `file_path` varchar(255) DEFAULT NULL,
   `notes` text DEFAULT NULL,
   `supervisor_feedback` text DEFAULT NULL,
@@ -507,10 +500,7 @@ CREATE TABLE `journal_entries` (
   KEY `journal_entries_supervisor_reviewed_by_foreign` (`supervisor_reviewed_by`),
   KEY `journal_entries_faculty_reviewed_by_foreign` (`faculty_reviewed_by`),
   KEY `journal_entries_internship_id_date_index` (`internship_id`,`date`),
-  KEY `journal_entries_status_index` (`status`),
-  CONSTRAINT `journal_entries_faculty_reviewed_by_foreign` FOREIGN KEY (`faculty_reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `journal_entries_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `journal_entries_supervisor_reviewed_by_foreign` FOREIGN KEY (`supervisor_reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `journal_entries_status_index` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `meeting_attendees`;
@@ -525,9 +515,7 @@ CREATE TABLE `meeting_attendees` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `meeting_attendees_meeting_id_user_id_unique` (`meeting_id`,`user_id`),
-  KEY `meeting_attendees_user_id_foreign` (`user_id`),
-  CONSTRAINT `meeting_attendees_meeting_id_foreign` FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `meeting_attendees_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `meeting_attendees_user_id_foreign` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `meetings`;
@@ -550,9 +538,7 @@ CREATE TABLE `meetings` (
   PRIMARY KEY (`id`),
   KEY `meetings_created_by_foreign` (`created_by`),
   KEY `meetings_internship_id_foreign` (`internship_id`),
-  KEY `meetings_starts_at_status_index` (`starts_at`,`status`),
-  CONSTRAINT `meetings_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `meetings_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE SET NULL
+  KEY `meetings_starts_at_status_index` (`starts_at`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `message_thread_states`;
@@ -572,10 +558,7 @@ CREATE TABLE `message_thread_states` (
   UNIQUE KEY `msg_thread_states_unique` (`user_id`,`internship_id`,`peer_id`),
   KEY `message_thread_states_internship_id_foreign` (`internship_id`),
   KEY `message_thread_states_peer_id_foreign` (`peer_id`),
-  KEY `message_thread_states_user_id_archived_at_index` (`user_id`,`archived_at`),
-  CONSTRAINT `message_thread_states_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `message_thread_states_peer_id_foreign` FOREIGN KEY (`peer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `message_thread_states_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `message_thread_states_user_id_archived_at_index` (`user_id`,`archived_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `messages`;
@@ -601,10 +584,7 @@ CREATE TABLE `messages` (
   KEY `messages_recipient_id_foreign` (`recipient_id`),
   KEY `messages_internship_id_created_at_index` (`internship_id`,`created_at`),
   KEY `messages_sender_id_recipient_id_index` (`sender_id`,`recipient_id`),
-  KEY `messages_internship_id_sender_role_recipient_role_index` (`internship_id`,`sender_role`,`recipient_role`),
-  CONSTRAINT `messages_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `messages_recipient_id_foreign` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `messages_sender_id_foreign` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `messages_internship_id_sender_role_recipient_role_index` (`internship_id`,`sender_role`,`recipient_role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `migrations`;
@@ -635,8 +615,7 @@ CREATE TABLE `misd_sync_logs` (
   PRIMARY KEY (`id`),
   KEY `misd_sync_logs_entity_type_entity_key_index` (`entity_type`,`entity_key`),
   KEY `misd_sync_logs_direction_status_index` (`direction`,`status`),
-  KEY `misd_sync_logs_actor_user_id_foreign` (`actor_user_id`),
-  CONSTRAINT `misd_sync_logs_actor_user_id_foreign` FOREIGN KEY (`actor_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `misd_sync_logs_actor_user_id_foreign` (`actor_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `notifications`;
@@ -655,8 +634,7 @@ CREATE TABLE `notifications` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `notifications_user_id_read_at_index` (`user_id`,`read_at`),
-  KEY `notifications_created_at_index` (`created_at`),
-  CONSTRAINT `notifications_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `notifications_created_at_index` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ojt_requirement_targets`;
@@ -671,8 +649,7 @@ CREATE TABLE `ojt_requirement_targets` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `ojt_requirement_targets_requirement_template_id_foreign` (`requirement_template_id`),
-  KEY `ojt_requirement_targets_target_type_target_id_index` (`target_type`,`target_id`),
-  CONSTRAINT `ojt_requirement_targets_requirement_template_id_foreign` FOREIGN KEY (`requirement_template_id`) REFERENCES `ojt_requirement_templates` (`id`) ON DELETE CASCADE
+  KEY `ojt_requirement_targets_target_type_target_id_index` (`target_type`,`target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ojt_requirement_templates`;
@@ -683,15 +660,16 @@ CREATE TABLE `ojt_requirement_templates` (
   `name` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `template_file_path` varchar(255) DEFAULT NULL,
+  `drive_link` text DEFAULT NULL,
   `category` varchar(255) NOT NULL DEFAULT 'general',
   `sort_order` int(10) unsigned NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `deadline` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `created_by` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `ojt_requirement_templates_created_by_foreign` (`created_by`),
-  CONSTRAINT `ojt_requirement_templates_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `ojt_requirement_templates_created_by_foreign` (`created_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `password_reset_tokens`;
@@ -724,6 +702,23 @@ CREATE TABLE `personal_access_tokens` (
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `programs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `programs` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `department_id` bigint(20) unsigned NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `code` varchar(255) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `programs_name_unique` (`name`),
+  UNIQUE KEY `programs_code_unique` (`code`),
+  KEY `programs_department_id_foreign` (`department_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `section_change_requests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -740,10 +735,7 @@ CREATE TABLE `section_change_requests` (
   PRIMARY KEY (`id`),
   KEY `section_change_requests_internship_id_foreign` (`internship_id`),
   KEY `section_change_requests_old_faculty_id_foreign` (`old_faculty_id`),
-  KEY `section_change_requests_new_faculty_id_foreign` (`new_faculty_id`),
-  CONSTRAINT `section_change_requests_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `section_change_requests_new_faculty_id_foreign` FOREIGN KEY (`new_faculty_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `section_change_requests_old_faculty_id_foreign` FOREIGN KEY (`old_faculty_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `section_change_requests_new_faculty_id_foreign` (`new_faculty_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `sessions`;
@@ -784,9 +776,7 @@ CREATE TABLE `student_portfolios` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `student_portfolios_internship_id_foreign` (`internship_id`),
-  KEY `student_portfolios_user_id_foreign` (`user_id`),
-  CONSTRAINT `student_portfolios_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `student_portfolios_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `student_portfolios_user_id_foreign` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `student_profiles`;
@@ -804,8 +794,6 @@ CREATE TABLE `student_profiles` (
   `contact_number` varchar(255) DEFAULT NULL,
   `birthday` date DEFAULT NULL,
   `sex` enum('Male','Female') DEFAULT NULL,
-  `program` varchar(255) DEFAULT NULL COMMENT 'e.g. Bachelor of Science in Information Technology',
-  `department` varchar(255) DEFAULT NULL COMMENT 'e.g. College of Computing Studies',
   `course_description` varchar(255) DEFAULT NULL COMMENT 'e.g IT Practicum (500 hours)',
   `year_level` tinyint(4) DEFAULT NULL COMMENT 'e.g. // 1st Year, 2nd Year, 3rd Year, 4th Year',
   `section` varchar(255) DEFAULT NULL COMMENT 'e.g 1IT-A ... 4IT-C, 4IT-D',
@@ -815,10 +803,13 @@ CREATE TABLE `student_profiles` (
   `synced_at` timestamp NULL DEFAULT NULL COMMENT 'Last sync from iEnroll',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `department_id` bigint(20) unsigned DEFAULT NULL,
+  `program_id` bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `student_profiles_student_number_unique` (`student_number`),
   KEY `student_profiles_user_id_foreign` (`user_id`),
-  CONSTRAINT `student_profiles_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `student_profiles_department_id_foreign` (`department_id`),
+  KEY `student_profiles_program_id_foreign` (`program_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `supervisor_invite_tokens`;
@@ -852,12 +843,7 @@ CREATE TABLE `supervisor_invite_tokens` (
   KEY `supervisor_invite_tokens_student_id_foreign` (`student_id`),
   KEY `supervisor_invite_tokens_supervisor_user_id_foreign` (`supervisor_user_id`),
   KEY `supervisor_invite_tokens_company_id_foreign` (`company_id`),
-  KEY `supervisor_invite_tokens_reviewed_by_foreign` (`reviewed_by`),
-  CONSTRAINT `supervisor_invite_tokens_company_id_foreign` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `supervisor_invite_tokens_internship_id_foreign` FOREIGN KEY (`internship_id`) REFERENCES `internships` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `supervisor_invite_tokens_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `supervisor_invite_tokens_student_id_foreign` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `supervisor_invite_tokens_supervisor_user_id_foreign` FOREIGN KEY (`supervisor_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  KEY `supervisor_invite_tokens_reviewed_by_foreign` (`reviewed_by`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `supervisor_profiles`;
@@ -877,8 +863,7 @@ CREATE TABLE `supervisor_profiles` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `supervisor_profiles_user_id_foreign` (`user_id`),
-  CONSTRAINT `supervisor_profiles_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  KEY `supervisor_profiles_user_id_foreign` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `training_records`;
@@ -899,8 +884,7 @@ CREATE TABLE `training_records` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `training_records_portfolio_id_foreign` (`portfolio_id`),
-  CONSTRAINT `training_records_portfolio_id_foreign` FOREIGN KEY (`portfolio_id`) REFERENCES `portfolio` (`id`) ON DELETE CASCADE
+  KEY `training_records_portfolio_id_foreign` (`portfolio_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `users`;
@@ -912,7 +896,6 @@ CREATE TABLE `users` (
   `faculty_number` varchar(255) DEFAULT NULL COMMENT 'e.g FAC-1001, COR-1001, DIR-1001, ADMIN-MISD-001',
   `email` varchar(255) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('student','supervisor','faculty','coordinator','director','admin') NOT NULL DEFAULT 'student',
   `sex` enum('Male','Female') DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `must_change_password` tinyint(1) NOT NULL DEFAULT 0,
@@ -920,6 +903,7 @@ CREATE TABLE `users` (
   `notification_preferences` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`notification_preferences`)),
   `last_login_at` timestamp NULL DEFAULT NULL,
   `remember_token` varchar(100) DEFAULT NULL,
+  `role` enum('admin','student','faculty','supervisor','director','coordinator') NOT NULL DEFAULT 'student',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -927,7 +911,6 @@ CREATE TABLE `users` (
   UNIQUE KEY `users_student_number_unique` (`student_number`),
   UNIQUE KEY `users_faculty_number_unique` (`faculty_number`),
   UNIQUE KEY `users_email_unique` (`email`),
-  KEY `users_role_index` (`role`),
   KEY `users_is_active_index` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1002,3 +985,10 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (64,'2026_08_06_072
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (65,'2026_08_06_072240_create_internship_applications_table',18);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (66,'2026_08_06_072241_create_hte_requests_table',18);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (68,'2026_08_06_090256_modify_ojt_requirement_templates_and_create_targets_table',19);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (69,'2026_08_07_140930_add_deadline_to_ojt_requirement_templates_table',20);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (70,'2026_08_07_145326_add_drive_link_to_documents_table',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (71,'2026_08_07_151638_add_drive_link_to_ojt_requirement_templates',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (72,'2026_08_10_064224_add_score_to_journal_entries_table',23);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (73,'2026_08_10_074328_create_departments_table',24);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (74,'2026_08_10_074329_create_programs_table',24);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (75,'2026_08_10_074340_update_profiles_with_academic_ids',24);

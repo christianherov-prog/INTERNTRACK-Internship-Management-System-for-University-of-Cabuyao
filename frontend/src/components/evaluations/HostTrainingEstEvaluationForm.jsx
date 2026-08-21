@@ -25,14 +25,14 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
   const handleSubmit = (e) => {
     e.preventDefault();
     if (processing) return;
-    
+
     // Ensure all criteria are rated
-    const allFilled = criteriaList.every((_, i) => responses[`q${i+1}`]);
+    const allFilled = criteriaList.every((_, i) => responses[`q${i + 1}`]);
     if (!allFilled) {
       alert('Please rate all criteria.');
       return;
     }
-    
+
     onSubmit({
       evaluation_period: 'final', // Student evals are typically submitted at the end
       form_type: 'FO-22',
@@ -41,32 +41,43 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
     });
   };
 
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unavailable';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || 'Unavailable';
+  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
+  const company = internship?.company || {};
+  const hteName = company.company_name || company.name || 'Unavailable';
+  const hteAddress = company.address || 'Unavailable';
+  const supervisor = internship?.supervisor?.supervisorProfile || {};
+  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || 'Unavailable';
+  const supervisorPos = supervisor.position || supervisor.designation || 'Unavailable';
+
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center mb-4 fw-bold">INTERNSHIP HOST TRAINING ESTABLISHMENT EVALUATION FORM</h3>
-        
+
         <div className="row g-3 mb-4">
           <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Semester/Midyear / Academic Year" value={`${internship?.semester || ''} / ${internship?.academic_year || ''}`.replace(/^ \/ | \/ $/g, '')} readOnly />
+            <input type="text" className="form-control" placeholder="Semester" value={semStr} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Student Name" value={`${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim()} readOnly />
+            <input type="text" className="form-control" placeholder="Student Name" value={studentName} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Program" value={(typeof (internship?.student?.student_profile || internship?.student?.studentProfile)?.program === 'string' ? (internship?.student?.student_profile || internship?.student?.studentProfile)?.program : (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.code || (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.name) || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Program" value={program} readOnly />
           </div>
           <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Host Training Establishment (HTE)" value={internship?.company?.company_name || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Host Training Establishment (HTE)" value={hteName} readOnly />
           </div>
           <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Company Address" value={internship?.company?.address || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Company Address" value={hteAddress} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Internship Company Supervisor" value={`${internship?.supervisor?.supervisorProfile?.first_name || ''} ${internship?.supervisor?.supervisorProfile?.last_name || ''}`.trim()} readOnly />
+            <input type="text" className="form-control" placeholder="Internship Company Supervisor" value={supervisorName} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Position" value={internship?.supervisor?.supervisorProfile?.position || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Position" value={supervisorPos} readOnly />
           </div>
         </div>
 
@@ -88,10 +99,10 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
                 <tr key={idx}>
                   <td className="text-start">{criteria}</td>
                   <td>
-                    <select 
-                      className="form-select text-center" 
-                      value={responses[`q${idx+1}`] || ''}
-                      onChange={(e) => handleRatingChange(`q${idx+1}`, e.target.value)}
+                    <select
+                      className="form-select text-center"
+                      value={responses[`q${idx + 1}`] || ''}
+                      onChange={(e) => handleRatingChange(`q${idx + 1}`, e.target.value)}
                       required
                     >
                       <option value="" disabled>--</option>
@@ -103,11 +114,11 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
                     </select>
                   </td>
                   <td>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      value={responses[`q${idx+1}_comment`] || ''}
-                      onChange={(e) => handleTextChange(`q${idx+1}_comment`, e.target.value)}
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={responses[`q${idx + 1}_comment`] || ''}
+                      onChange={(e) => handleTextChange(`q${idx + 1}_comment`, e.target.value)}
                     />
                   </td>
                 </tr>

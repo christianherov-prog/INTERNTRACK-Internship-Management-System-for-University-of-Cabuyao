@@ -156,6 +156,29 @@ function StudentDashboard() {
               </ul>
             </div>
           )}
+
+          <div className="mt-4 p-3 bg-light border rounded">
+            <h6 className="mb-2">Need a second Practicum Deployment?</h6>
+            <p className="text-muted small mb-3">
+              If your program requires a second Host Training Establishment (e.g., Private and Public Schools for COED), you can start a new deployment.
+            </p>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={async () => {
+                if (!confirm('Are you sure you want to start a new practicum deployment?')) return
+                try {
+                  const res = await api.post('/student/internships/start-new')
+                  alert(res.data.message)
+                  sessionStorage.setItem('interntrack_active_internship', res.data.internship.id)
+                  window.location.reload()
+                } catch (err) {
+                  alert(err.response?.data?.message || 'Failed to start new deployment')
+                }
+              }}
+            >
+              <i className="fa fa-plus me-2"></i>Start Next Practicum Deployment
+            </button>
+          </div>
         </div>
       )}
 

@@ -38,7 +38,7 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
   const handleSubmit = (e) => {
     e.preventDefault();
     if (processing) return;
-    
+
     // Ensure all criteria are rated
     let allFilled = true;
     let count = 1;
@@ -53,7 +53,7 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
       alert('Please rate all criteria.');
       return;
     }
-    
+
     onSubmit({
       evaluation_period: 'final', // Typically submitted at the end
       form_type: 'FO-23',
@@ -64,23 +64,33 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
 
   let globalIndex = 1;
 
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unavailable';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || 'Unavailable';
+  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
+  const faculty = internship?.faculty?.facultyProfile || internship?.faculty?.faculty_profile || {};
+  const facultyName = `${faculty.first_name || ''} ${faculty.last_name || ''}`.trim() || 'Unavailable';
+
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center mb-4 fw-bold">INTERNSHIP PROGRAM EVALUATION FORM</h3>
-        
+
         <div className="row g-3 mb-4">
-          <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Semester/Midyear / Academic Year" value={`${internship?.semester || ''} / ${internship?.academic_year || ''}`.replace(/^ \/ | \/ $/g, '')} readOnly />
+          <div className="col-md-6">
+            <input type="text" className="form-control" placeholder="Semester/Midyear" value={semStr} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Student Name" value={`${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim()} readOnly />
+            <input type="text" className="form-control" placeholder="Academic Year" value={internship?.academic_year || internship?.school_year || 'Unavailable'} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Internship Teaching Personnel" value={`${internship?.faculty?.facultyProfile?.first_name || ''} ${internship?.faculty?.facultyProfile?.last_name || ''}`.trim()} readOnly />
+            <input type="text" className="form-control" placeholder="Student Name" value={studentName} readOnly />
+          </div>
+          <div className="col-md-6">
+            <input type="text" className="form-control" placeholder="Program" value={program} readOnly />
           </div>
           <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Program" value={(typeof (internship?.student?.student_profile || internship?.student?.studentProfile)?.program === 'string' ? (internship?.student?.student_profile || internship?.student?.studentProfile)?.program : (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.code || (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.name) || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Internship Teaching Personnel" value={facultyName} readOnly />
           </div>
         </div>
 
@@ -109,8 +119,8 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
                       <tr key={qId}>
                         <td className="text-start ps-4">{item}</td>
                         <td>
-                          <select 
-                            className="form-select text-center" 
+                          <select
+                            className="form-select text-center"
                             value={responses[qId] || ''}
                             onChange={(e) => handleRatingChange(qId, e.target.value)}
                             required
@@ -124,9 +134,9 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
                           </select>
                         </td>
                         <td>
-                          <input 
-                            type="text" 
-                            className="form-control" 
+                          <input
+                            type="text"
+                            className="form-control"
                             value={responses[`${qId}_comment`] || ''}
                             onChange={(e) => handleTextChange(`${qId}_comment`, e.target.value)}
                           />

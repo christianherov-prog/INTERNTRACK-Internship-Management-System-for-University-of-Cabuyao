@@ -26,14 +26,14 @@ export const StudentInternPerformanceForm = ({ internship, onSubmit, processing 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (processing) return;
-    
+
     // Ensure all criteria are rated
-    const allFilled = criteriaList.every((_, i) => responses[`c${i+1}`]);
+    const allFilled = criteriaList.every((_, i) => responses[`c${i + 1}`]);
     if (!allFilled) {
       alert('Please rate all criteria.');
       return;
     }
-    
+
     onSubmit({
       evaluation_period: period, // Can be midterm, final etc. mapped to 1st, 2nd, midyear
       form_type: 'FO-24',
@@ -43,39 +43,40 @@ export const StudentInternPerformanceForm = ({ internship, onSubmit, processing 
     });
   };
 
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unavailable';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || 'Unavailable';
+  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
+  const ayStr = internship?.academic_year || internship?.school_year || 'Unavailable';
+  const company = internship?.company || {};
+  const hteName = company.company_name || company.name || 'Unavailable';
+  const supervisor = internship?.supervisor?.supervisorProfile || {};
+  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || 'Unavailable';
+
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center fw-bold">STUDENT INTERN PERFORMANCE EVALUATION FORM</h3>
         <p className="text-center text-muted mb-4" style={{ fontSize: '0.9rem' }}>(PNC:AA-FO-24)</p>
-        
+
         <div className="row g-3 mb-4">
+          <div className="col-md-6">
+            <input type="text" className="form-control" placeholder="Semester/Midyear" value={semStr} readOnly />
+          </div>
+          <div className="col-md-6">
+            <input type="text" className="form-control" placeholder="Academic Year" value={ayStr} readOnly />
+          </div>
+          <div className="col-md-6">
+            <input type="text" className="form-control" placeholder="Student Name" value={studentName} readOnly />
+          </div>
+          <div className="col-md-6">
+            <input type="text" className="form-control" placeholder="Program" value={program} readOnly />
+          </div>
           <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Semester/Midyear / Academic Year" value={`${internship?.semester || ''} / ${internship?.academic_year || ''}`.replace(/^ \/ | \/ $/g, '')} readOnly />
+            <input type="text" className="form-control" placeholder="Host Training Establishment (HTE)" value={hteName} readOnly />
           </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="NAME OF TRAINEE" value={`${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim()} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="PROGRAM" value={(typeof (internship?.student?.student_profile || internship?.student?.studentProfile)?.program === 'string' ? (internship?.student?.student_profile || internship?.student?.studentProfile)?.program : (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.code || (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.name) || ''} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="ACADEMIC YEAR" value={internship?.academic_year || ''} readOnly />
-          </div>
-          <div className="col-md-6 d-flex align-items-center gap-3">
-            <span className="text-muted fw-bold">TRAINING PERIOD:</span>
-            <div className="form-check">
-              <input type="radio" className="form-check-input" name="period" value="1st" checked={period === '1st'} onChange={() => setPeriod('1st')} />
-              <label className="form-check-label">1st Sem.</label>
-            </div>
-            <div className="form-check">
-              <input type="radio" className="form-check-input" name="period" value="2nd" checked={period === '2nd'} onChange={() => setPeriod('2nd')} />
-              <label className="form-check-label">2nd Sem.</label>
-            </div>
-            <div className="form-check">
-              <input type="radio" className="form-check-input" name="period" value="midyear" checked={period === 'midyear'} onChange={() => setPeriod('midyear')} />
-              <label className="form-check-label">Midyear</label>
-            </div>
+          <div className="col-md-12">
+            <input type="text" className="form-control" placeholder="Evaluator/Supervisor Name" value={supervisorName} readOnly />
           </div>
         </div>
 
@@ -106,26 +107,26 @@ export const StudentInternPerformanceForm = ({ internship, onSubmit, processing 
                   <td className="text-start">{item.label}</td>
                   <td className="text-center fw-bold">{item.weight}</td>
                   <td>
-                    <input 
-                      type="number" 
-                      min="65" 
-                      max="100" 
-                      className="form-control text-center" 
-                      value={responses[`c${idx+1}`] || ''}
+                    <input
+                      type="number"
+                      min="65"
+                      max="100"
+                      className="form-control text-center"
+                      value={responses[`c${idx + 1}`] || ''}
                       onChange={(e) => {
                         let val = e.target.value;
                         if (val !== '') {
                           let num = parseInt(val, 10);
                           if (num > 100) val = '100';
                         }
-                        handleRatingChange(`c${idx+1}`, val);
+                        handleRatingChange(`c${idx + 1}`, val);
                       }}
                       onBlur={(e) => {
                         let val = e.target.value;
                         if (val !== '') {
                           let num = parseInt(val, 10);
                           if (num < 65) val = '65';
-                          handleRatingChange(`c${idx+1}`, val);
+                          handleRatingChange(`c${idx + 1}`, val);
                         }
                       }}
                       required

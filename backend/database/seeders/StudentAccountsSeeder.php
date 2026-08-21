@@ -25,10 +25,10 @@ use Illuminate\Support\Facades\Hash;
  */
 class StudentAccountsSeeder extends Seeder
 {
-    private function ensureDepartment(string $name): int
+    private function ensureDepartment(string $name, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
 
         $department = Department::firstOrCreate(
             ['name' => $name],
@@ -38,10 +38,10 @@ class StudentAccountsSeeder extends Seeder
         return $department->id;
     }
 
-    private function ensureProgram(string $name, int $departmentId): int
+    private function ensureProgram(string $name, int $departmentId, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
 
         $program = Program::firstOrCreate(
             ['name' => $name],
@@ -131,6 +131,48 @@ class StudentAccountsSeeder extends Seeder
                     'total_hours_rendered' => 280,
                     'start_date'           => now()->subMonths(2)->toDateString(),
                 ],
+            ],
+            [
+                'student_number' => '2300601',
+                'email'          => 'coed.student@uc.edu.ph',
+                'profile'        => [
+                    'student_number'    => '2300601',
+                    'first_name'        => 'COED',
+                    'middle_name'       => null,
+                    'last_name'         => 'Student',
+                    'email'             => 'coed.student@uc.edu.ph',
+                    'contact_number'    => '09175550601',
+                    'sex'               => 'Female',
+                    'program'           => 'Bachelor of Secondary Education',
+                    'department'        => 'College of Education',
+                    'year_level'        => 4,
+                    'section'           => '4BSED-A',
+                    'school_year'       => '2025-2026',
+                    'semester'          => '2nd Semester',
+                    'enrollment_status' => 'Enrolled',
+                ],
+                'internship'     => null, // fresh / pending_placement
+            ],
+            [
+                'student_number' => '2300602',
+                'email'          => 'coe.student@uc.edu.ph',
+                'profile'        => [
+                    'student_number'    => '2300602',
+                    'first_name'        => 'COE',
+                    'middle_name'       => null,
+                    'last_name'         => 'Student',
+                    'email'             => 'coe.student@uc.edu.ph',
+                    'contact_number'    => '09175550602',
+                    'sex'               => 'Male',
+                    'program'           => 'Bachelor of Science in Civil Engineering',
+                    'department'        => 'College of Engineering',
+                    'year_level'        => 4,
+                    'section'           => '4BSCE-A',
+                    'school_year'       => '2025-2026',
+                    'semester'          => '2nd Semester',
+                    'enrollment_status' => 'Enrolled',
+                ],
+                'internship'     => null, // fresh / pending_placement
             ],
         ];
 

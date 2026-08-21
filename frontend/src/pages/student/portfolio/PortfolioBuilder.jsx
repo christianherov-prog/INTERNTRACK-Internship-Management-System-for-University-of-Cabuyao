@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../../services/api';
 import CCSPortfolioBuilder from './CCSPortfolioBuilder';
 import COEPortfolioBuilder from './COEPortfolioBuilder';
+import COEDPortfolioBuilder from './COEDPortfolioBuilder';
 import Layout from '../../../components/Layout';
 
 const PortfolioBuilder = () => {
@@ -34,8 +35,11 @@ const PortfolioBuilder = () => {
   // Safely check the string 
   const safeDept = department.toLowerCase();
   const isCOE = safeDept.includes('engineering') || safeDept.includes('coe');
+  const isCOED = safeDept.includes('education') || safeDept.includes('coed');
 
-  if (isCOE) {
+  if (isCOED) {
+    return <COEDPortfolioBuilder />;
+  } else if (isCOE) {
     return <COEPortfolioBuilder />;
   } else {
     return <CCSPortfolioBuilder />;

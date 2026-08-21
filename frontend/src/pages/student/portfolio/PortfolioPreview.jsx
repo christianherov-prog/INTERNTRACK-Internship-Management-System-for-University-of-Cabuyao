@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../../services/api';
 import CCSPortfolioPreview from './CCSPortfolioPreview';
 import COEPortfolioPreview from './COEPortfolioPreview';
+import COEDPortfolioPreview from './COEDPortfolioPreview';
 
 const PortfolioPreview = () => {
   const [department, setDepartment] = useState(null);
@@ -16,6 +17,7 @@ const PortfolioPreview = () => {
       })
       .catch(err => {
         console.error('Failed to fetch user department', err);
+        setDepartment('DEFAULT');
       })
       .finally(() => {
         setLoading(false);
@@ -32,11 +34,23 @@ const PortfolioPreview = () => {
   }
 
   if (!department && department !== '') {
-    return <div className="alert alert-warning m-4">Department information not found.</div>;
+    // Show a loader or fallback layout
+    return (
+      <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 text-muted">
+        <i className="fa fa-spinner fa-spin fa-2x mb-3" aria-hidden="true" />
+        <div className="small">Checking your session…</div>
+      </div>
+    );
   }
 
-  const isCOE = department.toLowerCase().includes('engineering') || department.toLowerCase().includes('coe');
+  const safeDept = department.toLowerCase();
+  const isCOE = safeDept.includes('engineering') || safeDept.includes('coe');
+  const isCOED = safeDept.includes('education') || safeDept.includes('coed');
 
+  if (isCOED) {
+    return <COEDPortfolioPreview />;
+  }
+  
   if (isCOE) {
     return <COEPortfolioPreview />;
   }

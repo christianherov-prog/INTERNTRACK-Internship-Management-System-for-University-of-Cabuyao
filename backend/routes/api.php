@@ -106,6 +106,8 @@ Route::prefix('v1')->group(function () {
         // Student
         Route::prefix('student')->middleware('role:student')->group(function () {
             Route::get('/dashboard',             [StudentController::class, 'dashboard']);
+            Route::get('/internships',           [StudentController::class, 'myInternships']);
+            Route::post('/internships/start-new', [StudentController::class, 'startNewInternship']);
             Route::get('/attendance',            [StudentController::class, 'attendance']);
             Route::post('/attendance/clock-in',  [StudentController::class, 'clockIn']);
             Route::post('/attendance/clock-out', [StudentController::class, 'clockOut']);
@@ -184,6 +186,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/compliance',          [FacultyController::class, 'reportCompliance']);
             Route::get('/reports/performance',         [FacultyController::class, 'reportPerformance']);
             // Dynamic OJT Requirement Management
+            Route::get('/requirements/{id}/template', [RequirementTemplateController::class, 'downloadTemplate']);
             Route::get('/requirements/options',   [RequirementTemplateController::class, 'options']);
             Route::get('/requirements',           [RequirementTemplateController::class, 'index']);
             Route::post('/requirements',          [RequirementTemplateController::class, 'store']);
@@ -237,6 +240,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/documents/{id}/reject',   [CoordinatorController::class, 'rejectDocument']);
 
             // Dynamic OJT Requirement Management
+            Route::get('/requirements/{id}/template', [RequirementTemplateController::class, 'downloadTemplate']);
             Route::get('/requirements/options',   [RequirementTemplateController::class, 'options']);
             Route::get('/requirements',           [RequirementTemplateController::class, 'index']);
             Route::post('/requirements',          [RequirementTemplateController::class, 'store']);

@@ -20,10 +20,10 @@ use Illuminate\Support\Facades\Hash;
  */
 class HireProgressDemoSeeder extends Seeder
 {
-    private function ensureDepartment(string $name): int
+    private function ensureDepartment(string $name, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'DEPT');
 
         $department = Department::firstOrCreate(
             ['name' => $name],
@@ -33,10 +33,10 @@ class HireProgressDemoSeeder extends Seeder
         return $department->id;
     }
 
-    private function ensureProgram(string $name, int $departmentId): int
+    private function ensureProgram(string $name, int $departmentId, ?string $code = null): int
     {
         $name = trim($name);
-        $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
+        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
 
         $program = Program::firstOrCreate(
             ['name' => $name],

@@ -71,7 +71,7 @@ class SupervisorController extends Controller
                 return [
                     'id' => $internship->id,
                     'student' => $internship->student->studentProfile ? trim("{$internship->student->studentProfile->first_name} {$internship->student->studentProfile->last_name}") : $internship->student->username,
-                    'course' => $internship->student->studentProfile->program?->code ?? 'N/A',
+                    'course' => $internship->student->studentProfile->program?->name ?? 'N/A',
                     'status' => $internship->status,
                     'hours_rendered' => $internship->total_hours_rendered,
                     'target_hours' => $internship->target_hours,
@@ -132,8 +132,8 @@ class SupervisorController extends Controller
                         'first_name' => $p->first_name,
                         'last_name' => $p->last_name,
                         'student_number' => $p->student_number,
-                        'course_name' => $p->program?->code,
-                        'program' => $p->program?->code,
+                        'course_name' => $p->program?->name,
+                        'program' => $p->program?->name,
                     ] : null,
                 ],
                 'attendance_logs' => \App\Models\AttendanceLog::where('internship_id', $i->id)

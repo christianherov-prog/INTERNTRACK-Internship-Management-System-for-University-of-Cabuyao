@@ -22,23 +22,38 @@ class StudentController extends Controller
     private function internship(Request $request)
     {
         $user = $request->user();
-        $internship = $user->activeInternship()
-            ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile'])
-            ->first();
+        
+        $query = $user->internshipsAsStudent()
+            ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
+            
+        $requestedId = $request->header('X-Internship-Id') ?: $request->input('internship_id');
+        if ($requestedId) {
+            $internship = $query->where('id', $requestedId)->first();
+        } else {
+            // Default to the latest active/current internship
+            $internship = $user->activeInternship()
+                ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile'])
+                ->first();
+        }
 
         if (!$internship) {
             $profile = $user->studentProfile;
             $ay = $profile?->school_year ?: '2025-2026';
             $sem = $profile?->semester ?: '2nd Semester';
             $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
+            $targetHours = 500;
+            if (in_array($profile?->program?->name, ['Bachelor of Secondary Education', 'Bachelor of Elementary Education'])) {
+                $targetHours = 360;
+            }
+
             $internship = $user->internshipsAsStudent()->create([
                 'status' => 'pending_placement',
                 'school_year' => $ay,
                 'semester' => $sem,
                 'term' => "AY {$ay}, {$sem}",
-                'program' => $profile?->program?->code,
+                'program' => $profile?->program?->name,
                 'faculty_id' => $facultyId,
-                'target_hours' => config('interntrack.target_hours', 500),
+                'target_hours' => $targetHours,
                 'total_hours_rendered' => 0
             ]);
             if (!$internship->relationLoaded('student')) {
@@ -48,7 +63,7 @@ class StudentController extends Controller
             $dirty = false;
             if (empty($internship->program)) {
                 $profile = $user->studentProfile;
-                $program = $profile?->program?->code;
+                $program = $profile?->program?->name;
                 if ($program) {
                     $internship->program = $program;
                     $dirty = true;
@@ -81,12 +96,58 @@ class StudentController extends Controller
             'name'           => $name,
             'student_number' => $profile->student_number,
             'section'        => $profile->section,
-            'course_name'    => $profile->program?->code,
+            'course_name'    => $profile->program?->name,
             'year_level'     => $profile->year_level,
         ];
     }
 
     /** GET /api/v1/student/dashboard */
+    public function myInternships(Request $request)
+    {
+        $internships = $request->user()->internshipsAsStudent()
+            ->with(['company', 'supervisor.supervisorProfile'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return response()->json(['internships' => $internships]);
+    }
+
+    public function startNewInternship(Request $request)
+    {
+        $user = $request->user();
+        
+        // Ensure they don't already have an active/ongoing one that isn't completed
+        $active = $user->activeInternship()->first();
+        if ($active && $active->status !== 'completed') {
+            return response()->json(['message' => 'You still have an ongoing internship. Finish it first.'], 422);
+        }
+
+        $profile = $user->studentProfile;
+        $ay = $profile?->school_year ?: '2025-2026';
+        $sem = $profile?->semester ?: '2nd Semester';
+        $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
+        
+        $targetHours = 500;
+        if (in_array($profile?->program?->name, ['Bachelor of Secondary Education', 'Bachelor of Elementary Education'])) {
+            $targetHours = 360;
+        }
+
+        $internship = $user->internshipsAsStudent()->create([
+            'status' => 'pending_placement',
+            'school_year' => $ay,
+            'semester' => $sem,
+            'term' => "AY {$ay}, {$sem}",
+            'program' => $profile?->program?->name,
+            'faculty_id' => $facultyId,
+            'target_hours' => $targetHours,
+            'total_hours_rendered' => 0
+        ]);
+
+        return response()->json([
+            'message' => 'New practicum deployment started.',
+            'internship' => $internship
+        ]);
+    }
+
     public function dashboard(Request $request)
     {
         $user       = $request->user()->load('studentProfile.program');
@@ -110,7 +171,7 @@ class StudentController extends Controller
             if ($profile->section) {
                 $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
             }
-            $program = $profile->program?->code ?: ($profile->program?->name ?: 'BSIT');
+            $program = $profile->program?->name ?: 'Bachelor of Science in Information Technology';
             if ($program) {
                 $studentTargets[] = ['type' => 'program', 'id' => $program];
             }
@@ -355,7 +416,7 @@ class StudentController extends Controller
             if ($profile->section) {
                 $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
             }
-            $program = $profile->program?->code ?: 'BSIT';
+            $program = $profile->program?->name ?: 'Bachelor of Science in Information Technology';
             if ($program) {
                 $studentTargets[] = ['type' => 'program', 'id' => $program];
             }
@@ -463,7 +524,7 @@ class StudentController extends Controller
             if ($profile->section) {
                 $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
             }
-            $program = $profile->program?->code ?: 'BSIT';
+            $program = $profile->program?->name ?: 'Bachelor of Science in Information Technology';
             if ($program) {
                 $studentTargets[] = ['type' => 'program', 'id' => $program];
             }

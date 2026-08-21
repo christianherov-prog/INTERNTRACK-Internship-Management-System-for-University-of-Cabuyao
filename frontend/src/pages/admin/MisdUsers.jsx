@@ -4,10 +4,12 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const ROLES = ['', 'student', 'faculty', 'coordinator', 'director', 'supervisor', 'admin']
 
 function MisdUsers() {
+  const confirm = useConfirm()
   const [params, setParams] = useSearchParams()
   const [rows, setRows] = useState([])
   const [meta, setMeta] = useState(null)
@@ -51,7 +53,7 @@ function MisdUsers() {
   }
 
   const toggleActive = async (row) => {
-    if (!window.confirm(`${row.is_active ? 'Deactivate' : 'Activate'} ${row.username}?`)) return
+    if (!(await confirm({ message: `${row.is_active ? 'Deactivate' : 'Activate'} ${row.username}?` }))) return
     setMessage(null)
     try {
       await api.patch(`/admin/users/${row.id}/active`, { is_active: !row.is_active })
@@ -63,7 +65,7 @@ function MisdUsers() {
   }
 
   const resetPw = async (row) => {
-    if (!window.confirm(`Reset password for ${row.username}?`)) return
+    if (!(await confirm({ message: `Reset password for ${row.username}?`, variant: 'danger' }))) return
     setMessage(null)
     try {
       await api.post(`/admin/users/${row.id}/reset-password`)

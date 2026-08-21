@@ -172,7 +172,7 @@ class DirectorController extends Controller
         $profile = $internship->student?->studentProfile;
         foreach ([
             $internship->program,
-            $profile?->program?->code,
+            $profile?->program?->name,
         ] as $value) {
             $value = trim((string) $value);
             if ($value !== '') {
@@ -203,7 +203,7 @@ class DirectorController extends Controller
                     'id' => $i->student_id,
                     'name' => $p ? trim("{$p->first_name} {$p->last_name}") : $i->student?->username,
                     'student_number' => $p?->student_number ?? $i->student?->username,
-                    'program' => $p?->program?->code ?? '—',
+                    'program' => $p?->program?->name ?? '—',
                 ],
             ];
         });
@@ -317,7 +317,7 @@ class DirectorController extends Controller
 
         $profile = $internship->student?->studentProfile;
         $program = $internship->program
-            ?: ($profile?->program?->code);
+            ?: ($profile?->program?->name);
 
         $internship->update([
             'company_id' => $company->id,
@@ -587,7 +587,7 @@ class DirectorController extends Controller
         // Group by company
         $byCompany = $internships->groupBy('company_id')->map(function ($group) {
             $company = $group->first()->company;
-            $byProgram = $group->groupBy(fn($i) => $i->program ?? $i->student?->studentProfile?->program?->code ?? 'Unknown')
+            $byProgram = $group->groupBy(fn($i) => $i->program ?? $i->student?->studentProfile?->program?->name ?? 'Unknown')
                 ->map->count()
                 ->sortKeys();
 

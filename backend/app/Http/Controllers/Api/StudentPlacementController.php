@@ -55,6 +55,14 @@ class StudentPlacementController extends Controller
             ], 422);
         }
 
+        // Check if they are already placed in their current internship
+        $activeInternship = $request->user()->activeInternship()->first();
+        if ($activeInternship && !in_array($activeInternship->status, ['pending_placement', 'completed'])) {
+            return response()->json([
+                'message' => 'You are already placed in a company for your current practicum deployment.'
+            ], 422);
+        }
+
         $application = InternshipApplication::create([
             'student_id' => $request->user()->id,
             'company_id' => $request->company_id,

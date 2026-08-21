@@ -11,6 +11,63 @@ import {
   notificationPollMs,
 } from '../services/echo'
 
+function StudentDeploymentSwitcher() {
+  const { user } = useAuth()
+  const [internships, setInternships] = useState([])
+  const [selectedId, setSelectedId] = useState(
+    sessionStorage.getItem('interntrack_active_internship') || ''
+  )
+
+  useEffect(() => {
+    if (user?.role !== 'student') return
+    // Fetch all deployments without passing the header so we get them all
+    api.get('/student/internships', {
+      headers: { 'X-Internship-Id': '' } // Override to not filter by active
+    }).then(res => {
+      const data = res.data.internships || []
+      setInternships(data)
+      if (data.length > 0 && !selectedId) {
+        // Default to the first one if not set
+        setSelectedId(data[0].id)
+        sessionStorage.setItem('interntrack_active_internship', data[0].id)
+      }
+    }).catch(() => {})
+  }, [user])
+
+  if (user?.role !== 'student' || internships.length <= 1) return null
+
+  const handleChange = (e) => {
+    const id = e.target.value
+    setSelectedId(id)
+    sessionStorage.setItem('interntrack_active_internship', id)
+    window.location.reload()
+  }
+
+  return (
+    <div style={{ marginRight: '16px', display: 'flex', alignItems: 'center' }}>
+      <select 
+        value={selectedId} 
+        onChange={handleChange}
+        style={{
+          padding: '6px 12px',
+          borderRadius: '4px',
+          border: '1px solid #ccc',
+          backgroundColor: '#fff',
+          fontSize: '14px',
+          color: '#333',
+          cursor: 'pointer'
+        }}
+      >
+        {internships.map((i, index) => (
+          <option key={i.id} value={i.id}>
+            Deployment {internships.length - index} ({i.company?.company_name || 'No Company'})
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function NotificationBell() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -251,6 +308,7 @@ function Topbar({ title, subtitle, icon }) {
         </div>
       </div>
       <div className="topbar-right" style={{ gap: '12px' }}>
+        <StudentDeploymentSwitcher />
         <NotificationBell />
         <span className="role-badge">
           <i className="fa fa-user-shield"></i>

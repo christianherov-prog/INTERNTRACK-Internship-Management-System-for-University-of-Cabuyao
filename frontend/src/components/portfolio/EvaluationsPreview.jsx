@@ -101,7 +101,13 @@ const MultilinePreview = ({ text, lines = 1 }) => (
 
 export const PrintFO24 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
-  const studentName = `${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim();
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
+  const ayStr = internship?.academic_year || internship?.school_year || '';
+  const supervisor = internship?.supervisor?.supervisorProfile || {};
+  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || evalData?.supervisor_name || '';
 
   return (
     <div data-toc-id={tocId} className="a4-page portfolio-document position-relative" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -127,9 +133,9 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
       </div>
 
       <div style={{ textAlign: 'center', fontSize: '9.5pt', margin: '6px 0 12px 0', fontFamily: 'Arial, sans-serif' }}>
-        <span style={{ borderBottom: '1px solid black', minWidth: '70px', display: 'inline-block', textAlign: 'center' }}>{internship?.semester || ''}</span> Semester/Midyear
+        <span style={{ borderBottom: '1px solid black', minWidth: '70px', display: 'inline-block', textAlign: 'center' }}>{semStr}</span> Semester/Midyear
         <span style={{ borderBottom: '1px solid black', minWidth: '50px', display: 'inline-block', textAlign: 'center', margin: '0 5px' }}></span> / Academic Year
-        <span style={{ borderBottom: '1px solid black', minWidth: '100px', display: 'inline-block', textAlign: 'center', marginLeft: '5px' }}>{internship?.academic_year || ''}</span>
+        <span style={{ borderBottom: '1px solid black', minWidth: '100px', display: 'inline-block', textAlign: 'center', marginLeft: '5px' }}>{ayStr}</span>
       </div>
 
       <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9pt', marginBottom: '12px', lineHeight: '1.4' }}>
@@ -139,13 +145,13 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '3px' }}>
           <span style={{ fontWeight: 'bold', width: '125px' }}>PROGRAM</span>
-          <div style={{ width: '45%', borderBottom: '1px solid #000', paddingLeft: '8px' }}>{(internship?.student?.student_profile || internship?.student?.studentProfile)?.course_name || ''}</div>
+          <div style={{ width: '45%', borderBottom: '1px solid #000', paddingLeft: '8px' }}>{program}</div>
           <span style={{ fontWeight: 'bold', marginLeft: '12px', width: '125px' }}>TRAINING PERIOD:</span>
           <div style={{ flex: 1, borderBottom: '1px solid #000' }}></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <span style={{ fontWeight: 'bold', width: '125px' }}>ACADEMIC YEAR:</span>
-          <div style={{ width: '45%', borderBottom: '1px solid #000', paddingLeft: '8px' }}>{internship?.academic_year || ''}</div>
+          <div style={{ width: '45%', borderBottom: '1px solid #000', paddingLeft: '8px' }}>{ayStr}</div>
           <div style={{ marginLeft: '12px' }}></div>
           <div style={{ display: 'flex', gap: '8px', fontWeight: 'bold', fontSize: '8.5pt' }}>
             <label>[ {evalData?.evaluation_period === '1st' ? 'X' : ' '} ] 1st Sem.</label>
@@ -218,7 +224,7 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
           Name of Supervisor and Signature:
         </div>
         <div style={{ width: '50%', padding: '4px 8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <span style={{ fontWeight: 'bold' }}>{evalData?.supervisor_name || ''}</span>
+          <span style={{ fontWeight: 'bold' }}>{supervisorName}</span>
         </div>
       </div>
     </div>
@@ -227,7 +233,17 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
 
 export const PrintFO03 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
-  const studentName = `${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim();
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
+  const ayStr = internship?.academic_year || internship?.school_year || '';
+  const company = internship?.company || {};
+  const hteName = company.company_name || company.name || '';
+  const hteAddress = company.address || '';
+  const supervisor = internship?.supervisor?.supervisorProfile || {};
+  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || evalData?.evaluator_name || '';
+  const supervisorPos = supervisor.position || supervisor.designation || '';
 
   return (
     <div data-toc-id={tocId} className="a4-page portfolio-document position-relative" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -385,7 +401,17 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
 
 export const PrintFO22 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
-  const studentName = `${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim();
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
+  const ayStr = internship?.academic_year || internship?.school_year || '';
+  const company = internship?.company || {};
+  const hteName = company.company_name || company.name || '';
+  const hteAddress = company.address || '';
+  const supervisor = internship?.supervisor?.supervisorProfile || {};
+  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || evalData?.supervisor_name || '';
+  const supervisorPos = supervisor.position || supervisor.designation || '';
 
   return (
     <div data-toc-id={tocId} className="a4-page portfolio-document position-relative" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -409,9 +435,9 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
       </div>
 
       <div style={{ textAlign: 'center', fontSize: '9.5pt', margin: '6px 0 15px 0', fontFamily: 'Arial, sans-serif' }}>
-        <span style={{ borderBottom: '1px solid black', minWidth: '70px', display: 'inline-block', textAlign: 'center' }}>{evalData?.semester || ''}</span> Semester/Midyear
+        <span style={{ borderBottom: '1px solid black', minWidth: '70px', display: 'inline-block', textAlign: 'center' }}>{semStr}</span> Semester/Midyear
         <span style={{ borderBottom: '1px solid black', minWidth: '50px', display: 'inline-block', textAlign: 'center', margin: '0 5px' }}></span> / Academic Year
-        <span style={{ borderBottom: '1px solid black', minWidth: '100px', display: 'inline-block', textAlign: 'center', marginLeft: '5px' }}>{evalData?.academic_year || ''}</span>
+        <span style={{ borderBottom: '1px solid black', minWidth: '100px', display: 'inline-block', textAlign: 'center', marginLeft: '5px' }}>{ayStr}</span>
       </div>
 
       <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9pt', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -419,21 +445,21 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
           <span style={{ fontWeight: 'bold', marginRight: '6px' }}>Student Name:</span>
           <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{studentName}</div>
           <span style={{ fontWeight: 'bold', marginLeft: '10px', marginRight: '6px' }}>Program:</span>
-          <div style={{ flex: 0.8, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{(internship?.student?.student_profile || internship?.student?.studentProfile)?.course_name || ''}</div>
+          <div style={{ flex: 0.8, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{program}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <span style={{ fontWeight: 'bold', marginRight: '6px' }}>Host Training Establishment (HTE):</span>
-          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{internship?.company?.company_name || ''}</div>
+          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{hteName}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <span style={{ fontWeight: 'bold', marginRight: '6px' }}>Company Address:</span>
-          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{internship?.company?.address || ''}</div>
+          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{hteAddress}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <span style={{ fontWeight: 'bold', marginRight: '6px' }}>Internship Company Supervisor:</span>
-          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{internship?.supervisor?.name || ''}</div>
+          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{supervisorName}</div>
           <span style={{ fontWeight: 'bold', marginLeft: '10px', marginRight: '6px' }}>Position:</span>
-          <div style={{ flex: 0.6, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{internship?.supervisor?.position || ''}</div>
+          <div style={{ flex: 0.8, borderBottom: '1px solid black', minHeight: '1.2em', paddingLeft: '5px' }}>{supervisorPos}</div>
         </div>
       </div>
 
@@ -539,7 +565,13 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
 
 export const PrintFO23 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
-  const studentName = `${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim();
+  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
+  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
+  const ayStr = internship?.academic_year || internship?.school_year || '';
+  const faculty = internship?.faculty?.facultyProfile || internship?.faculty?.faculty_profile || {};
+  const facultyName = `${faculty.first_name || ''} ${faculty.last_name || ''}`.trim() || internship?.faculty?.name || '';
   let globalIndex = 1;
 
   return (
@@ -563,9 +595,9 @@ export const PrintFO23 = ({ evalData, internship, tocId }) => {
       </div>
 
       <div style={{ textAlign: 'center', fontSize: '9.5pt', margin: '6px 0 15px 0', fontFamily: 'Arial, sans-serif' }}>
-        <span style={{ borderBottom: '1px solid black', minWidth: '70px', display: 'inline-block', textAlign: 'center' }}>{evalData?.semester || ''}</span> Semester/Midyear
+        <span style={{ borderBottom: '1px solid black', minWidth: '70px', display: 'inline-block', textAlign: 'center' }}>{semStr}</span> Semester/Midyear
         <span style={{ borderBottom: '1px solid black', minWidth: '40px', display: 'inline-block', textAlign: 'center', margin: '0 5px' }}></span> / Academic Year
-        <span style={{ borderBottom: '1px solid black', minWidth: '100px', display: 'inline-block', textAlign: 'center', marginLeft: '5px' }}>{evalData?.academic_year || ''}</span>
+        <span style={{ borderBottom: '1px solid black', minWidth: '100px', display: 'inline-block', textAlign: 'center', marginLeft: '5px' }}>{ayStr}</span>
       </div>
 
       <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '9.5pt', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: '1.1' }}>
@@ -573,11 +605,11 @@ export const PrintFO23 = ({ evalData, internship, tocId }) => {
           <span style={{ marginRight: '6px' }}>Student Name:</span>
           <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.1em', paddingLeft: '5px' }}>{studentName}</div>
           <span style={{ marginLeft: '10px', marginRight: '6px' }}>Program:</span>
-          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.1em', paddingLeft: '5px' }}>{(internship?.student?.student_profile || internship?.student?.studentProfile)?.course_name || ''}</div>
+          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.1em', paddingLeft: '5px' }}>{program}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <span style={{ marginRight: '8px' }}>Internship Teaching Personnel:</span>
-          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.1em', paddingLeft: '5px' }}>{internship?.faculty?.name || ''}</div>
+          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '1.1em', paddingLeft: '5px' }}>{facultyName}</div>
         </div>
       </div>
 

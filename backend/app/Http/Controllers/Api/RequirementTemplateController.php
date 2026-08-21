@@ -50,7 +50,7 @@ class RequirementTemplateController extends Controller
                 'id' => $student->id,
                 'name' => $profile ? trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? '')) : $student->username,
                 'section_name' => $profile?->section,
-                'program_name' => $profile?->program?->code,
+                'program_name' => $profile?->program?->name,
                 'internship_id' => $internship ? $internship->id : null,
             ];
         }
@@ -168,7 +168,7 @@ class RequirementTemplateController extends Controller
             if ($profile->program_id && !in_array($profile->program_id, $seenPrograms)) {
                 $programs[] = [
                     'id' => $profile->program_id,
-                    'name' => $profile->program ? ($profile->program->code ?? $profile->program->name) : 'Program ' . $profile->program_id,
+                    'name' => $profile->program ? ($profile->program->name) : 'Program ' . $profile->program_id,
                 ];
                 $seenPrograms[] = $profile->program_id;
             }

@@ -4,6 +4,7 @@ import Layout from '../../../components/Layout'
 import api from '../../../services/api'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
+import { useConfirm } from '../../../contexts/ConfirmContext'
 
 /** Per-field limit for Chapter III (now dynamically paginated across A4 sheets without clipping). */
 const CHAPTER3_MAX = 5000
@@ -42,6 +43,7 @@ const SAMPLE_CONTENT = {
 }
 
 function PortfolioBuilder() {
+  const confirm = useConfirm()
   const [data, setData] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
@@ -138,16 +140,9 @@ function PortfolioBuilder() {
     const file = e.target.files[0]
     if (!file) return
     const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)
-    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
-
-    if (type === 'company_logo' && !isImage) {
-      alert("Please upload an image file only for Company Logo (PNG, JPG, JPEG, WEBP).")
-      e.target.value = ''
-      return
-    }
-
-    if (!isImage && !isPdf) {
-      alert("Please upload a valid image or PDF document.")
+    
+    if (!isImage) {
+      alert("Please upload a valid image file.")
       e.target.value = ''
       return
     }
@@ -245,7 +240,7 @@ function PortfolioBuilder() {
     ...uploadChecks.filter(c => !photos.some(ph => ph.type === c.type)),
   ]
 
-  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif,.pdf", tip = "") => {
+  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif", tip = "") => {
     const items = p?.photos?.filter(photo => photo.type === type) || []
 
     return (
@@ -357,8 +352,8 @@ function PortfolioBuilder() {
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm px-3"
-                onClick={() => {
-                  if (window.confirm('This will fill all empty text fields with professional sample content. Fields that already have content will not be overwritten. Continue?')) {
+                onClick={async () => {
+                  if (await confirm({ message: 'This will fill all empty text fields with professional sample content. Fields that already have content will not be overwritten. Continue?' })) {
                     setForm(prev => ({
                       company_name: prev.company_name || SAMPLE_CONTENT.company_name,
                       company_address: prev.company_address || SAMPLE_CONTENT.company_address,
@@ -654,7 +649,7 @@ function PortfolioBuilder() {
                     'PNC:AA-FO-30 DTR (Manual Form Upload)',
                     false,
                     false,
-                    'image/*,application/pdf',
+                    'image/*',
                     'Fill the official FO-30 Daily Time Record offline, then upload the completed form.'
                   )}
                 </div>

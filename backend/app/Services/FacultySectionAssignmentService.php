@@ -42,7 +42,7 @@ class FacultySectionAssignmentService
             return null;
         }
 
-        $programName = is_object($profile->program) ? ($profile->program->name ?? $profile->program->code) : $profile->program;
+        $programName = is_object($profile->program) ? ($profile->program->name) : $profile->program;
 
         return $this->suggestFacultyForSection(
             $profile->section,
@@ -214,7 +214,7 @@ class FacultySectionAssignmentService
             if (!$internship) {
                 $user = User::find($profile->user_id);
                 if ($user && $user->role === 'student') {
-                    $prog = $profile->program ?: ($program ?: 'BSIT');
+                    $prog = $profile->program ?: ($program ?: 'Bachelor of Science in Information Technology');
                     $targetHours = 500;
                     if (stripos($prog, 'Computer Science') !== false) $targetHours = 300;
                     if (stripos($prog, 'Engineering') !== false || stripos($profile->department, 'Engineering') !== false) $targetHours = 240;

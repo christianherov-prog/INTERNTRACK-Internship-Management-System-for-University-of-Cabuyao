@@ -4,6 +4,7 @@ import Layout from '../../../components/Layout'
 import api from '../../../services/api'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
+import { useConfirm } from '../../../contexts/ConfirmContext'
 
 /** Per-field limit for Chapter III text areas. */
 const CHAPTER3_MAX = 5000
@@ -33,6 +34,7 @@ const SAMPLE_CONTENT = {
 }
 
 function COEPortfolioBuilder() {
+  const confirm = useConfirm()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -140,8 +142,8 @@ function COEPortfolioBuilder() {
   const handleFileUpload = async (e, type) => {
     const file = e.target.files[0]
     if (!file) return
-    if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(file.name)) {
-      alert("Please upload a valid image or PDF file.")
+    if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
+      alert("Please upload a valid image file.")
       e.target.value = ''
       return
     }
@@ -222,7 +224,7 @@ function COEPortfolioBuilder() {
   const journalCount = journals.length
   const overallPct = Math.round(((textDone + uploadsDone) / (textChecks.length + uploadsTotal)) * 100)
 
-  const renderFileList = (type, title, accept = "image/*,application/pdf", tip = "") => {
+  const renderFileList = (type, title, accept = "image/*", tip = "") => {
     const items = photos.filter(photo => photo.type === type) || []
     return (
       <div className="content-card portfolio-upload-tile">
@@ -322,8 +324,8 @@ function COEPortfolioBuilder() {
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm px-3"
-                onClick={() => {
-                  if (window.confirm('This will fill all empty text fields with sample content. Continue?')) {
+                onClick={async () => {
+                  if (await confirm({ message: 'This will fill all empty text fields with sample content. Continue?' })) {
                     setForm(prev => ({
                       acknowledgement: prev.acknowledgement || 'I would like to express my gratitude...',
                       company_name: prev.company_name || 'NIDEC CORPORATION',
@@ -535,14 +537,14 @@ function COEPortfolioBuilder() {
           <section className="portfolio-appendix-section bg-white p-4 border rounded shadow-sm mb-4">
             <div className="portfolio-appendix-section-head">
               <h5 className="mb-0 text-primary"><i className="fa fa-folder-open me-2"></i>Upload Requirements</h5>
-              <span className="text-muted small">Upload scanned images or PDFs for your portfolio.</span>
+              <span className="text-muted small">Upload scanned images for your portfolio.</span>
             </div>
             <div className="portfolio-appendix-group">
               <h6 className="portfolio-appendix-group-title">Company &amp; Preliminary Documents</h6>
               <div className="portfolio-upload-grid">
                 {renderFileList('company_logo', 'Company Logo (HTE)', 'image/*', 'Appears on the Cover Page & Header.')}
-                {renderFileList('approval_sheet', 'Approval Sheet', "image/*,application/pdf", "Upload your signed Approval Sheet here.")}
-                {renderFileList('org_chart', '1.2. Organizational Chart', "image/*,application/pdf", "Upload your host company organizational chart.")}
+                {renderFileList('approval_sheet', 'Approval Sheet', "image/*", "Upload your signed Approval Sheet here.")}
+                {renderFileList('org_chart', '1.2. Organizational Chart', "image/*", "Upload your host company organizational chart.")}
               </div>
             </div>
             <div className="portfolio-appendix-group">
@@ -556,7 +558,7 @@ function COEPortfolioBuilder() {
                 {renderFileList('consent_form', '4.6. Internship Consent Form')}
                 {renderFileList('medical_certificate', '4.7. Medical Certificate')}
                 {renderFileList('psychological_certificate', '4.8. Psychological Certificate')}
-                {renderFileList('work_samples', '4.9. Work Samples/Outcomes', "image/*,application/pdf", "Upload screenshots or documents of your outcomes")}
+                {renderFileList('work_samples', '4.9. Work Samples/Outcomes', "image/*", "Upload screenshots or images of your outcomes")}
                 {renderFileList('ojt_photos', '4.10. Photos', "image/*", "Upload your general OJT pictures")}
                 {renderFileList('supervisor_evaluation', '4.11. Supervisor\'s Evaluation')}
                 {renderFileList('curriculum_vitae', '4.12. Curriculum Vitae')}

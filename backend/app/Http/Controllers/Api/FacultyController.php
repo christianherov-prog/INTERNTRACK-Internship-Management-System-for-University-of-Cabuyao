@@ -212,7 +212,7 @@ class FacultyController extends Controller
                     'id'            => $student->id,
                     'name'          => $student->studentProfile?->full_name ?? $student->username,
                     'student_number'=> $student->studentProfile?->student_number,
-                    'program'       => $student->studentProfile?->program?->code,
+                    'program'       => $student->studentProfile?->program?->name,
                     'section'       => $student->studentProfile?->section,
                 ],
                 'internship'      => null,
@@ -261,7 +261,7 @@ class FacultyController extends Controller
                 'id'            => $internship->student->id,
                 'name'          => $internship->student->studentProfile?->full_name ?? $internship->student->username,
                 'student_number'=> $internship->student->studentProfile?->student_number,
-                'program'       => $internship->student->studentProfile?->program?->code,
+                'program'       => $internship->student->studentProfile?->program?->name,
                 'section'       => $internship->student->studentProfile?->section,
             ],
             'internship'      => [
@@ -511,7 +511,7 @@ class FacultyController extends Controller
             return [
                 'student_name' => trim(($p->first_name ?? '').' '.($p->last_name ?? '')),
                 'student_number' => $u->username,
-                'program' => $p->program?->code ?? $i?->program ?? '—',
+                'program' => $p->program?->name ?? $i?->program ?? '—',
                 'company' => $i->company?->company_name ?? '—',
                 'status' => $i?->status ?? 'unplaced',
                 'hours_rendered' => (float) ($i?->total_hours_rendered ?? 0),
@@ -561,7 +561,7 @@ class FacultyController extends Controller
             
             return [
                 'student_name' => trim((optional($u->studentProfile)->first_name ?? '').' '.(optional($u->studentProfile)->last_name ?? '')),
-                'program' => $u->studentProfile?->program?->code ?? '-',
+                'program' => $u->studentProfile?->program?->name ?? '-',
                 'approved_docs' => $approvedDocsCount,
                 'required_docs' => $requiredCount,
                 'compliance_pct' => $requiredCount > 0 ? round($approvedDocsCount / $requiredCount * 100) : 0,
@@ -597,7 +597,7 @@ class FacultyController extends Controller
         $byProgram = $users
             ->groupBy(function ($u) {
                 foreach ([
-                    $u->studentProfile?->program?->code,
+                    $u->studentProfile?->program?->name,
                     $u->activeInternship?->program,
                 ] as $value) {
                     $value = trim((string) $value);

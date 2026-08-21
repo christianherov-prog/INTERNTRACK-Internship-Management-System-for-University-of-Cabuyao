@@ -3,8 +3,10 @@ import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import toast from 'react-hot-toast'
 import Layout from '../../components/Layout'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 export default function ManageRequirementsTemplates({ embedded = false }) {
+  const confirm = useConfirm()
   const { user } = useAuth()
   const [requirements, setRequirements] = useState([])
   const [options, setOptions] = useState({ students: [], sections: [], programs: [] })
@@ -166,7 +168,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this requirement?')) return
+    if (!(await confirm({ message: 'Are you sure you want to delete this requirement?', variant: 'danger' }))) return
     try {
       await api.delete(`/${user.role}/requirements/${id}`)
       toast.success('Requirement deleted')

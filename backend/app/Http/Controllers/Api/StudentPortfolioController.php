@@ -46,7 +46,7 @@ class StudentPortfolioController extends Controller
         ]);
 
         $internship = $this->getInternship($request);
-        $internship->load(['company', 'portfolio', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
+        $internship->load(['company', 'portfolio', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile', 'student.studentProfile']);
 
         $portfolio = $internship->portfolio;
         $companyName = $internship->company?->company_name ?? ($internship->company?->name ?? 'Host Establishment');

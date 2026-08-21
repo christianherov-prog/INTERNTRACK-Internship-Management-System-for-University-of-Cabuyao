@@ -3,8 +3,10 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { formatStudentName } from '../../utils/formatName'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 function CoordHteRequests({ embedded = false }) {
+  const confirm = useConfirm()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -29,7 +31,7 @@ function CoordHteRequests({ embedded = false }) {
   useEffect(() => { load() }, [])
 
   const updateStatus = async (reqId, newStatus) => {
-    if (newStatus === 'approved' && !window.confirm('Approving this will add the company to the system for MOA processing. Continue?')) {
+    if (newStatus === 'approved' && !(await confirm({ message: 'Approving this will add the company to the system for MOA processing. Continue?' }))) {
       return
     }
 

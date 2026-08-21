@@ -23,14 +23,14 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
   const handleSubmit = (e) => {
     e.preventDefault();
     if (processing) return;
-    
+
     // Ensure all 5 criteria are filled
-    const allFilled = criteriaList.every((_, i) => responses[`q${i+1}`]);
+    const allFilled = criteriaList.every((_, i) => responses[`q${i + 1}`]);
     if (!allFilled) {
       alert('Please rate all criteria.');
       return;
     }
-    
+
     onSubmit({
       evaluation_period: 'final',
       form_type: 'FO-03',
@@ -39,27 +39,40 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
     });
   };
 
+  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
+  const ayStr = internship?.academic_year || internship?.school_year || 'Unavailable';
+  const company = internship?.company || {};
+  const hteName = company.company_name || company.name || 'Unavailable';
+  const hteAddress = company.address || 'Unavailable';
+  const supervisor = internship?.supervisor?.supervisorProfile || {};
+  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || 'Unavailable';
+  const supervisorPos = supervisor.position || supervisor.designation || 'Unavailable';
+
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center mb-4 fw-bold">HTE Evaluation to the University Internship Program</h3>
-        
+
         <div className="row g-3 mb-4">
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Company Name" value={internship?.company?.company_name || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Semester" value={semStr} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Department/Position" value={internship?.supervisor?.supervisorProfile?.position || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Academic Year" value={ayStr} readOnly />
+          </div>
+          <div className="col-md-12">
+            <input type="text" className="form-control" placeholder="Host Training Establishment (HTE)" value={hteName} readOnly />
+          </div>
+          <div className="col-md-12">
+            <input type="text" className="form-control" placeholder="Company Address" value={hteAddress} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Intern's Name" value={`${(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name || ''} ${(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name || ''}`.trim()} readOnly />
+            <input type="text" className="form-control" placeholder="Evaluator/Supervisor Name" value={supervisorName} readOnly />
           </div>
           <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Program/Section" value={(typeof (internship?.student?.student_profile || internship?.student?.studentProfile)?.program === 'string' ? (internship?.student?.student_profile || internship?.student?.studentProfile)?.program : (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.code || (internship?.student?.student_profile || internship?.student?.studentProfile)?.program?.name) || ''} readOnly />
+            <input type="text" className="form-control" placeholder="Position" value={supervisorPos} readOnly />
           </div>
-        </div>
-
-        <p className="fw-bold mb-2">Please rate the school's internship program based on your experience and observation:</p>
+        </div>        <p className="fw-bold mb-2">Please rate the school's internship program based on your experience and observation:</p>
         <div className="table-responsive mb-4">
           <table className="table table-bordered text-center align-middle">
             <thead className="table-light">
@@ -78,12 +91,12 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
                   <td className="text-start">{criteria}</td>
                   {[5, 4, 3, 2, 1].map(val => (
                     <td key={val}>
-                      <input 
-                        type="radio" 
-                        name={`q${i+1}`} 
+                      <input
+                        type="radio"
+                        name={`q${i + 1}`}
                         className="form-check-input"
-                        checked={responses[`q${i+1}`] === String(val)}
-                        onChange={() => handleRadioChange(`q${i+1}`, String(val))}
+                        checked={responses[`q${i + 1}`] === String(val)}
+                        onChange={() => handleRadioChange(`q${i + 1}`, String(val))}
                         required
                       />
                     </td>

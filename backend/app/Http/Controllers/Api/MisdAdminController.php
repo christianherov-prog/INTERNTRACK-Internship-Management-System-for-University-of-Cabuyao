@@ -511,7 +511,7 @@ class MisdAdminController extends Controller
                 'id'            => $user->id,
                 'username'      => $user->username,
                 'section'       => $user->studentProfile?->section,
-                'program'       => $user->studentProfile?->program?->code,
+                'program'       => $user->studentProfile?->program?->name,
                 'school_year'   => $user->studentProfile?->school_year,
                 'semester'      => $user->studentProfile?->semester,
                 'synced_at'     => optional($user->studentProfile?->synced_at)?->toIso8601String(),
@@ -753,7 +753,7 @@ class MisdAdminController extends Controller
             }
 
             $section = FacultySectionAssignmentService::normalizeSection($profile->section);
-            $pName = $profile->program?->name ?: ($profile->program?->code === 'BACHELORO' ? 'Bachelor of Science in Information Technology' : ($profile->program?->code ?: 'Bachelor of Science in Information Technology'));
+            $pName = $profile->program?->name ?: ($profile->program?->name ?: 'Bachelor of Science in Information Technology');
             $sy = $profile->school_year ?: '2025-2026';
             $sem = $profile->semester ?: '2nd Semester';
 

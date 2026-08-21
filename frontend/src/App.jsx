@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { ConfirmProvider } from './contexts/ConfirmContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import AccessDeniedOverlay from './components/AccessDeniedOverlay'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -75,8 +76,9 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
-          <AccessDeniedOverlay />
-          <BrowserRouter>
+          <ConfirmProvider>
+            <AccessDeniedOverlay />
+            <BrowserRouter>
             <Routes>
               <Route path="/" element={<LoginPage />} />
               <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />
@@ -156,12 +158,53 @@ function App() {
               <Route path="/admin/coordinators" element={<ProtectedRoute role="admin"><MisdCoordinators /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute role="admin"><MisdUsers /></ProtectedRoute>} />
               <Route path="/admin/section-mappings" element={<ProtectedRoute role="admin"><MisdSectionMappings /></ProtectedRoute>} />
-              <Route path="/admin/sync" element={<ProtectedRoute role="admin"><MisdSyncMonitor /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute role="admin"><MisdSettings /></ProtectedRoute>} />
+                <Route path="/supervisor/performance-evaluation" element={<ProtectedRoute role="supervisor"><SupervisorPerformanceEvaluation /></ProtectedRoute>} />
+                <Route path="/supervisor/absorption" element={<ProtectedRoute role="supervisor"><SupervisorAbsorption /></ProtectedRoute>} />
+                <Route path="/supervisor/feedback" element={<ProtectedRoute role="supervisor"><SupervisorFeedback /></ProtectedRoute>} />
+                <Route path="/supervisor/notifications" element={<ProtectedRoute role="supervisor"><SupervisorNotifications /></ProtectedRoute>} />
+                <Route path="/supervisor/messages" element={<ProtectedRoute role="supervisor"><SupervisorMessages /></ProtectedRoute>} />
+                <Route path="/supervisor/meetings" element={<ProtectedRoute role="supervisor"><MeetingsPage bodyClass="supervisor-page" /></ProtectedRoute>} />
+                <Route path="/supervisor/settings" element={<ProtectedRoute role="supervisor"><SupervisorSettings /></ProtectedRoute>} />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+                <Route path="/faculty/dashboard" element={<ProtectedRoute role="faculty"><FacultyDashboard /></ProtectedRoute>} />
+                <Route path="/faculty/assigned-students" element={<ProtectedRoute role="faculty"><FacultyAssignedStudents /></ProtectedRoute>} />
+                <Route path="/faculty/journals" element={<ProtectedRoute role="faculty"><FacultyJournals /></ProtectedRoute>} />
+                <Route path="/faculty/evaluations" element={<ProtectedRoute role="faculty"><FacultyEvaluations /></ProtectedRoute>} />
+                <Route path="/faculty/requirements" element={<ProtectedRoute role="faculty"><ManageRequirements /></ProtectedRoute>} />
+                <Route path="/faculty/documents" element={<ProtectedRoute role="faculty"><FacultyDocuments /></ProtectedRoute>} />
+                <Route path="/faculty/feedback" element={<ProtectedRoute role="faculty"><FacultyFeedback /></ProtectedRoute>} />
+                <Route path="/faculty/reports" element={<ProtectedRoute role="faculty"><FacultyReports /></ProtectedRoute>} />
+                <Route path="/faculty/messages" element={<ProtectedRoute role="faculty"><FacultyMessages /></ProtectedRoute>} />
+                <Route path="/faculty/meetings" element={<ProtectedRoute role="faculty"><MeetingsPage bodyClass="faculty-page" canCreate /></ProtectedRoute>} />
+                <Route path="/faculty/supervisor-approvals" element={<ProtectedRoute role="faculty"><CoordSupervisorApprovals apiBase="/faculty" bodyClass="faculty-page" /></ProtectedRoute>} />
+                <Route path="/faculty/settings" element={<ProtectedRoute role="faculty"><FacultySettings /></ProtectedRoute>} />
+
+                <Route path="/coordinator/monitoring" element={<ProtectedRoute role="coordinator"><CoordMonitoring /></ProtectedRoute>} />
+                <Route path="/coordinator/internship-management" element={<ProtectedRoute role="coordinator"><CoordPlacementHub /></ProtectedRoute>} />
+                <Route path="/coordinator/announcements" element={<ProtectedRoute role="coordinator"><CoordAnnouncements /></ProtectedRoute>} />
+                <Route path="/coordinator/records" element={<ProtectedRoute role="coordinator"><CoordRecords /></ProtectedRoute>} />
+                <Route path="/coordinator/absorption" element={<ProtectedRoute role="coordinator"><CoordAbsorption /></ProtectedRoute>} />
+                <Route path="/coordinator/doc-approvals" element={<ProtectedRoute role="coordinator"><CoordDocApprovals /></ProtectedRoute>} />
+                <Route path="/coordinator/logbook" element={<ProtectedRoute role="coordinator"><CoordLogbookReview /></ProtectedRoute>} />
+                <Route path="/coordinator/reports" element={<ProtectedRoute role="coordinator"><CoordReports /></ProtectedRoute>} />
+                <Route path="/coordinator/evaluations" element={<ProtectedRoute role="coordinator"><CoordEvaluations /></ProtectedRoute>} />
+                <Route path="/coordinator/messages" element={<ProtectedRoute role="coordinator"><CoordMessages /></ProtectedRoute>} />
+                <Route path="/coordinator/meetings" element={<ProtectedRoute role="coordinator"><MeetingsPage bodyClass="coordinator-page" canCreate /></ProtectedRoute>} />
+                <Route path="/coordinator/requirements" element={<ProtectedRoute role="coordinator"><ManageRequirements /></ProtectedRoute>} />
+                <Route path="/coordinator/settings" element={<ProtectedRoute role="coordinator"><CoordSettings /></ProtectedRoute>} />
+
+                <Route path="/admin/dashboard" element={<ProtectedRoute role="admin"><MisdDashboard /></ProtectedRoute>} />
+                <Route path="/admin/directors" element={<ProtectedRoute role="admin"><MisdDirectors /></ProtectedRoute>} />
+                <Route path="/admin/coordinators" element={<ProtectedRoute role="admin"><MisdCoordinators /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute role="admin"><MisdUsers /></ProtectedRoute>} />
+                <Route path="/admin/section-mappings" element={<ProtectedRoute role="admin"><MisdSectionMappings /></ProtectedRoute>} />
+                <Route path="/admin/sync" element={<ProtectedRoute role="admin"><MisdSyncMonitor /></ProtectedRoute>} />
+                <Route path="/admin/settings" element={<ProtectedRoute role="admin"><MisdSettings /></ProtectedRoute>} />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </ConfirmProvider>
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>
