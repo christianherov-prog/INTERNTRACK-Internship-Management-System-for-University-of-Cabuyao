@@ -4,8 +4,6 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use App\Contracts\MisdRepositoryInterface;
-use App\Models\StudentProfile;
-use App\Models\FacultyProfile;
 
 /**
  * In-process mock of the University of Cabuyao MISD (iEnroll) API.
@@ -36,45 +34,9 @@ class MockMisdRepository implements MisdRepositoryInterface
                 'sex'               => 'Male',
                 'program'           => 'Bachelor of Science in Information Technology',
                 'department'        => 'College of Computing Studies',
-                'course_description'=> 'IT Practicum (500 hours)',
+                'course_description'       => 'IT Practicum(500 hours) ',
                 'year_level'        => 4,
-                'section'           => '4IT-D',
-                'academic_year'     => '2025-2026',
-                'semester'          => '2nd Semester',
-                'enrollment_status' => 'Enrolled',
-            ],
-            '2300590' => [
-                'student_number'    => '2300590',
-                'first_name'        => 'John',
-                'middle_name'       => null,
-                'last_name'         => 'Taac-Taac',
-                'email'             => 'john.taactaac@uc.edu.ph',
-                'contact_number'    => '09175550590',
-                'birthday'          => '2001-05-15',
-                'sex'               => 'Male',
-                'program'           => 'Bachelor of Science in Information Technology',
-                'department'        => 'College of Computing Studies',
-                'course_description'=> 'IT Practicum (500 hours)',
-                'year_level'        => 4,
-                'section'           => '4IT-D',
-                'academic_year'     => '2025-2026',
-                'semester'          => '2nd Semester',
-                'enrollment_status' => 'Enrolled',
-            ],
-            '2300592' => [
-                'student_number'    => '2300592',
-                'first_name'        => 'Clarence',
-                'middle_name'       => null,
-                'last_name'         => 'Montealegre',
-                'email'             => 'clarence.montealegre@uc.edu.ph',
-                'contact_number'    => '09175550592',
-                'birthday'          => '2001-08-20',
-                'sex'               => 'Male',
-                'program'           => 'Bachelor of Science in Information Technology',
-                'department'        => 'College of Computing Studies',
-                'course_description'=> 'IT Practicum (500 hours)',
-                'year_level'        => 4,
-                'section'           => '4IT-D',
+                'section'           => '4ITD',
                 'academic_year'     => '2025-2026',
                 'semester'          => '2nd Semester',
                 'enrollment_status' => 'Enrolled',
@@ -86,44 +48,21 @@ class MockMisdRepository implements MisdRepositoryInterface
     public function faculty(): array
     {
         return [
-            'ADMIN-MISD-001' => [
-                'faculty_number'    => 'ADMIN-MISD-001',
-                'first_name'        => 'MISD',
-                'middle_name'       => null,
-                'last_name'         => 'Administrator',
-                'email'             => 'misd.admin@uc.edu.ph',
-                'contact_number'    => '09175557800',
-                'sex'               => 'Male',
-                'department'        => 'Management Information Systems Department',
-                'position'          => 'MISD Administrator',
-                'employment_status' => 'Regular',
-            ],
-            'ADMIN-1001' => [
-                'faculty_number'    => 'ADMIN-1001',
-                'first_name'        => 'MISD',
-                'middle_name'       => null,
-                'last_name'         => 'Administrator',
-                'email'             => 'misd.admin@uc.edu.ph',
-                'contact_number'    => '09175557800',
-                'sex'               => 'Male',
-                'department'        => 'Management Information Systems Department',
-                'position'          => 'MISD Administrator',
-                'employment_status' => 'Regular',
-            ],
             'FAC-1001' => [
-                'faculty_number'    => 'FAC-1001',
+                'faculty_number'   => 'FAC-1001',
                 'first_name'        => 'Marvin',
                 'middle_name'       => 'M',
-                'last_name'         => 'Bicuña',
-                'email'             => 'm.bicuna@uc.edu.ph',
+                'last_name'         => 'Bicua',
+                'email'             => 'm.bicua@uc.edu.ph',
                 'contact_number'    => '09175557890',
                 'sex'               => 'Male',
                 'department'        => 'College of Computing Studies',
                 'position'          => 'CCS Faculty',
                 'employment_status' => 'Regular',
             ],
+
             'COR-1001' => [
-                'faculty_number'    => 'COR-1001',
+                'faculty_number'   => 'COR-1001',
                 'first_name'        => 'Arcelito',
                 'middle_name'       => 'C.',
                 'last_name'         => 'Quiatchon',
@@ -134,8 +73,9 @@ class MockMisdRepository implements MisdRepositoryInterface
                 'position'          => 'CCS Coordinator',
                 'employment_status' => 'Regular',
             ],
+
             'DIR-1001' => [
-                'faculty_number'    => 'DIR-1001',
+                'faculty_number'   => 'DIR-1001',
                 'first_name'        => 'Gina',
                 'middle_name'       => 'M.',
                 'last_name'         => 'Oloresisimo',
@@ -174,31 +114,8 @@ class MockMisdRepository implements MisdRepositoryInterface
         }
 
         if (!$row) {
-            // Check if profile already exists in DB before generating generic placeholder
-            $existingProfile = StudentProfile::where('student_number', $key)->first();
-            if ($existingProfile && $existingProfile->first_name && $existingProfile->first_name !== 'UC') {
-                $row = [
-                    'student_id'        => $existingProfile->id,
-                    'student_number'    => $existingProfile->student_number,
-                    'first_name'        => $existingProfile->first_name,
-                    'middle_name'       => $existingProfile->middle_name,
-                    'last_name'         => $existingProfile->last_name,
-                    'suffix'            => $existingProfile->suffix,
-                    'email'             => $existingProfile->email,
-                    'contact_number'    => $existingProfile->contact_number,
-                    'birthday'          => $existingProfile->birthday,
-                    'sex'               => $existingProfile->sex,
-                    'program'           => $existingProfile->program?->name ?? 'Bachelor of Science in Information Technology',
-                    'department'        => $existingProfile->department?->name ?? 'College of Computing Studies',
-                    'course_description'=> $existingProfile->course_description ?? 'IT Practicum (500 hours)',
-                    'year_level'        => $existingProfile->year_level ?? 4,
-                    'section'           => $existingProfile->section ?? '4IT-D',
-                    'academic_year'     => $existingProfile->school_year ?? '2025-2026',
-                    'semester'          => $existingProfile->semester ?? '2nd Semester',
-                    'enrollment_status' => $existingProfile->enrollment_status ?? 'Enrolled',
-                ];
-                $catalogKey = $key;
-            } elseif (preg_match('/^20\d{2}-\d{5}$/', $key) || preg_match('/^\d{7}$/', $key)) {
+            // UC formats: 20XX-XXXXX or 7-digit student numbers (e.g. 2300600)
+            if (preg_match('/^20\d{2}-\d{5}$/', $key) || preg_match('/^\d{7}$/', $key)) {
                 $row = $this->generateGenericStudent($key);
                 $catalogKey = $key;
             }
@@ -241,48 +158,48 @@ class MockMisdRepository implements MisdRepositoryInterface
 
         $overrides = $this->assignmentOverrides();
         $overrides[$key] = [
-            'section'            => $section,
-            'faculty_adviser_id' => $facultyEmp,
-            'updated_at'         => now()->toIso8601String(),
-            'updated_by'         => $updatedBy,
-            'reason'             => $reason,
+            'section'                         => $section,
+            'faculty_adviser_faculty_number' => $facultyEmp,
+            'faculty_adviser_name'            => trim(($faculty['first_name'] ?? '') . ' ' . ($faculty['last_name'] ?? '')),
+            'academic_year'                   => $academicYear ?? ($existing['academic_year'] ?? null),
+            'semester'                        => $semester ?? ($existing['semester'] ?? null),
+            'updated_by'                      => $updatedBy,
+            'reason'                          => $reason,
+            'updated_at'                      => now()->toIso8601String(),
         ];
         Cache::forever(self::OVERRIDE_CACHE_KEY, $overrides);
 
-        return $this->findStudent($studentNumber);
-    }
-
-    /**
-     * Clear mock assignment overrides (tests / reset demo).
-     */
-    public function clearAssignmentOverrides(): void
-    {
-        Cache::forget(self::OVERRIDE_CACHE_KEY);
+        return $this->findStudent($key);
     }
 
     /** @return array<string, array<string, mixed>> */
     private function assignmentOverrides(): array
     {
-        return Cache::get(self::OVERRIDE_CACHE_KEY, []);
+        $raw = Cache::get(self::OVERRIDE_CACHE_KEY, []);
+
+        return is_array($raw) ? $raw : [];
     }
 
-    private function applyAssignmentOverride(array $row, string $catalogKey): array
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function applyAssignmentOverride(array $row, string $lookupKey): array
     {
         $overrides = $this->assignmentOverrides();
-        $normKey = strtoupper(trim($catalogKey));
-        $override = $overrides[$normKey]
-            ?? $overrides[$row['student_number'] ?? '']
+        $studentNumber = strtoupper(trim((string) ($row['student_number'] ?? $lookupKey)));
+        $override = $overrides[$studentNumber]
+            ?? $overrides[strtoupper(trim($lookupKey))]
             ?? null;
 
-        if (!$override) {
+        if (!is_array($override)) {
             return $row;
         }
 
-        if (!empty($override['section'])) {
-            $row['section'] = $override['section'];
-        }
-        if (!empty($override['faculty_adviser_id'])) {
-            $row['faculty_adviser_id'] = $override['faculty_adviser_id'];
+        foreach (['section', 'academic_year', 'semester', 'faculty_adviser_faculty_number', 'faculty_adviser_name'] as $field) {
+            if (array_key_exists($field, $override) && $override[$field] !== null && $override[$field] !== '') {
+                $row[$field] = $override[$field];
+            }
         }
 
         return $row;
@@ -292,47 +209,31 @@ class MockMisdRepository implements MisdRepositoryInterface
     {
         $key = strtoupper(trim($employeeNumber));
         $faculty = $this->faculty();
+
         if (isset($faculty[$key])) {
             return $faculty[$key];
         }
 
-        // Check if profile exists in DB
-        $existingProfile = FacultyProfile::where('faculty_number', $key)->first();
-        if ($existingProfile && $existingProfile->first_name && $existingProfile->first_name !== 'UC') {
-            return [
-                'faculty_id'        => $existingProfile->id,
-                'faculty_number'    => $existingProfile->faculty_number,
-                'first_name'        => $existingProfile->first_name,
-                'middle_name'       => $existingProfile->middle_name,
-                'last_name'         => $existingProfile->last_name,
-                'suffix'            => $existingProfile->suffix,
-                'email'             => $existingProfile->email,
-                'contact_number'    => $existingProfile->contact_number,
-                'department'        => $existingProfile->department?->name ?? 'College of Computing Studies',
-                'position'          => $existingProfile->position ?? 'Faculty',
-                'employment_status' => $existingProfile->employment_status ?? 'Regular',
-                'sex'               => $existingProfile->sex,
-            ];
-        }
-
-        // Allow any standard faculty format
-        if (preg_match('/^(FAC|COR|COORD|DIR|MISD|ADMIN|EMP)-[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $key)) {
+        if (preg_match('/^(FAC|DIR|COORD|COR|EMP|MISD|ADMIN)-[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $key)) {
             return $this->generateGenericFaculty($key);
         }
 
         return null;
     }
 
-    public function allStudents(array $filters = []): array
+    /** @return list<array<string, mixed>> */
+    public function allStudents(): array
     {
-        $rows = array_values(array_map(
-            fn ($k) => $this->findStudent((string) $k),
-            array_keys($this->students())
-        ));
-        return array_filter($rows);
+        $out = [];
+        foreach ($this->students() as $id => $row) {
+            $out[] = $this->applyAssignmentOverride($row, (string) $id);
+        }
+
+        return $out;
     }
 
-    public function allFaculty(array $filters = []): array
+    /** @return list<array<string, mixed>> */
+    public function allFaculty(): array
     {
         return array_values($this->faculty());
     }
@@ -350,11 +251,11 @@ class MockMisdRepository implements MisdRepositoryInterface
             'contact_number'    => null,
             'birthday'          => null,
             'sex'               => null,
-            'program'           => 'Bachelor of Science in Information Technology',
+            'program'           => 'BS Information Technology',
             'department'        => 'College of Computing Studies',
-            'course_description'=> 'IT Practicum (500 hours)',
+            'course_description' => 'IT Practicum (500 hours)',
             'year_level'        => 4,
-            'section'           => '4IT-D',
+            'section'           => '4ITD',
             'school_year'       => '2025-2026',
             'semester'          => '2nd Semester',
             'enrollment_status' => 'Enrolled',
@@ -378,7 +279,7 @@ class MockMisdRepository implements MisdRepositoryInterface
 
         return [
             'faculty_id'        => rand(9000, 9999),
-            'faculty_number'    => $employeeNumber,
+            'faculty_number'   => $employeeNumber,
             'first_name'        => 'UC',
             'middle_name'       => null,
             'last_name'         => ucfirst(strtolower($prefix)),
