@@ -58,6 +58,8 @@ class StudentAccountsSeeder extends Seeder
         $techCorp = Company::where('company_name', 'TechCorp PH')->first();
         $coordUser = User::where('role', 'coordinator')->first();
         $facultyUser = User::where('role', 'faculty')->first();
+        $supervisorUser = User::where('username', 'SUP-1001')->first()
+            ?? User::where('role', 'supervisor')->first();
 
         $students = [
             [
@@ -216,6 +218,7 @@ class StudentAccountsSeeder extends Seeder
                 $internshipData = array_merge($row['internship'], [
                     'student_id'     => $user->id,
                     'company_id'     => $techCorp?->id,
+                    'supervisor_id'  => $supervisorUser?->id,
                     'faculty_id'     => $facultyUser?->id ?? app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id,
                     'coordinator_id' => $coordUser?->id,
                 ]);

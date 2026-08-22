@@ -206,6 +206,24 @@ class DatabaseSeeder extends Seeder
             'slots_available'=> 15,
         ]);
 
+        // ─── 3b. Supervisor demo account (Patrick Bateman at TechCorp PH) ────
+        $supervisor = User::updateOrCreate(['username' => 'SUP-1001'], [
+            'email' => 'patrick.bateman@techcorp.ph',
+            'password' => $pw,
+            'role' => 'supervisor',
+            'is_active' => true,
+        ]);
+
+        \App\Models\SupervisorProfile::updateOrCreate(['user_id' => $supervisor->id], [
+            'first_name' => 'Patrick',
+            'last_name' => 'Bateman',
+            'email' => 'patrick.bateman@techcorp.ph',
+            'contact_number' => '09170000001',
+            'sex' => 'Male',
+            'position' => 'Senior Vice President / OJT Supervisor',
+            'company_id' => Company::where('company_name', 'TechCorp PH')->value('id'),
+        ]);
+
         // ─── 4. Faculty accounts + section assignments ────────────────────────
         $this->call(FacultySectionAssignmentSeeder::class);
 
@@ -235,9 +253,10 @@ class DatabaseSeeder extends Seeder
   Facul (COED)  FAC-COED-001           interntrack123
   Coord (COE)   COR-COE-001            interntrack123
   Facul (COE)   FAC-COE-001            interntrack123
+  Supervisor    SUP-1001               interntrack123 (Patrick Bateman)
   Stud (CCS)    2300600                interntrack123 (Fresh/Pending)
   Stud (CCS)    2300590                interntrack123 (Fresh/Pending)
-  Stud (CCS)    2300592                interntrack123 (Populated)
+  Stud (CCS)    2300592                interntrack123 (Populated: TechCorp PH)
   Stud (COED)   2300601                interntrack123 (Fresh/Pending)
   Stud (COE)    2300602                interntrack123 (Fresh/Pending)');
         $this->command->info('─────────────────────────────────────────────────────────────');

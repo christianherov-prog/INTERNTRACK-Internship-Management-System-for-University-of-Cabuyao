@@ -8,7 +8,7 @@ use App\Models\StudentProfile;
 
 $dept = Department::firstOrCreate(['code' => 'COE'], ['name' => 'College of Engineering', 'is_active' => true]);
 $coeProg = Program::firstOrCreate(['code' => 'COE'], ['name' => 'Computer Engineering', 'department_id' => $dept->id, 'is_active' => true]);
-$bsitProg = Program::where('code', 'BSIT')->first();
+$bsitProg = Program::where('code', 'Bachelor of Science in Information Technology')->first();
 
 $u1 = User::create([
     'student_number' => '2300601',
