@@ -207,7 +207,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ─── 3b. Supervisor demo account (Patrick Bateman at TechCorp PH) ────
-        $supervisor = User::updateOrCreate(['username' => 'SUP-1001'], [
+        $supervisor = User::updateOrCreate(['email' => 'patrick.bateman@techcorp.ph'], [
             'email' => 'patrick.bateman@techcorp.ph',
             'password' => $pw,
             'role' => 'supervisor',
@@ -221,7 +221,6 @@ class DatabaseSeeder extends Seeder
             'contact_number' => '09170000001',
             'sex' => 'Male',
             'position' => 'Senior Vice President / OJT Supervisor',
-            'company_id' => Company::where('company_name', 'TechCorp PH')->value('id'),
         ]);
 
         // ─── 4. Faculty accounts + section assignments ────────────────────────

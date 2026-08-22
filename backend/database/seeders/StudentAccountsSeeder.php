@@ -58,7 +58,7 @@ class StudentAccountsSeeder extends Seeder
         $techCorp = Company::where('company_name', 'TechCorp PH')->first();
         $coordUser = User::where('role', 'coordinator')->first();
         $facultyUser = User::where('role', 'faculty')->first();
-        $supervisorUser = User::where('username', 'SUP-1001')->first()
+        $supervisorUser = User::where('email', 'patrick.bateman@techcorp.ph')->first()
             ?? User::where('role', 'supervisor')->first();
 
         $students = [
