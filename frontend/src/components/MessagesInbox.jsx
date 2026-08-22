@@ -12,7 +12,6 @@ import PageError from './PageError'
 import ConfirmModal from './modals/ConfirmModal'
 import api from '../services/api'
 import { unwrapList } from '../utils/apiList'
-import { withAvatarCacheBust } from '../utils/avatar'
 import { useAuth } from '../contexts/AuthContext'
 import '../styles/messages.css'
 
@@ -112,8 +111,8 @@ function sameThread(a, b) {
 /** Photo when available; initials fallback (and onError for broken URLs). */
 function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
   const [broken, setBroken] = useState(false)
-  const label = (peer?.avatar || initials(peer?.name || peer?.username) || '?').trim() || '?'
-  const src = peer?.avatarUrl && !broken ? withAvatarCacheBust(peer.avatarUrl, peer.avatarVersion || peer.id) : null
+  const label = peer?.avatar || initials(peer?.name)
+  const src = peer?.avatarUrl && !broken ? peer.avatarUrl : null
 
   useEffect(() => {
     setBroken(false)
@@ -133,7 +132,7 @@ function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
           onError={() => setBroken(true)}
         />
       ) : (
-        <span className="msg-avatar-initials">{label}</span>
+        label
       )}
     </div>
   )

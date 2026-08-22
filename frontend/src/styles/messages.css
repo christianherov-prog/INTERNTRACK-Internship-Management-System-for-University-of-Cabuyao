@@ -225,7 +225,7 @@
   border-radius: 50%;
   background: linear-gradient(135deg, var(--green-dark, #0a5c2e), var(--green-mid, #2da058));
   color: #fff;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -241,26 +241,13 @@
   display: block;
 }
 
-.msg-avatar-initials {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  color: #ffffff;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.03em;
-  user-select: none;
-}
-
 .msg-thread-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--green-dark, #0a5c2e), var(--green-mid, #2da058));
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;

@@ -79,23 +79,16 @@ class MessageController extends Controller
         ];
     }
 
-    /** Host-aware URL construction pointing to PublicAvatarController endpoint. */
+    /** Same host-aware URL construction as AuthController (request host + /storage/…). */
     private function resolveAvatarUrl(?string $path): ?string
     {
         if (!$path) {
             return null;
         }
 
-        $normalized = ltrim(str_replace('\\', '/', $path), '/');
-        $filename   = basename($normalized);
-
-        if ($filename === '' || $filename === '.' || $filename === '..') {
-            return null;
-        }
-
         $base = rtrim(request()->getSchemeAndHttpHost(), '/');
 
-        return $base . '/api/v1/media/avatars/' . $filename;
+        return $base.'/storage/'.ltrim($path, '/');
     }
 
     private function initialsFromName(?string $name): string
