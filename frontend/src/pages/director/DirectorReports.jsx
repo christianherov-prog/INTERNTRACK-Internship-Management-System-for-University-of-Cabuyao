@@ -5,7 +5,6 @@ import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
-import ReportExportModal from '../../components/modals/ReportExportModal'
 
 const REPORT_TYPES = [
   {
@@ -167,7 +166,6 @@ function DirectorReports({ embedded = false }) {
   const [activeReport, setActiveReport] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [chedData, setChedData] = useState(null)
-  const [exportPreview, setExportPreview] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -202,54 +200,54 @@ function DirectorReports({ embedded = false }) {
     }
   }
 
-  // Set preview state to display ReportExportModal
+  // Generate CSV manually instead of using modal
   const handleExportCsv = () => {
+    let csvContent = "data:text/csv;charset=utf-8,"
     let rows = []
-    let filename = ''
-    let title = ''
 
     if (activeReport === 'internship-summary') {
-      title = 'Internship Summary Report'
-      filename = 'internship-summary-report'
-      rows = byProgram.map(r => ({
-        Program: r.program ?? 'Unknown',
-        Ongoing: r.ongoing ?? 0,
-        Completed: r.completed ?? 0,
-        Total: r.count ?? 0
-      }))
+      rows = [['Program', 'Ongoing', 'Completed', 'Total']]
+      byProgram.forEach(r => {
+        rows.push([r.program ?? 'Unknown', r.ongoing ?? 0, r.completed ?? 0, r.count ?? 0])
+      })
     } else if (activeReport === 'company-partnerships') {
-      title = 'Company Partnerships Report'
-      filename = 'company-partnerships-report'
-      rows = topCompanies.map(r => ({
-        Company: r.company_name,
-        Industry: r.industry ?? '-',
-        'MOA Status': r.moa_status ?? '-',
-        Interns: r.internships_count ?? 0
-      }))
+      rows = [['Company', 'Industry', 'MOA Status', 'Interns']]
+      topCompanies.forEach(r => {
+        rows.push([r.company_name, r.industry ?? '-', r.moa_status ?? '-', r.internships_count ?? 0])
+      })
     } else if (activeReport === 'moa-status') {
-      title = 'MOA Status Distribution Report'
-      filename = 'moa-status-report'
-      rows = Object.entries(moaByStatus).map(([status, count]) => ({
-        Status: status,
-        Count: count
-      }))
+      rows = [['Status', 'Count']]
+      Object.entries(moaByStatus).forEach(([status, count]) => {
+        rows.push([status, count])
+      })
     } else if (activeReport === 'ched-annual') {
-      title = 'CHED Annual Report'
-      filename = 'ched-annual-report'
-      rows = (chedData || []).map(r => ({
-        'Company / HTE': r.company_name,
-        Address: r.address,
-        Industry: r.industry,
-        'MOA Status': r.moa_status,
-        'Total Interns': r.total_interns,
-        Ongoing: r.ongoing,
-        Completed: r.completed
-      }))
+      rows = [['Company / HTE', 'Address', 'Industry', 'MOA Status', 'Total Interns', 'Ongoing', 'Completed']]
+      ;(chedData || []).forEach(r => {
+        rows.push([
+          r.company_name, r.address, r.industry, r.moa_status,
+          r.total_interns, r.ongoing, r.completed
+        ])
+      })
     }
 
     if (rows.length === 0) return
 
-    setExportPreview({ title, filename, rows })
+    // Escape CSV values
+    csvContent += rows.map(e => e.map(item => {
+      let str = String(item).replace(/"/g, '""')
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        str = `"${str}"`
+      }
+      return str
+    }).join(",")).join("\n")
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `${activeReport}-export.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const printRef = useRef(null)
@@ -351,7 +349,6 @@ function DirectorReports({ embedded = false }) {
           )}
         </>
       )}
-      <ReportExportModal preview={exportPreview} onClose={() => setExportPreview(null)} />
     </Wrapper>
   )
 }

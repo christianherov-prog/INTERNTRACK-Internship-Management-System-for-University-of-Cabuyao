@@ -85,7 +85,7 @@ function ConfirmLogoutModal({ open, loading = false, error = null, onCancel, onC
         aria-labelledby={titleId}
         aria-describedby={descId}
       >
-        <div className="it-confirm-icon it-confirm-icon-danger" aria-hidden="true">
+        <div className="it-confirm-icon" aria-hidden="true">
           <i className="fa fa-sign-out-alt" />
         </div>
         <h3 id={titleId} className="it-confirm-title">Log out of INTERNTRACK?</h3>

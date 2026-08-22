@@ -76,7 +76,7 @@ function ConfirmModal({
   }
 
   const confirmClass =
-    variant === 'danger' ? 'it-confirm-btn it-confirm-btn-danger' : 'it-confirm-btn it-confirm-btn-primary'
+    variant === 'danger' ? 'it-confirm-btn it-confirm-btn-danger' : 'it-confirm-btn it-confirm-btn-danger'
 
   return (
     <div className="it-confirm-overlay" role="presentation" onClick={handleBackdropClick}>
@@ -88,8 +88,8 @@ function ConfirmModal({
         aria-labelledby={titleId}
         aria-describedby={descId}
       >
-        <div className={`it-confirm-icon ${variant === 'danger' ? 'it-confirm-icon-danger' : ''}`} aria-hidden="true">
-          <i className={`fa ${variant === 'danger' ? 'fa-trash-can' : 'fa-circle-question'}`} />
+        <div className="it-confirm-icon" aria-hidden="true">
+          <i className={`fa ${variant === 'danger' ? 'fa-exclamation-triangle' : 'fa-question-circle'}`} />
         </div>
         <h3 id={titleId} className="it-confirm-title">{title}</h3>
         {message && (

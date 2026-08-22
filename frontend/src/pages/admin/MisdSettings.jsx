@@ -11,14 +11,9 @@ function MisdSettings() {
       notificationsIntro="Choose which system-administration alerts you want to receive."
       securityIntro="Update your password and protect MISD admin credentials."
       metaFields={[
-        { label: 'Administrator ID', key: 'faculty_number', fallback: '—' },
+        { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
         { label: 'Department', key: 'department', fallback: 'Management Information Systems Department' },
-        { label: 'Designation', key: 'position', fallback: 'MISD Administrator' },
-        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular' },
-        { label: 'System Access Level', fallback: 'Superadmin (Full Control)', value: () => 'Superadmin (Full Control)' },
-        { label: 'Official Email', key: 'email', fallback: '—' },
-        { label: 'Contact Number', key: 'contact', fallback: '—' },
-        { label: 'System Version', fallback: 'INTERNTRACK v1.0', value: () => 'INTERNTRACK v1.0' },
+        { label: 'Position', key: 'position', fallback: 'MISD Administrator' },
       ]}
       accountExtraFields={[
         {

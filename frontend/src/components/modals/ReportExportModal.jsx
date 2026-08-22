@@ -44,23 +44,14 @@ function ReportExportModal({ preview, onClose }) {
 
   return (
     <div
-      className="modal fade show d-flex align-items-center justify-content-center"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        zIndex: 10050,
-      }}
+      className="modal fade show d-block"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)', zIndex: 1060 }}
       role="dialog"
       aria-modal="true"
       onClick={handleBackdropClick}
     >
-      <div className="modal-dialog modal-xl modal-dialog-scrollable w-100 m-3" style={{ pointerEvents: 'auto', maxWidth: '1140px' }}>
-        <div className="modal-content shadow-lg border-0" style={{ maxWidth: 'none', width: '100%' }}>
+      <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div className="modal-content shadow-lg border-0">
           <div className="modal-header bg-light py-3">
             <h5 className="modal-title d-flex align-items-center mb-0">
               <i className="fa fa-file-csv text-success me-2"></i>

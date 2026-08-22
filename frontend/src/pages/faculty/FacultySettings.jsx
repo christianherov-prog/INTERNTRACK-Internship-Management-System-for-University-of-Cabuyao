@@ -9,13 +9,9 @@ function FacultySettings() {
       notificationsIntro="Choose which faculty advising alerts you want to receive."
       securityIntro="Update your password and strengthen account protection for your school credentials."
       metaFields={[
-        { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
+        { label: 'Faculty Number', key: 'faculty_number' },
         { label: 'Department', key: 'department', fallback: 'College of Computing Studies' },
-        { label: 'Position / Title', key: 'position', fallback: 'CCS Faculty Supervisor' },
-        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular Faculty' },
-        { label: 'Assigned Role', fallback: 'Faculty Practicum Adviser', value: () => 'Faculty Practicum Adviser' },
-        { label: 'Official Email', key: 'email', fallback: '—' },
-        { label: 'Contact Number', key: 'contact', fallback: '—' },
+        { label: 'Position', key: 'position', fallback: 'CCS Faculty Supervisor' },
         { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, 2nd Semester' },
       ]}
       accountExtraFields={[

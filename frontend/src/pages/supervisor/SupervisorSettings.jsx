@@ -9,13 +9,8 @@ function SupervisorSettings() {
       notificationsIntro="Choose which intern-monitoring alerts you want to receive at your host training establishment."
       securityIntro="Update your password and strengthen account protection for your supervisor credentials."
       metaFields={[
-        { label: 'Host Company', key: 'company', fallback: 'Host Training Establishment' },
-        { label: 'Job Position', key: 'position', fallback: 'Company Supervisor' },
-        { label: 'Account Role', fallback: 'Industry Supervisor', value: () => 'Industry Supervisor' },
-        { label: 'Supervision Scope', fallback: 'HTE Practicum Program', value: () => 'HTE Practicum Program' },
-        { label: 'Official Email', key: 'email', fallback: '—' },
-        { label: 'Contact Number', key: 'contact', fallback: '—' },
-        { label: 'Account Status', fallback: 'Active HTE Partner', value: () => 'Active HTE Partner' },
+        { label: 'Host Company', key: 'company', fallback: 'Not assigned' },
+        { label: 'Position', key: 'position', fallback: 'Company Supervisor' },
         { label: 'Internship Term', key: 'term', fallback: 'AY 2025-2026, Sem 2' },
       ]}
       accountExtraFields={[

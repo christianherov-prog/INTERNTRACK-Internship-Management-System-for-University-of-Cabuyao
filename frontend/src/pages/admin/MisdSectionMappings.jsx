@@ -3,35 +3,14 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
-import ConfirmModal from '../../components/modals/ConfirmModal'
 
 const emptyForm = {
   program: 'BS Information Technology',
   section: '',
   academic_year: '2025-2026',
-  semester: 2,
+  semester: 1,
   faculty_user_id: '',
   is_active: true,
-}
-
-const formatTerm = (ay, sem) => {
-  const year = ay && ay !== '—' ? ay : '2025-2026'
-  let semStr = 'Sem 2'
-  if (sem === 1 || sem === '1' || sem === '1st' || sem === '1st Semester') semStr = 'Sem 1'
-  else if (sem === 2 || sem === '2' || sem === '2nd' || sem === '2nd Semester') semStr = 'Sem 2'
-  else if (sem) semStr = String(sem).replace(/^sem\s*/i, 'Sem ')
-  return `AY ${year}, ${semStr}`
-}
-
-const formatProgram = (p) => {
-  if (!p) return 'BS Information Technology'
-  if (typeof p === 'string') {
-    if (p === 'BACHELORO' || p === '') return 'BS Information Technology'
-    return p
-  }
-  if (p.name) return p.name
-  if (p.code && p.code !== 'BACHELORO') return p.code
-  return 'BS Information Technology'
 }
 
 function MisdSectionMappings() {
@@ -45,15 +24,13 @@ function MisdSectionMappings() {
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
-  const [deletingRow, setDeletingRow] = useState(null)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [filters, setFilters] = useState({ academic_year: '', semester: '', section: '' })
 
   const load = () => {
     setLoading(true)
     setError(null)
     const params = {}
-    if (filters.academic_year) params.school_year = filters.academic_year
+    if (filters.academic_year) params.academic_year = filters.academic_year
     if (filters.semester) params.semester = filters.semester
     if (filters.section) params.section = filters.section
 
@@ -78,10 +55,8 @@ function MisdSectionMappings() {
     setForm({
       ...emptyForm,
       ...(seed || {}),
-      program: formatProgram(seed?.program),
-      academic_year: seed?.academic_year || seed?.school_year || emptyForm.academic_year,
       faculty_user_id: seed?.faculty_user_id || '',
-      semester: seed?.semester || 2,
+      semester: seed?.semester || 1,
       is_active: true,
     })
     setShowForm(true)
@@ -91,11 +66,11 @@ function MisdSectionMappings() {
   const openEdit = (row) => {
     setEditId(row.id)
     setForm({
-      program: formatProgram(row.program),
+      program: (typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || '',
       section: row.section || '',
-      academic_year: row.academic_year || row.school_year || '2025-2026',
-      semester: row.semester ? (String(row.semester).includes('1') ? 1 : 2) : 2,
-      faculty_user_id: row.faculty_user_id || row.faculty?.id || '',
+      academic_year: row.academic_year || '',
+      semester: row.semester || 1,
+      faculty_user_id: row.faculty_user_id || '',
       is_active: !!row.is_active,
     })
     setShowForm(true)
@@ -108,7 +83,6 @@ function MisdSectionMappings() {
     setMessage(null)
     const payload = {
       ...form,
-      school_year: form.academic_year,
       faculty_user_id: Number(form.faculty_user_id),
       semester: Number(form.semester),
       section: form.section.trim().toUpperCase(),
@@ -116,10 +90,10 @@ function MisdSectionMappings() {
     try {
       if (editId) {
         await api.put(`/admin/section-assignments/${editId}`, payload)
-        setMessage({ type: 'success', text: 'Mapping updated successfully.' })
+        setMessage({ type: 'success', text: 'Mapping updated.' })
       } else {
         await api.post('/admin/section-assignments', payload)
-        setMessage({ type: 'success', text: 'Mapping created successfully.' })
+        setMessage({ type: 'success', text: 'Mapping created.' })
       }
       setShowForm(false)
       load()
@@ -133,19 +107,15 @@ function MisdSectionMappings() {
     }
   }
 
-  const handleConfirmDelete = async () => {
-    if (!deletingRow) return
-    setIsDeleting(true)
+  const remove = async (row) => {
+    if (!window.confirm(`Delete mapping for ${row.section}?`)) return
     setMessage(null)
     try {
-      await api.delete(`/admin/section-assignments/${deletingRow.id}`)
+      await api.delete(`/admin/section-assignments/${row.id}`)
       setMessage({ type: 'success', text: 'Mapping deleted.' })
-      setDeletingRow(null)
       load()
     } catch (err) {
       setMessage({ type: 'danger', text: err.response?.data?.message || 'Delete failed.' })
-    } finally {
-      setIsDeleting(false)
     }
   }
 
@@ -160,53 +130,29 @@ function MisdSectionMappings() {
       )}
 
       {unmapped.length > 0 && (
-        <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden border-start border-warning border-4">
-          <div className="card-header bg-transparent border-0 px-4 pt-3.5 pb-2 d-flex align-items-center justify-content-between">
-            <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
-              <i className="fa fa-triangle-exclamation text-warning"></i>
-              Unmapped Section Groups ({unmapped.length})
-            </h6>
-            <span className="badge bg-warning-subtle text-warning-emphasis fw-semibold px-2.5 py-1" style={{ fontSize: '0.75rem' }}>
-              Action Required
-            </span>
-          </div>
+        <div className="content-card mb-3">
+          <div className="content-card-header"><i className="fa fa-exclamation-triangle text-warning"></i><h6>Unmapped Sections ({unmapped.length})</h6></div>
           <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #eef2f6' }}>
-                <tr>
-                  <th className="text-uppercase text-muted fw-semibold py-2.5 px-4" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Section</th>
-                  <th className="text-uppercase text-muted fw-semibold py-2.5 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Program</th>
-                  <th className="text-uppercase text-muted fw-semibold py-2.5 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Academic Term</th>
-                  <th className="text-uppercase text-muted fw-semibold py-2.5 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Enrolled Students</th>
-                  <th className="text-uppercase text-muted fw-semibold py-2.5 px-4 text-center" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Action</th>
-                </tr>
-              </thead>
+            <table className="table table-sm mb-0">
+              <thead><tr><th>Section</th><th>Program</th><th>Term</th><th>Students</th><th></th></tr></thead>
               <tbody>
                 {unmapped.map((u, i) => (
                   <tr key={i}>
-                    <td className="px-4 py-2.5">
-                      <span className="badge bg-light text-dark border font-monospace fw-bold" style={{ fontSize: '0.8rem' }}>
-                        {u.section}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 fw-medium text-dark">{formatProgram(u.program)}</td>
-                    <td className="px-3 py-2.5 text-muted">{formatTerm(u.school_year || u.academic_year, u.semester)}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="badge bg-success-subtle text-success fw-bold px-2 py-0.5 rounded-pill">
-                        {u.student_count} {u.student_count === 1 ? 'student' : 'students'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
+                    <td><code>{u.section}</code></td>
+                    <td>{(typeof u.program === 'string' ? u.program : u.program?.code || u.program?.name) || '—'}</td>
+                    <td>{u.academic_year || '—'} · Sem {u.semester || '—'}</td>
+                    <td>{u.student_count}</td>
+                    <td>
                       <button
-                        className="btn btn-sm btn-outline-success rounded-3 fw-semibold px-3"
+                        className="btn btn-sm btn-outline-primary"
                         onClick={() => openCreate({
                           section: u.section,
-                          program: formatProgram(u.program),
-                          academic_year: u.school_year || u.academic_year || emptyForm.academic_year,
-                          semester: u.semester || 2,
+                          program: (typeof u.program === 'string' ? u.program : u.program?.code || u.program?.name) || '',
+                          academic_year: u.academic_year || emptyForm.academic_year,
+                          semester: u.semester || 1,
                         })}
                       >
-                        <i className="fa fa-sitemap me-1.5"></i>Map Now
+                        Map now
                       </button>
                     </td>
                   </tr>
@@ -217,164 +163,117 @@ function MisdSectionMappings() {
         </div>
       )}
 
-      {/* Filter and Action Bar */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white p-3">
-        <div className="d-flex flex-wrap gap-2.5 justify-content-between align-items-center">
-          <div className="d-flex flex-wrap gap-2 align-items-center">
-            <input
-              className="form-control rounded-3"
-              style={{ width: 160 }}
-              placeholder="AY (e.g. 2025-2026)"
-              value={filters.academic_year}
-              onChange={(e) => setFilters((p) => ({ ...p, academic_year: e.target.value }))}
-            />
-            <select
-              className="form-select rounded-3"
-              style={{ width: 130 }}
-              value={filters.semester}
-              onChange={(e) => setFilters((p) => ({ ...p, semester: e.target.value }))}
-            >
-              <option value="">All Semesters</option>
-              <option value="1">Sem 1</option>
-              <option value="2">Sem 2</option>
-            </select>
-            <input
-              className="form-control rounded-3"
-              style={{ width: 120 }}
-              placeholder="Section"
-              value={filters.section}
-              onChange={(e) => setFilters((p) => ({ ...p, section: e.target.value }))}
-            />
-            <button className="btn btn-outline-success fw-semibold rounded-3 px-3" onClick={load}>
-              <i className="fa fa-filter me-1.5"></i>Apply Filter
-            </button>
-          </div>
-          <button className="btn btn-success rounded-3 fw-semibold px-3.5 py-2" onClick={() => openCreate()}>
-            <i className="fa fa-plus me-1.5"></i>Add New Mapping
-          </button>
+      <div className="d-flex flex-wrap gap-2 justify-content-between mb-3">
+        <div className="d-flex flex-wrap gap-2">
+          <input
+            className="form-control form-control-sm"
+            style={{ width: 140 }}
+            placeholder="AY e.g. 2025-2026"
+            value={filters.academic_year}
+            onChange={(e) => setFilters((p) => ({ ...p, academic_year: e.target.value }))}
+          />
+          <select
+            className="form-select form-select-sm"
+            style={{ width: 120 }}
+            value={filters.semester}
+            onChange={(e) => setFilters((p) => ({ ...p, semester: e.target.value }))}
+          >
+            <option value="">All sem</option>
+            <option value="1">Sem 1</option>
+            <option value="2">Sem 2</option>
+          </select>
+          <input
+            className="form-control form-control-sm"
+            style={{ width: 100 }}
+            placeholder="Section"
+            value={filters.section}
+            onChange={(e) => setFilters((p) => ({ ...p, section: e.target.value }))}
+          />
+          <button className="btn btn-sm btn-outline-secondary" onClick={load}>Apply</button>
         </div>
+        <button className="btn btn-primary btn-sm" onClick={() => openCreate()}>
+          <i className="fa fa-plus me-1"></i>Add Mapping
+        </button>
       </div>
 
       {showForm && (
-        <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
-          <div className="card-header bg-transparent border-0 px-4 pt-3.5 pb-2">
-            <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
-              <i className="fa fa-pen-to-square text-success"></i>
-              {editId ? 'Edit Section Mapping' : 'Add New Section Mapping'}
-            </h6>
-          </div>
-          <form className="p-4 pt-2" onSubmit={handleSubmit}>
+        <div className="content-card mb-4">
+          <div className="content-card-header"><i className="fa fa-pen"></i><h6>{editId ? 'Edit Mapping' : 'Add Mapping'}</h6></div>
+          <form className="p-3" onSubmit={handleSubmit}>
             <div className="row g-3">
               <div className="col-md-4">
-                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>
-                  Section Code <span className="text-danger">*</span>
-                </label>
-                <input className="form-control rounded-3 font-monospace" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="4ITA" required />
+                <label className="form-label fw-semibold">Section <span className="text-danger">*</span></label>
+                <input className="form-control" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="4ITA" required />
               </div>
               <div className="col-md-4">
-                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>
-                  Academic Year <span className="text-danger">*</span>
-                </label>
-                <input className="form-control rounded-3" value={form.academic_year} onChange={(e) => setForm((p) => ({ ...p, academic_year: e.target.value }))} required />
+                <label className="form-label fw-semibold">Academic Year <span className="text-danger">*</span></label>
+                <input className="form-control" value={form.academic_year} onChange={(e) => setForm((p) => ({ ...p, academic_year: e.target.value }))} required />
               </div>
               <div className="col-md-4">
-                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>
-                  Semester <span className="text-danger">*</span>
-                </label>
-                <select className="form-select rounded-3" value={form.semester} onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}>
-                  <option value={1}>Semester 1</option>
-                  <option value={2}>Semester 2</option>
+                <label className="form-label fw-semibold">Semester <span className="text-danger">*</span></label>
+                <select className="form-select" value={form.semester} onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}>
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
                 </select>
               </div>
               <div className="col-md-6">
-                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Degree Program</label>
-                <input className="form-control rounded-3" value={form.program} onChange={(e) => setForm((p) => ({ ...p, program: e.target.value }))} />
+                <label className="form-label fw-semibold">Program</label>
+                <input className="form-control" value={(typeof form.program === 'string' ? form.program : form.program?.code || form.program?.name) || ''} onChange={(e) => setForm((p) => ({ ...p, program: e.target.value }))} />
               </div>
               <div className="col-md-6">
-                <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>
-                  Assigned Faculty Supervisor <span className="text-danger">*</span>
-                </label>
-                <select className="form-select rounded-3" value={form.faculty_user_id} onChange={(e) => setForm((p) => ({ ...p, faculty_user_id: e.target.value }))} required>
-                  <option value="">Select faculty supervisor…</option>
+                <label className="form-label fw-semibold">Faculty <span className="text-danger">*</span></label>
+                <select className="form-select" value={form.faculty_user_id} onChange={(e) => setForm((p) => ({ ...p, faculty_user_id: e.target.value }))} required>
+                  <option value="">Select faculty…</option>
                   {faculty.map((f) => (
                     <option key={f.id} value={f.id}>{f.name} ({f.username})</option>
                   ))}
                 </select>
               </div>
-              <div className="col-md-4 d-flex align-items-center pt-2">
-                <div className="form-check form-switch">
+              <div className="col-md-4 d-flex align-items-end">
+                <div className="form-check">
                   <input className="form-check-input" type="checkbox" id="mapActive" checked={form.is_active} onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))} />
-                  <label className="form-check-label fw-semibold" htmlFor="mapActive">Active Mapping</label>
+                  <label className="form-check-label" htmlFor="mapActive">Active</label>
                 </div>
               </div>
             </div>
-            <div className="mt-3.5 d-flex gap-2">
-              <button type="submit" className="btn btn-success rounded-3 fw-semibold px-3.5" disabled={saving}>
-                <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-1.5`}></i>{saving ? 'Saving…' : 'Save Mapping'}
+            <div className="mt-3">
+              <button type="submit" className="btn btn-success me-2" disabled={saving}>
+                <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>{saving ? 'Saving…' : 'Save'}
               </button>
-              <button type="button" className="btn btn-light border rounded-3 fw-semibold px-3" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
             </div>
           </form>
         </div>
       )}
 
-      <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
-        <div className="card-header bg-transparent border-0 px-4 pt-3.5 pb-2 d-flex align-items-center justify-content-between">
-          <h6 className="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style={{ fontSize: '1rem' }}>
-            <i className="fa fa-sitemap text-success"></i> Current Section Mappings
-          </h6>
-          <span className="badge bg-light text-secondary border fw-semibold px-2.5 py-1" style={{ fontSize: '0.75rem' }}>
-            {rows.length} {rows.length === 1 ? 'mapping' : 'mappings'}
-          </span>
-        </div>
+      <div className="content-card">
+        <div className="content-card-header"><i className="fa fa-table"></i><h6>Current Mappings</h6></div>
         <div className="table-responsive">
           {loading ? (
-            <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
           ) : (
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #eef2f6' }}>
-                <tr>
-                  <th className="text-uppercase text-muted fw-semibold py-3 px-4" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Section</th>
-                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Program</th>
-                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Academic Term</th>
-                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Faculty Supervisor</th>
-                  <th className="text-uppercase text-muted fw-semibold py-3 px-3" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Status</th>
-                  <th className="text-uppercase text-muted fw-semibold py-3 px-4 text-center" style={{ fontSize: '0.72rem', letterSpacing: '0.05em' }}>Actions</th>
-                </tr>
+            <table className="table table-hover mb-0">
+              <thead>
+                <tr><th>Section</th><th>Program</th><th>Term</th><th>Faculty</th><th>Status</th><th className="text-center">Actions</th></tr>
               </thead>
               <tbody>
                 {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center text-muted py-5">
-                      <i className="fa-regular fa-folder-open fa-2x mb-2 d-block opacity-40"></i>
-                      No section mappings registered for this query.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="text-center text-muted py-4">No mappings found.</td></tr>
                 ) : rows.map((row) => (
                   <tr key={row.id}>
-                    <td className="px-4 py-3">
-                      <span className="badge bg-light text-dark border font-monospace fw-bold" style={{ fontSize: '0.8rem' }}>
-                        {row.section}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 fw-medium text-dark">{formatProgram(row.program)}</td>
-                    <td className="px-3 py-3 text-muted">{formatTerm(row.school_year || row.academic_year, row.semester)}</td>
-                    <td className="px-3 py-3 fw-semibold text-dark">
-                      {row.faculty?.name || '—'} <span className="text-muted fw-normal">({row.faculty?.username})</span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`badge ${row.is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} fw-bold px-2.5 py-1 rounded-pill`} style={{ fontSize: '0.75rem' }}>
+                    <td><code>{row.section}</code></td>
+                    <td>{(typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || '—'}</td>
+                    <td>{row.academic_year} · Sem {row.semester}</td>
+                    <td>{row.faculty?.name || '—'} <span className="text-muted">({row.faculty?.username})</span></td>
+                    <td>
+                      <span className={`badge ${row.is_active ? 'bg-success' : 'bg-secondary'}`}>
                         {row.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="text-center">
                       <div className="btn-group btn-group-sm">
-                        <button className="btn btn-outline-success" title="Edit Mapping" onClick={() => openEdit(row)}>
-                          <i className="fa fa-pen"></i>
-                        </button>
-                        <button className="btn btn-outline-danger" title="Delete Mapping" onClick={() => setDeletingRow(row)}>
-                          <i className="fa fa-trash"></i>
-                        </button>
+                        <button className="btn btn-outline-primary" onClick={() => openEdit(row)}><i className="fa fa-pen"></i></button>
+                        <button className="btn btn-outline-danger" onClick={() => remove(row)}><i className="fa fa-trash"></i></button>
                       </div>
                     </td>
                   </tr>
@@ -384,18 +283,6 @@ function MisdSectionMappings() {
           )}
         </div>
       </div>
-
-      <ConfirmModal
-        open={!!deletingRow}
-        title="Delete Section Mapping?"
-        message={`Are you sure you want to delete the mapping for section "${deletingRow?.section}"?`}
-        confirmLabel="Delete Mapping"
-        cancelLabel="Cancel"
-        variant="danger"
-        loading={isDeleting}
-        onCancel={() => setDeletingRow(null)}
-        onConfirm={handleConfirmDelete}
-      />
     </Layout>
   )
 }

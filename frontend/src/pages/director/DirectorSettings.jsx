@@ -9,14 +9,9 @@ function DirectorSettings() {
       notificationsIntro="Choose which program-oversight alerts you want to receive."
       securityIntro="Update your password and strengthen account protection for your director credentials."
       metaFields={[
-        { label: 'Director ID', key: 'faculty_number', fallback: '—' },
-        { label: 'Office / Department', key: 'department', fallback: 'Placement, Alumni, & Linkages Department' },
-        { label: 'Designation', key: 'position', fallback: 'PALD Director' },
-        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular' },
-        { label: 'Oversight Scope', fallback: 'University-Wide Linkages & OJT', value: () => 'University-Wide Linkages & OJT' },
-        { label: 'Official Email', key: 'email', fallback: '—' },
-        { label: 'Contact Number', key: 'contact', fallback: '—' },
-        { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, 2nd Semester' },
+        { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
+        { label: 'Department', key: 'department', fallback: 'Placement, Alumni, & Linkages Department' },
+        { label: 'Position', key: 'position', fallback: 'PALD Director' },
       ]}
       accountExtraFields={[
         {

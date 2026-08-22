@@ -11,17 +11,9 @@ function CoordSettings() {
       notificationsIntro="Choose which coordinator workflow alerts you want to receive."
       securityIntro="Update your password and strengthen account protection for your school credentials."
       metaFields={[
-        { label: 'Coordinator ID', key: 'faculty_number', fallback: '—' },
+        { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
         { label: 'Department', key: 'department', fallback: 'College of Computing Studies' },
-        { label: 'Designation', key: 'position', fallback: 'CCS Coordinator' },
-        { label: 'Employment Status', key: 'employment_status', fallback: 'Regular Faculty' },
-        {
-          label: 'Program Oversight',
-          fallback: 'College Practicum Programs',
-          value: (user) => (typeof user?.department === 'object' ? user?.department?.name : user?.department) || 'College Practicum Programs',
-        },
-        { label: 'Official Email', key: 'email', fallback: '—' },
-        { label: 'Contact Number', key: 'contact', fallback: '—' },
+        { label: 'Position', key: 'position', fallback: 'CCS Coordinator' },
         { label: 'Academic Term', key: 'term', fallback: 'AY 2025-2026, 2nd Semester' },
       ]}
       accountExtraFields={[
