@@ -11,40 +11,14 @@ use Illuminate\Support\Facades\Schema;
  */
 final class RequiredDocuments
 {
-    /**
-     * Standard 13 UC Internship required documents according to the university manual.
-     * @return list<string>
-     */
-    public static function defaultTypes(): array
-    {
-        return [
-            'Registration Form',
-            'Medical Clearance',
-            'Psychological Assessment Certificate',
-            'Application Letter',
-            'Curriculum Vitae (PNC:AA-FO-27)',
-            'Internship Host Establishment Request for Recommendation Letter (PNC:AA-FO-26)',
-            'Student Internship Acceptance Form (PNC:AA-FO-29)',
-            'Notarized Student Internship Consent Form (PNC:AA-FO-28)',
-            'Internship Training Plan (PNC:AA-FO-25.3)',
-            'Student Internship Daily Time Record (PNC:AA-FO-30)',
-            'Memorandum of Agreement (MOA)',
-            'Internship / OJT Visitation Form',
-            'Certificate of Completion',
-        ];
-    }
-
     /** @return list<string> */
     public static function types(): array
     {
         return Cache::remember('ojt_requirements_types', 3600, function () {
             if (Schema::hasTable('ojt_requirement_templates')) {
-                $names = OjtRequirementTemplate::active()->pluck('name')->toArray();
-                if (!empty($names)) {
-                    return $names;
-                }
+                return OjtRequirementTemplate::active()->pluck('name')->toArray();
             }
-            return self::defaultTypes();
+            return [];
         });
     }
 
@@ -62,6 +36,37 @@ final class RequiredDocuments
     public static function isRequired(string $type): bool
     {
         return in_array($type, self::types(), true);
+    }
+
+    /**
+     * Return the default set of document type names when no templates exist.
+     * Prefer the DB-backed types when available.
+     *
+     * @return list<string>
+     */
+    public static function defaultTypes(): array
+    {
+        $types = self::types();
+        if (!empty($types)) {
+            return $types;
+        }
+
+        // Fallback list reflecting common OJT / portfolio documents.
+        return [
+            'Application Letter',
+            'Curriculum Vitae',
+            'Recommendation Letter',
+            'Acceptance Form',
+            'Consent Form',
+            'Training Plan',
+            'Daily Time Record',
+            'Performance Evaluation',
+            'Memorandum of Agreement',
+            'Visitation Form',
+            'Certificate of Completion',
+            'Host Evaluation',
+            'OJT Photos',
+        ];
     }
 
     public static function clearCache(): void
