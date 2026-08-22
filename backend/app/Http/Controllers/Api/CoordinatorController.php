@@ -618,7 +618,7 @@ class CoordinatorController extends Controller
             'industry'        => $i->company?->industry ?? '—',
             'approved_docs'   => $i->documents->where('status', 'approved')->count(),
             'required_docs'   => $requiredCount,
-            'compliance_pct'  => round($i->documents->where('status', 'approved')->count() / $requiredCount * 100),
+            'compliance_pct'  => $requiredCount > 0 ? min(100, round($i->documents->where('status', 'approved')->count() / $requiredCount * 100)) : 0,
             'missing_docs'    => collect($requiredTypes)->diff($i->documents->where('status', 'approved')->pluck('document_type'))->values(),
         ]);
 
