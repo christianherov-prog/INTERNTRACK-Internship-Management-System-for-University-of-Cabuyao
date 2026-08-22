@@ -10,12 +10,13 @@ export function PageHeader({ companyLogoPath }) {
       justifyContent: 'space-between',
       alignItems: 'center',
       textAlign: 'center',
-      paddingBottom: '5px', 
-      marginBottom: '10px', 
+      paddingBottom: '5px',
+      marginBottom: '10px',
       fontFamily: 'Arial, sans-serif',
       pageBreakAfter: 'avoid',
       breakAfter: 'avoid',
-      width: '100%'
+      width: '100%',
+      lineHeight: '1'
     },
     sideCol: {
       width: '85px',
@@ -33,7 +34,8 @@ export function PageHeader({ companyLogoPath }) {
       margin: 0,
       fontSize: '11pt',
       textIndent: 0,
-      textAlign: 'center'
+      textAlign: 'center',
+      lineHeight: '0'
     },
     university: {
       margin: '2px 0',
@@ -218,7 +220,7 @@ const DailyTimeRecord = ({
     pages.push(
       <div key={p} className="a4-page page-break position-relative" style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
         <div style={{ width: '100%' }}>
-          
+
           <div style={styles.docMeta}>
             <p style={styles.metaText}>PNC:AA-FO-30 rev.1 09022025</p>
           </div>
@@ -305,39 +307,39 @@ const DailyTimeRecord = ({
 };
 
 const styles = {
-  docMeta: { 
-    display: 'flex', 
-    justifyContent: 'flex-end', 
-    width: '100%', 
-    marginBottom: '5px' 
+  docMeta: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginBottom: '5px'
   },
-  metaText: { 
-    fontSize: '10pt', 
-    margin: 0, 
-    color: '#000', 
-    fontFamily: 'Arial, sans-serif' 
+  metaText: {
+    fontSize: '10pt',
+    margin: 0,
+    color: '#000',
+    fontFamily: 'Arial, sans-serif'
   },
-  
+
   // Title Styles
-  formTitleContainer: { 
-    backgroundColor: '#cccccc', 
-    padding: '6px 0', 
+  formTitleContainer: {
+    backgroundColor: '#cccccc',
+    padding: '6px 0',
     marginBottom: '10px',
     WebkitPrintColorAdjust: 'exact',
     printColorAdjust: 'exact'
   },
-  formTitle: { 
-    textAlign: 'center', 
-    fontSize: '11pt', 
-    fontWeight: 'bold', 
-    margin: '0', 
+  formTitle: {
+    textAlign: 'center',
+    fontSize: '11pt',
+    fontWeight: 'bold',
+    margin: '0',
     color: '#000',
     textTransform: 'uppercase'
   },
-  
+
   // Info Box Styles (Reused perfectly aligned setup)
   infoBox: {
-   
+
     marginBottom: '15px',
     display: 'flex',
     flexDirection: 'column',
@@ -349,15 +351,15 @@ const styles = {
     padding: '8px 8px',
     alignItems: 'center',
     gap: '6px',
-    
+
   },
   infoRowBottom: {
     padding: '8px 8px',
     display: 'flex',
-    alignItems: 'center', 
+    alignItems: 'center',
     gap: '6px'
   },
-  label: { 
+  label: {
     whiteSpace: 'nowrap',
     fontWeight: 'normal',
     lineHeight: '1',
@@ -373,44 +375,44 @@ const styles = {
     fontWeight: 'bold',
     textTransform: 'uppercase'
   },
-  
+
   // Table Styles
-  table: { 
-    width: '100%', 
-    borderCollapse: 'collapse', 
-    marginBottom: '15px' 
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginBottom: '15px'
   },
-  th: { 
-    border: '1px solid #000', 
-    padding: '4px', 
-    textAlign: 'center', 
-    fontSize: '9pt', 
+  th: {
+    border: '1px solid #000',
+    padding: '4px',
+    textAlign: 'center',
+    fontSize: '9pt',
     fontWeight: 'bold',
-    backgroundColor: '#fff' 
+    backgroundColor: '#fff'
   },
   thInner: {
-    border: '1px solid #000', 
-    padding: '3px', 
-    textAlign: 'center', 
-    fontSize: '8.5pt', 
+    border: '1px solid #000',
+    padding: '3px',
+    textAlign: 'center',
+    fontSize: '8.5pt',
     fontWeight: 'normal'
   },
-  tdDTR: { 
-    border: '1px solid #000', 
-    padding: '1px 3px', 
+  tdDTR: {
+    border: '1px solid #000',
+    padding: '1px 3px',
     height: '16px',
     fontSize: '8.5pt',
     textAlign: 'center'
   },
-  
+
   // Footer & Signature Styles
-  footerSection: { 
-    marginTop: '10px', 
-    display: 'flex', 
-    flexDirection: 'column', 
+  footerSection: {
+    marginTop: '10px',
+    display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     width: '100%',
-    paddingBottom: '20px' 
+    paddingBottom: '20px'
   },
   signatureContainer: {
     display: 'flex',
@@ -446,13 +448,13 @@ const styles = {
     fontSize: '8.5pt',
     marginTop: '1px'
   },
-  
+
   // Privacy Consent
   privacyConsent: {
     paddingTop: '5px',
     marginTop: '5px',
     width: '100%',
-    
+
   },
   checkboxLabel: {
     display: 'flex',

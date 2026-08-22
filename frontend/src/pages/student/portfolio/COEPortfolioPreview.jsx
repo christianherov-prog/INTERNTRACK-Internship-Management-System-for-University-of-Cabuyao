@@ -459,7 +459,7 @@ function COEPortfolioPreview() {
       {/* 4. ACKNOWLEDGEMENT */}
       <PaginatedTextSection
         companyLogoPath={companyLogoPath}
-        nextPg={() => {}}
+        nextPg={() => { }}
         pageHeaderComponent={({ companyLogoPath }) => <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />}
         sections={[
           { type: 'heading', tag: 'h2', text: 'ACKNOWLEDGEMENT', style: { textAlign: 'center', marginBottom: '30px', fontSize: '12pt', fontWeight: 'bold' } },
@@ -544,7 +544,7 @@ function COEPortfolioPreview() {
               <td style={{ border: '1px solid #000000', padding: '15px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                 {photos.filter(photo => photo.type === 'product_photos').length > 0 ? (
                   <AuthenticatedFileImage
-                    path={photos.find(photo => photo.type === 'product_photos')?.file_path}
+                    path={photos.find(photo => photo.type === 'product_photos').file_path}
                     alt="Products/Services"
                     style={{ maxWidth: '100%', maxHeight: '250px', objectFit: 'contain' }}
                   />
@@ -561,7 +561,7 @@ function COEPortfolioPreview() {
 
       <PaginatedTextSection
         companyLogoPath={companyLogoPath}
-        nextPg={() => {}}
+        nextPg={() => { }}
         pageHeaderComponent={({ companyLogoPath }) => <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />}
         sections={[
           { type: 'heading', tag: 'h4', text: 'Company Description', style: { fontSize: '12pt', fontWeight: 'bold' } },
@@ -575,7 +575,7 @@ function COEPortfolioPreview() {
         <div style={{ width: '100%', height: '500px', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {photos.filter(photo => photo.type === 'org_chart').length > 0 ? (
             <AuthenticatedFileImage
-              path={photos.find(photo => photo.type === 'org_chart')?.file_path}
+              path={photos.find(photo => photo.type === 'org_chart').file_path}
               alt="Org Chart"
               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
             />
@@ -607,19 +607,19 @@ function COEPortfolioPreview() {
       {/* CHAPTER III */}
       <PaginatedTextSection
         companyLogoPath={companyLogoPath}
-        nextPg={() => {}}
+        nextPg={() => { }}
         pageHeaderComponent={({ companyLogoPath }) => <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />}
         sections={[
           { type: 'heading', tag: 'h2', text: 'CHAPTER III', style: { textAlign: 'center', fontSize: '12pt', fontWeight: 'bold' } },
           { type: 'heading', tag: 'h2', text: 'ASSESSMENT', style: { textAlign: 'center', marginBottom: '30px', fontSize: '12pt', fontWeight: 'bold' } },
           { type: 'paragraph', text: 'The content of this chapter includes the assessment where a problem is identified with its possible solutions, and recommendations for the OJT Program.', style: { textIndent: '50px', lineHeight: '1.6' } },
-          
+
           { type: 'heading', tag: 'h3', text: '3.1. Problem and Its Solutions', style: { fontSize: '12pt', fontWeight: 'bold' } },
           { type: 'paragraph', inlineLabel: 'Problem', text: custom.problem || '[State the observed problem in the company/process]', style: { whiteSpace: 'pre-wrap', lineHeight: '1.6' } },
           { type: 'paragraph', inlineLabel: 'Alternative Solutions', text: custom.alternative_solutions || '[Provide Alternative Solutions]', style: { whiteSpace: 'pre-wrap', lineHeight: '1.6' } },
           { type: 'paragraph', inlineLabel: 'Design/Solution', text: custom.design_solution || '[State the best chosen solution]', style: { whiteSpace: 'pre-wrap', lineHeight: '1.6' } },
           { type: 'paragraph', inlineLabel: 'Conclusions', text: custom.conclusions || '[Conclude how the solution impacts the problem]', style: { whiteSpace: 'pre-wrap', lineHeight: '1.6', marginBottom: '30px' } },
-          
+
           { type: 'heading', tag: 'h3', text: '3.2. Recommendations', style: { fontSize: '12pt', fontWeight: 'bold' } },
           { type: 'paragraph', inlineLabel: 'a. Students', text: custom.recommendation_students || '[Recommendation for future students]', style: { whiteSpace: 'pre-wrap', textIndent: '50px', lineHeight: '1.6', marginBottom: '15px' } },
           { type: 'paragraph', inlineLabel: 'b. Internship Program', text: custom.recommendation_program || '[Recommendation for the University\'s program]', style: { whiteSpace: 'pre-wrap', textIndent: '50px', lineHeight: '1.6', marginBottom: '15px' } },
@@ -683,7 +683,7 @@ function COEPortfolioPreview() {
             list={items}
             title={check.label}
             companyLogoPath={companyLogoPath}
-            nextPg={() => {}}
+            nextPg={() => { }}
             pageHeaderComponent={({ companyLogoPath }) => <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />}
           />
         );

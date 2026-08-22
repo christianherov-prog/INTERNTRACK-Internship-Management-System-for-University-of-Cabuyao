@@ -28,7 +28,7 @@ function PageHeader({ companyLogoPath }) {
     },
     pamantasan: { margin: 0, fontSize: '11pt', fontStyle: 'italic', textAlign: 'center', marginRight: '40px' },
     department: { margin: '5px 0 2px 0', fontSize: '14pt', fontWeight: 'bold', textAlign: 'center' },
-    address: { margin: 0, fontSize: '10pt', textAlign: 'center' },
+    address: { fontSize: '9pt' },
     logoBox: {
       width: '78px', height: '78px', border: '1px dashed #444', display: 'flex',
       alignItems: 'center', justifyContent: 'center', fontSize: '8pt', textAlign: 'center', color: '#444'
@@ -86,7 +86,7 @@ function PortfolioPreview() {
   const printRef = useRef(null);
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: 'CCS_Portfolio_Preview',
+    documentTitle: 'CCS_Portfolio_Preview'
   });
 
   const load = () => {
@@ -183,7 +183,7 @@ function PortfolioPreview() {
           const weekMatch = textLower.match(/week\s+(\d+)/);
           if (weekMatch) {
             const weekNum = weekMatch[1];
-            if (!newToc[`week-${weekNum}`]) newToc[`week-${weekNum}`] = pageNum;
+            if (!newToc[`week- ${weekNum}`]) newToc[`week - ${weekNum}`] = pageNum;
           }
         });
 
@@ -236,7 +236,7 @@ function PortfolioPreview() {
     ? 'CSP115 - CS Practicum (300 hours)'
     : 'ITP113 - IT Practicum (500 hours)';
 
-  const ayLabel = sp?.academic_year ? `A.Y. ${sp.academic_year} / ${sp.semester === 2 ? '2nd' : '1st'} SEMESTER` : 'A.Y. 2025–2026 / 2nd SEMESTER';
+  const ayLabel = sp?.academic_year ? `A.Y.${sp.academic_year} / ${sp.semester === 2 ? '2nd' : '1st'} SEMESTER` : 'A.Y. 2025–2026 / 2nd SEMESTER';
 
   const journals = i?.journals ?? [];
   const photos = p?.photos || [];
@@ -297,7 +297,11 @@ function PortfolioPreview() {
       </div>
 
       {/* PAGE 1: COVER */}
-      <div className="a4-page force-page-break cover-page-banner" style={{ backgroundImage: 'url(/images/cover-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', padding: 0, position: 'relative' }}>
+      <div className="a4-page force-page-break cover-page-banner"
+        style={{
+          backgroundImage: 'url(/images/cover-bg.jpg)', backgroundSize: 'cover',
+          backgroundPosition: 'center', padding: 0
+        }}>
         <div style={{ position: 'absolute', top: '51.5%', left: '53%', textAlign: 'left', maxWidth: '45%' }}>
           <div style={{ fontSize: '26pt', fontWeight: 'bold', color: '#ffffff', lineHeight: 1.1, letterSpacing: '-0.5px' }}>Internship Portfolio</div>
           <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#ffffff', marginTop: '4px', textTransform: 'uppercase' }}>{ayLabel}</div>
@@ -307,7 +311,7 @@ function PortfolioPreview() {
 
       {/* PAGE 2: TITLE */}
       <div className="a4-page force-page-break cover-page-banner" style={{ backgroundImage: 'url(/images/title-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', padding: 0, position: 'relative' }}>
-        <div style={{ position: 'absolute', bottom: '23%', left: '6%', textAlign: 'left', maxWidth: '50%' }}>
+        <div style={{ position: 'absolute', bottom: '45%', left: '6%', textAlign: 'left', maxWidth: '50%' }}>
           <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#1a5c2a' }}>{practicumCode}</div>
           <div style={{ fontSize: '11pt', color: '#333', marginTop: '4px' }}>{ayLabel}</div>
           <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#222', marginTop: '12px' }}>{studentName}</div>
@@ -346,7 +350,7 @@ function PortfolioPreview() {
           <div>
             <p style={{ textAlign: "center" }}>Submitted to:</p>
             <p style={{ fontWeight: "bold", fontStyle: "italic", marginTop: "16px", textAlign: "center" }}>
-              {i?.faculty?.facultyProfile ? `Dr. ${i.faculty.facultyProfile.first_name} ${i.faculty.facultyProfile.last_name}` : "____________________________"}
+              {i?.faculty?.facultyProfile ? `Dr.${i.faculty.facultyProfile.first_name} ${i.faculty.facultyProfile.last_name}` : "____________________________"}
             </p>
             <p style={{ textAlign: "center" }}>Internship Instructor</p><br />
             <p style={{ fontWeight: "bold", textAlign: "center" }}>ASST. PROF. ARCELITO QUIATCHON</p>
@@ -376,7 +380,7 @@ function PortfolioPreview() {
           <TocRow label="CHAPTER II: WEEKLY PROGRESS REPORT" page={toc['chap2']} bold style={{ marginTop: '8px' }} />
           {journals.length > 0 ? (
             journals.map(j => (
-              <TocRow key={j.id} label={`Week ${j.week_number || j.week}`} page={toc[`week-${j.week_number || j.week}`]} level={0} />
+              <TocRow key={j.id} label={`Week ${j.week_number || j.week}`} page={toc[`week - ${j.week_number || j.week}`]} level={0} />
             ))
           ) : (
             <>
@@ -439,24 +443,44 @@ function PortfolioPreview() {
         <div className="page-number">{nextPg()}</div>
       </div>
 
-      <PaginatedTextSection
-        companyLogoPath={p?.company_logo_path}
-        nextPg={nextPg}
-        pageHeaderComponent={PageHeader}
-        sections={[
-          { title: 'Vision of UC', body: 'An institution of higher learning in Region IV. developing globally-competitive and value-laden professionals and leaders instrumental to community development and nation building.', heading: 'h4' },
-          { title: 'Mission of UC', body: 'An institution of higher learning committed to equip individuals with knowledge, skills and values that will enable them to achieve professional goals & provide leadership and service for national development.', heading: 'h4' },
-          ...(hasVisionMissionImg ? [] : [
-            { title: 'Host Company Profile', body: null, placeholder: ' ', heading: 'h2', style: { marginTop: '20px', marginBottom: '10px' } },
-            { title: 'Vision & Mission', body: null, placeholder: ' ', heading: 'h4', style: { marginTop: '20px', marginBottom: '10px' } },
+      {hasVisionMissionImg ? (
+        <div className="a4-page page-break portfolio-document position-relative">
+          <PageHeader companyLogoPath={p?.company_logo_path} />
+
+          <div style={{ marginTop: '20px', textAlign: 'left' }}>
+            <h3 style={{ fontWeight: 'bold', textAlign: 'left', margin: '0 0 10px 0' }}>Vision of UC</h3>
+            <p style={{ textAlign: 'left', textIndent: '0', margin: '0' }}>An institution of higher learning in Region IV. developing globally-competitive and value-laden professionals and leaders instrumental to community development and nation building.</p>
+          </div>
+
+          <div style={{ marginTop: '20px', textAlign: 'left' }}>
+            <h3 style={{ fontWeight: 'bold', textAlign: 'left', margin: '0 0 10px 0' }}>Mission of UC</h3>
+            <p style={{ textAlign: 'left', textIndent: '0', margin: '0' }}>An institution of higher learning committed to equip individuals with knowledge, skills and values that will enable them to achieve professional goals & provide leadership and service for national development.</p>
+          </div>
+
+          <h3 style={{ marginTop: '30px', marginBottom: '15px', fontWeight: 'bold', textAlign: 'left' }}>Host Company Profile</h3>
+          <h4 style={{ marginTop: '10px', marginBottom: '10px', fontWeight: 'bold', textAlign: 'left' }}>Vision & Mission</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+            {visionMissionList.map((img, i) => (
+              <AuthenticatedFileImage key={i} path={img.file_path || img.path} style={{ maxWidth: '98%', maxHeight: '400px', objectFit: 'contain' }} />
+            ))}
+          </div>
+
+          <div className="page-number">{nextPg()}</div>
+        </div>
+      ) : (
+        <PaginatedTextSection
+          companyLogoPath={p?.company_logo_path}
+          nextPg={nextPg}
+          pageHeaderComponent={PageHeader}
+          sections={[
+            { title: 'Vision of UC', body: 'An institution of higher learning in Region IV. developing globally-competitive and value-laden professionals and leaders instrumental to community development and nation building.', heading: 'h4' },
+            { title: 'Mission of UC', body: 'An institution of higher learning committed to equip individuals with knowledge, skills and values that will enable them to achieve professional goals & provide leadership and service for national development.', heading: 'h4' },
+            { title: 'Host Company Profile ', body: null, placeholder: ' ', heading: 'h2', style: { marginTop: '20px', marginBottom: '10px' } },
+            { title: 'Vision & Mission', body: null, heading: 'h4', style: { marginTop: '20px', marginBottom: '10px' } },
             { title: 'Vision', body: p?.company_vision ?? 'N/A', heading: 'strong', inlineTitle: true, indent: true },
             { title: 'Mission', body: p?.company_mission ?? 'N/A', heading: 'strong', inlineTitle: true, indent: true },
-          ])
-        ]}
-      />
-
-      {hasVisionMissionImg && (
-        <PaginatedImageCollection list={visionMissionList} title="Host Company Profile" companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} />
+          ]}
+        />
       )}
 
       {/* Organizational Chart */}
@@ -584,7 +608,7 @@ function PortfolioPreview() {
       ) : (
         ojtWeeks.map(w => {
           const list = photos.filter(x => x.type === 'ojt_photo' && x.week_number === w);
-          return <PaginatedImageCollection key={`ojt-week-${w}`} list={list} title={`Week ${w}`} companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} />
+          return <PaginatedImageCollection key={`ojt - week - ${w}`} list={list} title={`Week ${w}`} companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} />
         })
       )}
 

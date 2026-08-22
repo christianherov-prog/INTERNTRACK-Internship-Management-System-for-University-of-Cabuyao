@@ -224,18 +224,33 @@ export function PaginatedImageCollection({
     )
   }
 
+  const extractSize = (label) => {
+    const match = (label || '').match(/\[size:(small|medium|large)\]/i)
+    return match ? match[1].toLowerCase() : null
+  }
+
+  const stripSize = (label) => {
+    return (label || '').replace(/\[size:(small|medium|large)\]/ig, '').trim()
+  }
+
   // Budgeting: Total capacity per A4 page = 100 units.
-  // Standard photo card (image + 1-line caption) = 50 units (2 per sheet).
-  // Document forms, certificates, evaluations, letters, and tall photos = 100 units (1 per sheet).
   const pages = []
   let currentPage = []
   let currentCap = 100
 
   list.forEach(photo => {
-    const isDocType = !['ojt_photo'].includes(photo.type)
-    const isPdf = photo.file_path && photo.file_path.endsWith('.pdf')
-    const isTall = isDocType || photo.type === 'exam_documentation' || photo.type === 'training_documentation' || (photo.description && photo.description.length > 100) || isPdf
-    const cost = isTall ? 100 : 50
+    const sizePref = extractSize(photo.label)
+    let cost = 50
+
+    if (sizePref === 'small') cost = 33
+    else if (sizePref === 'medium') cost = 50
+    else if (sizePref === 'large') cost = 100
+    else {
+      // Fallback defaults
+      const isDocType = !['ojt_photo'].includes(photo.type)
+      const isTall = isDocType || photo.type === 'exam_documentation' || photo.type === 'training_documentation' || (photo.description && photo.description.length > 100) || photo.file_path.endsWith('.pdf')
+      cost = isTall ? 100 : 50
+    }
 
     if (cost > currentCap && currentPage.length > 0) {
       pages.push(currentPage)
@@ -264,33 +279,41 @@ export function PaginatedImageCollection({
                 return renderCustomItem(photo)
               }
               const isRawFilename = photo.label && (
-                /\.(png|jpe?g|webp|gif|bmp|pdf|docx?|txt|zip)$/i.test(photo.label.trim()) ||
-                (photo.file_path && (photo.file_path.endsWith('/' + photo.label.trim()) || photo.file_path.endsWith('\\' + photo.label.trim())))
+                /\.(png|jpe?g|webp|gif|bmp|pdf|docx?|txt|zip)$/i.test(stripSize(photo.label)) ||
+                (photo.file_path && (photo.file_path.endsWith('/' + stripSize(photo.label)) || photo.file_path.endsWith('\\' + stripSize(photo.label))))
               );
-              const labelText = isRawFilename ? '' : (photo.label || '').trim();
+              const labelText = isRawFilename ? '' : stripSize(photo.label);
               const hasCaption = (requiresWeek && photo.week_number) || labelText;
-              const isPdfDoc = photo.file_path && photo.file_path.endsWith('.pdf');
               return (
                 <div key={photo.id} style={{ textAlign: 'center', width: '100%', marginBottom: pagePhotos.length > 1 ? '16px' : '0' }}>
-                  {isPdfDoc ? (
+                  {photo.file_path.endsWith('.pdf') ? (
                     <div style={{ padding: '30px 20px', border: '2px dashed #999', background: '#f9f9f9', width: '90%', margin: '0 auto', borderRadius: '8px' }}>
                       <i className="fa fa-file-pdf fa-3x text-danger mb-2"></i>
                       <p style={{ margin: 0, fontWeight: 'bold', fontSize: '12pt' }}>{labelText || 'PDF Document'}</p>
                       <p className="small text-muted m-0" style={{ fontSize: '9.5pt', marginTop: '6px' }}>[ PDF Document attached: Please insert physical PDF sheet here before final binding ]</p>
                     </div>
-                  ) : (
-                    <AuthenticatedFileImage
-                      path={photo.file_path}
-                      alt={labelText || 'Portfolio Photo'}
-                      style={{
-                        maxWidth: '98%',
-                        maxHeight: (photo.type === 'exam_documentation' || photo.type === 'training_documentation' || photo.description) ? '480px' : (pagePhotos.length === 1 ? '560px' : '260px'),
-                        objectFit: 'contain',
-                        margin: '0 auto',
-                        display: 'block'
-                      }}
-                    />
-                  )}
+                  ) : (() => {
+                    let maxHeight = '260px'; // default
+                    const sizePref = extractSize(photo.label);
+                    if (sizePref === 'small') maxHeight = '220px';
+                    else if (sizePref === 'medium') maxHeight = '360px';
+                    else if (sizePref === 'large') maxHeight = '650px';
+                    else if (pagePhotos.length === 1 || photo.type === 'exam_documentation' || photo.type === 'training_documentation' || photo.description) maxHeight = '560px';
+                    
+                    return (
+                      <AuthenticatedFileImage
+                        path={photo.file_path}
+                        alt={labelText || 'Portfolio Photo'}
+                        style={{
+                          maxWidth: '98%',
+                          maxHeight,
+                          objectFit: 'contain',
+                          margin: '0 auto',
+                          display: 'block'
+                        }}
+                      />
+                    );
+                  })()}
                   {hasCaption ? (
                     <p style={{ fontWeight: 'bold', marginTop: '12px', textIndent: '0', fontSize: '11pt', marginBottom: '4px', color: '#111', textAlign: 'center' }}>
                       {requiresWeek && photo.week_number ? `Week ${photo.week_number}${labelText ? ' - ' + labelText : ''}` : labelText}
