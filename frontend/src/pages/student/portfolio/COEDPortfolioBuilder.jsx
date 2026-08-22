@@ -121,7 +121,7 @@ function COEDPortfolioBuilder() {
       if (label === null) { e.target.value = ''; return }
       formData.append('label', label)
     }
-    
+
     try {
       await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       fetchPortfolio()
@@ -150,10 +150,10 @@ function COEDPortfolioBuilder() {
   )
 
   const photos = data.photos || []
-  
+
   const getFiles = (type) => photos.filter(p => p.type === type)
 
-    const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif", tip = "") => {
+  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif", tip = "") => {
     const items = getFiles(type);
 
     return (
@@ -326,9 +326,11 @@ function COEDPortfolioBuilder() {
                 <div className="p-3 p-lg-4">
                   <div className="alert alert-info border-0 shadow-sm mb-4">
                     <h6 className="alert-heading fw-bold"><i className="fa fa-university me-2"></i>PNC Vision, Mission & Core Values</h6>
-                    <p className="mb-0 small">This section will automatically include the PNC Vision, Mission, and Core Values (Personal Dignity, Nurturing Community, Commitment to Excellence) in your printed portfolio.</p>
+                    <p className="mb-0 small">This section will automatically include the PNC Vision, Mission, and Core Values (Personal Dignity, Nurturing Community, Commitment to Excellence) in your printed portfolio.
+                      adasdadadasdasdadas
+                    </p>
                   </div>
-                  
+
                   <div className="row g-4">
                     <div className="col-12 col-md-6">
                       <div className="mb-3">
@@ -349,7 +351,7 @@ function COEDPortfolioBuilder() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="portfolio-appendix-group">
                 <h6 className="portfolio-appendix-group-title">Required Documents</h6>
                 <div className="row g-3">
@@ -358,7 +360,7 @@ function COEDPortfolioBuilder() {
                 </div>
               </div>
             </div>
-            
+
             <div className="d-flex justify-content-end mt-4 pt-3 border-top">
               <button type="submit" className="btn btn-primary px-4 py-2" disabled={saving}>
                 {saving ? <><i className="fa fa-spinner fa-spin me-2"></i>Saving...</> : <><i className="fa fa-save me-2"></i>Save Preliminaries</>}
@@ -427,7 +429,7 @@ function COEDPortfolioBuilder() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="portfolio-appendix-group">
                 <h6 className="portfolio-appendix-group-title">Lesson Plans</h6>
                 <div className="row g-3">
@@ -456,7 +458,7 @@ function COEDPortfolioBuilder() {
                   <div className="mb-3"><label className="portfolio-field-label">Am I ready for the teaching profession?</label><textarea className="form-control portfolio-field-input" rows="4" value={form.ready_for_profession || ""} onChange={e => setFormField('ready_for_profession', e.target.value)}></textarea></div>
                 </div>
               </div>
-              
+
               <div className="portfolio-appendix-group">
                 <h6 className="portfolio-appendix-group-title">V. Teaching Artifacts Uploads</h6>
                 <div className="row g-3">
@@ -497,7 +499,7 @@ function COEDPortfolioBuilder() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="portfolio-appendix-group">
                 <h6 className="portfolio-appendix-group-title">VIII. Appendices Uploads</h6>
                 <div className="row g-3">
