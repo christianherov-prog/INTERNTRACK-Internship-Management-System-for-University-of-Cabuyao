@@ -463,3 +463,39 @@
 @media (max-width: 600px) {
   .portfolio-hte-row { grid-template-columns: 1fr; }
 }
+
+/* Global Placement Tabs (Extracted for Portfolio Builders) */
+.placement-tabs-bar {
+  display: flex;
+  gap: 6px;
+  background: #f0f4f1;
+  padding: 6px;
+  border-radius: 12px;
+  width: fit-content;
+}
+.placement-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+.placement-tab-btn:hover {
+  background: rgba(255,255,255,0.7);
+  color: #374151;
+}
+.placement-tab-btn.active {
+  background: #fff;
+  color: #157938;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+

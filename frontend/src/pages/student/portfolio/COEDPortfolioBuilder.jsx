@@ -301,9 +301,9 @@ function COEDPortfolioBuilder() {
           </div>
         )}
 
-        {/* 📑 Custom Horizontal Tabs 📑 */}
-        <div className="portfolio-tabs-container mb-4">
-          <div className="portfolio-tabs">
+        {/* 🧩 Custom Horizontal Tabs 🧩 */}
+        <div className="d-flex justify-content-center mb-4">
+          <div className="placement-tabs-bar">
             {tabs.map(tab => (
               <button
                 key={tab.key}
