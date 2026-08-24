@@ -1,3 +1,4 @@
+import { formatYearSection } from '../../utils/formatSection'
 import { useEffect, useState } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
@@ -54,14 +55,14 @@ function CoordPlacements({ embedded = false }) {
   const programs = ["all", ...new Set(applications.map(a => (typeof a.student?.student_profile?.program === 'string' ? a.student?.student_profile?.program : a.student?.student_profile?.program?.name || a.student?.student_profile?.program?.code) || "—").filter(s => s !== "—"))]
 
   // FIXED: Define sections by extracting them from the applications data
-  const sections = ["all", ...new Set(applications.map(a => a.student?.student_profile?.section || "—").filter(s => s !== "—"))]
+  const sections = ["all", ...new Set(applications.map(a => formatYearSection(a.student?.student_profile?.section) || "—").filter(s => s !== "—"))]
 
   const filtered = applications.filter(app => {
     const name = formatStudentName(app).toLowerCase()
     const prog = (typeof app.student?.student_profile?.program === 'string' ? app.student?.student_profile?.program : app.student?.student_profile?.program?.name || app.student?.student_profile?.program?.code) || "—"
 
     // FIXED: Define 'sec' for the filter condition
-    const sec = app.student?.student_profile?.section || "—"
+    const sec = formatYearSection(app.student?.student_profile?.section) || "—"
     const status = app.status.toLowerCase()
 
     return (!search || name.includes(search.toLowerCase()))

@@ -1,3 +1,4 @@
+import { formatYearSection } from '../../utils/formatSection'
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
@@ -265,12 +266,12 @@ function CoordRecords() {
   }, [search, programFilter, sectionFilter, statusFilter, archived])
 
   const programs = ["all", ...new Set(students.map(s => s.student_profile?.program?.code || "—").filter(x => x !== "—"))]
-  const sections = ["all", ...new Set(students.map(s => s.student_profile?.section || "—").filter(x => x !== "—"))]
+  const sections = ["all", ...new Set(students.map(s => formatYearSection(s.student_profile?.section) || "—").filter(x => x !== "—"))]
 
   const filtered = students.filter(student => {
     const name = formatStudentName(student).toLowerCase()
     const prog = student.student_profile?.program?.code || "—"
-    const sec = student.student_profile?.section || "—"
+    const sec = formatYearSection(student.student_profile?.section) || "—"
     const st = student.active_internship?.status || "none"
     return (!search || name.includes(search.toLowerCase()))
       && (programFilter === "all" || prog === programFilter)

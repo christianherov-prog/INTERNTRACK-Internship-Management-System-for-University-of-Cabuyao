@@ -35,11 +35,11 @@ function CoordMonitoring() {
 
   const s = data?.stats ?? {}
   const allRows = unwrapList(data).items || []
-  const sections = ['all', ...new Set(allRows.map(r => r.section).filter(s => s && s !== '—'))]
+  const sections = ['all', ...new Set(allRows.map(r => formatYearSection(r.section)).filter(s => s && s !== '—'))]
 
   const rows = allRows.filter(r => {
     const matchSearch = !search || r.student_name?.toLowerCase().includes(search.toLowerCase()) || r.program?.toLowerCase().includes(search.toLowerCase()) || r.faculty_name?.toLowerCase().includes(search.toLowerCase())
-    const matchSection = sectionFilter === 'all' || r.section === sectionFilter
+    const matchSection = sectionFilter === 'all' || formatYearSection(r.section) === sectionFilter
     const matchSex = sexFilter === 'all' || r.sex?.toLowerCase() === sexFilter.toLowerCase()
     return matchSearch && matchSection && matchSex
   })

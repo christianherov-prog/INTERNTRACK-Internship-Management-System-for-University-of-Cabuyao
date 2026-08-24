@@ -1,3 +1,4 @@
+import { formatYearSection } from '../../utils/formatSection'
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
@@ -214,13 +215,13 @@ function DirectorInternships() {
     }
   }
   
-  const sections = ["all", ...new Set(students.map(s => s.student_profile?.section || "—").filter(x => x !== "—"))]
+  const sections = ["all", ...new Set(students.map(s => formatYearSection(s.student_profile?.section) || "—").filter(x => x !== "—"))]
 
   const filteredStudents = students.filter(student => {
     const name = formatStudentName(student).toLowerCase()
     const deptId = student.student_profile?.department_id || "none"
     const progId = student.student_profile?.program_id || "none"
-    const sec = student.student_profile?.section || "—"
+    const sec = formatYearSection(student.student_profile?.section) || "—"
     const st = student.active_internship?.status || "none"
     return (!search || name.includes(search.toLowerCase()))
       && (departmentFilter === "all" || deptId == departmentFilter)

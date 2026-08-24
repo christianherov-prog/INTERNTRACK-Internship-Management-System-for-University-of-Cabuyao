@@ -13,7 +13,7 @@ import { formatStudentName as studentName } from "../../utils/formatName"
 
 function studentSection(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
-  return p?.section || row?.program || "—"
+  return formatYearSection(p?.section) || "—"
 }
 
 function studentCourse(row) {
@@ -248,7 +248,7 @@ function TabStudents() {
                             </td>
                             <td>{row.student?.student_number || row.student?.email || profile?.student_number || "—"}</td>
                             <td>{(typeof row.program === 'string' ? row.program : row.program?.name || row.program?.code) || (typeof profile?.program === 'string' ? profile?.program : profile?.program?.name || profile?.program?.code) || "—"}</td>
-                            <td>{formatYearSection(studentSection(row))}</td>
+                            <td>{studentSection(row)}</td>
                             <td>{row.company ? (row.company?.company_name || row.company?.name || "—") : <span className="text-muted fst-italic">Not placed</span>}</td>
                             <td>{row.company ? supervisorName : "—"}</td>
                             <td>
