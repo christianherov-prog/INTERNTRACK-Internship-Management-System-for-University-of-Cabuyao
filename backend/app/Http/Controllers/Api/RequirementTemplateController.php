@@ -165,12 +165,13 @@ class RequirementTemplateController extends Controller
                 $seenSections[] = $profile->section;
             }
 
-            if ($profile->program_id && !in_array($profile->program_id, $seenPrograms)) {
+            $programName = $profile->program ? $profile->program->name : 'Program ' . $profile->program_id;
+            if ($profile->program_id && !in_array($programName, $seenPrograms)) {
                 $programs[] = [
-                    'id' => $profile->program_id,
-                    'name' => $profile->program ? ($profile->program->name) : 'Program ' . $profile->program_id,
+                    'id' => $programName,
+                    'name' => $programName,
                 ];
-                $seenPrograms[] = $profile->program_id;
+                $seenPrograms[] = $programName;
             }
         }
 

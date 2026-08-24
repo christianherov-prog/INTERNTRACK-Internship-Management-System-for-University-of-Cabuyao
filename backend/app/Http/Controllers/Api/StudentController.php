@@ -531,18 +531,22 @@ class StudentController extends Controller
         }
 
         $templates = \App\Models\OjtRequirementTemplate::where('is_active', true)
-            ->whereHas('targets', function($query) use ($studentTargets) {
-                $query->where(function($q) use ($studentTargets) {
-                    foreach($studentTargets as $target) {
-                        $q->orWhere(function($subQ) use ($target) {
-                            $subQ->where('target_type', $target['type'])
-                                 ->where('target_id', $target['id']);
-                        });
-                    }
-                });
+            ->where(function($query) use ($studentTargets) {
+                $query->whereHas('targets', function($q) use ($studentTargets) {
+                    $q->where(function($subQ) use ($studentTargets) {
+                        foreach($studentTargets as $target) {
+                            $subQ->orWhere(function($targetQ) use ($target) {
+                                $targetQ->where('target_type', $target['type'])
+                                        ->where('target_id', $target['id']);
+                            });
+                        }
+                    });
+                })->orDoesntHave('targets');
             })->get()->keyBy('name');
 
-        $validTypes = $templates->keys()->toArray();
+        $validTypes = $templates->isNotEmpty() 
+            ? $templates->keys()->toArray()
+            : \App\Support\RequiredDocuments::defaultTypes();
 
         $request->validate([
             'document_type' => ['required', 'string', Rule::in($validTypes)],
