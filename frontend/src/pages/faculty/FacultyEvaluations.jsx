@@ -1,3 +1,4 @@
+import { formatYearSection } from '../../utils/formatSection'
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
@@ -117,7 +118,7 @@ function FacultyEvaluations() {
                           {p?.course_name || '—'}
                         </div>
                       </td>
-                      <td><span className="badge bg-secondary">{p?.section || '—'}</span></td>
+                      <td><span className="badge bg-secondary">{formatYearSection(p?.section) || '—'}</span></td>
                       <td>
                         <div className="fw-medium">{intern.company?.company_name || '—'}</div>
                       </td>
