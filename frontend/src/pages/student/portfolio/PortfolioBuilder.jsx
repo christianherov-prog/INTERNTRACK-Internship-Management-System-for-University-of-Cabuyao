@@ -13,7 +13,7 @@ const PortfolioBuilder = () => {
     api.get('/auth/user')
       .then(res => {
         // Fallback to a default string if the program is missing
-        const dept = (typeof res.data?.user?.program === 'string' ? res.data?.user?.program : res.data?.user?.program?.code || res.data?.user?.program?.name) || 'DEFAULT';
+        const dept = (typeof res.data?.user?.program === 'string' ? res.data?.user?.program : res.data?.user?.program?.name || res.data?.user?.program?.code) || 'DEFAULT';
         setDepartment(dept);
       })
       .catch(err => {

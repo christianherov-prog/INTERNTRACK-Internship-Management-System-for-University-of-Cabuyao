@@ -51,14 +51,14 @@ function CoordPlacements({ embedded = false }) {
   const wrapperProps = embedded ? { className: "embedded-view" } : { title: "Student Placements", subtitle: currentTerm, icon: "fa-paper-plane", bodyClass: "coordinator-page" };
 
   // Define programs
-  const programs = ["all", ...new Set(applications.map(a => (typeof a.student?.student_profile?.program === 'string' ? a.student?.student_profile?.program : a.student?.student_profile?.program?.code || a.student?.student_profile?.program?.name) || "—").filter(s => s !== "—"))]
+  const programs = ["all", ...new Set(applications.map(a => (typeof a.student?.student_profile?.program === 'string' ? a.student?.student_profile?.program : a.student?.student_profile?.program?.name || a.student?.student_profile?.program?.code) || "—").filter(s => s !== "—"))]
 
   // FIXED: Define sections by extracting them from the applications data
   const sections = ["all", ...new Set(applications.map(a => a.student?.student_profile?.section || "—").filter(s => s !== "—"))]
 
   const filtered = applications.filter(app => {
     const name = formatStudentName(app).toLowerCase()
-    const prog = (typeof app.student?.student_profile?.program === 'string' ? app.student?.student_profile?.program : app.student?.student_profile?.program?.code || app.student?.student_profile?.program?.name) || "—"
+    const prog = (typeof app.student?.student_profile?.program === 'string' ? app.student?.student_profile?.program : app.student?.student_profile?.program?.name || app.student?.student_profile?.program?.code) || "—"
 
     // FIXED: Define 'sec' for the filter condition
     const sec = app.student?.student_profile?.section || "—"
@@ -130,7 +130,7 @@ function CoordPlacements({ embedded = false }) {
                       <div className="fw-semibold">{formatStudentName(app)}</div>
                       <div className="small text-muted">{app.student?.email}</div>
                     </td>
-                    <td>{(typeof app.student?.student_profile?.program === 'string' ? app.student?.student_profile?.program : app.student?.student_profile?.program?.code || app.student?.student_profile?.program?.name) || '—'}</td>
+                    <td>{(typeof app.student?.student_profile?.program === 'string' ? app.student?.student_profile?.program : app.student?.student_profile?.program?.name || app.student?.student_profile?.program?.code) || '—'}</td>
                     <td className="fw-semibold">{app.company?.company_name}</td>
                     <td>
                       <span className={`badge ${app.status.includes('rejected') ? 'bg-danger' : app.status.includes('pending') ? 'bg-warning text-dark' : 'bg-success'}`}>

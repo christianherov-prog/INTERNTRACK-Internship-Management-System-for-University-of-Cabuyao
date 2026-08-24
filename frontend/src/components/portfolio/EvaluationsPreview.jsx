@@ -103,7 +103,7 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
   const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
-  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
   const supervisor = internship?.supervisor?.supervisorProfile || {};
@@ -235,7 +235,7 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
   const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
-  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
   const company = internship?.company || {};
@@ -403,7 +403,7 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
   const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
-  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
   const company = internship?.company || {};
@@ -567,7 +567,7 @@ export const PrintFO23 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
   const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
-  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || '';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
   const faculty = internship?.faculty?.facultyProfile || internship?.faculty?.faculty_profile || {};

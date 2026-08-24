@@ -12,7 +12,7 @@ const PortfolioPreview = () => {
     // Fetch the user's department to determine which preview to show
     api.get('/auth/user')
       .then(res => {
-        const dept = (typeof res.data?.user?.program === 'string' ? res.data?.user?.program : res.data?.user?.program?.code || res.data?.user?.program?.name) || '';
+        const dept = (typeof res.data?.user?.program === 'string' ? res.data?.user?.program : res.data?.user?.program?.name || res.data?.user?.program?.code) || '';
         setDepartment(dept);
       })
       .catch(err => {

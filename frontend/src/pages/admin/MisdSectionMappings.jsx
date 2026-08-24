@@ -67,7 +67,7 @@ function MisdSectionMappings() {
   const openEdit = (row) => {
     setEditId(row.id)
     setForm({
-      program: (typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || '',
+      program: (typeof row.program === 'string' ? row.program : row.program?.name || row.program?.code) || '',
       section: row.section || '',
       academic_year: row.academic_year || '',
       semester: row.semester || 1,
@@ -140,7 +140,7 @@ function MisdSectionMappings() {
                 {unmapped.map((u, i) => (
                   <tr key={i}>
                     <td><code>{formatYearSection(u.section)}</code></td>
-                    <td>{(typeof u.program === 'string' ? u.program : u.program?.code || u.program?.name) || '—'}</td>
+                    <td>{(typeof u.program === 'string' ? u.program : u.program?.name || u.program?.code) || '—'}</td>
                     <td>{u.academic_year || '—'} · Sem {u.semester || '—'}</td>
                     <td>{u.student_count}</td>
                     <td>
@@ -148,7 +148,7 @@ function MisdSectionMappings() {
                         className="btn btn-sm btn-outline-primary"
                         onClick={() => openCreate({
                           section: u.section,
-                          program: (typeof u.program === 'string' ? u.program : u.program?.code || u.program?.name) || '',
+                          program: (typeof u.program === 'string' ? u.program : u.program?.name || u.program?.code) || '',
                           academic_year: u.academic_year || emptyForm.academic_year,
                           semester: u.semester || 1,
                         })}
@@ -219,7 +219,7 @@ function MisdSectionMappings() {
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Program</label>
-                <input className="form-control" value={(typeof form.program === 'string' ? form.program : form.program?.code || form.program?.name) || ''} onChange={(e) => setForm((p) => ({ ...p, program: e.target.value }))} />
+                <input className="form-control" value={(typeof form.program === 'string' ? form.program : form.program?.name || form.program?.code) || ''} onChange={(e) => setForm((p) => ({ ...p, program: e.target.value }))} />
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Faculty <span className="text-danger">*</span></label>
@@ -263,7 +263,7 @@ function MisdSectionMappings() {
                 ) : rows.map((row) => (
                   <tr key={row.id}>
                     <td><code>{formatYearSection(row.section)}</code></td>
-                    <td>{(typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || '—'}</td>
+                    <td>{(typeof row.program === 'string' ? row.program : row.program?.name || row.program?.code) || '—'}</td>
                     <td>{row.academic_year} · Sem {row.semester}</td>
                     <td>{row.faculty?.name || '—'} <span className="text-muted">({row.faculty?.username})</span></td>
                     <td>

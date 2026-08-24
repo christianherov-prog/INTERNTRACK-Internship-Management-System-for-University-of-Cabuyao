@@ -43,7 +43,7 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
 
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
   const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unavailable';
-  const program = (typeof student.program === 'string' ? student.program : student.program?.code || student.program?.name) || 'Unavailable';
+  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || 'Unavailable';
   const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
   const company = internship?.company || {};
   const hteName = company.company_name || company.name || 'Unavailable';

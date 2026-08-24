@@ -138,7 +138,7 @@ function MisdSyncMonitor() {
                           <div className="fw-semibold mb-1">MISD</div>
                           <div>{preview.misd?.first_name} {preview.misd?.last_name}</div>
                           <div>Section: <code>{preview.misd?.section || '—'}</code></div>
-                          <div>Program: {(typeof preview.misd?.program === 'string' ? preview.misd?.program : preview.misd?.program?.code || preview.misd?.program?.name) || '—'}</div>
+                          <div>Program: {(typeof preview.misd?.program === 'string' ? preview.misd?.program : preview.misd?.program?.name || preview.misd?.program?.code) || '—'}</div>
                           <div>AY: {preview.misd?.academic_year || '—'} · Sem {preview.misd?.semester || '—'}</div>
                         </div>
                       </div>
@@ -149,7 +149,7 @@ function MisdSyncMonitor() {
                             <>
                               <div>Username: <code>{preview.local.username}</code></div>
                               <div>Section: <code>{preview.local.section || '—'}</code></div>
-                              <div>Program: {(typeof preview.local.program === 'string' ? preview.local.program : preview.local.program?.code || preview.local.program?.name) || '—'}</div>
+                              <div>Program: {(typeof preview.local.program === 'string' ? preview.local.program : preview.local.program?.name || preview.local.program?.code) || '—'}</div>
                               <div>Synced: {preview.local.synced_at ? new Date(preview.local.synced_at).toLocaleString() : 'Never'}</div>
                             </>
                           ) : (

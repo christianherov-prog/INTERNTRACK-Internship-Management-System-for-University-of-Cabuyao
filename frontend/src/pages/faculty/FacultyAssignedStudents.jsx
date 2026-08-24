@@ -18,7 +18,7 @@ function studentSection(row) {
 
 function studentCourse(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
-  return (typeof p?.program === 'string' ? p?.program : p?.program?.code || p?.program?.name) || (typeof row?.program === 'string' ? row?.program : row?.program?.code || row?.program?.name) || "—"
+  return (typeof p?.program === 'string' ? p?.program : p?.program?.name || p?.program?.code) || (typeof row?.program === 'string' ? row?.program : row?.program?.name || row?.program?.code) || "—"
 }
 
 const statusBadge = (status) => {
@@ -188,7 +188,7 @@ function TabStudents() {
           <input className="form-control border-start-0 ps-0" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
-          {programs.map(p => <option key={p} value={p}>{p === "all" ? "Programs" : p}</option>)}
+          {programs.map(p => <option key={p} value={p}>{p === "all" ? "All Programs" : p}</option>)}
         </select>
         <select className="form-select form-select-sm text-secondary" style={{ width: 150 }} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
           {sections.map(s => <option key={s} value={s}>{s === "all" ? "Sections" : s}</option>)}
@@ -247,7 +247,7 @@ function TabStudents() {
                               {studentName(row)}
                             </td>
                             <td>{row.student?.student_number || row.student?.email || profile?.student_number || "—"}</td>
-                            <td>{(typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || (typeof profile?.program === 'string' ? profile?.program : profile?.program?.code || profile?.program?.name) || "—"}</td>
+                            <td>{(typeof row.program === 'string' ? row.program : row.program?.name || row.program?.code) || (typeof profile?.program === 'string' ? profile?.program : profile?.program?.name || profile?.program?.code) || "—"}</td>
                             <td>{formatYearSection(studentSection(row))}</td>
                             <td>{row.company ? (row.company?.company_name || row.company?.name || "—") : <span className="text-muted fst-italic">Not placed</span>}</td>
                             <td>{row.company ? supervisorName : "—"}</td>
@@ -350,7 +350,7 @@ function TabJournals() {
       type: 'journal',
       data: {
         studentName: name,
-        program: profile?.program?.code || profile?.program?.name || profile?.program || '—',
+        program: profile?.program?.name || profile?.program?.code || profile?.program || '—',
         companyName: j.internship?.company?.company_name || '—',
         weekNumber: j.week_number ?? j.entry_number,
         date: j.date,

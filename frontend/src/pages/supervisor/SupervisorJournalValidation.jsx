@@ -135,7 +135,7 @@ function SupervisorJournalValidation() {
       type: 'journal',
       data: {
         studentName: name,
-        program: profile?.program?.code || profile?.program?.name || profile?.program || '—',
+        program: profile?.program?.name || profile?.program?.code || profile?.program || '—',
         companyName: j.internship?.company?.company_name || '—',
         weekNumber: j.week_number ?? j.entry_number,
         date: j.date,

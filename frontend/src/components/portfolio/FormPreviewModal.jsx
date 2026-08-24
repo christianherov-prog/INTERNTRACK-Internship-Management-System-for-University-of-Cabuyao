@@ -190,7 +190,7 @@ const FormPreviewModal = ({
               {type === 'dtr' ? (
                 <DailyTimeRecord
                   studentName={data.studentName || data.name || ''}
-                  program={(typeof data.program === 'string' ? data.program : data.program?.code || data.program?.name) || ''}
+                  program={(typeof data.program === 'string' ? data.program : data.program?.name || data.program?.code) || ''}
                   companyName={data.companyName || ''}
                   companyLogoPath={data.companyLogoPath || ''}
                 />
@@ -205,7 +205,7 @@ const FormPreviewModal = ({
               ) : (
                 <WeeklyInternshipJournal
                   studentName={data.studentName || data.name || ''}
-                  program={(typeof data.program === 'string' ? data.program : data.program?.code || data.program?.name) || ''}
+                  program={(typeof data.program === 'string' ? data.program : data.program?.name || data.program?.code) || ''}
                   companyLogoPath={data.companyLogoPath || ''}
                   weekNumber={data.weekNumber || ''}
                   date={data.date || ''}

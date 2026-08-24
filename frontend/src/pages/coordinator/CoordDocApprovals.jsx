@@ -192,7 +192,7 @@ function CoordDocApprovals() {
           <input className="form-control border-start-0 ps-0" placeholder="Search by student name…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
-          {["all", ...new Set(docs.map(d => (typeof d.internship?.student?.studentProfile?.program === 'string' ? d.internship?.student?.studentProfile?.program : d.internship?.student?.studentProfile?.program?.code || d.internship?.student?.studentProfile?.program?.name) || "—").filter(x => x !== "—"))].map(p => (
+          {["all", ...new Set(docs.map(d => (typeof d.internship?.student?.studentProfile?.program === 'string' ? d.internship?.student?.studentProfile?.program : d.internship?.student?.studentProfile?.program?.name || d.internship?.student?.studentProfile?.program?.code) || "—").filter(x => x !== "—"))].map(p => (
             <option key={p} value={p}>{p === "all" ? "All Departments" : p}</option>
           ))}
         </select>
@@ -231,7 +231,7 @@ function CoordDocApprovals() {
           ) : (() => {
             const filteredDocs = docs.filter(doc => {
               const name = formatStudentName(doc.internship).toLowerCase()
-              const prog = (typeof doc.internship?.student?.studentProfile?.program === 'string' ? doc.internship?.student?.studentProfile?.program : doc.internship?.student?.studentProfile?.program?.code || doc.internship?.student?.studentProfile?.program?.name) || "—"
+              const prog = (typeof doc.internship?.student?.studentProfile?.program === 'string' ? doc.internship?.student?.studentProfile?.program : doc.internship?.student?.studentProfile?.program?.name || doc.internship?.student?.studentProfile?.program?.code) || "—"
               return (!search || name.includes(search.toLowerCase()))
                 && (programFilter === "all" || prog === programFilter)
                 && (docTypeFilter === "all" || doc.document_type === docTypeFilter)
