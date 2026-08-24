@@ -108,7 +108,7 @@ function MisdSectionMappings() {
   }
 
   const remove = async (row) => {
-    if (!window.confirm(`Delete mapping for ${row.section}?`)) return
+    if (!window.confirm(`Delete mapping for ${formatYearSection(row.section)}?`)) return
     setMessage(null)
     try {
       await api.delete(`/admin/section-assignments/${row.id}`)
@@ -138,7 +138,7 @@ function MisdSectionMappings() {
               <tbody>
                 {unmapped.map((u, i) => (
                   <tr key={i}>
-                    <td><code>{u.section}</code></td>
+                    <td><code>{formatYearSection(u.section)}</code></td>
                     <td>{(typeof u.program === 'string' ? u.program : u.program?.code || u.program?.name) || '—'}</td>
                     <td>{u.academic_year || '—'} · Sem {u.semester || '—'}</td>
                     <td>{u.student_count}</td>
@@ -261,7 +261,7 @@ function MisdSectionMappings() {
                   <tr><td colSpan={6} className="text-center text-muted py-4">No mappings found.</td></tr>
                 ) : rows.map((row) => (
                   <tr key={row.id}>
-                    <td><code>{row.section}</code></td>
+                    <td><code>{formatYearSection(row.section)}</code></td>
                     <td>{(typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || '—'}</td>
                     <td>{row.academic_year} · Sem {row.semester}</td>
                     <td>{row.faculty?.name || '—'} <span className="text-muted">({row.faculty?.username})</span></td>

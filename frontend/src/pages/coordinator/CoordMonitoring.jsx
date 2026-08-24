@@ -1,3 +1,4 @@
+import { formatYearSection } from '../../utils/formatSection'
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
@@ -119,7 +120,7 @@ function CoordMonitoring() {
                   {rows.map(r => (
                     <tr key={r.user_id} className={r.is_at_risk ? 'table-warning' : undefined}>
                       <td className="fw-semibold">{r.student_name}</td>
-                      <td style={{fontSize:'0.82rem'}}><span className="fw-semibold">{r.section}</span><br/><span style={{fontSize:'0.75rem',color:'#64748b'}}>{r.faculty_name}</span></td>
+                      <td style={{fontSize:'0.82rem'}}><span className="fw-semibold">{formatYearSection(r.section)}</span><br/><span style={{fontSize:'0.75rem',color:'#64748b'}}>{r.faculty_name}</span></td>
                       <td style={{fontSize:'0.82rem'}}>{r.sex}</td>
                       <td style={{fontSize:'0.82rem'}}>{r.program}</td>
                       <td style={{fontSize:'0.82rem'}}>{r.supervisor_name}</td>

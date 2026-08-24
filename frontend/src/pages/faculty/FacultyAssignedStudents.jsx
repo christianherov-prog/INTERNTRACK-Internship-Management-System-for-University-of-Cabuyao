@@ -247,7 +247,7 @@ function TabStudents() {
                             </td>
                             <td>{row.student?.student_number || row.student?.email || profile?.student_number || "—"}</td>
                             <td>{(typeof row.program === 'string' ? row.program : row.program?.code || row.program?.name) || (typeof profile?.program === 'string' ? profile?.program : profile?.program?.code || profile?.program?.name) || "—"}</td>
-                            <td>{studentSection(row)}</td>
+                            <td>{formatYearSection(studentSection(row))}</td>
                             <td>{row.company ? (row.company?.company_name || row.company?.name || "—") : <span className="text-muted fst-italic">Not placed</span>}</td>
                             <td>{row.company ? supervisorName : "—"}</td>
                             <td>

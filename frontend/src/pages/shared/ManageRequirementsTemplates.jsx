@@ -1,3 +1,4 @@
+import { formatYearSection } from '../../utils/formatSection'
 import { useState, useEffect, useRef } from 'react'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -559,7 +560,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                           {activeReqSubmissions.submissions.map((sub, idx) => (
                             <tr key={idx}>
                               <td>{sub.student_name}</td>
-                              <td>{sub.section || '—'}</td>
+                              <td>{formatYearSection(sub.section) || '—'}</td>
                               <td>
                                 {sub.status === 'approved' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
                                 {sub.status === 'completed' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
