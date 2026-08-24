@@ -16,14 +16,14 @@ export function formatYearSection(section, yearLevel = null) {
   // Matches 4ITD, 4IT-D, 4IT - D, 4_IT_D, 4CPEA, 4CPE-A, etc.
   const match = /^(\d+)[\s\-_]*([A-Za-z]+?)[\s\-_]*([A-Za-z])$/.exec(raw)
   if (match) {
-    return `${match[1]}${match[2].toUpperCase()} ${match[3].toUpperCase()}`
+    return `${match[1]}${match[2].toUpperCase()}-${match[3].toUpperCase()}`
   }
 
   // Matches ITD, IT-D, IT - D with separate yearLevel
   const matchNoYear = /^([A-Za-z]+?)[\s\-_]*([A-Za-z])$/.exec(raw)
   if (matchNoYear) {
     const yr = yearLevel != null && String(yearLevel).trim() !== '' ? String(yearLevel).trim() : ''
-    return `${yr}${matchNoYear[1].toUpperCase()} - ${matchNoYear[2].toUpperCase()}`
+    return `${yr}${matchNoYear[1].toUpperCase()}-${matchNoYear[2].toUpperCase()}`
   }
 
   return raw
