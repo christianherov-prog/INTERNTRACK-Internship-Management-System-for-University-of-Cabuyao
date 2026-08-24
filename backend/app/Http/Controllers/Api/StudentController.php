@@ -193,11 +193,11 @@ class StudentController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $requiredDocTypes = $matchingTemplates->isNotEmpty()
-            ? $matchingTemplates->pluck('name')->unique()->values()->toArray()
-            : \App\Support\RequiredDocuments::defaultTypes();
+        $requiredDocTypes = $matchingTemplates->pluck('name')->unique()->values()->toArray();
 
-        $docsTotal = max(1, count($requiredDocTypes));
+        $docsTotal = count($requiredDocTypes);
+        // Avoid division by zero
+        $docsTotalForCalc = max(1, $docsTotal);
 
         $validDocStatuses = ['pending_review', 'under_review', 'pending_faculty', 'approved', 'resubmitted', 'completed'];
         $docsSubmitted = $internship->documents()
@@ -206,7 +206,7 @@ class StudentController extends Controller
             ->distinct('document_type')
             ->count('document_type');
 
-        $docCompliance = (int) min(100, max(0, round(($docsSubmitted / $docsTotal) * 100)));
+        $docCompliance = (int) min(100, max(0, round(($docsSubmitted / $docsTotalForCalc) * 100)));
 
         // Evaluation score (average of both evaluations, scaled to 100%)
         $evalAvg = $internship->evaluations()->avg('average_score');
@@ -441,65 +441,40 @@ class StudentController extends Controller
 
         $submitted = $internship->documents()->get()->keyBy('document_type');
 
-        if ($templates->isEmpty()) {
-            $defaultNames = \App\Support\RequiredDocuments::defaultTypes();
-            $docs = collect($defaultNames)->map(function ($name) use ($submitted) {
-                $doc = $submitted->get($name);
-                $status = $doc?->status ?? 'not_submitted';
-                return [
-                    'template_id'   => null,
-                    'has_template'  => false,
-                    'template_link' => null,
-                    'document_type' => $name,
-                    'status'        => $status,
-                    'deadline'      => null,
-                    'is_missed'     => false,
-                    'file_name'     => $doc?->file_name ?? null,
-                    'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
-                    'remarks'       => $doc?->remarks ?? null,
-                    'id'            => $doc?->id ?? null,
-                    'file_path'     => $doc?->file_path ?? null,
-                    'drive_link'    => $doc?->drive_link ?? null,
-                    'file_url'      => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
-                ];
-            });
-            $docsTotal = count($defaultNames);
-            $requiredTypes = $defaultNames;
-        } else {
-            $docs = $templates->map(function ($template) use ($submitted) {
-                $type = $template->name;
-                $doc = $submitted->get($type);
-                
-                $status = $doc?->status ?? 'not_submitted';
-                $isMissed = false;
+        $docs = $templates->map(function ($template) use ($submitted) {
+            $type = $template->name;
+            $doc = $submitted->get($type);
+            
+            $status = $doc?->status ?? 'not_submitted';
+            $isMissed = false;
 
-                if ($template->deadline && now()->greaterThan($template->deadline)) {
-                    if (!$doc || $status === 'rejected' || $status === 'not_submitted') {
-                        $status = 'no_submission';
-                        $isMissed = true;
-                    }
+            if ($template->deadline && now()->greaterThan($template->deadline)) {
+                if (!$doc || $status === 'rejected' || $status === 'not_submitted') {
+                    $status = 'no_submission';
+                    $isMissed = true;
                 }
+            }
 
-                return [
-                    'template_id'   => $template->id,
-                    'has_template'  => !empty($template->template_file_path),
-                    'template_link' => $template->drive_link,
-                    'document_type' => $type,
-                    'status'        => $status,
-                    'deadline'      => $template->deadline?->toIso8601String(),
-                    'is_missed'     => $isMissed,
-                    'file_name'     => $doc?->file_name ?? null,
-                    'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
-                    'remarks'       => $doc?->remarks ?? null,
-                    'id'            => $doc?->id ?? null,
-                    'file_path'     => $doc?->file_path ?? null,
-                    'drive_link'    => $doc?->drive_link ?? null,
-                    'file_url'      => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
-                ];
-            });
-            $docsTotal = count($templates);
-            $requiredTypes = $templates->pluck('name');
-        }
+            return [
+                'template_id'   => $template->id,
+                'has_template'  => !empty($template->template_file_path),
+                'template_link' => $template->drive_link,
+                'document_type' => $type,
+                'status'        => $status,
+                'deadline'      => $template->deadline?->toIso8601String(),
+                'is_missed'     => $isMissed,
+                'file_name'     => $doc?->file_name ?? null,
+                'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
+                'remarks'       => $doc?->remarks ?? null,
+                'id'            => $doc?->id ?? null,
+                'file_path'     => $doc?->file_path ?? null,
+                'drive_link'    => $doc?->drive_link ?? null,
+                'file_url'      => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
+            ];
+        });
+
+        $docsTotal = count($templates);
+        $requiredTypes = $templates->pluck('name');
 
         $payload = ApiResponse::list($docs)->getData(true);
         $payload['meta']['docs_total'] = $docsTotal;
@@ -544,9 +519,7 @@ class StudentController extends Controller
                 })->orDoesntHave('targets');
             })->get()->keyBy('name');
 
-        $validTypes = $templates->isNotEmpty() 
-            ? $templates->keys()->toArray()
-            : \App\Support\RequiredDocuments::defaultTypes();
+        $validTypes = $templates->keys()->toArray();
 
         $request->validate([
             'document_type' => ['required', 'string', Rule::in($validTypes)],

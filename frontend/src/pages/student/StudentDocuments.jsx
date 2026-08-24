@@ -193,8 +193,17 @@ function StudentDocuments() {
                   <tr><th>#</th><th>Document Type</th><th>Deadline</th><th>Status</th><th>Submitted</th><th>Remarks</th><th className="text-center">Action</th></tr>
                 </thead>
                 <tbody>
-                  {documents.map((doc, idx) => {
-                    const cfg = documentStatusConfig(doc.status)
+                  {documents.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-5 text-muted">
+                        <i className="fa fa-folder-open fs-1 opacity-50 mb-3"></i>
+                        <h5>No Requirements Yet</h5>
+                        <p className="small">Your faculty or coordinator has not assigned any document requirements yet.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    documents.map((doc, idx) => {
+                      const cfg = documentStatusConfig(doc.status)
                     return (
                       <tr key={doc.document_type}>
                         <td>{idx + 1}</td>
@@ -280,8 +289,9 @@ function StudentDocuments() {
                           </div>
                         </td>
                       </tr>
-                    )
-                  })}
+                      )
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

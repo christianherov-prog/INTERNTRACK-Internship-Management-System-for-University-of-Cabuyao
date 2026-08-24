@@ -52,7 +52,7 @@ class RequiredDocumentsAndAtRiskTest extends TestCase
                 'description' => "Doc $i",
                 'sort_order' => $i,
             ]);
-            $template->targets()->create(['target_type' => 'program', 'target_id' => 'BSIT']);
+            $template->targets()->create(['target_type' => 'program', 'target_id' => 'Bachelor of Science in Information Technology']);
         }
         
         \Illuminate\Support\Facades\Cache::forget('ojt_requirements_types');
