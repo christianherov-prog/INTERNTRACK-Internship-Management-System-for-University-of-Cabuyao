@@ -130,7 +130,7 @@ class HireProgressDemoSeeder extends Seeder
                     'program_id' => $programId,
                     'department_id' => $departmentId,
                     'year_level' => 4,
-                    'section' => '4ITD',
+                    'section' => '4IT-D',
                     'school_year' => '2025-2026',
                     'semester' => '2nd Semester',
                     'enrollment_status' => 'Enrolled',
