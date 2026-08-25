@@ -130,7 +130,7 @@ function SupervisorJournalValidation() {
 
   const handlePreviewJournal = (j) => {
     const profile = j.internship?.student?.studentProfile || j.internship?.student?.student_profile
-    const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+    const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
     setPreviewModal({
       type: 'journal',
       data: {
@@ -189,7 +189,7 @@ function SupervisorJournalValidation() {
             </div>
           ) : journals.length === 0 ? null : journals.map(j => {
             const profile = j.internship?.student?.studentProfile
-            const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+            const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
             const hasFile = !!j.file_path
             return (
               <div key={j.id} className="p-3 border-bottom">

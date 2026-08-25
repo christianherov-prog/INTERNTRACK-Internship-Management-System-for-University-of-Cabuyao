@@ -17,7 +17,7 @@ class StudentProfile extends Model {
     
     public function getFullNameAttribute(): string
     {
-        return NameParts::fromProfile($this) ?: trim("{$this->first_name} {$this->last_name}");
+        return NameParts::fromProfile($this) ?: trim("{$this->last_name}, {$this->first_name}");
     }
 
     protected static function booted(): void

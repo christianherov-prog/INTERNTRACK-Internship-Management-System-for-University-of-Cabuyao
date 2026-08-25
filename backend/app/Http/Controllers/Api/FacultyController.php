@@ -58,7 +58,7 @@ class FacultyController extends Controller
             ->map(fn($j) => [
                 'type'      => 'journal',
                 'action'    => $j->status,
-                'student'   => $j->internship->student->studentProfile ? trim("{$j->internship->student->studentProfile->first_name} {$j->internship->student->studentProfile->last_name}") : $j->internship->student->username,
+                'student'   => $j->internship->student->studentProfile ? trim("{$j->internship->student->studentProfile->last_name}, {$j->internship->student->studentProfile->first_name}") : $j->internship->student->username,
                 'week'      => $j->week_number ?? $j->entry_number,
                 'action_at' => $j->faculty_reviewed_at,
             ]);
@@ -509,7 +509,7 @@ class FacultyController extends Controller
             $i = $u->activeInternship;
             $p = $u->studentProfile;
             return [
-                'student_name' => trim(($p->first_name ?? '').' '.($p->last_name ?? '')),
+                'student_name' => trim(($p->last_name ?? '').', '.($p->first_name ?? '')),
                 'student_number' => $u->username,
                 'program' => $p->program?->name ?? $i?->program ?? '—',
                 'company' => $i->company?->company_name ?? '—',
@@ -560,7 +560,7 @@ class FacultyController extends Controller
             $approvedDocTypes = $i ? $i->documents->where('status', 'approved')->pluck('document_type') : collect([]);
             
             return [
-                'student_name' => trim((optional($u->studentProfile)->first_name ?? '').' '.(optional($u->studentProfile)->last_name ?? '')),
+                'student_name' => trim((optional($u->studentProfile)->last_name ?? '').', '.(optional($u->studentProfile)->first_name ?? '')),
                 'program' => $u->studentProfile?->program?->name ?? '-',
                 'approved_docs' => $approvedDocsCount,
                 'required_docs' => $requiredCount,

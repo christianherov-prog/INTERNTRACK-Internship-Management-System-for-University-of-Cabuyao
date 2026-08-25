@@ -152,7 +152,7 @@ class FacultySectionAssignmentService
 
         $fp = $faculty->facultyProfile;
         $name = $fp
-            ? trim("{$fp->first_name} {$fp->last_name}")
+            ? trim("{$fp->last_name}, {$fp->first_name}")
             : $faculty->username;
 
         return [

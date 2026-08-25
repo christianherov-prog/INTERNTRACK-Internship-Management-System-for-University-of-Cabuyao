@@ -136,7 +136,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                         <td><small>{inv.company?.company_name || '—'}</small></td>
                         <td>
                           <small>
-                            {studentP ? `${studentP.first_name} ${studentP.last_name}` : inv.student?.username || '—'}
+                            {studentP ? `${studentP.last_name}, ${studentP.first_name}` : inv.student?.username || '—'}
                           </small>
                         </td>
                         <td>
@@ -238,14 +238,14 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                       <tr key={inv.id} className="small">
                         <td>{inv.first_name} {inv.last_name}</td>
                         <td>{inv.company?.company_name || '—'}</td>
-                        <td>{studentP ? `${studentP.first_name} ${studentP.last_name}` : '—'}</td>
+                        <td>{studentP ? `${studentP.last_name}, ${studentP.first_name}` : '—'}</td>
                         <td>
                           {inv.status === 'approved'
                             ? <span className="badge bg-success">Approved</span>
                             : <span className="badge bg-danger">Rejected</span>
                           }
                         </td>
-                        <td>{reviewerP ? `${reviewerP.first_name} ${reviewerP.last_name}` : inv.reviewer?.username || '—'}</td>
+                        <td>{reviewerP ? `${reviewerP.last_name}, ${reviewerP.first_name}` : inv.reviewer?.username || '—'}</td>
                         <td>{inv.reviewed_at ? new Date(inv.reviewed_at).toLocaleDateString('en-PH') : '—'}</td>
                         <td>{inv.review_remarks || '—'}</td>
                       </tr>

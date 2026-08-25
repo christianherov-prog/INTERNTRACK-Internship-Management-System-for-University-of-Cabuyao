@@ -221,7 +221,7 @@ function SupervisorDashboard() {
                       <tr><td colSpan="5" className="text-center py-4 text-muted">No evaluations submitted yet.</td></tr>
                     ) : evals.map(ev => {
                       const st = ev.internship?.student?.student_profile || ev.internship?.student?.studentProfile;
-                      const name = st ? `${st.first_name} ${st.last_name}` : '—';
+                      const name = st ? `${st.last_name}, ${st.first_name}` : '—';
                       return (
                         <tr key={ev.id}>
                           <td className="ps-4">

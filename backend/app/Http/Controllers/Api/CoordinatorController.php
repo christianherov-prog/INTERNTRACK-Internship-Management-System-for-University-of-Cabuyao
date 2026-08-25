@@ -209,26 +209,26 @@ class CoordinatorController extends Controller
             $facultyName = 'Not Assigned';
             if ($i && $i->faculty && $i->faculty->facultyProfile) {
                 $fp = $i->faculty->facultyProfile;
-                $facultyName = trim("{$fp->first_name} {$fp->last_name}");
+                $facultyName = trim("{$fp->last_name}, {$fp->first_name}");
             } elseif ($profile && $profile->section) {
                 $assignment = $facultyAssignments->get($profile->section);
                 if ($assignment && $assignment->faculty && $assignment->faculty->facultyProfile) {
                     $fp = $assignment->faculty->facultyProfile;
-                    $facultyName = trim("{$fp->first_name} {$fp->last_name}");
+                    $facultyName = trim("{$fp->last_name}, {$fp->first_name}");
                 }
             }
 
             return [
                 'user_id'            => $student->id,
                 'internship_id'      => $i?->id,
-                'student_name'       => $profile ? trim("{$profile->first_name} {$profile->last_name}") : $student->username,
+                'student_name'       => $profile ? trim("{$profile->last_name}, {$profile->first_name}") : $student->username,
                 'student_number'     => $profile?->student_number ?? '—',
                 'program'            => $profile?->program?->name ?? '-',
                 'section'            => $profile?->section ?? '-',
                 'sex'                => $student->sex ?? $profile?->sex ?? '-',
                 'faculty_name'       => $facultyName,
                 'status'             => $i?->status ?? 'unplaced',
-                'supervisor_name'    => $supProfile ? trim("{$supProfile->first_name} {$supProfile->last_name}") : 'Not Assigned',
+                'supervisor_name'    => $supProfile ? trim("{$supProfile->last_name}, {$supProfile->first_name}") : 'Not Assigned',
                 'company'            => $i?->company?->company_name ?? 'Not Assigned',
                 'last_journal_date'  => $lastJournal?->date?->toDateString(),
                 'journal_status'     => $lastJournal?->status ?? 'none',
@@ -574,7 +574,7 @@ class CoordinatorController extends Controller
         $students = $query->orderBy('status')
             ->get()
             ->map(fn($i) => [
-                'student_name'     => optional($i->student?->studentProfile)->first_name . ' ' . optional($i->student?->studentProfile)->last_name,
+                'student_name'     => optional($i->student?->studentProfile)->last_name . ', ' . optional($i->student?->studentProfile)->first_name,
                 'student_number'   => $i->student?->username,
                 'program'          => $i->student?->studentProfile?->program?->name ?? $i->program ?? '—',
                 'company'          => $i->company?->company_name ?? '—',
@@ -613,7 +613,7 @@ class CoordinatorController extends Controller
         $requiredCount = \App\Support\RequiredDocuments::count();
 
         $rows = $internships->map(fn($i) => [
-            'student_name'    => trim(optional($i->student?->studentProfile)->first_name . ' ' . optional($i->student?->studentProfile)->last_name),
+            'student_name'    => trim(optional($i->student?->studentProfile)->last_name . ', ' . optional($i->student?->studentProfile)->first_name),
             'program'         => $i->student?->studentProfile?->program?->name ?? '—',
             'industry'        => $i->company?->industry ?? '—',
             'approved_docs'   => $i->documents->where('status', 'approved')->count(),
@@ -776,7 +776,7 @@ class CoordinatorController extends Controller
             ->get()
             ->map(fn($f) => [
                 'id'   => $f->id,
-                'name' => trim(($f->facultyProfile?->first_name ?? '') . ' ' . ($f->facultyProfile?->last_name ?? '')) ?: $f->username,
+                'name' => trim(($f->facultyProfile?->last_name ?? '') . ', ' . ($f->facultyProfile?->first_name ?? '')) ?: $f->username,
             ]);
 
         return response()->json([

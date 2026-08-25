@@ -102,7 +102,7 @@ function CoordEvaluations() {
                       const p = intern.student?.student_profile || intern.student?.studentProfile
                       const name = studentOf(intern)
                       const fac = intern.faculty?.faculty_profile || intern.faculty?.facultyProfile
-                      const facName = fac ? `${fac.first_name || ''} ${fac.last_name || ''}`.trim() : '—'
+                      const facName = fac ? `${fac.last_name || ''}, ${fac.first_name || ''}`.trim() : '—'
                       const evals = intern.evaluations || []
 
                       return (

@@ -201,7 +201,7 @@ class DirectorController extends Controller
                 'company_name' => $i->company?->company_name,
                 'student' => [
                     'id' => $i->student_id,
-                    'name' => $p ? trim("{$p->first_name} {$p->last_name}") : $i->student?->username,
+                    'name' => $p ? trim("{$p->last_name}, {$p->first_name}") : $i->student?->username,
                     'student_number' => $p?->student_number ?? $i->student?->username,
                     'program' => $p?->program?->name ?? '—',
                 ],

@@ -14,7 +14,7 @@ function profileOf(entity) {
 
 function displayName(entity) {
   const p = profileOf(entity)
-  if (p) return `${p.first_name || ''} ${p.last_name || ''}`.trim()
+  if (p) return `${p.last_name || ''}, ${p.first_name || ''}`.trim()
   return entity?.student?.username || ''
 }
 

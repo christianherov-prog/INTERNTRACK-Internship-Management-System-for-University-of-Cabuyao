@@ -250,7 +250,7 @@ class MisdAdminController extends Controller
         $paginator->getCollection()->transform(function (User $user) {
             $profile = $user->facultyProfile ?? $user->studentProfile ?? $user->supervisorProfile;
             $name = $profile
-                ? trim("{$profile->first_name} {$profile->last_name}")
+                ? trim("{$profile->last_name}, {$profile->first_name}")
                 : $user->username;
 
             return [
@@ -415,7 +415,7 @@ class MisdAdminController extends Controller
                 return [
                     'id'              => $u->id,
                     'username'        => $u->username,
-                    'name'            => $fp ? trim("{$fp->first_name} {$fp->last_name}") : $u->username,
+                    'name'            => $fp ? trim("{$fp->last_name}, {$fp->first_name}") : $u->username,
                     'faculty_number'  => $fp?->faculty_number ?? $u->username,
                 ];
             });
@@ -729,7 +729,7 @@ class MisdAdminController extends Controller
             'faculty'         => $faculty ? [
                 'id'              => $faculty->id,
                 'username'        => $faculty->username,
-                'name'            => $fp ? trim("{$fp->first_name} {$fp->last_name}") : $faculty->username,
+                'name'            => $fp ? trim("{$fp->last_name}, {$fp->first_name}") : $faculty->username,
                 'faculty_number'  => $fp?->faculty_number,
             ] : null,
             'created_at'      => optional($a->created_at)?->toIso8601String(),

@@ -176,7 +176,7 @@ function FacultyDocuments() {
                   {docs.map(doc => {
                     const p = doc.internship?.student?.student_profile
                       || doc.internship?.student?.studentProfile
-                    const name = p ? `${p.first_name} ${p.last_name}` : '—'
+                    const name = p ? `${p.last_name}, ${p.first_name}` : '—'
                     return (
                       <tr key={doc.id}>
                         <td className="fw-semibold">{name}</td>

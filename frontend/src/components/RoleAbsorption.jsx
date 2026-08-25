@@ -16,7 +16,7 @@ function AbsorptionModal({ internship, apiBase, onClose, onSaved, declaredHiredE
   const [error, setError] = useState(null)
 
   const p = profileOf(internship.student)
-  const name = p ? `${p.first_name} ${p.last_name}` : 'Intern'
+  const name = p ? `${p.last_name}, ${p.first_name}` : 'Intern'
 
   const submit = (e) => {
     e.preventDefault()
@@ -162,9 +162,9 @@ function RoleAbsorption({
               <tbody>
                 {items.map((i) => {
                   const p = profileOf(i.student)
-                  const name = p ? `${p.first_name} ${p.last_name}` : '—'
+                  const name = p ? `${p.last_name}, ${p.first_name}` : '—'
                   const sp = i.supervisor?.supervisor_profile || i.supervisor?.supervisorProfile
-                  const supervisorName = sp ? `${sp.first_name} ${sp.last_name}` : (i.supervisor?.username || '—')
+                  const supervisorName = sp ? `${sp.last_name}, ${sp.first_name}` : (i.supervisor?.username || '—')
                   const outcome = i.absorption_status || 'pending'
                   return (
                     <tr key={i.id}>

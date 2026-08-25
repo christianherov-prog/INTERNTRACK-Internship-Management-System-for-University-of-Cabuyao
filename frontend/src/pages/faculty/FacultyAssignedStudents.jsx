@@ -345,7 +345,7 @@ function TabJournals() {
 
   const handlePreviewJournal = (j) => {
     const profile = j.internship?.student?.studentProfile || j.internship?.student?.student_profile
-    const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+    const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
     setPreviewModal({
       type: 'journal',
       data: {
@@ -378,7 +378,7 @@ function TabJournals() {
               <div className="text-center py-4 text-muted"><i className="fa fa-check-circle fa-2x mb-2 d-block text-success"></i>All journals reviewed!</div>
             ) : journals.map(j => {
               const profile = j.internship?.student?.studentProfile
-              const name = profile ? `${profile.first_name} ${profile.last_name}` : "—"
+              const name = profile ? `${profile.last_name}, ${profile.first_name}` : "—"
               return (
                 <div key={j.id} className="p-3 border-bottom d-flex align-items-start justify-content-between">
                   <div>
@@ -442,7 +442,7 @@ function TabAttendance() {
               <option value="">All assigned students</option>
               {students.map(s => {
                 const p = s.student?.student_profile || s.student?.studentProfile
-                const name = p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() : (s.student?.username || `Internship #${s.id}`)
+                const name = p ? `${p.last_name || ""}, ${p.first_name || ""}`.trim() : (s.student?.username || `Internship #${s.id}`)
                 return <option key={s.id} value={s.id}>{name}</option>
               })}
             </select>
@@ -474,7 +474,7 @@ function TabAttendance() {
                     <tbody>
                       {rows.map(log => {
                         const p = log?.internship?.student?.student_profile || log?.internship?.student?.studentProfile
-                        const name = p ? `${p.first_name || ""} ${p.last_name || ""}`.trim() : (log?.internship?.student?.username || "—")
+                        const name = p ? `${p.last_name || ""}, ${p.first_name || ""}`.trim() : (log?.internship?.student?.username || "—")
                         return (
                           <tr key={log.id}>
                             <td className="fw-semibold">{name}</td>

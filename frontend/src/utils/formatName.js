@@ -7,10 +7,12 @@ export function formatStudentName(row) {
     const middle = (p.middle_name || "").trim();
     const suffix = (p.suffix || "").trim();
     
+    const middleInitial = middle ? middle.charAt(0).toUpperCase() + '.' : "";
+    
     let name = "";
     if (last) name += last;
     if (first) name += (name ? ", " : "") + first;
-    if (middle) name += " " + middle;
+    if (middleInitial) name += " " + middleInitial;
     if (suffix) name += ", " + suffix;
     
     return name || row?.student?.student_number || row?.student_number || row?.student?.email || row?.email || "—";

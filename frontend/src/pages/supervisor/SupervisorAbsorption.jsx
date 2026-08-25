@@ -89,7 +89,7 @@ function SupervisorAbsorption() {
               <tbody>
                 {items.map((i) => {
                   const p = profileOf(i.student)
-                  const name = p ? `${p.first_name} ${p.last_name}` : '—'
+                  const name = p ? `${p.last_name}, ${p.first_name}` : '—'
                   const outcome = i.absorption_status || 'pending'
                   return (
                     <tr key={i.id}>

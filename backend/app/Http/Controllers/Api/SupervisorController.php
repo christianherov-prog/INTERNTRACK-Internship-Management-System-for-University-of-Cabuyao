@@ -48,7 +48,7 @@ class SupervisorController extends Controller
             ->get()
             ->map(fn($log) => [
                 'type' => 'attendance',
-                'student' => $log->internship->student->studentProfile ? trim("{$log->internship->student->studentProfile->first_name} {$log->internship->student->studentProfile->last_name}") : $log->internship->student->username,
+                'student' => $log->internship->student->studentProfile ? trim("{$log->internship->student->studentProfile->last_name}, {$log->internship->student->studentProfile->first_name}") : $log->internship->student->username,
                 'date' => $log->date,
                 'hours' => $log->hours_rendered,
                 'action_at' => $log->validated_at,
@@ -70,7 +70,7 @@ class SupervisorController extends Controller
                 
                 return [
                     'id' => $internship->id,
-                    'student' => $internship->student->studentProfile ? trim("{$internship->student->studentProfile->first_name} {$internship->student->studentProfile->last_name}") : $internship->student->username,
+                    'student' => $internship->student->studentProfile ? trim("{$internship->student->studentProfile->last_name}, {$internship->student->studentProfile->first_name}") : $internship->student->username,
                     'course' => $internship->student->studentProfile->program?->name ?? 'N/A',
                     'status' => $internship->status,
                     'hours_rendered' => $internship->total_hours_rendered,
@@ -409,7 +409,7 @@ class SupervisorController extends Controller
         $eval->save();
 
         $studentName = $internship->student?->studentProfile
-            ? trim($internship->student->studentProfile->first_name.' '.$internship->student->studentProfile->last_name)
+            ? trim($internship->student->studentProfile->last_name.', '.$internship->student->studentProfile->first_name)
             : ($internship->student?->username ?? 'Intern');
 
         $notifyIds = User::whereIn('role', ['coordinator', 'director'])

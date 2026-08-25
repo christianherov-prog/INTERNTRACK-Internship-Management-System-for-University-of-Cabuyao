@@ -276,7 +276,7 @@ function COEPortfolioPreview() {
   const companyAddress = p.company_address || i.company?.address || '[Company Address]';
 
   const supervisorName = i.supervisor?.supervisorProfile
-    ? `${i.supervisor.supervisorProfile.first_name} ${i.supervisor.supervisorProfile.last_name}`
+    ? `${i.supervisor.supervisorProfile.last_name}, ${i.supervisor.supervisorProfile.first_name}`
     : '[SUPERVISOR NAME]';
 
   const facultyName = i.faculty?.facultyProfile

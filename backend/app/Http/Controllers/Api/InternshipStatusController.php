@@ -37,7 +37,7 @@ class InternshipStatusController extends Controller
                 'to_label' => InternshipStatuses::label($h->to_status),
                 'reason' => $h->reason,
                 'changed_by' => $h->changer?->facultyProfile
-                    ? trim($h->changer->facultyProfile->first_name.' '.$h->changer->facultyProfile->last_name)
+                    ? trim($h->changer->facultyProfile->last_name.', '.$h->changer->facultyProfile->first_name)
                     : ($h->changer?->username ?? '—'),
                 'changed_at' => optional($h->created_at)?->toIso8601String(),
             ]);
@@ -48,7 +48,7 @@ class InternshipStatusController extends Controller
                 'status' => InternshipStatuses::normalize($internship->status),
                 'status_label' => InternshipStatuses::label($internship->status),
                 'status_reason' => $internship->status_reason,
-                'student_name' => trim(($internship->student?->studentProfile?->first_name ?? '').' '.($internship->student?->studentProfile?->last_name ?? '')) ?: $internship->student?->username,
+                'student_name' => trim(($internship->student?->studentProfile?->last_name ?? '').', '.($internship->student?->studentProfile?->first_name ?? '')) ?: $internship->student?->username,
                 'company_name' => $internship->company?->company_name,
             ],
             'data' => $history,

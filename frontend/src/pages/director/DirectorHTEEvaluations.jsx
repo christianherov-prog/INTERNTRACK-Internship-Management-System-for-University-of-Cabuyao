@@ -144,9 +144,9 @@ export default function DirectorHTEEvaluations() {
                       <tr><td colSpan="5" className="text-center py-5 text-muted">No evaluations found with the current filters.</td></tr>
                     ) : internships.map(intern => {
                       const p = intern.student?.student_profile || intern.student?.studentProfile
-                      const name = p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : intern.student?.student_number || intern.student?.email || '—'
+                      const name = p ? `${p.last_name || ''}, ${p.first_name || ''}`.trim() : intern.student?.student_number || intern.student?.email || '—'
                       const sup = intern.supervisor?.supervisor_profile || intern.supervisor?.supervisorProfile
-                      const supName = sup ? `${sup.first_name || ''} ${sup.last_name || ''}`.trim() : '—'
+                      const supName = sup ? `${sup.last_name || ''}, ${sup.first_name || ''}`.trim() : '—'
                       const evals = intern.evaluations || []
 
                       return (

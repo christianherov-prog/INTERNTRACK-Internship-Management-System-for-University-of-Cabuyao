@@ -5,7 +5,7 @@ Internship Management System for the **University of Cabuyao (Pamantasan ng Cabu
 Capstone project — Group 4  
 Stack: **React (Vite)** frontend · **Laravel Sanctum** REST API · **MySQL**
 
-Repository: [Orb-BIT/interntrack-capstone](https://github.com/Orb-BIT/interntrack-capstone)  
+Repository: [christianherov-prog/INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao](https://github.com/christianherov-prog/INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao)  
 Integration branch: **`MERGE-ONLY-BAWAL-MAG-PUSH`** (combined `develop` + `GawaNiValinadoV2`)  
 Source branches stay unchanged: `develop`, `GawaNiValinadoV2`
 

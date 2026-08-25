@@ -112,7 +112,7 @@ class User extends Authenticatable
     public function getProfileNameAttribute(): string
     {
         $p = $this->studentProfile ?? $this->facultyProfile ?? $this->supervisorProfile;
-        return $p ? trim("{$p->first_name} {$p->last_name}") : ($this->student_number ?? $this->faculty_number ?? 'Unknown');
+        return $p ? trim("{$p->last_name}, {$p->first_name}") : ($this->student_number ?? $this->faculty_number ?? 'Unknown');
     }
 
     public function getUsernameAttribute(): ?string

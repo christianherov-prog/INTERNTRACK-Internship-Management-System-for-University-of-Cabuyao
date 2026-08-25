@@ -102,12 +102,12 @@ const MultilinePreview = ({ text, lines = 1 }) => (
 export const PrintFO24 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim();
   const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
   const supervisor = internship?.supervisor?.supervisorProfile || {};
-  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || evalData?.supervisor_name || '';
+  const supervisorName = `${supervisor.last_name || ''}, ${supervisor.first_name || ''}`.trim() || evalData?.supervisor_name || '';
 
   return (
     <div data-toc-id={tocId} className="a4-page portfolio-document position-relative" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -234,7 +234,7 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
 export const PrintFO03 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim();
   const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
@@ -242,7 +242,7 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
   const hteName = company.company_name || company.name || '';
   const hteAddress = company.address || '';
   const supervisor = internship?.supervisor?.supervisorProfile || {};
-  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || evalData?.evaluator_name || '';
+  const supervisorName = `${supervisor.last_name || ''}, ${supervisor.first_name || ''}`.trim() || evalData?.evaluator_name || '';
   const supervisorPos = supervisor.position || supervisor.designation || '';
 
   return (
@@ -402,7 +402,7 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
 export const PrintFO22 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim();
   const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
@@ -410,7 +410,7 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
   const hteName = company.company_name || company.name || '';
   const hteAddress = company.address || '';
   const supervisor = internship?.supervisor?.supervisorProfile || {};
-  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || evalData?.supervisor_name || '';
+  const supervisorName = `${supervisor.last_name || ''}, ${supervisor.first_name || ''}`.trim() || evalData?.supervisor_name || '';
   const supervisorPos = supervisor.position || supervisor.designation || '';
 
   return (
@@ -566,12 +566,12 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
 export const PrintFO23 = ({ evalData, internship, tocId }) => {
   const responses = evalData?.responses || {};
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim();
   const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || '';
   const semStr = Number(internship?.semester) === 1 ? '1st' : Number(internship?.semester) === 2 ? '2nd' : Number(internship?.semester) === 3 ? 'Midyear' : '';
   const ayStr = internship?.academic_year || internship?.school_year || '';
   const faculty = internship?.faculty?.facultyProfile || internship?.faculty?.faculty_profile || {};
-  const facultyName = `${faculty.first_name || ''} ${faculty.last_name || ''}`.trim() || internship?.faculty?.name || '';
+  const facultyName = `${faculty.last_name || ''}, ${faculty.first_name || ''}`.trim() || internship?.faculty?.name || '';
   let globalIndex = 1;
 
   return (

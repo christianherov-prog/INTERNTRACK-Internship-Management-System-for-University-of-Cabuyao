@@ -48,7 +48,7 @@ class RequirementTemplateController extends Controller
 
             $handledStudents[] = [
                 'id' => $student->id,
-                'name' => $profile ? trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? '')) : $student->username,
+                'name' => $profile ? trim(($profile->last_name ?? '') . ', ' . ($profile->first_name ?? '')) : $student->username,
                 'section_name' => $profile?->section,
                 'program_name' => $profile?->program?->name,
                 'internship_id' => $internship ? $internship->id : null,
@@ -89,7 +89,7 @@ class RequirementTemplateController extends Controller
 
                 $reviewerName = null;
                 if ($doc && $doc->reviewer) {
-                    $reviewerName = $doc->reviewer->facultyProfile ? trim($doc->reviewer->facultyProfile->first_name . ' ' . $doc->reviewer->facultyProfile->last_name) : $doc->reviewer->username;
+                    $reviewerName = $doc->reviewer->facultyProfile ? trim($doc->reviewer->facultyProfile->last_name . ', ' . $doc->reviewer->facultyProfile->first_name) : $doc->reviewer->username;
                 }
                 
                 return [
@@ -150,7 +150,8 @@ class RequirementTemplateController extends Controller
             $profile = $u->studentProfile;
             if (!$profile) continue;
             
-            $name = trim(($profile->first_name ?? '') . ' ' . ($profile->last_name ?? ''));
+            $middleInitial = $profile->middle_name ? substr($profile->middle_name, 0, 1) . '.' : '';
+            $name = trim(($profile->last_name ?? '') . ', ' . ($profile->first_name ?? '') . ' ' . $middleInitial);
             $students[] = [
                 'id' => $u->id,
                 'name' => $name ?: $u->username,

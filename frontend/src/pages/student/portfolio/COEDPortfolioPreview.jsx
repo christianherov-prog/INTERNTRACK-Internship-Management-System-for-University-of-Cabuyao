@@ -59,8 +59,8 @@ function COEDPortfolioPreview() {
   // Supervisors
   const supervisor = data.internship.supervisor?.supervisor_profile;
   const faculty = data.internship.faculty?.faculty_profile;
-  const cooperatingTeacher = supervisor ? `${supervisor.first_name} ${supervisor.last_name}` : '';
-  const facultySupervisor = faculty ? `${faculty.first_name} ${faculty.last_name}` : '';
+  const cooperatingTeacher = supervisor ? `${supervisor.last_name}, ${supervisor.first_name}` : '';
+  const facultySupervisor = faculty ? `${faculty.last_name}, ${faculty.first_name}` : '';
 
   const PageWrap = ({ children, title = '' }) => (
     <div className="a4-page page-break portfolio-document position-relative">

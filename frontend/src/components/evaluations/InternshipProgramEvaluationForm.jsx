@@ -65,11 +65,11 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
   let globalIndex = 1;
 
   const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unavailable';
+  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim() || 'Unavailable';
   const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || 'Unavailable';
   const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
   const faculty = internship?.faculty?.facultyProfile || internship?.faculty?.faculty_profile || {};
-  const facultyName = `${faculty.first_name || ''} ${faculty.last_name || ''}`.trim() || 'Unavailable';
+  const facultyName = `${faculty.last_name || ''}, ${faculty.first_name || ''}`.trim() || 'Unavailable';
 
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">

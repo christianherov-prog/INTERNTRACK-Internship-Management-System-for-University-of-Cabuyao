@@ -45,7 +45,7 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
   const hteName = company.company_name || company.name || 'Unavailable';
   const hteAddress = company.address || 'Unavailable';
   const supervisor = internship?.supervisor?.supervisorProfile || {};
-  const supervisorName = `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || 'Unavailable';
+  const supervisorName = `${supervisor.last_name || ''}, ${supervisor.first_name || ''}`.trim() || 'Unavailable';
   const supervisorPos = supervisor.position || supervisor.designation || 'Unavailable';
 
   return (

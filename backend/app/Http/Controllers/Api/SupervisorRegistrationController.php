@@ -106,7 +106,7 @@ class SupervisorRegistrationController extends Controller
             $supervisor = [
                 'id' => $internship->supervisor->id,
                 'username' => $internship->supervisor->username,
-                'name' => $p ? trim("{$p->first_name} {$p->last_name}") : $internship->supervisor->username,
+                'name' => $p ? trim("{$p->last_name}, {$p->first_name}") : $internship->supervisor->username,
                 'email' => $p?->email ?? $internship->supervisor->email,
                 'position' => $p?->position,
             ];
@@ -157,7 +157,7 @@ class SupervisorRegistrationController extends Controller
         return response()->json([
             'valid'              => true,
             'student_name'       => $studentProfile
-                ? trim("{$studentProfile->first_name} {$studentProfile->last_name}")
+                ? trim("{$studentProfile->last_name}, {$studentProfile->first_name}")
                 : $invite->student?->username,
             'program'            => $studentProfile?->course_name ?? $studentProfile?->program ?? '—',
             'term'               => $invite->internship?->term,
@@ -357,7 +357,7 @@ class SupervisorRegistrationController extends Controller
                 $invite->student_id,
                 'supervisor_approved',
                 'Supervisor Approved',
-                "Your supervisor {$invite->first_name} {$invite->last_name} has been approved and assigned to your internship.",
+                "Your supervisor {$invite->last_name}, {$invite->first_name} has been approved and assigned to your internship.",
                 '/student/dashboard'
             );
 
@@ -376,7 +376,7 @@ class SupervisorRegistrationController extends Controller
             ]);
 
             return response()->json([
-                'message' => "Supervisor {$invite->first_name} {$invite->last_name} approved and assigned successfully.",
+                'message' => "Supervisor {$invite->last_name}, {$invite->first_name} approved and assigned successfully.",
             ]);
         });
     }
@@ -402,7 +402,7 @@ class SupervisorRegistrationController extends Controller
             $invite->student_id,
             'supervisor_rejected',
             'Supervisor Registration Rejected',
-            "The supervisor registration for {$invite->first_name} {$invite->last_name} was rejected: {$request->remarks}",
+            "The supervisor registration for {$invite->last_name}, {$invite->first_name} was rejected: {$request->remarks}",
             '/student/dashboard'
         );
 

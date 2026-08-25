@@ -350,7 +350,7 @@ function PortfolioPreview() {
           <div>
             <p style={{ textAlign: "center" }}>Submitted to:</p>
             <p style={{ fontWeight: "bold", fontStyle: "italic", marginTop: "16px", textAlign: "center" }}>
-              {i?.faculty?.facultyProfile ? `Dr.${i.faculty.facultyProfile.first_name} ${i.faculty.facultyProfile.last_name}` : "____________________________"}
+              {i?.faculty?.facultyProfile ? `Dr.${i.faculty.facultyProfile.last_name}, ${i.faculty.facultyProfile.first_name}` : "____________________________"}
             </p>
             <p style={{ textAlign: "center" }}>Internship Instructor</p><br />
             <p style={{ fontWeight: "bold", textAlign: "center" }}>ASST. PROF. ARCELITO QUIATCHON</p>

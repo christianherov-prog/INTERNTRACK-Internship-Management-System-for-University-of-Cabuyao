@@ -25,7 +25,7 @@ final class SignatureCapture
                     if (!$signerName) {
                         $profile = $user->studentProfile ?? $user->facultyProfile ?? $user->coordinatorProfile ?? $user->supervisorProfile ?? $user->directorProfile ?? null;
                         if ($profile && isset($profile->first_name, $profile->last_name)) {
-                            $signerName = trim("{$profile->first_name} {$profile->last_name}");
+                            $signerName = trim("{$profile->last_name}, {$profile->first_name}");
                         } else {
                             $signerName = $user->name ?? $user->username ?? 'Authorized Signer';
                         }

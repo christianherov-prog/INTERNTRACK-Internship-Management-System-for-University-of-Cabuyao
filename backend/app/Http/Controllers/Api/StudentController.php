@@ -90,7 +90,7 @@ class StudentController extends Controller
         if (!$profile) return null;
 
         $middleInitial = $profile->middle_name ? substr($profile->middle_name, 0, 1) . '.' : null;
-        $name = trim(implode(' ', array_filter([$profile->first_name, $middleInitial, $profile->last_name])));
+        $name = trim($profile->last_name . ', ' . implode(' ', array_filter([$profile->first_name, $middleInitial])));
 
         return [
             'name'           => $name,

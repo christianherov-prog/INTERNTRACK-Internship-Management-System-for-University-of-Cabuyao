@@ -115,6 +115,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/logbook',              [StudentController::class, 'submitJournal']);
             Route::get('/documents',             [StudentController::class, 'documents']);
             Route::post('/documents/upload',     [StudentController::class, 'uploadDocument']);
+            Route::post('/templates/{template}/resubmit-request', [\App\Http\Controllers\Api\ResubmissionController::class, 'requestResubmission']);
             Route::get('/requirements/{id}/template', [RequirementTemplateController::class, 'downloadTemplate']);
             Route::get('/evaluations',           [StudentController::class, 'evaluations']);
             Route::get('/records',               [StudentController::class, 'records']);
@@ -168,6 +169,9 @@ Route::prefix('v1')->group(function () {
 
         // Faculty
         Route::prefix('faculty')->middleware('role:faculty')->group(function () {
+            Route::get('/resubmission-requests', [\App\Http\Controllers\Api\ResubmissionController::class, 'indexFaculty']);
+            Route::post('/resubmission-requests/{resubmissionRequest}/approve', [\App\Http\Controllers\Api\ResubmissionController::class, 'approve']);
+            Route::post('/resubmission-requests/{resubmissionRequest}/reject', [\App\Http\Controllers\Api\ResubmissionController::class, 'reject']);
             Route::get('/dashboard',                   [FacultyController::class, 'dashboard']);
             Route::get('/assigned-students',           [FacultyController::class, 'assignedStudents']);
             Route::patch('/students/{userId}/archive', [FacultyController::class, 'setStudentArchived']);
@@ -205,6 +209,9 @@ Route::prefix('v1')->group(function () {
 
         // Coordinator
         Route::prefix('coordinator')->middleware('role:coordinator')->group(function () {
+            Route::get('/resubmission-requests', [\App\Http\Controllers\Api\ResubmissionController::class, 'indexFaculty']);
+            Route::post('/resubmission-requests/{resubmissionRequest}/approve', [\App\Http\Controllers\Api\ResubmissionController::class, 'approve']);
+            Route::post('/resubmission-requests/{resubmissionRequest}/reject', [\App\Http\Controllers\Api\ResubmissionController::class, 'reject']);
             Route::get('/dashboard',                 [CoordinatorController::class, 'dashboard']);
             Route::post('/class-list/upload',        [ClassListUploadController::class, 'upload']);
             Route::get('/monitoring',                [CoordinatorController::class, 'monitoring']);
@@ -250,6 +257,9 @@ Route::prefix('v1')->group(function () {
 
         // Director
         Route::prefix('director')->middleware('role:director')->group(function () {
+            Route::get('/resubmission-requests', [\App\Http\Controllers\Api\ResubmissionController::class, 'indexFaculty']);
+            Route::post('/resubmission-requests/{resubmissionRequest}/approve', [\App\Http\Controllers\Api\ResubmissionController::class, 'approve']);
+            Route::post('/resubmission-requests/{resubmissionRequest}/reject', [\App\Http\Controllers\Api\ResubmissionController::class, 'reject']);
             Route::get('/dashboard',       [DirectorController::class, 'dashboard']);
             Route::get('/evaluations',     [DirectorController::class, 'hteEvaluations']);
             Route::get('/analytics',       [DirectorController::class, 'analytics']);

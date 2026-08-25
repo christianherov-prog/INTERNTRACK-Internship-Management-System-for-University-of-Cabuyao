@@ -60,7 +60,7 @@ function CoordLogbookReview() {
               <div className="modal-body">
                 <div className="mb-3 p-3 rounded" style={{background:'#f8fafc',fontSize:'0.88rem'}}>
                   <div className="fw-semibold mb-2">
-                    {modal.internship?.student?.studentProfile ? `${modal.internship.student.studentProfile.first_name} ${modal.internship.student.studentProfile.last_name}` : '—'} · {modal.date}
+                    {modal.internship?.student?.studentProfile ? `${modal.internship.student.studentProfile.last_name}, ${modal.internship.student.studentProfile.first_name}` : '—'} · {modal.date}
                   </div>
                   <p className="mb-1"><strong>Activities:</strong> {modal.activities_summary}</p>
                   {modal.learnings && <p className="mb-1 text-muted"><strong>Learnings:</strong> {modal.learnings}</p>}
@@ -101,7 +101,7 @@ function CoordLogbookReview() {
             <EmptyState icon="fa-check-circle" title="No pending journals" message="All submitted journal entries have been reviewed." />
           ) : journals.length === 0 ? null : journals.map(j => {
             const profile = j.internship?.student?.studentProfile
-            const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+            const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
             return (
               <div key={j.id} className="p-3 border-bottom">
                 <div className="d-flex align-items-center justify-content-between">

@@ -61,8 +61,8 @@ class MockMisdRepository implements MisdRepositoryInterface
                 'employment_status' => 'Regular',
             ],
 
-            'COR-1001' => [
-                'faculty_number'   => 'COR-1001',
+            'COR-CCS-001' => [
+                'faculty_number'   => 'COR-CCS-001',
                 'first_name'        => 'Arcelito',
                 'middle_name'       => 'C.',
                 'last_name'         => 'Quiatchon',

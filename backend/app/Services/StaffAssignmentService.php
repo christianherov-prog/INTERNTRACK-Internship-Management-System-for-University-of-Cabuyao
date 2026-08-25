@@ -201,7 +201,7 @@ class StaffAssignmentService
             'is_active'       => (bool) $user->is_active,
             'last_login_at'   => optional($user->last_login_at)?->toIso8601String(),
             'name'            => $fp
-                ? trim("{$fp->first_name} {$fp->last_name}")
+                ? trim("{$fp->last_name}, {$fp->first_name}")
                 : $user->username,
             'first_name'      => $fp?->first_name,
             'middle_name'     => $fp?->middle_name,

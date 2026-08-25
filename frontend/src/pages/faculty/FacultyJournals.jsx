@@ -158,7 +158,7 @@ function FacultyJournals() {
 
   const handlePreview = (j) => {
     const profile = j.internship?.student?.studentProfile
-    const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+    const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
     setPreviewModal({
       type: 'journal',
       data: {
@@ -260,7 +260,7 @@ function FacultyJournals() {
             </div>
           ) : journals.length === 0 ? null : journals.map(j => {
             const profile = j.internship?.student?.studentProfile
-            const name = profile ? `${profile.first_name} ${profile.last_name}` : '—'
+            const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
             return (
               <div key={j.id} className="p-3 border-bottom d-flex align-items-start justify-content-between">
                 <div>

@@ -206,9 +206,9 @@ function StudentDashboard() {
           <div className="content-card h-100">
             <div className="content-card-header">
               <i className="fa fa-chart-line"></i>
-              <h6>Quick Overview</h6>
+              <h6>Overall Progress Overview</h6>
             </div>
-            <div className="px-3 pb-3">
+            <div className="px-3 pb-3 pt-2">
               {(() => {
                 const targetHours = s.target_hours ?? DEFAULT_TARGET_HOURS
                 const hoursRendered = s.hours_rendered ?? 0
@@ -219,9 +219,37 @@ function StudentDashboard() {
                 const docCompliance = Math.min(100, Math.max(0, s.doc_compliance ?? (docsTotal > 0 ? Math.round((docsSubmitted / docsTotal) * 100) : 0)))
 
                 const evalScore = s.evaluation_score != null ? Math.min(100, Math.max(0, Math.round(s.evaluation_score))) : null
+                
+                // Calculate Overall Progress
+                // Placement: 10%, Hours: 40%, Docs: 30%, Evaluation: 20%
+                const isPlaced = !['unplaced', 'pending_placement'].includes(s.status)
+                const placementScore = isPlaced ? 10 : 0
+                const hoursScore = hoursPct * 0.40
+                const docsScore = docCompliance * 0.30
+                const evalScoreVal = evalScore != null ? evalScore * 0.20 : 0
+                const overallProgress = Math.round(placementScore + hoursScore + docsScore + evalScoreVal)
 
                 return (
                   <>
+                    <div className="overall-progress-box mb-4 p-3 rounded" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h6 className="mb-0 text-dark fw-bold">Overall Internship Progress</h6>
+                        <span className="badge bg-primary fs-6">{overallProgress}%</span>
+                      </div>
+                      <div className="progress" style={{ height: '14px', borderRadius: '8px' }}>
+                        <div
+                          className="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                          style={{ width: `${overallProgress}%`, borderRadius: '8px' }}
+                        ></div>
+                      </div>
+                      <div className="text-muted small mt-2 d-flex justify-content-between">
+                        <span><i className={`fa fa-check-circle me-1 ${isPlaced ? 'text-success' : ''}`}></i>Placement (10%)</span>
+                        <span><i className={`fa fa-check-circle me-1 ${hoursPct >= 100 ? 'text-success' : ''}`}></i>Hours (40%)</span>
+                        <span><i className={`fa fa-check-circle me-1 ${docCompliance >= 100 ? 'text-success' : ''}`}></i>Docs (30%)</span>
+                        <span><i className={`fa fa-check-circle me-1 ${evalScore != null ? 'text-success' : ''}`}></i>Eval (20%)</span>
+                      </div>
+                    </div>
+
                     <div className="overview-item mb-3">
                       <div className="overview-label">Completed Hours</div>
                       <div className="overview-value-row">
