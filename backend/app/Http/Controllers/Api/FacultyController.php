@@ -463,13 +463,9 @@ class FacultyController extends Controller
     {
         $facultyId = $request->user()->id;
 
-        // Only show documents for requirements created by this faculty
-        $facultyReqs = \App\Models\OjtRequirementTemplate::where('created_by', $facultyId)->pluck('name');
-
         $internshipIds = Internship::inDepartment()->where('faculty_id', $facultyId)->pluck('id');
 
         $docs = \App\Models\Document::whereIn('internship_id', $internshipIds)
-            ->whereIn('document_type', $facultyReqs)
             ->with(['internship.student.studentProfile'])
             ->orderByDesc('submitted_at')
             ->paginate(25);

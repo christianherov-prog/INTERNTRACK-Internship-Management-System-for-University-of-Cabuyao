@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import toast from 'react-hot-toast'
 import Layout from '../../components/Layout'
 import { useConfirm } from '../../contexts/ConfirmContext'
+import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 
 export default function ManageRequirementsTemplates({ embedded = false }) {
   const confirm = useConfirm()
@@ -29,7 +30,9 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
     description: '',
     targetType: 'student', // 'student', 'section', 'program'
     selectedTargets: [], // array of ids
-    templateFile: null,
+    templateFiles: [],
+    removeAttachments: [],
+    driveLink: '',
     deadline: '',
   })
 
@@ -88,13 +91,14 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
         description: req.description || '',
         targetType: req.targets && req.targets.length > 0 ? req.targets[0].target_type : 'student',
         selectedTargets: req.targets ? req.targets.map(t => t.target_id) : [],
-        templateFile: null,
+        templateFiles: [],
+        removeAttachments: [],
         driveLink: req.drive_link || '',
         deadline: req.deadline ? new Date(req.deadline).toISOString().substring(0, 16) : '',
       })
     } else {
       setEditingReq(null)
-      setFormData({ name: '', description: '', targetType: 'student', selectedTargets: [], templateFile: null, driveLink: '', deadline: '' })
+      setFormData({ name: '', description: '', targetType: 'student', selectedTargets: [], templateFiles: [], removeAttachments: [], driveLink: '', deadline: '' })
     }
     setIsModalOpen(true)
   }
@@ -122,9 +126,18 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
       form.append(`targets[${i}][id]`, t.id)
     })
 
-    if (formData.templateFile) {
-      form.append('template_file', formData.templateFile)
+    if (formData.templateFiles && formData.templateFiles.length > 0) {
+      formData.templateFiles.forEach(file => {
+        form.append('template_files[]', file)
+      })
     }
+    
+    if (formData.removeAttachments && formData.removeAttachments.length > 0) {
+      formData.removeAttachments.forEach(id => {
+        form.append('remove_attachments[]', id)
+      })
+    }
+
     if (formData.driveLink) {
       form.append('drive_link', formData.driveLink)
     }
@@ -286,24 +299,27 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
-                        {req.template_file_path && (
-                          <button
-                            className="btn btn-sm btn-outline-info"
-                            onClick={() => handlePreviewTemplate(req.id)}
+                        {req.attachments && req.attachments.length > 0 && req.attachments.map(att => (
+                          <AuthenticatedFileLink 
+                            key={att.id}
+                            path={att.file_path} 
+                            className="btn btn-sm btn-outline-info rounded-pill px-3 text-truncate text-decoration-none me-2"
+                            style={{ maxWidth: '200px', display: 'inline-block' }}
                             title="Preview Template File"
                           >
-                            <i className="fa fa-eye me-1"></i> Preview
-                          </button>
-                        )}
+                            <i className="fa fa-eye me-1"></i> {att.file_name || `${req.name} Template`}
+                          </AuthenticatedFileLink>
+                        ))}
                         {req.drive_link && (
                           <a
                             href={req.drive_link}
                             target="_blank"
                             rel="noreferrer"
-                            className="btn btn-sm btn-outline-primary"
+                            className="btn btn-sm btn-outline-primary rounded-pill px-3 text-truncate"
+                            style={{ maxWidth: '200px', display: 'inline-block' }}
                             title="View Google Drive Link"
                           >
-                            <i className="fa fa-link me-1"></i> Link
+                            <i className="fa fa-link me-1"></i> {req.drive_link.replace(/^https?:\/\//, '')}
                           </a>
                         )}
                         {(!req.template_file_path && !req.drive_link) && (
@@ -340,8 +356,8 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
         <>
           <div className="modal-backdrop fade show"></div>
           <div className="modal fade show d-block" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content border-0 shadow">
+            <div className="modal-dialog modal-dialog-centered modal-xl" >
+              <div className="modal-content border-0 shadow" style={{ maxWidth: '1000px', left: '70px' }}>
                 <div className="modal-header border-bottom-0 pb-0">
                   <h5 className="modal-title fw-bold">
                     {editingReq ? 'Edit Requirement' : 'Add Requirement'}
@@ -484,15 +500,64 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                       <input
                         type="file"
                         className="form-control"
-                        onChange={e => setFormData({ ...formData, templateFile: e.target.files[0] })}
-                        accept=".doc,.docx,.pdf"
+                        multiple
+                        onChange={e => setFormData({ ...formData, templateFiles: Array.from(e.target.files) })}
+                        accept=".doc,.docx,.pdf,.jpg,.jpeg,.png"
                         ref={fileInputRef}
                       />
-                      <div className="form-text small text-muted">Upload a document for students to fill out.</div>
-                      {editingReq?.template_file_path && !formData.templateFile && (
-                        <div className="alert alert-info py-2 px-3 mt-2 mb-0 d-flex align-items-center">
-                          <i className="fa fa-info-circle me-2"></i>
-                          <span className="small">A document is already attached to this requirement. Uploading a new file will replace it.</span>
+                      <div className="form-text small text-muted">Upload documents for students to fill out. You can select multiple files.</div>
+                      
+                      {/* Show newly selected files */}
+                      {formData.templateFiles.length > 0 && (
+                        <div className="mt-3">
+                          <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Files to upload</h6>
+                          <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
+                            {formData.templateFiles.map((f, i) => (
+                              <div key={i} className="d-flex align-items-center">
+                                <div className="bg-white border rounded p-1 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '30px', height: '30px' }}>
+                                  <i className="fa fa-file text-secondary"></i>
+                                </div>
+                                <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '300px' }}>{f.name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show existing files */}
+                      {editingReq && ( (editingReq.attachments && editingReq.attachments.length > 0) || editingReq.drive_link) && (
+                        <div className="mt-4 mb-2">
+                          <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Attached Files & Links</h6>
+                          <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
+                            {editingReq.attachments && editingReq.attachments.filter(att => !formData.removeAttachments.includes(att.id)).map(att => (
+                              <div key={att.id} className="d-flex align-items-center justify-content-between border-bottom pb-2 mb-1 last-border-none">
+                                <div className="d-flex align-items-center">
+                                  <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
+                                    <i className="fa fa-file-pdf text-danger fs-5"></i>
+                                  </div>
+                                  <div>
+                                    <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.9rem', maxWidth: '300px' }}>{att.file_name || `${editingReq.name} Template`}</div>
+                                    <div className="text-muted small fw-normal">Currently attached file</div>
+                                  </div>
+                                </div>
+                                <button type="button" className="btn btn-sm btn-outline-danger border-0 rounded-circle" onClick={() => setFormData(prev => ({ ...prev, removeAttachments: [...prev.removeAttachments, att.id] }))} title="Remove File">
+                                  <i className="fa fa-times"></i>
+                                </button>
+                              </div>
+                            ))}
+
+                            {editingReq.drive_link && (
+                              <div className="d-flex align-items-center mt-2">
+                                <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
+                                  <i className="fa fa-link text-primary fs-5"></i>
+                                </div>
+                                <div>
+                                  <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.9rem', maxWidth: '300px' }}>{editingReq.drive_link.replace(/^https?:\/\//, '')}</div>
+                                  <div className="text-muted small fw-normal">External Link</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -525,126 +590,157 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
       {isSubmissionsModalOpen && activeReqSubmissions && (
         <>
           <div className="modal-backdrop fade show"></div>
-          <div className="modal fade show d-block" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered modal-lg">
-              <div className="modal-content border-0 shadow">
-                <div className="modal-header border-bottom-0 pb-0">
-                  <h5 className="modal-title fw-bold">
-                    Submissions for: {activeReqSubmissions.name}
-                  </h5>
-                  <button type="button" className="btn-close" onClick={() => setIsSubmissionsModalOpen(false)}></button>
-                </div>
-                <div className="modal-body">
-                  <div className="d-flex justify-content-between mb-3 px-1">
-                    <span className="text-muted small">
-                      Tracking compliance for {activeReqSubmissions.total_assigned} assigned student(s).
-                    </span>
-                    <span className="fw-bold text-primary small">
-                      {activeReqSubmissions.completed_count} Completed
-                    </span>
-                  </div>
+          <div className=" modal fade show d-block modal-diaglog" tabIndex="-1">
 
-                  <div className="border rounded" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                    {activeReqSubmissions.submissions && activeReqSubmissions.submissions.length > 0 ? (
-                      <table className="table table-hover mb-0 align-middle">
-                        <thead className="table-light sticky-top">
-                          <tr>
-                            <th>Student Name</th>
-                            <th>Section</th>
-                            <th>Status</th>
-                            <th>Submitted At</th>
-                            <th className="text-end">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activeReqSubmissions.submissions.map((sub, idx) => (
-                            <tr key={idx}>
-                              <td>{sub.student_name}</td>
-                              <td>{formatYearSection(sub.section) || '—'}</td>
-                              <td>
-                                {sub.status === 'approved' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
-                                {sub.status === 'completed' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
-                                {sub.status === 'pending' && <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>Pending</span>}
-                                {sub.status === 'rejected' && <span className="badge bg-danger"><i className="fa fa-times me-1"></i>Rejected</span>}
-                                {sub.status === 'no_submission' && <span className="badge bg-dark"><i className="fa fa-ban me-1"></i>Missed Deadline</span>}
-                                {sub.status === 'not_submitted' && <span className="badge bg-secondary">Not Submitted</span>}
-                              </td>
-                              <td>
-                                {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
-                              </td>
-                              <td className="text-end">
-                                {sub.file_path && (
-                                  <button onClick={() => handlePreviewSubmission(sub.file_path)} className="btn btn-sm btn-outline-success me-2" title="Preview File">
-                                    <i className="fa fa-file-pdf"></i>
-                                  </button>
-                                )}
-                                {sub.drive_link && (
-                                  <a href={sub.drive_link} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-info me-2" title="Link">
-                                    <i className="fa fa-link"></i>
-                                  </a>
-                                )}
+            <div
+              className="modal-content border-0 shadow modal-lg mx-auto"
+              style={{ maxWidth: '1000px', top: "25%" }}
+            >
+
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">
+                  Submissions for: {activeReqSubmissions.name}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setIsSubmissionsModalOpen(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="d-flex justify-content-between mb-3 px-1">
+                  <span className="text-muted small">
+                    Tracking compliance for {activeReqSubmissions.total_assigned} assigned student(s).
+                  </span>
+                  <span className="fw-bold text-primary small">
+                    {activeReqSubmissions.completed_count} Completed
+                  </span>
+                </div>
+
+                <div className="border rounded">
+                  {activeReqSubmissions.submissions && activeReqSubmissions.submissions.length > 0 ? (
+                    <table className="table table-hover mb-0 align-middle">
+                      <thead className="table-light sticky-top">
+                        <tr>
+                          <th>Student Name</th>
+                          <th>Section</th>
+                          <th>Status</th>
+                          <th>Submitted At</th>
+                          <th className="text-end">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeReqSubmissions.submissions.map((sub, idx) => (
+                          <tr key={idx}>
+                            <td>{sub.student_name}</td>
+                            <td>{formatYearSection(sub.section) || '—'}</td>
+                            <td>
+                              {sub.status === 'approved' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
+                              {sub.status === 'completed' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
+                              {sub.status === 'pending' && <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>Pending</span>}
+                              {sub.status === 'rejected' && <span className="badge bg-danger"><i className="fa fa-times me-1"></i>Rejected</span>}
+                              {sub.status === 'no_submission' && <span className="badge bg-dark"><i className="fa fa-ban me-1"></i>Missed Deadline</span>}
+                              {sub.status === 'not_submitted' && <span className="badge bg-secondary">Not Submitted</span>}
+                            </td>
+                            <td>
+                              {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
+                            </td>
+                            <td className="text-end">
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  {sub.attachments && sub.attachments.length > 0 && sub.attachments.map(att => (
+                                    <AuthenticatedFileLink key={att.id} path={att.file_path} className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 me-2 shadow-sm transition-hover">
+                                      <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
+                                        <i className="fa fa-file-pdf text-success fs-5"></i>
+                                      </div>
+                                      <div style={{ lineHeight: '1.2' }}>
+                                        <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '200px' }}>{att.file_name || 'Submission'}</div>
+                                        <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>Click to preview</div>
+                                      </div>
+                                    </AuthenticatedFileLink>
+                                  ))}
+                                  {sub.drive_link && (
+                                    <a href={sub.drive_link} target="_blank" rel="noreferrer" className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 me-2 shadow-sm transition-hover">
+                                      <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
+                                        <i className="fa fa-link text-primary fs-5"></i>
+                                      </div>
+                                      <div style={{ lineHeight: '1.2' }}>
+                                        <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '120px' }}>{sub.drive_link.replace('https://', '').replace('http://', '')}</div>
+                                        <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>External Link</div>
+                                      </div>
+                                    </a>
+                                  )}
+                                </div>
                                 {sub.status === 'pending' && sub.document_id && (
-                                  <button
-                                    className="btn btn-sm btn-primary"
-                                    onClick={() => setReviewingDoc(sub.document_id)}
-                                  >
-                                    Review
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="text-center py-4 text-muted small">
-                        No students are currently targeted by this requirement.
-                      </div>
-                    )}
-                  </div>
+                                <button
+                                  className="btn btn-sm btn-primary"
+                                  onClick={() => setReviewingDoc(sub.document_id)}
+                                >
+                                  Review
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-4 text-muted small">
+                      No students are currently targeted by this requirement.
+                    </div>
+                  )}
                 </div>
-                <div className="modal-footer border-top-0 pt-0 mt-2">
-                  <button type="button" className="btn btn-light" onClick={() => setIsSubmissionsModalOpen(false)}>Close</button>
-                </div>
+              </div>
+              <div className="modal-footer border-top-0 pt-0 mt-2">
+                <button type="button" className="btn btn-light" onClick={() => setIsSubmissionsModalOpen(false)}>Close</button>
               </div>
             </div>
           </div>
+
         </>
-      )}
+      )
+      }
 
       {/* Review Modal */}
-      {reviewingDoc && (
-        <>
-          <div className="modal-backdrop fade show" style={{ zIndex: 1060 }}></div>
-          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1065 }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content border-0 shadow">
-                <div className="modal-header border-bottom-0 pb-0">
-                  <h5 className="modal-title fw-bold">Review Submission</h5>
-                  <button type="button" className="btn-close" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }}></button>
-                </div>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Remarks (Optional)</label>
-                    <textarea
-                      className="form-control"
-                      rows="3"
-                      placeholder="Add any feedback for the student..."
-                      value={reviewRemarks}
-                      onChange={e => setReviewRemarks(e.target.value)}
-                    ></textarea>
+      {
+        reviewingDoc && (
+          <>
+            <div className="modal-backdrop fade show" style={{ zIndex: 1060 }}></div>
+            <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1065 }}>
+              <div className=" modal-dialog modal-dialog-centered">
+                <div className="modal-content border-0 shadow">
+                  <div className="modal-header border-bottom-0 pb-0">
+                    <h5 className="modal-title fw-bold">Review Submission</h5>
+                    <button type="button" className="btn-close" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }}></button>
                   </div>
-                </div>
-                <div className="modal-footer border-top-0 pt-0">
-                  <button type="button" className="btn btn-light" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }}>Cancel</button>
-                  <button type="button" className="btn btn-danger" onClick={() => handleReview(reviewingDoc, 'reject')}>Reject</button>
-                  <button type="button" className="btn btn-success" onClick={() => handleReview(reviewingDoc, 'approve')}>Approve</button>
+                  <div className="modal-body">
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Remarks (Optional)</label>
+                      <textarea
+                        className="form-control"
+                        rows="3"
+                        placeholder="Add any feedback for the student..."
+                        value={reviewRemarks}
+                        onChange={e => setReviewRemarks(e.target.value)}
+                      ></textarea>
+                    </div>
+                  </div>
+                  <div className="modal-footer border-top-0 pt-0">
+                    <button type="button" className="btn btn-light" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }}>Cancel</button>
+                    <button type="button" className="btn btn-danger" onClick={() => handleReview(reviewingDoc, 'reject')}>Reject</button>
+                    <button type="button" className="btn btn-success" onClick={() => handleReview(reviewingDoc, 'approve')}>Approve</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
-    </Wrapper>
+          </>
+        )
+      }
+    </Wrapper >
   )
 }
+
+
+
+
+
+
+
+
+
+

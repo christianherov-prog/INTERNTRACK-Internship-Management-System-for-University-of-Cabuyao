@@ -391,18 +391,20 @@ class SupervisorController extends Controller
 
         $period = $request->input('evaluation_period');
 
+        $formType = $request->input('form_type');
+
         $eval = Evaluation::updateOrCreate(
             [
                 'internship_id' => $internship->id,
                 'evaluator_type' => 'supervisor',
                 'evaluation_period' => $period,
-                'form_type' => $request->input('form_type'),
+                'form_type' => $formType,
             ],
             [
-                'responses' => $request->input('responses'),
-                'general_comments' => $request->input('general_comments'),
-                'evaluated_by' => $request->user()->id,
-                'submitted_at' => now(),
+                'responses'         => $request->input('responses'),
+                'general_comments'  => $request->input('general_comments'),
+                'evaluated_by'      => $request->user()->id,
+                'submitted_at'      => now(),
             ]
         );
         $eval->computeScores();

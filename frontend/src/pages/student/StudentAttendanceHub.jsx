@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 
 import StudentSupervisorInvite from './StudentSupervisorInvite'
+import StudentAttendance from './StudentAttendance'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import api from '../../services/api'
 import PageError from '../../components/PageError'
@@ -53,17 +54,40 @@ function StudentAttendanceHub() {
 
   return (
     <Layout title="Attendance & Supervisor" subtitle={currentTerm} icon="fa-user-clock" bodyClass="student-page">
+      {isApproved && (
+        <div className="nav-tabs-wrapper mb-4">
+          <ul className="nav nav-tabs custom-tabs">
+            <li className="nav-item">
+              <button className={`nav-link ${activeTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveTab('attendance')}>
+                <i className="fa fa-clock me-2"></i>Attendance
+              </button>
+            </li>
+            <li className="nav-item">
+              <button className={`nav-link ${activeTab === 'supervisor' ? 'active' : ''}`} onClick={() => setActiveTab('supervisor')}>
+                <i className="fa fa-user-tie me-2"></i>Supervisor Details
+              </button>
+            </li>
+          </ul>
+        </div>
+      )}
 
       <div>
-        <div className="tab-embedded">
-          <StudentSupervisorInvite
-            embedded={true}
-            initialStatusData={statusData}
-            onStatusChange={fetchStatus}
-          />
-        </div>
+        {(!isApproved || activeTab === 'supervisor') && (
+          <div className="tab-embedded">
+            <StudentSupervisorInvite
+              embedded={true}
+              initialStatusData={statusData}
+              onStatusChange={fetchStatus}
+            />
+          </div>
+        )}
+        {isApproved && activeTab === 'attendance' && (
+          <div className="tab-embedded">
+            <StudentAttendance embedded={true} />
+          </div>
+        )}
       </div>
-    </Layout >
+    </Layout>
   )
 }
 

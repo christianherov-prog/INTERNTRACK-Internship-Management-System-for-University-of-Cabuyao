@@ -13,6 +13,7 @@ class OjtRequirementTemplate extends Model
         'sort_order',
         'is_active',
         'template_file_path',
+        'template_file_name',
         'drive_link',
         'created_by',
         'deadline',
@@ -35,8 +36,15 @@ class OjtRequirementTemplate extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(RequirementTemplateAttachment::class, 'requirement_template_id');
+    }
+
     public function targets()
     {
         return $this->hasMany(RequirementTarget::class, 'requirement_template_id');
     }
 }
+
+

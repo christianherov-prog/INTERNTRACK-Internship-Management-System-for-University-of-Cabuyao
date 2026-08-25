@@ -20,7 +20,7 @@ class RequirementTemplateController extends Controller
         $user = $request->user();
 
         // 1. Fetch requirements created by this user
-        $requirements = OjtRequirementTemplate::with('targets')
+        $requirements = OjtRequirementTemplate::with(['targets', 'attachments'])
             ->where('created_by', $user->id)
             ->orderBy('sort_order')
             ->get();
@@ -49,6 +49,8 @@ class RequirementTemplateController extends Controller
             $handledStudents[] = [
                 'id' => $student->id,
                 'name' => $profile ? trim(($profile->last_name ?? '') . ', ' . ($profile->first_name ?? '')) : $student->username,
+                'id_number' => $profile?->id_number,
+                'initials' => $profile ? strtoupper(substr($profile->first_name ?? '', 0, 1) . substr($profile->last_name ?? '', 0, 1)) : strtoupper(substr($student->username, 0, 2)),
                 'section_name' => $profile?->section,
                 'program_name' => $profile?->program?->name,
                 'internship_id' => $internship ? $internship->id : null,
@@ -70,7 +72,7 @@ class RequirementTemplateController extends Controller
             
             $submissions = collect();
             if ($validInternshipIds->isNotEmpty()) {
-                $submissions = Document::with('reviewer.facultyProfile')
+                $submissions = Document::with(['reviewer.facultyProfile', 'attachments'])
                     ->where('document_type', $req->name)
                     ->whereIn('internship_id', $validInternshipIds)
                     ->get()
@@ -95,15 +97,29 @@ class RequirementTemplateController extends Controller
                 return [
                     'student_id' => $hs['id'],
                     'student_name' => $hs['name'] ?: 'Unknown Student',
+                    'student_id_number' => $hs['id_number'],
+                    'student_initials' => $hs['initials'],
                     'section' => $hs['section_name'],
                     'status' => $status,
                     'submitted_at' => $doc?->submitted_at ? clone $doc->submitted_at : null,
-                    'file_url' => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
-                    'file_path' => $doc?->file_path,
+                    'file_url' => null, // Kept for backwards compatibility if needed, but not used now
+                    'file_path' => null,
+                    'file_name' => null,
+                    'attachments' => $doc ? $doc->attachments->map(function ($a) {
+                        return [
+                            'id' => $a->id,
+                            'file_name' => $a->file_name,
+                            'file_path' => $a->file_path,
+                            'file_url' => url('/api/v1/files/download?path=' . urlencode($a->file_path)),
+                            'file_size' => $a->file_size,
+                            'mime_type' => $a->mime_type,
+                        ];
+                    })->toArray() : [],
                     'drive_link' => $doc?->drive_link,
                     'document_id' => $doc?->id,
                     'remarks' => $doc?->remarks,
                     'reviewed_by_name' => $reviewerName,
+                    'reviewed_by_role' => $doc?->reviewer?->role ? ucfirst($doc->reviewer->role) : null,
                     'reviewed_at' => $doc?->reviewed_at,
                 ];
             });
@@ -195,35 +211,37 @@ class RequirementTemplateController extends Controller
             'description' => 'nullable|string',
             'category' => 'nullable|string',
             'is_active' => 'boolean',
-            'targets' => 'required|array', // e.g. [['type' => 'section', 'id' => 1], ['type' => 'student', 'id' => 12]]
-            'template_file' => 'nullable|file|mimes:doc,docx,pdf|max:10240',
+            'targets' => 'required|array',
+            'template_files.*' => 'nullable|file|mimes:doc,docx,pdf,jpg,jpeg,png|max:10240',
             'drive_link' => 'nullable|url',
         ]);
 
         return DB::transaction(function () use ($request) {
-            $templateFilePath = null;
-            if ($request->hasFile('template_file')) {
-                $file = $request->file('template_file');
-                $templateFilePath = $file->store("requirement_templates", 'local');
-            }
-
             $requirement = OjtRequirementTemplate::create([
                 'name' => $request->name,
                 'description' => $request->description,
                 'category' => $request->category ?? 'general',
                 'is_active' => $request->boolean('is_active', true),
                 'deadline' => $request->deadline,
-                'template_file_path' => $templateFilePath,
                 'drive_link' => $request->drive_link,
                 'created_by' => $request->user()->id,
                 'sort_order' => OjtRequirementTemplate::max('sort_order') + 1,
             ]);
 
+            if ($request->hasFile('template_files')) {
+                foreach ($request->file('template_files') as $file) {
+                    $requirement->attachments()->create([
+                        'file_path' => $file->store("requirement_templates", 'local'),
+                        'file_name' => $file->getClientOriginalName(),
+                    ]);
+                }
+            }
+
             $this->syncTargets($requirement, $request->input('targets'));
 
             return response()->json([
                 'message' => 'Requirement template created successfully.',
-                'requirement' => $requirement->load('targets')
+                'requirement' => $requirement->load('targets', 'attachments')
             ], 201);
         });
     }
@@ -241,25 +259,28 @@ class RequirementTemplateController extends Controller
             'category' => 'nullable|string',
             'is_active' => 'boolean',
             'targets' => 'required|array',
-            'template_file' => 'nullable|file|mimes:doc,docx,pdf|max:10240',
+            'template_files.*' => 'nullable|file|mimes:doc,docx,pdf,jpg,jpeg,png|max:10240',
             'drive_link' => 'nullable|url',
-            'remove_template' => 'boolean'
+            'remove_attachments' => 'nullable|array',
+            'remove_attachments.*' => 'integer|exists:requirement_template_attachments,id'
         ]);
 
         return DB::transaction(function () use ($request, $requirement) {
-            $templateFilePath = $requirement->template_file_path;
+            if ($request->has('remove_attachments')) {
+                $attachmentsToRemove = $requirement->attachments()->whereIn('id', $request->remove_attachments)->get();
+                foreach ($attachmentsToRemove as $attachment) {
+                    Storage::disk('local')->delete($attachment->file_path);
+                    $attachment->delete();
+                }
+            }
 
-            if ($request->boolean('remove_template')) {
-                if ($templateFilePath) {
-                    Storage::disk('local')->delete($templateFilePath);
+            if ($request->hasFile('template_files')) {
+                foreach ($request->file('template_files') as $file) {
+                    $requirement->attachments()->create([
+                        'file_path' => $file->store("requirement_templates", 'local'),
+                        'file_name' => $file->getClientOriginalName(),
+                    ]);
                 }
-                $templateFilePath = null;
-            } elseif ($request->hasFile('template_file')) {
-                if ($templateFilePath) {
-                    Storage::disk('local')->delete($templateFilePath);
-                }
-                $file = $request->file('template_file');
-                $templateFilePath = $file->store("requirement_templates", 'local');
             }
 
             $oldDeadline = $requirement->deadline?->toIso8601String();
@@ -270,7 +291,6 @@ class RequirementTemplateController extends Controller
                 'category' => $request->category ?? 'general',
                 'is_active' => $request->boolean('is_active', true),
                 'deadline' => $request->deadline,
-                'template_file_path' => $templateFilePath,
                 'drive_link' => $request->has('drive_link') ? $request->drive_link : $requirement->drive_link,
             ]);
 
@@ -292,7 +312,7 @@ class RequirementTemplateController extends Controller
 
             return response()->json([
                 'message' => 'Requirement template updated successfully.',
-                'requirement' => $requirement->load('targets')
+                'requirement' => $requirement->load('targets', 'attachments')
             ]);
         });
     }
@@ -367,3 +387,8 @@ class RequirementTemplateController extends Controller
         \App\Models\RequirementTarget::insert($records);
     }
 }
+
+
+
+
+

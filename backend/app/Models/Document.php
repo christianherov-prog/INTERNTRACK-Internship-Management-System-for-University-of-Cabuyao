@@ -31,6 +31,11 @@ class Document extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(DocumentAttachment::class);
+    }
+
     public function reviews()
     {
         return $this->hasMany(DocumentReview::class);
@@ -42,3 +47,4 @@ class Document extends Model
         return null;
     }
 }
+

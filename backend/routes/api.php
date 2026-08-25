@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\SupervisorController;
 use App\Http\Controllers\Api\FacultyController;
 use App\Http\Controllers\Api\DirectorController;
 use App\Http\Controllers\Api\CoordinatorController;
+use App\Http\Controllers\Api\DocumentReviewController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SupervisorRegistrationController;
 use App\Http\Controllers\Api\DashboardController;
@@ -184,8 +185,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/feedback',                    [FacultyController::class, 'feedback']);
             Route::post('/feedback/{internshipId}',    [FacultyController::class, 'submitFeedback']);
             Route::get('/documents',                   [FacultyController::class, 'documents']);
-            Route::patch('/documents/{id}/verify',     [FacultyController::class, 'verifyDocument']);
-            Route::patch('/documents/{id}/reject',     [FacultyController::class, 'rejectDocument']);
+            Route::post('/documents/{id}/review',      [DocumentReviewController::class, 'review']);
             Route::get('/reports/student-summary',     [FacultyController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance',          [FacultyController::class, 'reportCompliance']);
             Route::get('/reports/performance',         [FacultyController::class, 'reportPerformance']);
@@ -243,8 +243,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/documents',                 [CoordinatorController::class, 'documents']);
             Route::patch('/documents/bulk-approve',  [CoordinatorController::class, 'bulkApproveDocuments']);
             Route::patch('/documents/bulk-reject',   [CoordinatorController::class, 'bulkRejectDocuments']);
-            Route::patch('/documents/{id}/approve',  [CoordinatorController::class, 'approveDocument']);
-            Route::patch('/documents/{id}/reject',   [CoordinatorController::class, 'rejectDocument']);
+            Route::post('/documents/{id}/review',    [DocumentReviewController::class, 'review']);
 
             // Dynamic OJT Requirement Management
             Route::get('/requirements/{id}/template', [RequirementTemplateController::class, 'downloadTemplate']);

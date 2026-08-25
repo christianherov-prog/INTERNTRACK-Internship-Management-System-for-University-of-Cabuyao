@@ -424,6 +424,7 @@ class StudentController extends Controller
 
         // Fetch templates that have a matching target or are global
         $templates = \App\Models\OjtRequirementTemplate::where('is_active', true)
+            ->with(['creator.facultyProfile', 'creator.supervisorProfile', 'creator.studentProfile', 'attachments'])
             ->where(function($query) use ($studentTargets) {
                 $query->whereHas('targets', function($q) use ($studentTargets) {
                     $q->where(function($subQ) use ($studentTargets) {
@@ -439,7 +440,7 @@ class StudentController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $submitted = $internship->documents()->get()->keyBy('document_type');
+        $submitted = $internship->documents()->with('attachments')->get()->keyBy('document_type');
 
         $docs = $templates->map(function ($template) use ($submitted) {
             $type = $template->name;
@@ -455,21 +456,43 @@ class StudentController extends Controller
                 }
             }
 
+            $creator = $template->creator;
+            $senderName = $creator ? $creator->profile_name : 'System';
+            $senderRole = $creator ? ucfirst($creator->role) : 'Admin';
+
             return [
                 'template_id'   => $template->id,
-                'has_template'  => !empty($template->template_file_path),
+                'has_template'  => $template->attachments->isNotEmpty(),
+                'template_attachments' => $template->attachments->map(function ($a) {
+                    return [
+                        'id' => $a->id,
+                        'file_name' => $a->file_name,
+                        'file_path' => $a->file_path,
+                        'file_url' => url('/api/v1/files/download?path=' . urlencode($a->file_path)),
+                    ];
+                })->toArray(),
                 'template_link' => $template->drive_link,
+                'description'   => $template->description,
                 'document_type' => $type,
+                'sender'        => [
+                    'name' => $senderName,
+                    'role' => $senderRole,
+                ],
                 'status'        => $status,
                 'deadline'      => $template->deadline?->toIso8601String(),
                 'is_missed'     => $isMissed,
-                'file_name'     => $doc?->file_name ?? null,
                 'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
                 'remarks'       => $doc?->remarks ?? null,
                 'id'            => $doc?->id ?? null,
-                'file_path'     => $doc?->file_path ?? null,
+                'attachments'   => $doc ? $doc->attachments->map(function ($a) {
+                    return [
+                        'id' => $a->id,
+                        'file_name' => $a->file_name,
+                        'file_path' => $a->file_path,
+                        'file_url' => url('/api/v1/files/download?path=' . urlencode($a->file_path)),
+                    ];
+                })->toArray() : [],
                 'drive_link'    => $doc?->drive_link ?? null,
-                'file_url'      => $doc?->file_path ? url('/api/v1/files/download?path=' . urlencode($doc->file_path)) : null,
             ];
         });
 
@@ -523,11 +546,11 @@ class StudentController extends Controller
 
         $request->validate([
             'document_type' => ['required', 'string', Rule::in($validTypes)],
-            'file'          => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
+            'files.*'       => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
             'drive_link'    => 'nullable|url|max:2048',
         ]);
 
-        if (!$request->hasFile('file') && empty($request->drive_link)) {
+        if (!$request->hasFile('files') && empty($request->drive_link)) {
             return response()->json(['message' => 'Please provide either a file or a Google Drive link.'], 422);
         }
 
@@ -539,19 +562,6 @@ class StudentController extends Controller
 
         $internship = $this->internship($request);
         
-        $path = null;
-        $fileName = null;
-        $fileSize = null;
-        $mimeType = null;
-
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $path = $file->store("internships/{$internship->id}/documents", 'local');
-            $fileName = $file->getClientOriginalName();
-            $fileSize = $file->getSize();
-            $mimeType = $file->getMimeType();
-        }
-
         $existing = $internship->documents()->where('document_type', $request->document_type)->first();
 
         if ($existing) {
@@ -562,19 +572,6 @@ class StudentController extends Controller
                 'remarks'       => null,
             ];
 
-            if ($request->hasFile('file')) {
-                if ($existing->file_path) {
-                    Storage::disk('local')->delete($existing->file_path);
-                    if (Storage::disk('public')->exists($existing->file_path)) {
-                        Storage::disk('public')->delete($existing->file_path);
-                    }
-                }
-                $updateData['file_path'] = $path;
-                $updateData['file_name'] = $fileName;
-                $updateData['file_size'] = $fileSize;
-                $updateData['mime_type'] = $mimeType;
-            }
-
             if ($request->has('drive_link')) {
                 $updateData['drive_link'] = $request->drive_link;
             }
@@ -584,10 +581,6 @@ class StudentController extends Controller
         } else {
             $doc = $internship->documents()->create([
                 'document_type' => $request->document_type,
-                'file_path'     => $path,
-                'file_name'     => $fileName,
-                'file_size'     => $fileSize,
-                'mime_type'     => $mimeType,
                 'drive_link'    => $request->drive_link,
                 'status'        => 'pending',
                 'current_stage' => 'coordinator',
@@ -595,9 +588,20 @@ class StudentController extends Controller
             ]);
         }
 
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $doc->attachments()->create([
+                    'file_path' => $file->store("internships/{$internship->id}/documents", 'local'),
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+            }
+        }
+
         audit_log($request->user()->id, 'upload_document', ['type' => $request->document_type]);
 
-        return response()->json(['message' => 'Document uploaded successfully.', 'document' => $doc], 201);
+        return response()->json(['message' => 'Document uploaded successfully.', 'document' => $doc->load('attachments')], 201);
     }
 
     /** GET /api/v1/student/evaluations */
