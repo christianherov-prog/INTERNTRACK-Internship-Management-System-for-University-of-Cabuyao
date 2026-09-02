@@ -1,6 +1,6 @@
 /** Shared document workflow status labels (keep in sync with App\Support\DocumentStatuses). */
 export const DOCUMENT_STATUS = {
-  not_submitted:   { badge: 'badge-inactive', label: 'Not Submitted',           icon: 'fa-circle-xmark' },
+  not_submitted:   { badge: 'badge-secondary text-dark', label: 'Not Submitted',           icon: 'fa-circle-xmark' },
   pending:         { badge: 'badge-pending',  label: 'Pending Review',          icon: 'fa-clock' },
   pending_review:  { badge: 'badge-pending',  label: 'Pending Review',          icon: 'fa-clock' },
   under_review:    { badge: 'badge-pending',  label: 'Under Review',            icon: 'fa-magnifying-glass' },

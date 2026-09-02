@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useState } from 'react'
 import ConfirmLogoutModal from './modals/ConfirmLogoutModal'
+import InternTrackLogo from './InternTrackLogo'
 
 const ROLE_NAV = {
   student: [
@@ -58,16 +59,25 @@ const ROLE_NAV = {
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
   coordinator: [
-    { section: 'MAIN', to: '/coordinator/monitoring', icon: 'fa-chart-line', text: 'Dashboard' },
-    { section: 'MAIN', to: '/coordinator/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
-    { section: 'MAIN', to: '/coordinator/internship-management', icon: 'fa-briefcase', text: 'Internship Management' },
-    { section: 'MAIN', to: '/coordinator/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
-    { section: 'MAIN', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
-    { section: 'MAIN', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
-    { section: 'MAIN', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
-    { section: 'MAIN', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
-    { section: 'MAIN', to: '/coordinator/messages', icon: 'fa-comments', text: 'Messages' },
-    { section: 'MAIN', to: '/coordinator/meetings', icon: 'fa-calendar', text: 'Meetings' },
+    // ── Department Level (Coordinator) ──────────────────────────────────
+    { section: 'DEPARTMENT', to: '/coordinator/monitoring', icon: 'fa-chart-line', text: 'Dashboard' },
+    { section: 'DEPARTMENT', to: '/coordinator/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
+    { section: 'DEPARTMENT', to: '/coordinator/internship-management', icon: 'fa-briefcase', text: 'Internship Mgmt' },
+    { section: 'DEPARTMENT', to: '/coordinator/requirements', icon: 'fa-file-circle-check', text: 'Requirements' },
+    { section: 'DEPARTMENT', to: '/coordinator/doc-approvals', icon: 'fa-file-alt', text: 'Doc Approvals' },
+    { section: 'DEPARTMENT', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
+    { section: 'DEPARTMENT', to: '/coordinator/logbook', icon: 'fa-book', text: 'Logbook Review' },
+    { section: 'DEPARTMENT', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
+    { section: 'DEPARTMENT', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
+    { section: 'DEPARTMENT', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
+
+    // ── Section Level (Faculty) ─────────────────────────────────────────
+    // Other faculty tasks (Journals, Grading, Feedback) are accessible via the Dashboard Quick Actions
+    { section: 'MY SECTION (FACULTY)', to: '/faculty/assigned-students', icon: 'fa-users', text: 'My Students' },
+
+    // ── Shared ──────────────────────────────────────────────────────────
+    { section: 'COMMUNICATIONS', to: '/coordinator/messages', icon: 'fa-comments', text: 'Messages' },
+    { section: 'COMMUNICATIONS', to: '/coordinator/meetings', icon: 'fa-calendar', text: 'Meetings' },
     { section: 'ACCOUNT', to: '/coordinator/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -138,13 +148,13 @@ function Sidebar() {
     <>
       <aside className="sidebar" style={{ width: '270px' }}>
         <div className="sidebar-brand">
-          <div className="app-logo">
-            <img src="/logo.jpg" alt="Logo" className="app-logo-img" />
-            <div className="app-logo-text">
-              <div className="app-logo-main">INTERNTRACK</div>
-              <div className="app-logo-sub">INTERNSHIP SYSTEM</div>
-            </div>
-          </div>
+          <InternTrackLogo
+            variant="dark"
+            showSubtitle
+            className="app-logo"
+            markClassName="app-logo-mark"
+            subtitleClassName="app-logo-sub"
+          />
         </div>
         <nav className="sidebar-nav">
           {navItems.map((item, index) => {

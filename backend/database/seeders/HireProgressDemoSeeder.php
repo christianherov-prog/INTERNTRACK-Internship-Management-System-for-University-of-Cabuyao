@@ -101,8 +101,8 @@ class HireProgressDemoSeeder extends Seeder
         ];
 
         foreach ($demos as $demo) {
-            $departmentId = $this->ensureDepartment('College of Computing Studies');
-            $programId = $this->ensureProgram('Bachelor of Science in Information Technology', $departmentId);
+            $departmentId = $this->ensureDepartment('College of Computing Studies', 'CCS');
+            $programId = $this->ensureProgram('Bachelor of Science in Information Technology', $departmentId, 'BSIT');
 
             $user = User::withTrashed()->updateOrCreate(
                 ['username' => $demo['username']],

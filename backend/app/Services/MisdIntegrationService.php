@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\StudentProfile;
+use App\Models\Department;
+use App\Models\Program;
 use App\Support\SexOptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -89,6 +91,8 @@ class MisdIntegrationService
             'must_change_password' => true,
         ]);
 
+        $academic = $this->resolveAcademicIds($data);
+
         StudentProfile::create([
             'user_id'           => $user->id,
             'student_number'    => strtoupper($studentNumber),
@@ -100,13 +104,12 @@ class MisdIntegrationService
             'contact_number'    => $data['contact_number']    ?? null,
             'birthday'          => $data['birthday']          ?? null,
             'sex'               => SexOptions::sanitize($data['sex'] ?? null),
-            'program'           => $data['program']           ?? null,
-            'college'           => $data['college']           ?? null,
-            'department'        => $data['department']        ?? null,
-            'course_name'       => $data['course_name']       ?? null,
+            'department_id'     => $academic['department_id'],
+            'program_id'        => $academic['program_id'],
+            'course_description'=> $data['course_name']       ?? null,
             'year_level'        => $data['year_level']        ?? null,
             'section'           => $data['section']           ?? null,
-            'academic_year'     => $data['academic_year']     ?? null,
+            'school_year'       => $data['academic_year']     ?? $data['school_year'] ?? null,
             'semester'          => $data['semester']          ?? null,
             'enrollment_status' => $data['enrollment_status'] ?? 'Enrolled',
             'synced_at'         => now(),
@@ -127,11 +130,9 @@ class MisdIntegrationService
             'must_change_password' => true,
         ]);
 
-        $deptStr = $data['department'] ?? $data['college'] ?? 'CCS';
-        $departmentId = \App\Models\Department::where('code', $deptStr)
-            ->orWhere('name', $deptStr)
-            ->orWhere('code', 'CCS')
-            ->value('id') ?? \App\Models\Department::first()?->id;
+        $departmentId = $this->resolveDepartmentId(
+            $data['department'] ?? $data['college'] ?? 'CCS'
+        ) ?? \App\Models\Department::first()?->id;
 
         \App\Models\FacultyProfile::create([
             'user_id'           => $user->id,
@@ -166,11 +167,9 @@ class MisdIntegrationService
         ]);
 
         if (!empty($data) && in_array($role, ['faculty', 'coordinator', 'director', 'admin'], true)) {
-            $deptStr = $data['department'] ?? $data['college'] ?? ($role === 'director' ? 'PALD' : 'CCS');
-            $departmentId = \App\Models\Department::where('code', $deptStr)
-                ->orWhere('name', $deptStr)
-                ->orWhere('code', 'CCS')
-                ->value('id') ?? \App\Models\Department::first()?->id;
+            $departmentId = $this->resolveDepartmentId(
+                $data['department'] ?? $data['college'] ?? ($role === 'director' ? 'PALD' : 'CCS')
+            ) ?? \App\Models\Department::first()?->id;
 
             \App\Models\FacultyProfile::create([
                 'user_id'           => $user->id,
@@ -260,11 +259,24 @@ class MisdIntegrationService
 
         $allowed = [
             'first_name', 'middle_name', 'last_name', 'suffix', 'email', 'contact_number',
-            'birthday', 'sex', 'program', 'college', 'department', 'course_name',
-            'year_level', 'section', 'academic_year', 'semester', 'enrollment_status',
+            'birthday', 'sex', 'course_description',
+            'year_level', 'section', 'school_year', 'semester', 'enrollment_status',
         ];
 
         $payload = array_intersect_key($data, array_flip($allowed));
+        if (array_key_exists('course_name', $data) && empty($payload['course_description'])) {
+            $payload['course_description'] = $data['course_name'];
+        }
+        if (array_key_exists('academic_year', $data) && empty($payload['school_year'])) {
+            $payload['school_year'] = $data['academic_year'];
+        }
+        $academic = $this->resolveAcademicIds($data);
+        if ($academic['department_id']) {
+            $payload['department_id'] = $academic['department_id'];
+        }
+        if ($academic['program_id']) {
+            $payload['program_id'] = $academic['program_id'];
+        }
         if (array_key_exists('sex', $payload)) {
             $payload['sex'] = SexOptions::sanitize($payload['sex']);
         }
@@ -304,11 +316,7 @@ class MisdIntegrationService
             $payload['synced_at'] = now();
 
             if (!empty($data['department']) || !empty($data['college'])) {
-                $deptStr = $data['department'] ?? $data['college'];
-                $deptId = \App\Models\Department::where('code', $deptStr)
-                    ->orWhere('name', $deptStr)
-                    ->orWhere('code', 'CCS')
-                    ->value('id');
+                $deptId = $this->resolveDepartmentId($data['department'] ?? $data['college']);
                 if ($deptId) {
                     $payload['department_id'] = $deptId;
                 }
@@ -428,5 +436,52 @@ class MisdIntegrationService
             'error'      => $error,
             'checked_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * Map MISD college/program strings onto departments.id / programs.id.
+     */
+    private function resolveAcademicIds(array $data): array
+    {
+        $deptStr = trim((string) ($data['department'] ?? $data['college'] ?? ''));
+        $progStr = trim((string) ($data['program'] ?? $data['course_name'] ?? ''));
+
+        $departmentId = null;
+        $programId = null;
+
+        if ($deptStr !== '') {
+            $departmentId = $this->resolveDepartmentId($deptStr);
+        }
+
+        if ($progStr !== '') {
+            $program = Program::query()
+                ->where(function ($query) use ($progStr) {
+                    $query->where('code', $progStr)->orWhere('name', $progStr);
+                })
+                ->first();
+            $programId = $program?->id;
+            if (! $departmentId && $program) {
+                $departmentId = $program->department_id;
+            }
+        }
+
+        return [
+            'department_id' => $departmentId,
+            'program_id' => $programId,
+        ];
+    }
+
+    private function resolveDepartmentId(?string $deptStr): ?int
+    {
+        $deptStr = trim((string) $deptStr);
+        if ($deptStr === '') {
+            return null;
+        }
+
+        return Department::query()
+            ->where(function ($query) use ($deptStr) {
+                $query->where('code', $deptStr)->orWhere('name', $deptStr);
+            })
+            ->value('id');
     }
 }

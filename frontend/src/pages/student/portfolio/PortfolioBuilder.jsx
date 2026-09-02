@@ -3,7 +3,10 @@ import api from '../../../services/api';
 import CCSPortfolioBuilder from './CCSPortfolioBuilder';
 import COEPortfolioBuilder from './COEPortfolioBuilder';
 import COEDPortfolioBuilder from './COEDPortfolioBuilder';
+import PsychologyPortfolioBuilder from './PsychologyPortfolioBuilder';
+import NursingPortfolioBuilder from './NursingPortfolioBuilder';
 import Layout from '../../../components/Layout';
+import { resolvePortfolioVariant } from '../../../utils/portfolioVariant';
 
 const PortfolioBuilder = () => {
   // Initialize as an empty string to prevent null reference errors
@@ -12,14 +15,11 @@ const PortfolioBuilder = () => {
   useEffect(() => {
     api.get('/auth/user')
       .then(res => {
-        // Fallback to a default string if the program is missing
-        const dept = (typeof res.data?.user?.program === 'string' ? res.data?.user?.program : res.data?.user?.program?.name || res.data?.user?.program?.code) || 'DEFAULT';
-        setDepartment(dept);
+        setDepartment(res.data?.user || { program: 'DEFAULT' });
       })
       .catch(err => {
         console.error('Failed to fetch user department', err);
-        // Fallback to a default string if the API fails
-        setDepartment('DEFAULT');
+        setDepartment({ program: 'DEFAULT' });
       });
   }, []);
 
@@ -32,18 +32,21 @@ const PortfolioBuilder = () => {
     );
   }
 
-  // Safely check the string 
-  const safeDept = department.toLowerCase();
-  const isCOE = safeDept.includes('engineering') || safeDept.includes('coe');
-  const isCOED = safeDept.includes('education') || safeDept.includes('coed');
+  const variant = resolvePortfolioVariant(typeof department === 'string' ? { program: department } : department);
 
-  if (isCOED) {
-    return <COEDPortfolioBuilder />;
-  } else if (isCOE) {
-    return <COEPortfolioBuilder />;
-  } else {
-    return <CCSPortfolioBuilder />;
+  if (variant === 'nursing') {
+    return <NursingPortfolioBuilder />;
   }
+  if (variant === 'psychology') {
+    return <PsychologyPortfolioBuilder />;
+  }
+  if (variant === 'coed') {
+    return <COEDPortfolioBuilder />;
+  }
+  if (variant === 'coe') {
+    return <COEPortfolioBuilder />;
+  }
+  return <CCSPortfolioBuilder />;
 
 };
 

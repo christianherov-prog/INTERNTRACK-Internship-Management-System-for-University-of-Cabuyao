@@ -31,7 +31,7 @@ class AuthService
         'studentProfile.program',
         'studentProfile.department',
         'facultyProfile.department',
-        'supervisorProfile',
+        'supervisorProfile.company',
         'activeInternship.company',
         'activeInternship.coordinator.facultyProfile',
         'activeInternship.faculty.facultyProfile',
@@ -337,6 +337,7 @@ class AuthService
                 'contact_number' => $contact,
                 'position'       => $data['position'] ?? null,
                 'sex'            => array_key_exists('sex', $data) ? SexOptions::sanitize($data['sex']) : null,
+                'company_id'     => array_key_exists('company_id', $data) ? $data['company_id'] : null,
             ], fn ($v) => $v !== null);
 
             // Allow explicitly clearing optional fields.

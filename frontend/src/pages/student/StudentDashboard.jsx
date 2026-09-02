@@ -234,11 +234,11 @@ function StudentDashboard() {
                     <div className="overall-progress-box mb-4 p-3 rounded" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                       <div className="d-flex justify-content-between align-items-center mb-2">
                         <h6 className="mb-0 text-dark fw-bold">Overall Internship Progress</h6>
-                        <span className="badge bg-primary fs-6">{overallProgress}%</span>
+                        <span className="badge bg-success fs-6">{overallProgress}%</span>
                       </div>
                       <div className="progress" style={{ height: '14px', borderRadius: '8px' }}>
                         <div
-                          className="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                          className="progress-bar progress-bar-striped progress-bar-animated bg-success"
                           style={{ width: `${overallProgress}%`, borderRadius: '8px' }}
                         ></div>
                       </div>

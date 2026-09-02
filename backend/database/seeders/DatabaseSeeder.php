@@ -55,7 +55,9 @@ class DatabaseSeeder extends Seeder
         $misdDepartmentId = $this->ensureDepartment('Management Information Systems Department', 'MISD');
         $paldDepartmentId = $this->ensureDepartment('Placement, Alumni, & Linkages Department', 'PALD');
         $ccsDepartmentId = $this->ensureDepartment('College of Computing Studies', 'CCS');
-        
+        $this->ensureProgram('Bachelor of Science in Information Technology', $ccsDepartmentId, 'BSIT');
+        $this->ensureProgram('Bachelor of Science in Computer Science', $ccsDepartmentId, 'BSCS');
+
         $coedDepartmentId = $this->ensureDepartment('College of Education', 'COED');
         $this->ensureProgram('Bachelor of Secondary Education', $coedDepartmentId, 'BSED');
         $this->ensureProgram('Bachelor of Elementary Education', $coedDepartmentId, 'BEED');
@@ -63,6 +65,8 @@ class DatabaseSeeder extends Seeder
         $coeDepartmentId = $this->ensureDepartment('College of Engineering', 'COE');
         $this->ensureProgram('Bachelor of Science in Civil Engineering', $coeDepartmentId, 'BSCE');
         $this->ensureProgram('Bachelor of Science in Computer Engineering', $coeDepartmentId, 'BSCPE');
+
+        $this->call(AcademicCollegesSeeder::class);
 
         // ─── 1. Staff users (faculty_number = employee/faculty number) ──────────────
         $admin    = User::updateOrCreate(['faculty_number' => 'ADMIN-MISD-001'], ['email' => 'misd.admin@uc.edu.ph',     'password' => $pw, 'role' => 'admin',       'is_active' => true]);
@@ -228,6 +232,7 @@ class DatabaseSeeder extends Seeder
 
         // ─── 5. Student accounts (2300600, 2300590, 2300592) ──────────────────
         $this->call(StudentAccountsSeeder::class);
+        $this->call(AcademicCollegeAccountsSeeder::class);
 
         // ─── 6. Announcements ─────────────────────────────────────────────────
         Announcement::firstOrCreate(
@@ -257,7 +262,19 @@ class DatabaseSeeder extends Seeder
   Stud (CCS)    2300590                interntrack123 (Fresh/Pending)
   Stud (CCS)    2300592                interntrack123 (Populated: TechCorp PH)
   Stud (COED)   2300601                interntrack123 (Fresh/Pending)
-  Stud (COE)    2300602                interntrack123 (Fresh/Pending)');
+  Stud (COE)    2300602                interntrack123 (Fresh/Pending)
+  Stud (COE)    2300608                interntrack123 (Fresh/Pending)
+  Coord (CHAS)  COR-CHAS-001           interntrack123
+  Facul (CHAS)  FAC-CHAS-001           interntrack123
+  Stud (BSN)    2300603                interntrack123 (Fresh/Pending)
+  Coord (CAS)   COR-CAS-001            interntrack123
+  Facul (CAS)   FAC-CAS-001            interntrack123
+  Stud (BSPSY)  2300604                interntrack123 (Fresh/Pending)
+  Coord (CBAA)  COR-CBAA-001           interntrack123
+  Facul (CBAA)  FAC-CBAA-001           interntrack123
+  Stud (BSBAMM) 2300605                interntrack123 (Fresh/Pending)
+  Stud (BSBAFM) 2300606                interntrack123 (Fresh/Pending)
+  Stud (BSA)    2300607                interntrack123 (Fresh/Pending)');
         $this->command->info('─────────────────────────────────────────────────────────────');
     }
 }

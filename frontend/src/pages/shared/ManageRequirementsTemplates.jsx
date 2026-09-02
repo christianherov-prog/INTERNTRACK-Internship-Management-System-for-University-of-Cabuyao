@@ -6,6 +6,9 @@ import toast from 'react-hot-toast'
 import Layout from '../../components/Layout'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
+import { documentStatusConfig } from '../../utils/documentStatus'
+
+const REVIEWABLE_STATUSES = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
 
 export default function ManageRequirementsTemplates({ embedded = false }) {
   const confirm = useConfirm()
@@ -39,17 +42,45 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   // Review State
   const [reviewingDoc, setReviewingDoc] = useState(null)
   const [reviewRemarks, setReviewRemarks] = useState('')
+  const [reviewingBusy, setReviewingBusy] = useState(false)
+  const [targetSearch, setTargetSearch] = useState('')
 
   const fileInputRef = useRef(null)
+  const rolePath = user?.role
+
+  const isTargetSelected = (id) => formData.selectedTargets.some((t) => String(t) === String(id))
+
+  const toggleTarget = (id, checked) => {
+    const sid = String(id)
+    setFormData((prev) => ({
+      ...prev,
+      selectedTargets: checked
+        ? [...prev.selectedTargets.filter((t) => String(t) !== sid), sid]
+        : prev.selectedTargets.filter((t) => String(t) !== sid),
+    }))
+  }
+
+  const targetList = formData.targetType === 'student'
+    ? options.students
+    : formData.targetType === 'section'
+      ? options.sections
+      : options.programs
+
+  const visibleTargets = targetList.filter((item) => {
+    const q = targetSearch.trim().toLowerCase()
+    if (!q) return true
+    return `${item.name || ''} ${item.section || ''}`.toLowerCase().includes(q)
+  })
 
   useEffect(() => {
+    if (!rolePath) return
     fetchRequirements()
     fetchOptions()
-  }, [])
+  }, [rolePath])
 
   const fetchOptions = async () => {
     try {
-      const { data } = await api.get(`/${user.role}/requirements/options`)
+      const { data } = await api.get(`/${rolePath}/requirements/options`)
       setOptions({
         students: data.students || [],
         sections: data.sections || [],
@@ -63,23 +94,12 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   const fetchRequirements = async () => {
     try {
       setIsLoading(true)
-      const { data } = await api.get(`/${user.role}/requirements`)
+      const { data } = await api.get(`/${rolePath}/requirements`)
       setRequirements(data.data || [])
     } catch (err) {
       toast.error('Failed to load requirements')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handlePreviewSubmission = async (filePath) => {
-    try {
-      const response = await api.get(`/files/download?path=${encodeURIComponent(filePath)}`, { responseType: 'blob' })
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      window.open(url, '_blank')
-    } catch (err) {
-      alert("Failed to preview file.")
     }
   }
 
@@ -90,15 +110,17 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
         name: req.name,
         description: req.description || '',
         targetType: req.targets && req.targets.length > 0 ? req.targets[0].target_type : 'student',
-        selectedTargets: req.targets ? req.targets.map(t => t.target_id) : [],
+        selectedTargets: req.targets ? req.targets.map(t => String(t.target_id)) : [],
         templateFiles: [],
         removeAttachments: [],
         driveLink: req.drive_link || '',
         deadline: req.deadline ? new Date(req.deadline).toISOString().substring(0, 16) : '',
       })
+      setTargetSearch('')
     } else {
       setEditingReq(null)
       setFormData({ name: '', description: '', targetType: 'student', selectedTargets: [], templateFiles: [], removeAttachments: [], driveLink: '', deadline: '' })
+      setTargetSearch('')
     }
     setIsModalOpen(true)
   }
@@ -145,10 +167,10 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
     setSubmitting(true)
     try {
       if (editingReq) {
-        await api.post(`/${user.role}/requirements/${editingReq.id}`, form)
+        await api.post(`/${rolePath}/requirements/${editingReq.id}`, form)
         toast.success('Requirement updated successfully')
       } else {
-        await api.post(`/${user.role}/requirements`, form)
+        await api.post(`/${rolePath}/requirements`, form)
         toast.success('Requirement created successfully')
       }
       setIsModalOpen(false)
@@ -161,45 +183,38 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   }
 
   const handleReview = async (docId, action) => {
-    if (!docId) return
+    if (!docId || reviewingBusy) return
+    setReviewingBusy(true)
     try {
-      await api.post(`/${user.role}/documents/${docId}/review`, {
+      await api.post(`/${rolePath}/documents/${docId}/review`, {
         action,
         remarks: reviewRemarks
       })
-      toast.success(`Document ${action}d successfully.`)
+      toast.success(`Document ${action === 'approve' ? 'approved' : 'rejected'}. The student has been notified.`)
       setReviewingDoc(null)
       setReviewRemarks('')
-      // Refresh the modal data by re-fetching requirements
-      fetchRequirements()
-      // Note: activeReqSubmissions won't auto-update without re-setting it, 
-      // but we can just close/re-open or just fetchRequirements and let the user re-open.
-      // For simplicity, close modal to force refresh on next open:
-      setIsSubmissionsModalOpen(false)
+      const { data } = await api.get(`/${rolePath}/requirements`)
+      const list = data.data || []
+      setRequirements(list)
+      if (activeReqSubmissions) {
+        const updated = list.find((r) => r.id === activeReqSubmissions.id)
+        if (updated) setActiveReqSubmissions(updated)
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to review document')
+    } finally {
+      setReviewingBusy(false)
     }
   }
 
   const handleDelete = async (id) => {
     if (!(await confirm({ message: 'Are you sure you want to delete this requirement?', variant: 'danger' }))) return
     try {
-      await api.delete(`/${user.role}/requirements/${id}`)
+      await api.delete(`/${rolePath}/requirements/${id}`)
       toast.success('Requirement deleted')
       fetchRequirements()
     } catch (err) {
       toast.error('Failed to delete requirement')
-    }
-  }
-
-  const handlePreviewTemplate = async (id) => {
-    try {
-      const response = await api.get(`/${user.role}/requirements/${id}/template?preview=1`, { responseType: 'blob' })
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      window.open(url, '_blank')
-    } catch (err) {
-      toast.error('Failed to preview template')
     }
   }
 
@@ -263,10 +278,10 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                     </td>
                     <td>
                       <div className="small text-muted fw-medium">
-                        {req.targets?.length || 0} Rule(s)
+                        {req.targets?.length || 0} {req.targets?.length === 1 ? 'target' : 'targets'}
                       </div>
-                      <div className="small text-muted" style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {req.targets?.map(t => t.target_id).join(', ') || '—'}
+                      <div className="small text-dark" style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={(req.targets || []).map(t => t.label || t.target_id).join(', ')}>
+                        {(req.targets || []).map(t => t.target_type === 'section' ? (formatYearSection(t.label || t.target_id) || t.target_id) : (t.label || t.target_id)).join(', ') || '—'}
                       </div>
                     </td>
                     <td>
@@ -278,7 +293,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                           </span>
                           <span className="text-warning text-dark fw-medium">
                             <i className="fa fa-clock me-1"></i>
-                            {req.submissions?.filter(s => s.status === 'pending').length || 0} Pending
+                            {req.submissions?.filter(s => REVIEWABLE_STATUSES.includes(s.status)).length || 0} Pending
                           </span>
                           <span className="text-secondary fw-medium">
                             <i className="fa fa-minus me-1"></i>
@@ -322,7 +337,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                             <i className="fa fa-link me-1"></i> {req.drive_link.replace(/^https?:\/\//, '')}
                           </a>
                         )}
-                        {(!req.template_file_path && !req.drive_link) && (
+                        {(!req.attachments?.length && !req.drive_link && !req.template_file_path) && (
                           <span className="text-muted small">—</span>
                         )}
                       </div>
@@ -357,7 +372,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
           <div className="modal-backdrop fade show"></div>
           <div className="modal fade show d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered modal-xl" >
-              <div className="modal-content border-0 shadow" style={{ maxWidth: '1000px', left: '70px' }}>
+              <div className="modal-content border-0 shadow">
                 <div className="modal-header border-bottom-0 pb-0">
                   <h5 className="modal-title fw-bold">
                     {editingReq ? 'Edit Requirement' : 'Add Requirement'}
@@ -405,7 +420,10 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                         <select
                           className="form-select"
                           value={formData.targetType}
-                          onChange={e => setFormData({ ...formData, targetType: e.target.value, selectedTargets: [] })}
+                          onChange={e => {
+                            setFormData({ ...formData, targetType: e.target.value, selectedTargets: [] })
+                            setTargetSearch('')
+                          }}
                         >
                           <option value="student">Students</option>
                           <option value="section">Sections</option>
@@ -414,77 +432,54 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                       </div>
                       <div className="col-md-12">
                         <label className="form-label fw-semibold">Select Targets</label>
+                        <input
+                          type="search"
+                          className="form-control form-control-sm mb-2"
+                          placeholder="Search targets…"
+                          value={targetSearch}
+                          onChange={e => setTargetSearch(e.target.value)}
+                        />
+                        {visibleTargets.length > 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-link btn-sm px-0 mb-1"
+                            onClick={() => {
+                              const ids = visibleTargets.map(item => String(item.id))
+                              const allSelected = ids.every(id => isTargetSelected(id))
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedTargets: allSelected
+                                  ? prev.selectedTargets.filter(t => !ids.includes(String(t)))
+                                  : [...new Set([...prev.selectedTargets.map(String), ...ids])],
+                              }))
+                            }}
+                          >
+                            {visibleTargets.every(item => isTargetSelected(item.id)) ? 'Clear visible' : 'Select visible'}
+                          </button>
+                        )}
                         <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                          {formData.targetType === 'student' && options.students.map(s => (
-                            <div className="form-check" key={s.id}>
+                          {visibleTargets.map(item => (
+                            <div className="form-check" key={`${formData.targetType}_${item.id}`}>
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                id={`target_student_${s.id}`}
-                                checked={formData.selectedTargets.includes(s.id)}
-                                onChange={(e) => {
-                                  const newTargets = e.target.checked
-                                    ? [...formData.selectedTargets, s.id]
-                                    : formData.selectedTargets.filter(t => t !== s.id);
-                                  setFormData({ ...formData, selectedTargets: newTargets })
-                                }}
+                                id={`target_${formData.targetType}_${item.id}`}
+                                checked={isTargetSelected(item.id)}
+                                onChange={(e) => toggleTarget(item.id, e.target.checked)}
                               />
-                              <label className="form-check-label" htmlFor={`target_student_${s.id}`}>
-                                {s.name} <span className="text-muted small">({s.section || 'No Section'})</span>
+                              <label className="form-check-label" htmlFor={`target_${formData.targetType}_${item.id}`}>
+                                {formData.targetType === 'section' ? (formatYearSection(item.name) || item.name) : item.name}
+                                {formData.targetType === 'student' && (
+                                  <span className="text-muted small"> ({formatYearSection(item.section) || item.section || 'No Section'})</span>
+                                )}
                               </label>
                             </div>
                           ))}
-
-                          {formData.targetType === 'student' && options.students.length === 0 && (
-                            <div className="text-muted small py-2">No students available.</div>
+                          {targetList.length === 0 && (
+                            <div className="text-muted small py-2">No {formData.targetType}s available.</div>
                           )}
-
-                          {formData.targetType === 'section' && options.sections.map(s => (
-                            <div className="form-check" key={s.id}>
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`target_section_${s.id}`}
-                                checked={formData.selectedTargets.includes(s.id)}
-                                onChange={(e) => {
-                                  const newTargets = e.target.checked
-                                    ? [...formData.selectedTargets, s.id]
-                                    : formData.selectedTargets.filter(t => t !== s.id);
-                                  setFormData({ ...formData, selectedTargets: newTargets })
-                                }}
-                              />
-                              <label className="form-check-label" htmlFor={`target_section_${s.id}`}>
-                                {s.name}
-                              </label>
-                            </div>
-                          ))}
-
-                          {formData.targetType === 'section' && options.sections.length === 0 && (
-                            <div className="text-muted small py-2">No sections available.</div>
-                          )}
-
-                          {formData.targetType === 'program' && options.programs.map(p => (
-                            <div className="form-check" key={p.id}>
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`target_program_${p.id}`}
-                                checked={formData.selectedTargets.includes(p.id)}
-                                onChange={(e) => {
-                                  const newTargets = e.target.checked
-                                    ? [...formData.selectedTargets, p.id]
-                                    : formData.selectedTargets.filter(t => t !== p.id);
-                                  setFormData({ ...formData, selectedTargets: newTargets })
-                                }}
-                              />
-                              <label className="form-check-label" htmlFor={`target_program_${p.id}`}>
-                                {p.name}
-                              </label>
-                            </div>
-                          ))}
-
-                          {formData.targetType === 'program' && options.programs.length === 0 && (
-                            <div className="text-muted small py-2">No programs available.</div>
+                          {targetList.length > 0 && visibleTargets.length === 0 && (
+                            <div className="text-muted small py-2">No matches for “{targetSearch}”.</div>
                           )}
                         </div>
                         {formData.selectedTargets.length > 0 && (
@@ -590,13 +585,9 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
       {isSubmissionsModalOpen && activeReqSubmissions && (
         <>
           <div className="modal-backdrop fade show"></div>
-          <div className=" modal fade show d-block modal-diaglog" tabIndex="-1">
-
-            <div
-              className="modal-content border-0 shadow modal-lg mx-auto"
-              style={{ maxWidth: '1000px', top: "25%" }}
-            >
-
+          <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: '1000px' }}>
+              <div className="modal-content border-0 shadow">
               <div className="modal-header">
                 <h5 className="modal-title fw-bold">
                   Submissions for: {activeReqSubmissions.name}
@@ -622,58 +613,70 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                           <th>Section</th>
                           <th>Status</th>
                           <th>Submitted At</th>
+                          <th>Remarks</th>
                           <th className="text-end">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {activeReqSubmissions.submissions.map((sub, idx) => (
-                          <tr key={idx}>
+                          <tr key={sub.document_id || sub.student_id || idx}>
                             <td>{sub.student_name}</td>
                             <td>{formatYearSection(sub.section) || '—'}</td>
                             <td>
-                              {sub.status === 'approved' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
-                              {sub.status === 'completed' && <span className="badge bg-success"><i className="fa fa-check me-1"></i>Approved</span>}
-                              {sub.status === 'pending' && <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>Pending</span>}
-                              {sub.status === 'rejected' && <span className="badge bg-danger"><i className="fa fa-times me-1"></i>Rejected</span>}
-                              {sub.status === 'no_submission' && <span className="badge bg-dark"><i className="fa fa-ban me-1"></i>Missed Deadline</span>}
-                              {sub.status === 'not_submitted' && <span className="badge bg-secondary">Not Submitted</span>}
+                              {(() => {
+                                const cfg = documentStatusConfig(sub.status)
+                                return (
+                                  <span className={`badge ${cfg.badge}`}>
+                                    <i className={`fa ${cfg.icon} me-1`}></i>{cfg.label}
+                                  </span>
+                                )
+                              })()}
                             </td>
                             <td>
-                              {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : '—'}
+                              {sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '—'}
+                            </td>
+                            <td className="small" style={{ maxWidth: '180px' }}>
+                              {sub.remarks ? (
+                                <span className={sub.status === 'rejected' ? 'text-danger' : 'text-muted'}>{sub.remarks}</span>
+                              ) : '—'}
                             </td>
                             <td className="text-end">
-                                <div onClick={(e) => e.stopPropagation()}>
-                                  {sub.attachments && sub.attachments.length > 0 && sub.attachments.map(att => (
-                                    <AuthenticatedFileLink key={att.id} path={att.file_path} className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 me-2 shadow-sm transition-hover">
-                                      <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
-                                        <i className="fa fa-file-pdf text-success fs-5"></i>
-                                      </div>
-                                      <div style={{ lineHeight: '1.2' }}>
-                                        <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '200px' }}>{att.file_name || 'Submission'}</div>
-                                        <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>Click to preview</div>
-                                      </div>
-                                    </AuthenticatedFileLink>
-                                  ))}
-                                  {sub.drive_link && (
-                                    <a href={sub.drive_link} target="_blank" rel="noreferrer" className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 me-2 shadow-sm transition-hover">
-                                      <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
-                                        <i className="fa fa-link text-primary fs-5"></i>
-                                      </div>
-                                      <div style={{ lineHeight: '1.2' }}>
-                                        <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '120px' }}>{sub.drive_link.replace('https://', '').replace('http://', '')}</div>
-                                        <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>External Link</div>
-                                      </div>
-                                    </a>
-                                  )}
-                                </div>
-                                {sub.status === 'pending' && sub.document_id && (
-                                <button
-                                  className="btn btn-sm btn-primary"
-                                  onClick={() => setReviewingDoc(sub.document_id)}
-                                >
-                                  Review
-                                </button>
-                              )}
+                              <div className="d-flex flex-wrap justify-content-end align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                {sub.attachments && sub.attachments.length > 0 && sub.attachments.map(att => (
+                                  <AuthenticatedFileLink key={att.id} path={att.file_path} className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 shadow-sm transition-hover">
+                                    <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
+                                      <i className="fa fa-file-pdf text-success fs-5"></i>
+                                    </div>
+                                    <div style={{ lineHeight: '1.2' }}>
+                                      <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '200px' }}>{att.file_name || 'Submission'}</div>
+                                      <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>Click to preview</div>
+                                    </div>
+                                  </AuthenticatedFileLink>
+                                ))}
+                                {sub.drive_link && (
+                                  <a href={sub.drive_link} target="_blank" rel="noreferrer" className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 shadow-sm transition-hover">
+                                    <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
+                                      <i className="fa fa-link text-primary fs-5"></i>
+                                    </div>
+                                    <div style={{ lineHeight: '1.2' }}>
+                                      <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '120px' }}>{sub.drive_link.replace('https://', '').replace('http://', '')}</div>
+                                      <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>External Link</div>
+                                    </div>
+                                  </a>
+                                )}
+                                {REVIEWABLE_STATUSES.includes(sub.status) && sub.document_id && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => setReviewingDoc(sub.document_id)}
+                                  >
+                                    <i className="fa fa-gavel me-1"></i>Review
+                                  </button>
+                                )}
+                                {sub.status === 'not_submitted' || sub.status === 'no_submission' ? (
+                                  <span className="text-muted small">Waiting for upload</span>
+                                ) : null}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -690,11 +693,10 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                 <button type="button" className="btn btn-light" onClick={() => setIsSubmissionsModalOpen(false)}>Close</button>
               </div>
             </div>
+            </div>
           </div>
-
         </>
-      )
-      }
+      )}
 
       {/* Review Modal */}
       {
@@ -721,9 +723,13 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                     </div>
                   </div>
                   <div className="modal-footer border-top-0 pt-0">
-                    <button type="button" className="btn btn-light" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }}>Cancel</button>
-                    <button type="button" className="btn btn-danger" onClick={() => handleReview(reviewingDoc, 'reject')}>Reject</button>
-                    <button type="button" className="btn btn-success" onClick={() => handleReview(reviewingDoc, 'approve')}>Approve</button>
+                    <button type="button" className="btn btn-light" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }} disabled={reviewingBusy}>Cancel</button>
+                    <button type="button" className="btn btn-danger" onClick={() => handleReview(reviewingDoc, 'reject')} disabled={reviewingBusy}>
+                      {reviewingBusy ? 'Saving…' : 'Reject'}
+                    </button>
+                    <button type="button" className="btn btn-success" onClick={() => handleReview(reviewingDoc, 'approve')} disabled={reviewingBusy}>
+                      {reviewingBusy ? 'Saving…' : 'Approve'}
+                    </button>
                   </div>
                 </div>
               </div>

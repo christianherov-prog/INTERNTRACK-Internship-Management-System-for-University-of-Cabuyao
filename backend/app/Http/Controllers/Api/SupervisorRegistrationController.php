@@ -34,7 +34,7 @@ class SupervisorRegistrationController extends Controller
 
         // Expire any previous pending tokens for this internship
         SupervisorInviteToken::where('internship_id', $internship->id)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'pending_accept'])
             ->update(['status' => 'expired']);
 
         $token = Str::random(48);
@@ -76,7 +76,7 @@ class SupervisorRegistrationController extends Controller
         }
 
         $invite = SupervisorInviteToken::where('internship_id', $internship->id)
-            ->whereIn('status', ['pending', 'registered', 'approved', 'rejected'])
+            ->whereIn('status', ['pending', 'pending_accept', 'registered', 'approved', 'rejected', 'declined'])
             ->latest()
             ->first();
 
@@ -94,10 +94,12 @@ class SupervisorRegistrationController extends Controller
             $state = 'assigned';
         } elseif ($invite?->status === 'registered') {
             $state = 'pending_approval';
+        } elseif ($invite?->status === 'pending_accept') {
+            $state = 'awaiting_supervisor';
         } elseif ($invite?->status === 'pending') {
             $state = 'invite_pending';
-        } elseif ($invite?->status === 'rejected') {
-            $state = 'rejected';
+        } elseif ($invite?->status === 'rejected' || $invite?->status === 'declined') {
+            $state = $invite->status === 'declined' ? 'declined' : 'rejected';
         }
 
         $supervisor = null;
@@ -196,8 +198,9 @@ class SupervisorRegistrationController extends Controller
         $existing = User::where('email', $request->email)->first();
         if ($existing) {
             return response()->json([
-                'message' => 'An account with this email already exists. Please contact the coordinator.',
-            ], 422);
+                'code'    => 'existing_account',
+                'message' => 'An account with this email already exists. Please sign in with your Supervisor ID instead of registering again.',
+            ], 409);
         }
 
         return DB::transaction(function () use ($request, $invite) {
@@ -228,6 +231,7 @@ class SupervisorRegistrationController extends Controller
                 'contact_number' => $request->contact_number,
                 'sex'            => \App\Support\SexOptions::sanitize($request->sex),
                 'position'       => $request->position,
+                'company_id'     => $request->company_id,
             ]);
 
             $invite->update([
@@ -252,7 +256,7 @@ class SupervisorRegistrationController extends Controller
 
             // Notify assigned faculty (or all faculty if not yet assigned)
             $internship = Internship::find($invite->internship_id);
-            $facultyQuery = User::where('role', 'faculty')->where('is_active', true);
+            $facultyQuery = User::whereIn('role', ['faculty', 'coordinator'])->where('is_active', true);
             if ($internship?->faculty_id) {
                 $facultyQuery->where('id', $internship->faculty_id);
             }
@@ -428,5 +432,159 @@ class SupervisorRegistrationController extends Controller
         if ($internship->faculty_id !== null && (int) $internship->faculty_id !== (int) $user->id) {
             abort(403, 'You may only review supervisor registrations for your assigned students.');
         }
+    }
+
+    /** POST /api/v1/supervisor/invites/bind — claim a pending invite after login */
+    public function bindInvite(Request $request)
+    {
+        $request->validate(['token' => 'required|string']);
+        $user = $request->user();
+
+        if ($user->role !== 'supervisor') {
+            return response()->json(['message' => 'This invite is for industry supervisors only.'], 403);
+        }
+
+        $invite = SupervisorInviteToken::where('token', $request->token)
+            ->with(['internship', 'student.studentProfile'])
+            ->first();
+
+        if (!$invite || $invite->isExpired()) {
+            if ($invite && $invite->status === 'pending') {
+                $invite->update(['status' => 'expired']);
+            }
+            return response()->json(['message' => 'Invalid or expired invite link.'], 422);
+        }
+
+        if ($invite->internship?->supervisor_id) {
+            return response()->json(['message' => 'This student already has an assigned supervisor.'], 409);
+        }
+
+        if (in_array($invite->status, ['pending_accept', 'approved'], true)
+            && (int) $invite->supervisor_user_id === (int) $user->id) {
+            return response()->json([
+                'message' => 'Invite already linked to your account.',
+                'invite'  => $this->formatPendingInvite($invite->fresh(['internship.company', 'student.studentProfile'])),
+            ]);
+        }
+
+        if ($invite->status !== 'pending') {
+            return response()->json(['message' => 'This invite has already been used.'], 409);
+        }
+
+        $profile = $user->supervisorProfile;
+        $invite->update([
+            'status'             => 'pending_accept',
+            'supervisor_user_id' => $user->id,
+            'first_name'         => $profile?->first_name,
+            'middle_name'        => $profile?->middle_name,
+            'last_name'          => $profile?->last_name,
+            'suffix'             => $profile?->suffix,
+            'email'              => $profile?->email ?? $user->email,
+            'contact_number'     => $profile?->contact_number,
+            'position'           => $profile?->position,
+            'company_id'         => $invite->internship?->company_id ?? $profile?->company_id,
+        ]);
+
+        return response()->json([
+            'message' => 'Please accept or decline this student invitation.',
+            'invite'  => $this->formatPendingInvite($invite->fresh(['internship.company', 'student.studentProfile'])),
+        ]);
+    }
+
+    /** GET /api/v1/supervisor/invites/pending */
+    public function pendingInvites(Request $request)
+    {
+        $invites = SupervisorInviteToken::where('supervisor_user_id', $request->user()->id)
+            ->where('status', 'pending_accept')
+            ->with(['internship.company', 'student.studentProfile'])
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(fn ($invite) => $this->formatPendingInvite($invite));
+
+        return response()->json(['invites' => $invites->values()]);
+    }
+
+    /** POST /api/v1/supervisor/invites/{id}/accept */
+    public function acceptInvite(Request $request, int $id)
+    {
+        $invite = SupervisorInviteToken::where('status', 'pending_accept')->findOrFail($id);
+        $this->assertInviteOwner($request->user(), $invite);
+
+        return DB::transaction(function () use ($request, $invite) {
+            $internship = Internship::findOrFail($invite->internship_id);
+
+            if ($internship->supervisor_id && (int) $internship->supervisor_id !== (int) $request->user()->id) {
+                return response()->json(['message' => 'This student already has an assigned supervisor.'], 409);
+            }
+
+            $internship->update([
+                'supervisor_id' => $request->user()->id,
+                'company_id'    => $invite->company_id ?? $internship->company_id,
+            ]);
+
+            $invite->update([
+                'status'      => 'approved',
+                'reviewed_at' => now(),
+            ]);
+
+            $profile = $request->user()->supervisorProfile;
+            $name = trim(($profile?->last_name ?? '') . ', ' . ($profile?->first_name ?? 'Supervisor'));
+
+            Notification::notify(
+                $invite->student_id,
+                'supervisor_approved',
+                'Supervisor Accepted',
+                "{$name} accepted your internship supervision invite.",
+                '/student/dashboard'
+            );
+
+            return response()->json(['message' => 'Invitation accepted. The intern is now linked to your account.']);
+        });
+    }
+
+    /** POST /api/v1/supervisor/invites/{id}/decline */
+    public function declineInvite(Request $request, int $id)
+    {
+        $invite = SupervisorInviteToken::where('status', 'pending_accept')->findOrFail($id);
+        $this->assertInviteOwner($request->user(), $invite);
+
+        $invite->update([
+            'status'         => 'declined',
+            'reviewed_at'    => now(),
+            'review_remarks' => $request->input('reason'),
+        ]);
+
+        Notification::notify(
+            $invite->student_id,
+            'supervisor_rejected',
+            'Supervisor Declined Invite',
+            'The invited supervisor declined this internship. You can generate a new invite.',
+            '/student/attendance'
+        );
+
+        return response()->json(['message' => 'Invitation declined. The student can send a new invite.']);
+    }
+
+    private function assertInviteOwner($user, SupervisorInviteToken $invite): void
+    {
+        if ((int) $invite->supervisor_user_id !== (int) $user->id) {
+            abort(403, 'You can only respond to invitations sent to your account.');
+        }
+    }
+
+    private function formatPendingInvite(SupervisorInviteToken $invite): array
+    {
+        $studentProfile = $invite->student?->studentProfile;
+
+        return [
+            'id'           => $invite->id,
+            'status'       => $invite->status,
+            'student_name' => $studentProfile
+                ? trim("{$studentProfile->last_name}, {$studentProfile->first_name}")
+                : $invite->student?->username,
+            'term'         => $invite->internship?->term,
+            'company_name' => $invite->internship?->company?->company_name,
+            'expires_at'   => optional($invite->expires_at)?->toDateTimeString(),
+        ];
     }
 }

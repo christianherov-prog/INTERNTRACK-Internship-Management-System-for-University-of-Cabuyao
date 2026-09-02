@@ -89,12 +89,31 @@ class DashboardController extends Controller
             ->where('status', 'pending_review')
             ->count();
 
+        // ── Faculty stats (coordinator inherits faculty role) ──────────────
+        $advisedIds = $user->internshipsAdvised()
+            ->whereIn('status', ['ongoing', 'active', 'for_evaluation'])
+            ->pluck('id');
+
+        $evaluatedIds = Evaluation::query()
+            ->where('evaluator_type', 'faculty')
+            ->whereIn('internship_id', $advisedIds)
+            ->pluck('internship_id');
+
+        $pendingJournals = $advisedIds->isEmpty() ? 0 : JournalEntry::query()
+            ->whereIn('internship_id', $advisedIds)
+            ->where('status', 'submitted')
+            ->count();
+
         return array_merge($base, [
-            'label'                     => 'COORDINATOR DASHBOARD',
-            'assigned_students_count'   => $assignedStudents,
-            'assigned_companies_count'  => $assignedCompanies,
-            'pending_evaluations_count' => $pendingEvaluations,
-            'pending_documents_count'   => $pendingDocuments,
+            'label'                         => 'COORDINATOR DASHBOARD',
+            'assigned_students_count'       => $assignedStudents,
+            'assigned_companies_count'      => $assignedCompanies,
+            'pending_evaluations_count'     => $pendingEvaluations,
+            'pending_documents_count'       => $pendingDocuments,
+            // Faculty-inherited stats
+            'faculty_assigned_count'        => $advisedIds->count(),
+            'faculty_pending_journals'      => $pendingJournals,
+            'faculty_pending_evaluations'   => $advisedIds->diff($evaluatedIds)->count(),
         ]);
     }
 

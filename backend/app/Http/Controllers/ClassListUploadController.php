@@ -16,10 +16,13 @@ class ClassListUploadController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv',
             'section' => 'required|string',
             'program' => 'required|string',
-            'school_year' => 'required|string',
+            'school_year' => 'required_without:academic_year|string',
+            'academic_year' => 'required_without:school_year|string',
             'semester' => 'required|string',
             'faculty_user_id' => 'required|exists:users,id',
         ]);
+
+        $schoolYear = $request->input('school_year') ?: $request->input('academic_year');
 
         $facultyUser = User::findOrFail($request->faculty_user_id);
         if (!$facultyUser->isFaculty()) {
@@ -32,7 +35,7 @@ class ClassListUploadController extends Controller
                     $request->faculty_user_id,
                     $request->section,
                     $request->program,
-                    $request->school_year,
+                    $schoolYear,
                     $request->semester
                 ),
                 $request->file('file')

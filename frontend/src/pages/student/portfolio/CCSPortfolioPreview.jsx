@@ -37,7 +37,7 @@ function PageHeader({ companyLogoPath }) {
   return (
     <div style={styles.headerContainer}>
       <div style={styles.sideCol}>
-        <img src="/images/ccs-logo.png" alt="UC Logo" style={{ width: '78px', height: '78px', objectFit: 'contain' }} />
+        <img src="/images/pnc-logo.png" alt="UC Logo" style={{ width: '78px', height: '78px', objectFit: 'contain' }} />
       </div>
       <div style={styles.centerCol}>
         <p style={styles.republic}>Republic of the Philippines</p>

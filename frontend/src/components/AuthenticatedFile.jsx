@@ -15,7 +15,12 @@ async function fetchBlobUrl(path) {
   const promise = api.get('/files/download', {
     params: { path },
     responseType: 'blob',
-  }).then((res) => {
+  }).then(async (res) => {
+    const type = String(res.headers['content-type'] || '')
+    if (type.includes('application/json')) {
+      pendingRequests.delete(path)
+      throw new Error('File download failed.')
+    }
     const url = URL.createObjectURL(res.data)
     urlCache.set(path, url)
     pendingRequests.delete(path)
@@ -38,8 +43,16 @@ export function AuthenticatedFileLink({ path, children, className, style, title 
     setBusy(true)
     try {
       const url = await fetchBlobUrl(path)
-      window.open(url, '_blank', 'noopener,noreferrer')
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      const opened = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!opened) {
+        const link = document.createElement('a')
+        link.href = url
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      }
     } catch {
       alert('Unable to open this file. You may not have access, or it was removed.')
     } finally {

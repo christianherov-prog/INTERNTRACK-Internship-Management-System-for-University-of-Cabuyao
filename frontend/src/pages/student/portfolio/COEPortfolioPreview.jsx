@@ -7,6 +7,7 @@ import { AuthenticatedFileImage } from '../../../components/AuthenticatedFile';
 import WeeklyInternshipJournal from '../../../components/portfolio/WeeklyInternshipJournal';
 import DailyTimeRecord from '../../../components/portfolio/DailyTimeRecord';
 import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/portfolio/EvaluationsPreview';
+import '../../../assets/css/portfolio-print.css';
 
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow';
 
@@ -18,53 +19,58 @@ const COEHeader = ({ programTitle, companyLogoPath }) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingBottom: '8px',
-      borderBottom: '3px solid #6cbe70',
+      borderBottom: '5px solid #008000',
       marginBottom: '20px',
       fontFamily: 'Arial, sans-serif',
-      width: '100%',
+      marginLeft: '-13mm',
+      marginRight: '-13mm',
+      paddingLeft: '13mm',
+      paddingRight: '13mm',
+      
       pageBreakAfter: 'avoid',
       breakAfter: 'avoid',
     },
     leftSection: {
       display: 'flex',
       alignItems: 'center',
-      gap: '15px'
+      gap: '0'
     },
     uniLogo: {
-      width: '85px',
-      height: '85px',
-      objectFit: 'contain'
+      width: '100px',
+      height: '100px',
+      marginLeft: '40px',
+      marginRight: '-40px'
     },
     textContainer: {
       textAlign: 'left',
-      lineHeight: '1.15'
+      lineHeight: '0.7'
     },
     universityName: {
       margin: '0 0 2px 0',
-      fontFamily: "'Brush Script MT', 'Lucida Handwriting', cursive",
-      fontSize: '26pt',
+      fontFamily: "'Brush Script MT', cursive",
+      fontSize: '20pt',
       color: '#005400',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+      fontStyle: 'italic',
     },
     subText: {
       margin: '0 0 2px 0',
       fontSize: '11pt',
       color: '#000',
-      letterSpacing: '0.5px',
-      fontStyle: 'calibri'
+      fontFamily: 'Arial, sans-serif'
     },
     address: {
       margin: '0 0 2px 0',
-      fontSize: '10pt',
+      fontSize: '11pt',
       color: '#000',
-      letterSpacing: '0.5px',
-      fontStyle: 'arial MT'
+      fontFamily: 'Arial, sans-serif'
     },
     departmentText: {
       margin: '0 0 2px 0',
-      fontSize: '10pt',
+      fontSize: '11pt',
       fontWeight: 'bold',
-      fontStyle: 'cambria',
+      fontStyle: 'italic',
+      fontFamily: "'Times New Roman', Times, serif",
       color: '#000'
     },
     programText: {
@@ -72,6 +78,7 @@ const COEHeader = ({ programTitle, companyLogoPath }) => {
       fontSize: '11pt',
       fontWeight: 'bold',
       fontStyle: 'italic',
+      fontFamily: "'Times New Roman', Times, serif",
       color: '#000'
     },
     rightSection: {
@@ -96,7 +103,7 @@ const COEHeader = ({ programTitle, companyLogoPath }) => {
   return (
     <div style={styles.headerContainer}>
       <div style={styles.leftSection}>
-        <img src="/images/ccs-logo.png" alt="University Logo" style={styles.uniLogo} />
+        <img src="/images/pnc-logo.png" alt="University Logo" style={styles.uniLogo} />
         <div style={styles.textContainer}>
           <h1 style={styles.universityName}>University of Cabuyao</h1>
           <p style={styles.subText}>(PAMANTASAN NG CABUYAO)</p>
@@ -126,16 +133,7 @@ const COEHeader = ({ programTitle, companyLogoPath }) => {
 
 // --- Page Wrapper Component ---
 const Page = ({ children, programTitle, companyLogoPath, tocId, hideHeader = false }) => (
-  <div className="a4-page force-page-break portfolio-document" data-toc-id={tocId} style={{
-    width: '210mm',
-    minHeight: '297mm', // keep for visual preview only
-    margin: '0 auto 20px auto',
-    padding: '20mm',
-    background: 'white',
-    fontFamily: 'Arial, sans-serif',
-    position: 'relative',
-    color: '#000'
-  }}>
+  <div className="a4-page force-page-break portfolio-document position-relative" data-toc-id={tocId}>
     {!hideHeader && <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />}
     <div style={{ display: 'block', width: '100%', height: '100%' }}>
       {children}
@@ -304,7 +302,7 @@ function COEPortfolioPreview() {
   ];
 
   return (
-    <div ref={printRef} style={{ backgroundColor: '#e5e5e5', padding: '20px', minHeight: '100vh', paddingBottom: '60px' }}>
+    <div ref={printRef} style={{ backgroundColor: '#e5e5e5', minHeight: '100vh', paddingBottom: '60px' }}>
 
       <div className="no-print" style={{
         position: 'sticky', top: 0, left: 0, zIndex: 1000,
@@ -328,8 +326,8 @@ function COEPortfolioPreview() {
 
       {/* 1. COVER PAGE */}
       <Page tocId="cover" programTitle={programTitle} companyLogoPath={companyLogoPath}>
-        <div style={{ textAlign: 'center', marginTop: '10px', fontFamily: 'Arial, sans-serif', fontSize: '11pt', color: '#000' }}>
-          <h1 style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: '20px' }}>A PRACTICUM REPORT</h1>
+        <div>
+          <h1 style={{ textAlign: 'center', fontSize: '12pt', fontWeight: 'bold', marginBottom: '20px' }}>A PRACTICUM REPORT</h1>
 
           <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0 40px 0' }}>
             {companyLogoPath ? (
@@ -350,46 +348,46 @@ function COEPortfolioPreview() {
             )}
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0' }}>Undertaken at <strong style={{ textTransform: 'uppercase' }}>{companyName}</strong></p>
-            <p style={{ margin: '0 0 5px 0' }}>Located at <span style={{ textTransform: 'uppercase' }}>{companyAddress}</span></p>
+          <div style={{}}>
+            <h6 style={{ textAlign: 'center' }}>Undertaken at <strong style={{ textTransform: 'uppercase' }}>{companyName}</strong></h6>
+            <h6 style={{ textAlign: 'center' }}>Located at <span style={{ textTransform: 'uppercase' }}>{companyAddress}</span></h6>
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0' }}>In partial fulfillment of the requirements for the course</p>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>{practicumCode}</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h6 style={{ textAlign: 'center' }}>In partial fulfillment of the requirements for the course</h6>
+            <h6 style={{ textAlign: 'center', fontWeight: 'bold' }}>{practicumCode}</h6>
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0' }}>For the Degree of</p>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>{programTitle}</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h6 style={{ textAlign: 'center' }}>For the Degree of</h6>
+            <h6 style={{ textAlign: 'center', fontWeight: 'bold' }}>{programTitle}</h6>
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0' }}>Presented to the faculty of Engineering</p>
-            <p style={{ margin: 0, fontWeight: 'bold', textTransform: 'uppercase' }}>COLLEGE OF ENGINEERING</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h6 style={{ textAlign: 'center' }}>Presented to the faculty of Engineering</h6>
+            <h6 style={{ textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase' }}>COLLEGE OF ENGINEERING</h6>
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>UNIVERSITY OF CABUYAO (PnC)</p>
-            <p style={{ margin: '0 0 5px 0' }}>Katapatan Homes Subdivision</p>
-            <p style={{ margin: 0 }}>Banay-banay, City of Cabuyao, Laguna 4025</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h6 style={{ textAlign: 'center', fontWeight: 'bold' }}>UNIVERSITY OF CABUYAO (PnC)</h6>
+            <h6 style={{ textAlign: 'center' }}>Katapatan Homes Subdivision</h6>
+            <h6 style={{ textAlign: 'center' }}>Banay-banay, City of Cabuyao, Laguna 4025</h6>
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0' }}>Submitted by:</p>
-            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', textTransform: 'uppercase' }}>{studentName}</p>
-            <p style={{ margin: 0 }}>{programTitle.includes('Computer Engineering') ? 'BSCPE' : programTitle}</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h6 style={{ textAlign: 'center' }}>Submitted by:</h6>
+            <h6 style={{ textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase' }}>{studentName}</h6>
+            <h6 style={{ textAlign: 'center' }}>{programTitle.includes('Computer Engineering') ? 'BSCPE' : programTitle}</h6>
           </div>
 
-          <div style={{ margin: '30px 0' }}>
-            <p style={{ margin: '0 0 5px 0' }}>Submitted to:</p>
-            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', textTransform: 'uppercase' }}>{facultyName}</p>
-            <p style={{ margin: 0 }}>OJT Instructor</p>
+          <div style={{ marginBottom: '30px' }}>
+            <h6 style={{ textAlign: 'center' }}>Submitted to:</h6>
+            <h6 style={{ textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase' }}>{facultyName}</h6>
+            <h6 style={{ textAlign: 'center' }}>OJT Instructor</h6>
           </div>
 
           <div style={{ marginTop: '40px' }}>
-            <p style={{ margin: 0, fontWeight: 'bold' }}>{date}</p>
+            <h6 style={{ textAlign: 'center' }}>{date}</h6>
           </div>
         </div>
       </Page>
@@ -593,7 +591,7 @@ function COEPortfolioPreview() {
         (!j.file_path || j.file_path.endsWith(".pdf")) ? (
           <WeeklyInternshipJournal key={j.id} studentName={studentName} program={programTitle} weekNumber={j.week_number || j.week} date={j.date} accomplishment={j.activities_summary || j.accomplishment} difficulties={j.challenges || j.difficulties} insights={j.learnings || j.insights} companyLogoPath={companyLogoPath} />
         ) : (
-          <div key={j.id} className="a4-page portfolio-document position-relative text-center" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto 20px auto', padding: '20mm', background: 'white', fontFamily: 'Arial, sans-serif' }}>
+          <div key={j.id} className="a4-page portfolio-document position-relative text-center">
             <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />
             <h4 style={{ fontWeight: "bold", marginTop: "20px", textAlign: "left" }}>Week {j.week_number || j.week}</h4>
             <div style={{ marginTop: "20px", width: "100%", display: "flex", justifyContent: "center" }}>
@@ -641,7 +639,7 @@ function COEPortfolioPreview() {
         }
 
         return (
-          <div className="a4-page portfolio-document position-relative" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto 20px auto', padding: '20mm', background: 'white', fontFamily: 'Arial, sans-serif' }}>
+          <div className="a4-page portfolio-document position-relative">
             <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />
             <h4 style={{ fontWeight: "bold", marginTop: "20px", textAlign: "center", fontSize: "12pt" }}>Student Internship Daily Time Record</h4>
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
@@ -661,7 +659,7 @@ function COEPortfolioPreview() {
       })()}
 
       {/* CHAPTER IV (Dynamically mapped documents based on builder checks) */}
-      <div className="a4-page force-page-break portfolio-document position-relative" data-toc-id="chap4" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto 20px auto', padding: '20mm', background: 'white', fontFamily: 'Arial, sans-serif', color: '#000' }}>
+      <div className="a4-page force-page-break portfolio-document position-relative" data-toc-id="chap4">
         <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />
         <div style={{ display: 'block', width: '100%', height: '100%' }}>
           <h2 style={{ textAlign: 'center', fontSize: '12pt', fontWeight: 'bold' }}>CHAPTER IV</h2>

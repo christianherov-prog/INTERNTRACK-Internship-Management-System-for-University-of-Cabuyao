@@ -38,6 +38,7 @@ class Notification extends Model
 
         return match ($role) {
             'student' => match (true) {
+                in_array($type, ['document_approved', 'document_rejected'], true) => null,
                 str_contains($type, 'attendance') => 'attendanceAlerts',
                 str_contains($type, 'evaluation') => 'evaluationReminders',
                 default => 'emailReminders',
@@ -49,6 +50,7 @@ class Notification extends Model
                 default => 'attendancePending',
             },
             'faculty' => match (true) {
+                str_contains($type, 'document') => null,
                 str_contains($type, 'journal') => 'journalSubmissions',
                 str_contains($type, 'evaluation') => 'evaluationReminders',
                 default => 'adviseeAlerts',
@@ -110,12 +112,12 @@ class Notification extends Model
         ]);
 
         try {
-            broadcast(new NotificationCreated($notification))->toOthers();
+            broadcast(new NotificationCreated($notification));
         } catch (\Throwable) {
             // Broadcasting is optional (e.g. no Reverb / queue in tests).
         }
 
-        // ── Email delivery for high-priority event types ──────────────────
+        // Send immediately so students are informed without a queue worker.
         $emailTypes = [
             'document_rejected',
             'document_approved',
@@ -126,15 +128,19 @@ class Notification extends Model
             'evaluation_submitted',
         ];
 
-        if (in_array(strtolower($type), $emailTypes) && $user->email) {
+        if (in_array(strtolower($type), $emailTypes, true) && $user->email) {
+            $absoluteLink = $link;
+            if ($link && ! preg_match('#^https?://#i', $link)) {
+                $absoluteLink = rtrim((string) config('app.frontend_url', config('app.url')), '/').'/'.ltrim($link, '/');
+            }
+
             try {
                 Mail::to($user->email)
-                    ->queue(new InternTrackNotificationMail($title, $message, $link));
+                    ->send(new InternTrackNotificationMail($title, $message, $absoluteLink));
             } catch (\Throwable) {
                 // Email delivery is non-blocking — never fail the request.
             }
         }
-        // ─────────────────────────────────────────────────────────────────
 
         return $notification;
     }

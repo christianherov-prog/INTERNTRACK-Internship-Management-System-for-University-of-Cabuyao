@@ -45,6 +45,8 @@ class DocumentReviewController extends Controller
 
         $newStatus = $request->action === 'approve' ? 'approved' : 'rejected';
         $oldStatus = $document->status;
+        $reviewer = $request->user()->loadMissing('facultyProfile');
+        $reviewerName = trim((string) ($reviewer->facultyProfile?->full_name ?: $reviewer->username ?: 'Faculty'));
 
         DB::transaction(function () use ($request, $document, $oldStatus, $newStatus) {
             $document->update([
@@ -64,28 +66,31 @@ class DocumentReviewController extends Controller
                 'reviewed_by'  => $request->user()->id,
                 'signed_at'    => now(),
             ]);
-
-            // Notify the student respecting their notification preferences
-            $internship = $document->internship;
-            if ($internship) {
-                $studentId = $internship->student_id;
-                $label     = $newStatus === 'approved' ? 'approved ✅' : 'rejected ❌';
-                $title     = 'Document ' . ucfirst($newStatus);
-                $message   = "Your document \"{$document->document_type}\" has been {$label}.";
-                if ($request->remarks) {
-                    $message .= " Remarks: {$request->remarks}";
-                }
-
-                Notification::notify(
-                    $studentId,
-                    $newStatus === 'approved' ? 'document_approved' : 'document_rejected',
-                    $title,
-                    $message,
-                    '/student/documents',
-                    ['document_id' => $document->id, 'document_type' => $document->document_type]
-                );
-            }
         });
+
+        $internship = $document->internship;
+        if ($internship?->student_id) {
+            $outcome = $newStatus === 'approved' ? 'approved' : 'rejected';
+            $title = $newStatus === 'approved' ? 'Document approved' : 'Document rejected';
+            $message = "Your document \"{$document->document_type}\" was {$outcome} by {$reviewerName}.";
+            if ($request->remarks) {
+                $message .= " Remarks: {$request->remarks}";
+            }
+
+            Notification::notify(
+                (int) $internship->student_id,
+                $newStatus === 'approved' ? 'document_approved' : 'document_rejected',
+                $title,
+                $message,
+                '/student/documents',
+                [
+                    'document_id' => $document->id,
+                    'document_type' => $document->document_type,
+                    'status' => $newStatus,
+                    'reviewed_by' => $reviewerName,
+                ]
+            );
+        }
 
         $document->refresh();
 

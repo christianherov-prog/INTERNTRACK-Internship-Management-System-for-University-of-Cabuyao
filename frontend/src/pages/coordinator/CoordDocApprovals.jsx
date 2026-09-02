@@ -260,12 +260,24 @@ function CoordDocApprovals() {
                       </td>
                       <td className="fw-semibold">{formatStudentName(doc.internship)}</td>
                       <td><i className="fa fa-file-pdf me-2 text-danger"></i>{doc.document_type}</td>
-                      <td><AuthenticatedFileLink path={doc.file_path} className="text-primary" style={{fontSize:'0.82rem'}}><i className="fa fa-eye me-1"></i>{doc.file_name}</AuthenticatedFileLink></td>
+                      <td>
+                        {doc.attachments?.length > 0 ? doc.attachments.map(att => (
+                          <AuthenticatedFileLink key={att.id || att.file_path} path={att.file_path} className="text-primary" style={{fontSize:'0.82rem'}}>
+                            <i className="fa fa-eye me-1"></i>{att.file_name || 'View'}
+                          </AuthenticatedFileLink>
+                        )) : doc.file_path ? (
+                          <AuthenticatedFileLink path={doc.file_path} className="text-primary" style={{fontSize:'0.82rem'}}>
+                            <i className="fa fa-eye me-1"></i>{doc.file_name}
+                          </AuthenticatedFileLink>
+                        ) : doc.drive_link ? (
+                          <a href={doc.drive_link} target="_blank" rel="noreferrer" className="text-primary" style={{fontSize:'0.82rem'}}>Drive link</a>
+                        ) : '—'}
+                      </td>
                       <td style={{fontSize:'0.82rem',color:'#64748b'}}>{doc.submitted_at ? new Date(doc.submitted_at).toLocaleDateString() : '—'}</td>
                       <td className="text-center">
-                        {doc.file_path && (
+                        {(doc.attachments?.[0]?.file_path || doc.file_path) && (
                           <AuthenticatedFileLink
-                            path={doc.file_path}
+                            path={doc.attachments?.[0]?.file_path || doc.file_path}
                             className="btn btn-sm btn-info text-white me-2"
                           >
                             <i className="fa fa-eye me-1"></i>Preview

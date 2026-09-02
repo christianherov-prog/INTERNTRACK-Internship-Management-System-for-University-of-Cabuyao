@@ -282,11 +282,11 @@ function DirectorInternships() {
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 140 }} value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}>
           <option value="all">All Depts</option>
-          {departments.map(d => <option key={d.id} value={d.id}>{d.code}</option>)}
+          {departments.map(d => <option key={d.id} value={d.id} title={d.name}>{d.code}</option>)}
         </select>
-        <select className="form-select form-select-sm text-secondary" style={{ width: 140 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
+        <select className="form-select form-select-sm text-secondary" style={{ width: 220 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           <option value="all">All Programs</option>
-          {programs.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
+          {programs.map(p => <option key={p.id} value={p.id} title={p.name}>{p.code}</option>)}
         </select>
         <select className="form-select form-select-sm text-secondary" style={{ width: 130 }} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
           {sections.map(s => <option key={s} value={s}>{s === "all" ? "All Sections" : s}</option>)}

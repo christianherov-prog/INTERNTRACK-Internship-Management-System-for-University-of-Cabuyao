@@ -134,7 +134,7 @@ class FacultySectionAssignmentService
      */
     public function facultyOptions(): array
     {
-        return User::where('role', 'faculty')
+        return User::whereIn('role', ['faculty', 'coordinator'])
             ->where('is_active', true)
             ->with('facultyProfile')
             ->orderBy('faculty_number')

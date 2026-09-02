@@ -17,11 +17,17 @@ final class NotificationPreferences
             'meetingInvites' => true,
         ],
         'coordinator' => [
-            'pendingDocuments' => true,
-            'placementUpdates' => true,
+            // Coordinator-specific
+            'pendingDocuments'    => true,
+            'placementUpdates'    => true,
             'supervisorApprovals' => true,
-            'directMessages' => true,
-            'meetingInvites' => true,
+            // Faculty-inherited (coordinator acts as faculty supervisor)
+            'journalSubmissions'  => true,
+            'evaluationReminders' => true,
+            'adviseeAlerts'       => false,
+            // Shared
+            'directMessages'      => true,
+            'meetingInvites'      => true,
         ],
         'supervisor' => [
             'attendancePending' => true,
@@ -65,8 +71,8 @@ final class NotificationPreferences
         'journal_reviewed' => 'journalReviews',
         'supervisor_feedback' => 'journalReviews',
         'supervisor_evaluation_submitted' => 'evaluationDue',
-        'document_approved' => 'adviseeAlerts',
-        'document_rejected' => 'adviseeAlerts',
+        'document_approved' => null,
+        'document_rejected' => null,
         'absorption_pending' => 'absorptionUpdates',
         'absorption_recorded' => 'placementUpdates',
         'student_declared_hired' => 'absorptionUpdates',

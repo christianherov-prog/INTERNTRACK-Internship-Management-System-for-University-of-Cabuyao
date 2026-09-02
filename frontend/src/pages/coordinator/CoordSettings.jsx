@@ -5,10 +5,10 @@ function CoordSettings() {
   return (
     <RoleSettings
       bodyClass="coordinator-page"
-      subtitleLabel="Coordinator"
+      subtitleLabel="Coordinator & Faculty Supervisor"
       summaryNote="Your official staff identity is synced from iEnroll. Update password and avatar here; request MISD corrections for identity changes."
       accountIntro="Official coordinator profile from iEnroll. These fields are display-only in INTERNTRACK."
-      notificationsIntro="Choose which coordinator workflow alerts you want to receive."
+      notificationsIntro="Choose which alerts you want to receive. As Coordinator & Faculty Supervisor, you can manage both coordinator and faculty notification types."
       securityIntro="Update your password and strengthen account protection for your school credentials."
       metaFields={[
         { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
@@ -36,6 +36,9 @@ function CoordSettings() {
         pendingDocuments: true,
         placementUpdates: true,
         supervisorApprovals: true,
+        journalSubmissions: true,
+        evaluationReminders: true,
+        adviseeAlerts: false,
       }}
       notificationDefs={[
         {
@@ -52,6 +55,21 @@ function CoordSettings() {
           key: 'supervisorApprovals',
           title: 'Supervisor registration approvals',
           description: 'Reminders when HTE supervisors self-register and need coordinator approval.',
+        },
+        {
+          key: 'journalSubmissions',
+          title: 'Journal submissions (Faculty)',
+          description: 'Notified when your assigned students submit weekly journal entries for review.',
+        },
+        {
+          key: 'evaluationReminders',
+          title: 'Evaluation reminders (Faculty)',
+          description: 'Reminders to submit midterm and final evaluations for your advisees.',
+        },
+        {
+          key: 'adviseeAlerts',
+          title: 'Advisee activity alerts (Faculty)',
+          description: 'Alerts on document approval or rejection for students you directly advise.',
         },
       ]}
     >

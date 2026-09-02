@@ -466,7 +466,8 @@ class FacultyController extends Controller
         $internshipIds = Internship::inDepartment()->where('faculty_id', $facultyId)->pluck('id');
 
         $docs = \App\Models\Document::whereIn('internship_id', $internshipIds)
-            ->with(['internship.student.studentProfile'])
+            ->with(['internship.student.studentProfile', 'attachments'])
+            ->whereIn('status', ['pending', 'pending_review', 'under_review', 'pending_faculty', 'resubmitted'])
             ->orderByDesc('submitted_at')
             ->paginate(25);
 

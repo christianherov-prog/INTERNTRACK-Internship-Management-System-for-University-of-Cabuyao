@@ -135,10 +135,13 @@ class MisdAdminController extends Controller
 
         if (!empty($data['department'])) {
             $deptStr = $data['department'];
-            $deptId = \App\Models\Department::where('code', $deptStr)
-                ->orWhere('name', $deptStr)
-                ->orWhere('code', 'CCS')
-                ->value('id') ?? \App\Models\Department::first()?->id;
+            $deptId = \App\Models\Department::query()
+                ->where(function ($q) use ($deptStr) {
+                    $q->where('code', $deptStr)->orWhere('name', $deptStr);
+                })
+                ->value('id')
+                ?? \App\Models\Department::where('code', 'CCS')->value('id')
+                ?? \App\Models\Department::first()?->id;
             if ($deptId) {
                 $profileFields['department_id'] = $deptId;
             }
@@ -337,7 +340,7 @@ class MisdAdminController extends Controller
             ]);
         }
 
-        $faculty = User::where('id', $data['faculty_user_id'])->where('role', 'faculty')->first();
+        $faculty = User::where('id', $data['faculty_user_id'])->whereIn('role', ['faculty', 'coordinator'])->first();
         if (!$faculty) {
             throw ValidationException::withMessages(['faculty_user_id' => 'Faculty user not found.']);
         }
@@ -367,8 +370,8 @@ class MisdAdminController extends Controller
         if (isset($data['section'])) {
             $data['section'] = FacultySectionAssignmentService::normalizeSection($data['section']);
         }
-        if (isset($data['faculty_user_id'])) {
-            $faculty = User::where('id', $data['faculty_user_id'])->where('role', 'faculty')->first();
+        if (array_key_exists('faculty_user_id', $data) && $data['faculty_user_id']) {
+            $faculty = User::where('id', $data['faculty_user_id'])->whereIn('role', ['faculty', 'coordinator'])->first();
             if (!$faculty) {
                 throw ValidationException::withMessages(['faculty_user_id' => 'Faculty user not found.']);
             }
@@ -406,7 +409,7 @@ class MisdAdminController extends Controller
     public function facultyOptions(): JsonResponse
     {
         $faculty = User::with('facultyProfile')
-            ->where('role', 'faculty')
+            ->whereIn('role', ['faculty', 'coordinator'])
             ->where('is_active', true)
             ->orderBy('faculty_number')
             ->get()

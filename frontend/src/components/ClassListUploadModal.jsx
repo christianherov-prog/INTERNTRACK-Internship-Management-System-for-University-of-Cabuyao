@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import api from '../services/api'
 
 /**
@@ -16,10 +16,17 @@ function ClassListUploadModal({ onClose, onSuccess }) {
     semester: '1',
     faculty_user_id: '',
   })
+  const [programs, setPrograms] = useState([])
   const [file, setFile]         = useState(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError]       = useState(null)
   const fileRef = useRef(null)
+
+  useEffect(() => {
+    api.get('/academic/programs')
+      .then((res) => setPrograms(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setPrograms([]))
+  }, [])
 
   const handleChange = e =>
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -90,11 +97,15 @@ function ClassListUploadModal({ onClose, onSuccess }) {
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">Program <span className="text-danger">*</span></label>
-                  <input
-                    name="program" className="form-control"
-                    placeholder="e.g. Bachelor of Science in Information Technology"
+                  <select
+                    name="program" className="form-select"
                     value={form.program} onChange={handleChange} required
-                  />
+                  >
+                    <option value="">Select a program</option>
+                    {programs.map((p) => (
+                      <option key={p.id} value={p.name}>{p.code} — {p.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="col-md-5">
                   <label className="form-label fw-semibold">Academic Year <span className="text-danger">*</span></label>

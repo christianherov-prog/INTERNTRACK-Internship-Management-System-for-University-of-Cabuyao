@@ -67,6 +67,53 @@ function CoordMonitoring() {
       <RoleSummaryPanel />
       {error && <PageError message={error} onRetry={load} />}
 
+      {/* Faculty Quick Actions (coordinator inherits faculty role) */}
+      {!error && (
+      <div className="content-card mb-4">
+        <div className="content-card-header bg-light">
+          <i className="fa fa-chalkboard-teacher"></i>
+          <h6 className="mb-0">Faculty Quick Actions</h6>
+          <span className="badge bg-secondary ms-2" style={{ fontSize: '0.7rem' }}>Coordinator &amp; Faculty Supervisor</span>
+        </div>
+        <div className="p-3">
+          <div className="row g-3">
+            <div className="col-sm-6 col-lg-3">
+              <a href="/faculty/assigned-students" className="btn btn-outline-primary w-100 text-start p-3 d-flex align-items-center gap-3">
+                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '36px', height: '36px' }}>
+                  <i className="fa fa-users"></i>
+                </div>
+                <div><div className="fw-semibold" style={{ fontSize: '0.88rem' }}>Assigned Students</div><small className="text-muted">View your advisees</small></div>
+              </a>
+            </div>
+            <div className="col-sm-6 col-lg-3">
+              <a href="/faculty/journals" className="btn btn-outline-success w-100 text-start p-3 d-flex align-items-center gap-3">
+                <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '36px', height: '36px' }}>
+                  <i className="fa fa-book-open"></i>
+                </div>
+                <div><div className="fw-semibold" style={{ fontSize: '0.88rem' }}>Review Journals</div><small className="text-muted">Read &amp; approve reports</small></div>
+              </a>
+            </div>
+            <div className="col-sm-6 col-lg-3">
+              <a href="/faculty/evaluations" className="btn btn-outline-warning w-100 text-start p-3 d-flex align-items-center gap-3">
+                <div className="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '36px', height: '36px' }}>
+                  <i className="fa fa-star"></i>
+                </div>
+                <div><div className="fw-semibold" style={{ fontSize: '0.88rem' }}>Submit Evaluations</div><small className="text-muted">Midterm &amp; final grades</small></div>
+              </a>
+            </div>
+            <div className="col-sm-6 col-lg-3">
+              <a href="/faculty/feedback" className="btn btn-outline-secondary w-100 text-start p-3 d-flex align-items-center gap-3">
+                <div className="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '36px', height: '36px' }}>
+                  <i className="fa fa-comment-dots"></i>
+                </div>
+                <div><div className="fw-semibold" style={{ fontSize: '0.88rem' }}>Give Feedback</div><small className="text-muted">Remarks &amp; guidance</small></div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
+
       {/* Operational monitoring stats (system-wide) */}
       {!error && (
       <div className="row g-3 mb-4">

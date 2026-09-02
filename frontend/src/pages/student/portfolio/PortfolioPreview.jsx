@@ -3,6 +3,9 @@ import api from '../../../services/api';
 import CCSPortfolioPreview from './CCSPortfolioPreview';
 import COEPortfolioPreview from './COEPortfolioPreview';
 import COEDPortfolioPreview from './COEDPortfolioPreview';
+import PsychologyPortfolioPreview from './PsychologyPortfolioPreview';
+import NursingPortfolioPreview from './NursingPortfolioPreview';
+import { resolvePortfolioVariant } from '../../../utils/portfolioVariant';
 
 const PortfolioPreview = () => {
   const [department, setDepartment] = useState(null);
@@ -12,12 +15,11 @@ const PortfolioPreview = () => {
     // Fetch the user's department to determine which preview to show
     api.get('/auth/user')
       .then(res => {
-        const dept = (typeof res.data?.user?.program === 'string' ? res.data?.user?.program : res.data?.user?.program?.name || res.data?.user?.program?.code) || '';
-        setDepartment(dept);
+        setDepartment(res.data?.user || { program: '' });
       })
       .catch(err => {
         console.error('Failed to fetch user department', err);
-        setDepartment('DEFAULT');
+        setDepartment({ program: 'DEFAULT' });
       })
       .finally(() => {
         setLoading(false);
@@ -43,15 +45,18 @@ const PortfolioPreview = () => {
     );
   }
 
-  const safeDept = department.toLowerCase();
-  const isCOE = safeDept.includes('engineering') || safeDept.includes('coe');
-  const isCOED = safeDept.includes('education') || safeDept.includes('coed');
+  const variant = resolvePortfolioVariant(typeof department === 'string' ? { program: department } : department);
 
-  if (isCOED) {
+  if (variant === 'nursing') {
+    return <NursingPortfolioPreview />;
+  }
+  if (variant === 'psychology') {
+    return <PsychologyPortfolioPreview />;
+  }
+  if (variant === 'coed') {
     return <COEDPortfolioPreview />;
   }
-  
-  if (isCOE) {
+  if (variant === 'coe') {
     return <COEPortfolioPreview />;
   }
 

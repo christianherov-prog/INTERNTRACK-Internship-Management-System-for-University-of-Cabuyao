@@ -33,8 +33,10 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>🎓 INTERNTRACK</h1>
-            <p>University of Cabuyao — Internship Management System</p>
+            <div style="font-family: Arial Black, Arial, Helvetica, sans-serif; font-weight: 900; font-size: 22px; letter-spacing: 0.5px; line-height: 1;">
+                <span style="color: #d7e6db;">INTERN</span><span style="color: #4bc97a;">TRACK</span>
+            </div>
+            <p>Internship Monitoring &amp; Documentation System</p>
         </div>
         <div class="body">
             <span class="badge">Security Notification</span>

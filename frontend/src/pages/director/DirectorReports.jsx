@@ -328,6 +328,7 @@ function DirectorReports({ embedded = false }) {
 
               {/* Print-only header */}
               <div className="d-none d-print-block p-4 border-bottom text-center">
+                <img src="/interntrack-mark.png" alt="INTERNTRACK" className="print-app-mark mx-auto" />
                 <h4 className="fw-bold mb-1">{REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h4>
                 <div className="text-muted">Orb-BIT InternTrack | Director Dashboard | Term: {CURRENT_TERM}</div>
               </div>

@@ -472,6 +472,8 @@
   padding: 6px;
   border-radius: 12px;
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .placement-tab-btn {
   display: inline-flex;

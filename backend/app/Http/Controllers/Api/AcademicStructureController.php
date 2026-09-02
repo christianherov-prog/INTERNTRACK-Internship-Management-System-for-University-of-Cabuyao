@@ -14,7 +14,8 @@ class AcademicStructureController extends Controller
         $query = Department::where('is_active', true);
         
         $user = $request->user();
-        if ($user && $user->hasRole('coordinator') || $user->hasRole('faculty')) {
+        $user?->loadMissing('facultyProfile');
+        if ($user && ($user->hasRole('coordinator') || $user->hasRole('faculty'))) {
             $deptId = $user->facultyProfile?->department_id;
             if ($deptId) {
                 $query->where('id', $deptId);
@@ -27,9 +28,18 @@ class AcademicStructureController extends Controller
     public function programs(Request $request)
     {
         $query = Program::where('is_active', true);
+        $user = $request->user();
+        $user?->loadMissing('facultyProfile');
+
         if ($request->filled('department_id')) {
             $query->where('department_id', $request->query('department_id'));
+        } elseif ($user && ($user->hasRole('coordinator') || $user->hasRole('faculty'))) {
+            $deptId = $user->facultyProfile?->department_id;
+            if ($deptId) {
+                $query->where('department_id', $deptId);
+            }
         }
+
         return response()->json($query->orderBy('name')->get());
     }
 

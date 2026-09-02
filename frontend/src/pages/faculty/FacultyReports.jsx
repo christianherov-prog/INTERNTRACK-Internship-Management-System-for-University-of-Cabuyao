@@ -319,6 +319,7 @@ function FacultyReports() {
           </div>
 
           <div className="d-none d-print-block p-3 mb-3 border-bottom">
+            <img src="/interntrack-mark.png" alt="INTERNTRACK" className="print-app-mark" />
             <h5 className="mb-0">INTERNTRACK — {REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h5>
             <small className="text-muted">University of Cabuyao · Faculty scope · Generated: {generatedAt}</small>
           </div>

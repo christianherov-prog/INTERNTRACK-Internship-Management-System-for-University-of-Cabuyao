@@ -20,11 +20,16 @@ export default function DirectorHTEEvaluations() {
   const [previewData, setPreviewData] = useState(null)   // { eval, internship }
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState(null)
-  const [filters, setFilters] = useState({ department: '', program: '', section: '' })
+  const [filters, setFilters] = useState({ department_id: '', program_id: '', section: '' })
+  const [departments, setDepartments] = useState([])
+  const [programs, setPrograms] = useState([])
 
   const loadPage = (page = 1) => {
     setLoading(true)
-    const params = new URLSearchParams({ page, ...filters })
+    const params = new URLSearchParams({ page })
+    if (filters.department_id) params.set('department_id', filters.department_id)
+    if (filters.program_id) params.set('program_id', filters.program_id)
+    if (filters.section) params.set('section', filters.section)
     api.get(`/director/evaluations?${params.toString()}`)
       .then(res => {
         const { internships: iData, stats: s, rating_counts, form_counts } = res.data
@@ -39,6 +44,19 @@ export default function DirectorHTEEvaluations() {
   }
 
   useEffect(() => { loadPage(1) }, [filters])
+
+  useEffect(() => {
+    api.get('/academic/departments')
+      .then((res) => setDepartments(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setDepartments([]))
+  }, [])
+
+  useEffect(() => {
+    const params = filters.department_id ? { department_id: filters.department_id } : {}
+    api.get('/academic/programs', { params })
+      .then((res) => setPrograms(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setPrograms([]))
+  }, [filters.department_id])
 
   const totalEvals = stats?.total || 0
   const avgScore   = parseFloat(stats?.avg_score || 0)
@@ -61,16 +79,21 @@ export default function DirectorHTEEvaluations() {
                 <div className="row g-2 align-items-end">
                   <div className="col-md-4">
                     <label className="form-label small text-muted mb-1">Department</label>
-                    <select className="form-select form-select-sm" value={filters.department} onChange={e => setFilters({...filters, department: e.target.value})}>
+                    <select className="form-select form-select-sm" value={filters.department_id} onChange={e => setFilters({...filters, department_id: e.target.value, program_id: ''})}>
                       <option value="">All Departments</option>
-                      <option value="Computer Studies">Computer Studies</option>
-                      <option value="Engineering">Engineering</option>
-                      <option value="Business">Business</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small text-muted mb-1">Program</label>
-                    <input type="text" className="form-control form-control-sm" placeholder="e.g. BS Information Technology" value={filters.program} onChange={e => setFilters({...filters, program: e.target.value})} />
+                    <select className="form-select form-select-sm" value={filters.program_id} onChange={e => setFilters({...filters, program_id: e.target.value})}>
+                      <option value="">All Programs</option>
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small text-muted mb-1">Section</label>

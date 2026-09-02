@@ -1,12 +1,22 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
+import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { documentStatusConfig } from '../../utils/documentStatus'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 
+const REVIEWABLE = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
+const NEEDS_UPLOAD = ['not_submitted', 'no_submission', 'rejected']
+
+function fileIcon(name = '') {
+  const ext = String(name).split('.').pop()?.toLowerCase()
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'fa-file-image text-success'
+  if (['doc', 'docx'].includes(ext)) return 'fa-file-word text-primary'
+  return 'fa-file-pdf text-danger'
+}
 
 function StudentDocuments() {
   const currentTerm = useCurrentTerm()
@@ -21,21 +31,44 @@ function StudentDocuments() {
   const [selectedFiles, setSelectedFiles] = useState([])
   const [driveLink, setDriveLink]     = useState('')
 
-  const fetchDocuments = () => {
-    setLoading(true)
-    setError(null)
+  const fetchDocuments = useCallback((opts = {}) => {
+    const silent = opts.silent === true
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
     api.get('/student/documents')
       .then(res => {
         setDocuments(unwrapList(res.data).items)
+        setError(null)
       })
       .catch(err => {
-        setError(err.response?.data?.message || 'Failed to load documents.')
-        setDocuments([])
+        if (!silent) {
+          setError(err.response?.data?.message || 'Failed to load documents.')
+          setDocuments([])
+        }
       })
-      .finally(() => setLoading(false))
-  }
+      .finally(() => {
+        if (!silent) setLoading(false)
+      })
+  }, [])
 
-  useEffect(() => { fetchDocuments() }, [])
+  useEffect(() => { fetchDocuments() }, [fetchDocuments])
+
+  useEffect(() => {
+    const refresh = () => fetchDocuments({ silent: true })
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('focus', refresh)
+    window.addEventListener('interntrack:document-reviewed', refresh)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('interntrack:document-reviewed', refresh)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [fetchDocuments])
 
   const triggerUpload = (type) => {
     setActiveType(type)
@@ -76,42 +109,14 @@ function StudentDocuments() {
     }
   }
 
-  const handleDownloadTemplate = async (templateId, name) => {
-    try {
-      const response = await api.get(`/student/requirements/${templateId}/template`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `${name}_template.pdf`)
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode.removeChild(link)
-    } catch (err) {
-      setMessage({ type: 'danger', text: 'Failed to download template.' })
-    }
-  }
-
-  const handlePreviewTemplate = async (templateId, name) => {
-    try {
-      const response = await api.get(`/student/requirements/${templateId}/template?preview=1`, { responseType: 'blob' })
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      window.open(url, '_blank')
-    } catch (err) {
-      if (err.response && err.response.status === 404) {
-        setMessage({ type: 'danger', text: 'Template file is missing on the server. Please contact your coordinator.' })
-      } else {
-        setMessage({ type: 'danger', text: 'Failed to preview template.' })
-      }
-    }
-  }
-
-  const completed = documents.filter(d => d.status === 'completed' || d.status === 'approved').length
+  const approved = documents.filter(d => d.status === 'completed' || d.status === 'approved').length
+  const pendingReview = documents.filter(d => REVIEWABLE.includes(d.status)).length
+  const needsAction = documents.filter(d => NEEDS_UPLOAD.includes(d.status)).length
   const total = documents.length
 
   return (
     <Layout title="Documents & Requirements" subtitle={currentTerm} icon="fa-folder-open" bodyClass="student-page">
-      {error && <PageError message={error} onRetry={fetchDocuments} />}
+      {error && <PageError message={error} onRetry={() => fetchDocuments()} />}
 
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
@@ -148,7 +153,7 @@ function StudentDocuments() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
-                <button type="submit" form="submissionForm" className="btn btn-primary" disabled={!!uploading || (!selectedFile && !driveLink)}>
+                <button type="submit" form="submissionForm" className="btn btn-primary" disabled={!!uploading || (selectedFiles.length === 0 && !driveLink)}>
                   <i className="fa fa-paper-plane me-1"></i> {uploading ? 'Submitting…' : 'Submit'}
                 </button>
               </div>
@@ -159,26 +164,48 @@ function StudentDocuments() {
 
       {/* Summary */}
       <div className="row g-3 mb-4">
-        <div className="col-sm-6">
+        <div className="col-sm-4">
           <div className="stat-card">
             <div className="stat-icon green"><i className="fa fa-circle-check"></i></div>
             <div>
-              <div className="stat-value">{completed} / {total}</div>
-              <div className="stat-label">Documents Submitted</div>
+              <div className="stat-value">{approved} / {total}</div>
+              <div className="stat-label">Approved</div>
             </div>
           </div>
         </div>
-        <div className="col-sm-6">
+        <div className="col-sm-4">
           <div className="stat-card">
-            <div className="stat-icon blue"><i className="fa fa-folder"></i></div>
+            <div className="stat-icon blue"><i className="fa fa-clock"></i></div>
             <div>
-              <div className="stat-value">{total - completed}</div>
-              <div className="stat-label">Pending Submission</div>
+              <div className="stat-value">{pendingReview}</div>
+              <div className="stat-label">Pending Review</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-4">
+          <div className="stat-card">
+            <div className="stat-icon"><i className="fa fa-upload"></i></div>
+            <div>
+              <div className="stat-value">{needsAction}</div>
+              <div className="stat-label">Needs Submission</div>
             </div>
           </div>
         </div>
       </div>
 
+      {loading && documents.length === 0 && !error && (
+        <div className="text-center py-5">
+          <i className="fa fa-spinner fa-spin fa-2x text-muted"></i>
+        </div>
+      )}
+
+      {!loading && documents.length === 0 && !error && (
+        <EmptyState
+          icon="fa-folder-open"
+          title="No requirements yet"
+          message="When your faculty or coordinator assigns documents, they will appear here."
+        />
+      )}
 
       {/* Documents Cards */}
       <div className="row g-4 mt-2">
@@ -186,7 +213,7 @@ function StudentDocuments() {
           const cfg = documentStatusConfig(doc.status)
 
           return (
-            <div className="col-12" key={doc.document_type}>
+            <div className="col-12" key={doc.template_id || doc.document_type || idx}>
               <div className="card border-0 shadow-sm rounded-4 h-100 transition-hover">
 
                 {/* Card Header: Title & Sender */}
@@ -228,7 +255,7 @@ function StudentDocuments() {
                               style={{ fontSize: '0.95rem' }}
                             >
                               <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
-                                <i className="fa fa-file-pdf text-danger fs-5"></i>
+                                <i className={`fa ${fileIcon(att.file_name)} fs-5`}></i>
                               </div>
                               <div>
                                 <div className="text-dark mb-0 text-truncate" style={{ maxWidth: '300px' }}>{att.file_name || `${doc.document_type} Template`}</div>
@@ -261,11 +288,11 @@ function StudentDocuments() {
                     </div>
                   )}
 
-                  {doc.attachments && doc.attachments.length > 0 && (
+                  {((doc.attachments && doc.attachments.length > 0) || doc.drive_link) && (
                       <div className="mb-4">
                         <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.8rem' }}>Your Submission</h6>
                         <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
-                          {doc.attachments.map(att => (
+                          {doc.attachments?.map(att => (
                             <AuthenticatedFileLink 
                               key={att.id}
                               path={att.file_path}
@@ -273,7 +300,7 @@ function StudentDocuments() {
                               style={{ fontSize: '0.95rem' }}
                             >
                               <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
-                                <i className="fa fa-file-image text-success fs-5"></i>
+                                <i className={`fa ${fileIcon(att.file_name)} fs-5`}></i>
                               </div>
                               <div>
                                 <div className="text-dark mb-0">{att.file_name || `${doc.document_type} Submission`}</div>
@@ -281,6 +308,23 @@ function StudentDocuments() {
                               </div>
                             </AuthenticatedFileLink>
                           ))}
+                          {doc.drive_link && (
+                            <a
+                              href={doc.drive_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-decoration-none d-flex align-items-center fw-medium"
+                              style={{ fontSize: '0.95rem' }}
+                            >
+                              <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
+                                <i className="fa fa-link text-primary fs-5"></i>
+                              </div>
+                              <div className="text-truncate">
+                                <div className="text-primary mb-0 text-truncate">{doc.drive_link}</div>
+                                <div className="text-muted small fw-normal">Submitted link</div>
+                              </div>
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}
@@ -316,7 +360,7 @@ function StudentDocuments() {
 
                 {/* Card Footer: Actions */}
                 <div className="card-footer bg-white border-top p-4 d-flex justify-content-end">
-                    {(doc.status === 'not_submitted' || doc.status === 'no_submission' || doc.status === 'rejected') && (
+                    {(NEEDS_UPLOAD.includes(doc.status)) && (
                       <button
                         className="btn btn-primary rounded-pill px-4 shadow-sm"
                         onClick={() => triggerUpload(doc.document_type)}

@@ -11,12 +11,20 @@ function SupervisorDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)
+  const [pendingInvites, setPendingInvites] = useState([])
+  const [inviteBusy, setInviteBusy] = useState(null)
 
   const load = () => {
     setLoading(true)
     setError(null)
-    api.get('/supervisor/dashboard')
-      .then(res => setData(res.data))
+    Promise.all([
+      api.get('/supervisor/dashboard'),
+      api.get('/supervisor/invites/pending').catch(() => ({ data: { invites: [] } })),
+    ])
+      .then(([dash, invitesRes]) => {
+        setData(dash.data)
+        setPendingInvites(invitesRes.data?.invites || [])
+      })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load supervisor dashboard.')
         setData(null)
@@ -24,11 +32,23 @@ function SupervisorDashboard() {
       .finally(() => setLoading(false))
   }
 
+  const respondInvite = async (id, action) => {
+    setInviteBusy(`${action}-${id}`)
+    try {
+      await api.post(`/supervisor/invites/${id}/${action}`)
+      load()
+    } catch (err) {
+      alert(err.response?.data?.message || `Failed to ${action} invitation.`)
+    } finally {
+      setInviteBusy(null)
+    }
+  }
+
   useEffect(() => { load() }, [])
 
   const activity = data?.recent_activity ?? []
   const profile = data?.profile ?? {}
-  const company = data?.company ?? {}
+  const companyName = data?.company_name || profile?.company?.company_name || 'No Company Assigned'
   const interns = data?.assigned_interns ?? []
   const evals = data?.completed_evaluations ?? []
 
@@ -41,6 +61,49 @@ function SupervisorDashboard() {
         <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
       ) : !error && (
         <>
+          {pendingInvites.length > 0 && (
+            <div className="content-card mb-4">
+              <div className="content-card-header">
+                <i className="fa fa-user-plus"></i>
+                <h6>Pending student invitations</h6>
+              </div>
+              <div className="p-3">
+                <p className="text-muted small mb-3">
+                  Accept to link the intern to this account, or decline if you are not their supervisor. Nothing is attached until you confirm.
+                </p>
+                {pendingInvites.map((inv) => (
+                  <div key={inv.id} className="d-flex flex-wrap align-items-center justify-content-between gap-3 border rounded p-3 mb-2">
+                    <div>
+                      <div className="fw-semibold">{inv.student_name}</div>
+                      <div className="text-muted small">
+                        {inv.company_name || 'Company TBD'}
+                        {inv.term ? ` · ${inv.term}` : ''}
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2">
+                      <button
+                        type="button"
+                        className="btn-green"
+                        disabled={!!inviteBusy}
+                        onClick={() => respondInvite(inv.id, 'accept')}
+                      >
+                        {inviteBusy === `accept-${inv.id}` ? 'Accepting…' : 'Accept'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger"
+                        disabled={!!inviteBusy}
+                        onClick={() => respondInvite(inv.id, 'decline')}
+                      >
+                        {inviteBusy === `decline-${inv.id}` ? 'Declining…' : 'Decline'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Profile Summary Card */}
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-body p-4 d-flex align-items-center">
@@ -51,7 +114,7 @@ function SupervisorDashboard() {
                 <h4 className="fw-bold mb-1">{profile?.first_name} {profile?.last_name}</h4>
                 <div className="text-muted">
                   <span className="me-3"><i className="fa fa-briefcase me-1"></i> {profile?.position || 'Supervisor'}</span>
-                  <span><i className="fa fa-building me-1"></i> {company?.company_name || 'No Company Assigned'}</span>
+                  <span><i className="fa fa-building me-1"></i> {companyName}</span>
                 </div>
               </div>
             </div>
@@ -162,6 +225,8 @@ function SupervisorDashboard() {
                     <tr>
                       <th className="ps-4">Student Name</th>
                       <th>Course</th>
+                      <th>Company</th>
+                      <th>Term</th>
                       <th>Internship Status</th>
                       <th>Hours Rendered</th>
                       <th>Midterm Eval</th>
@@ -170,11 +235,13 @@ function SupervisorDashboard() {
                   </thead>
                   <tbody>
                     {interns.length === 0 ? (
-                      <tr><td colSpan="6" className="text-center py-4 text-muted">No assigned interns found.</td></tr>
+                      <tr><td colSpan="8" className="text-center py-4 text-muted">No assigned interns found.</td></tr>
                     ) : interns.map(intern => (
                       <tr key={intern.id}>
                         <td className="ps-4 fw-semibold">{intern.student}</td>
                         <td><small className="text-muted">{intern.course}</small></td>
+                        <td><small className="text-muted">{intern.company || '—'}</small></td>
+                        <td><small className="text-muted">{intern.term || '—'}</small></td>
                         <td>
                           <span className={`badge bg-${intern.status === 'completed' ? 'success' : intern.status === 'ongoing' ? 'primary' : 'secondary'}`}>
                             {intern.status}

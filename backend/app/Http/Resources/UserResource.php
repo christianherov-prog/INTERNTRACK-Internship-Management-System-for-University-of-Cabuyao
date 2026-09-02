@@ -84,9 +84,11 @@ class UserResource extends JsonResource
             'email'       => $email,
             'contact'     => $contact,
             'program'     => $program,
+            'program_code'=> $this->studentProfile?->program?->code ?? '',
             'course_description' => $this->studentProfile?->course_description ?? '',
             'position'    => $profile?->position ?? '',
             'company'     => $this->resolveCompany(),
+            'company_id'  => $this->role === 'supervisor' ? $this->supervisorProfile?->company_id : null,
             'sex'         => $this->resolveSex($profile),
             'sex_editable'=> SexOptions::isEditableRole($this->role),
 
@@ -137,12 +139,18 @@ class UserResource extends JsonResource
 
     private function resolveCompany(): string
     {
-        $company = $this->activeInternship?->company?->company_name ?? '';
-
-        if ($this->role === 'supervisor' && $company === '') {
+        if ($this->role === 'supervisor') {
+            $fromProfile = $this->supervisorProfile?->company?->company_name;
+            if ($fromProfile) {
+                return $fromProfile;
+            }
             $supervised = $this->internshipsSupervised()->with('company')->latest()->first();
-            $company = $supervised?->company?->company_name ?? '';
+            if ($supervised?->company?->company_name) {
+                return $supervised->company->company_name;
+            }
         }
+
+        $company = $this->activeInternship?->company?->company_name ?? '';
 
         return $company;
     }
@@ -202,13 +210,24 @@ class UserResource extends JsonResource
 
     private function resolveSubtitle(mixed $profile): string
     {
-        $coordinatorPrefix = 'CCS Coordinator';
+        $coordinatorPrefix = 'Practicum Coordinator';
         if ($this->role === 'coordinator') {
-            $departmentName = $this->facultyProfile?->department;
-            if (stripos($departmentName, 'Computing') !== false || stripos($departmentName, 'CCS') !== false) {
+            $department = $this->facultyProfile?->department;
+            $departmentName = is_object($department) ? (string) ($department->name ?? '') : (string) $department;
+            $departmentCode = is_object($department) ? (string) ($department->code ?? '') : '';
+            $haystack = $departmentName.' '.$departmentCode;
+            if (stripos($haystack, 'Computing') !== false || strcasecmp($departmentCode, 'CCS') === 0) {
                 $coordinatorPrefix = 'CCS Coordinator';
-            } elseif (stripos($departmentName, 'Engineering') !== false || stripos($departmentName, 'COE') !== false) {
+            } elseif (stripos($haystack, 'Engineering') !== false || strcasecmp($departmentCode, 'COE') === 0) {
                 $coordinatorPrefix = 'COE Coordinator';
+            } elseif (stripos($haystack, 'Education') !== false || strcasecmp($departmentCode, 'COED') === 0) {
+                $coordinatorPrefix = 'COED Coordinator';
+            } elseif (stripos($haystack, 'Health') !== false || strcasecmp($departmentCode, 'CHAS') === 0) {
+                $coordinatorPrefix = 'CHAS Coordinator';
+            } elseif (stripos($haystack, 'Arts and Sciences') !== false || strcasecmp($departmentCode, 'CAS') === 0) {
+                $coordinatorPrefix = 'CAS Coordinator';
+            } elseif (stripos($haystack, 'Business') !== false || strcasecmp($departmentCode, 'CBAA') === 0) {
+                $coordinatorPrefix = 'CBAA Coordinator';
             }
         }
 

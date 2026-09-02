@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
+import { InternTrackMark, LOGO_SUBTITLE } from '../components/InternTrackLogo'
 
 function LoginPage() {
   const [studentNumber, setStudentNumber] = useState('')
@@ -136,10 +137,9 @@ function LoginPage() {
         </div>
         <div className="login-left-content">
           <h1 className="login-left-title">
-            <span className="brand-intern">INTERN</span>
-            <span className="brand-track">TRACK</span>
+            <InternTrackMark variant="dark" className="login-hero-mark" />
           </h1>
-          <p className="login-left-subtitle">Internship Management System</p>
+          <p className="login-left-subtitle">{LOGO_SUBTITLE}</p>
           <p className="login-left-university">UNIVERSITY OF CABUYAO</p>
         </div>
       </div>
@@ -150,10 +150,9 @@ function LoginPage() {
             {/* INTERNTRACK Branding is clearly dominant at the top */}
             <div className="login-logo-section mb-3">
               <h1 className="login-app-title">
-                <span className="brand-intern">INTERN</span>
-                <span className="brand-track">TRACK</span>
+                <InternTrackMark variant="light" className="login-app-mark" />
               </h1>
-              <p className="login-app-subtitle">Internship Management System</p>
+              <p className="login-app-subtitle">{LOGO_SUBTITLE}</p>
             </div>
 
             {/* University context is smaller and subdued below the main brand */}

@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\DtrPdfController;
 use App\Http\Controllers\Api\JournalPdfController;
 use App\Http\Controllers\Api\PortfolioPdfController;
 use App\Http\Controllers\Api\StudentPortfolioController;
+use App\Http\Controllers\Api\AcademicStructureController;
 
 
 
@@ -79,6 +80,9 @@ Route::prefix('v1')->group(function () {
 
         // Role-aware dashboard summary (all portal roles including MISD admin)
         Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
+
+        Route::get('/academic/departments', [AcademicStructureController::class, 'departments']);
+        Route::get('/academic/programs', [AcademicStructureController::class, 'programs']);
 
         // Notifications — shared across all roles
         Route::get('/notifications',                [NotificationController::class, 'index']);
@@ -161,6 +165,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/feedback',                       [SupervisorController::class, 'feedback']);
             Route::post('/feedback/{internshipId}',       [SupervisorController::class, 'submitFeedback']);
             Route::get('/absorption',                     [SupervisorController::class, 'absorptionList']);
+            Route::get('/companies',                      [SupervisorController::class, 'companies']);
+            Route::get('/invites/pending',                [SupervisorRegistrationController::class, 'pendingInvites']);
+            Route::post('/invites/bind',                  [SupervisorRegistrationController::class, 'bindInvite']);
+            Route::post('/invites/{id}/accept',           [SupervisorRegistrationController::class, 'acceptInvite']);
+            Route::post('/invites/{id}/decline',          [SupervisorRegistrationController::class, 'declineInvite']);
+            Route::post('/internships/{id}/end-supervision', [SupervisorController::class, 'endSupervision']);
             // Absorption finalize is Director-only; stub route removed from supervisor API surface.
 
             // PDF generation for supervisor

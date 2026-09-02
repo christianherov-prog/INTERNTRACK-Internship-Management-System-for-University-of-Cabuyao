@@ -17,8 +17,6 @@ function StudentAttendance({ embedded = false }) {
   const [error, setError]         = useState(null)
   const [clocking, setClocking]   = useState(false)
   const [message, setMessage]     = useState(null)
-  const [generatingDtr, setGeneratingDtr] = useState(false)
-  const [dtrMonth, setDtrMonth]   = useState(() => new Date().toISOString().slice(0, 7))
 
   const fetchAttendance = () => {
     setLoading(true)
@@ -82,24 +80,12 @@ function StudentAttendance({ embedded = false }) {
       {error && <PageError message={error} onRetry={fetchAttendance} />}
 
       <div className="content-card mb-4">
-        <div className="content-card-header">
+        <div className="content-card-header flex-wrap">
           <i className="fa fa-fingerprint"></i>
           <h6>Daily Time Record</h6>
-          <span className="ms-auto text-muted" style={{ fontSize: '0.85rem' }}>
+          <span className="ms-auto" style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </span>
-          {/* DTR PDF Download */}
-          <div className="d-flex align-items-center gap-2 ms-3">
-            <input
-              type="month"
-              className="form-control form-control-sm"
-              style={{ width: 150 }}
-              value={dtrMonth}
-              onChange={e => setDtrMonth(e.target.value)}
-              title="Select month to generate DTR"
-            />
-            
-          </div>
         </div>
         <div className="p-4 text-center">
           {message && <div className={`alert alert-${message.type} mb-3`}>{message.text}</div>}

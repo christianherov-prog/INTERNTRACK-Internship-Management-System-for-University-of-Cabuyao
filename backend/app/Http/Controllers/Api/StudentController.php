@@ -12,6 +12,7 @@ use App\Services\AbsorptionService;
 use App\Services\CertificateEligibilityService;
 use App\Support\ApiResponse;
 use App\Support\RequiredDocuments;
+use App\Support\RequirementAudience;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -405,38 +406,12 @@ class StudentController extends Controller
     {
         $internship = $this->internship($request);
         $user = $request->user();
-        $profile = $user->studentProfile;
 
-        // Collect student's targets
-        $studentTargets = [
-            ['type' => 'student', 'id' => (string) $user->id]
-        ];
-
-        if ($profile) {
-            if ($profile->section) {
-                $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
-            }
-            $program = $profile->program?->name ?: 'Bachelor of Science in Information Technology';
-            if ($program) {
-                $studentTargets[] = ['type' => 'program', 'id' => $program];
-            }
-        }
-
-        // Fetch templates that have a matching target or are global
-        $templates = \App\Models\OjtRequirementTemplate::where('is_active', true)
-            ->with(['creator.facultyProfile', 'creator.supervisorProfile', 'creator.studentProfile', 'attachments'])
-            ->where(function($query) use ($studentTargets) {
-                $query->whereHas('targets', function($q) use ($studentTargets) {
-                    $q->where(function($subQ) use ($studentTargets) {
-                        foreach($studentTargets as $target) {
-                            $subQ->orWhere(function($targetQ) use ($target) {
-                                $targetQ->where('target_type', $target['type'])
-                                        ->where('target_id', $target['id']);
-                            });
-                        }
-                    });
-                })->orDoesntHave('targets');
-            })
+        $templates = RequirementAudience::scopeTemplatesForStudent(
+            \App\Models\OjtRequirementTemplate::where('is_active', true)
+                ->with(['creator.facultyProfile', 'creator.supervisorProfile', 'creator.studentProfile', 'attachments']),
+            $user
+        )
             ->orderBy('sort_order')
             ->get();
 
@@ -511,36 +486,11 @@ class StudentController extends Controller
     public function uploadDocument(Request $request)
     {
         $user = $request->user();
-        $profile = $user->studentProfile;
 
-        // Collect student's targets to scope valid requirements
-        $studentTargets = [
-            ['type' => 'student', 'id' => (string) $user->id]
-        ];
-
-        if ($profile) {
-            if ($profile->section) {
-                $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
-            }
-            $program = $profile->program?->name ?: 'Bachelor of Science in Information Technology';
-            if ($program) {
-                $studentTargets[] = ['type' => 'program', 'id' => $program];
-            }
-        }
-
-        $templates = \App\Models\OjtRequirementTemplate::where('is_active', true)
-            ->where(function($query) use ($studentTargets) {
-                $query->whereHas('targets', function($q) use ($studentTargets) {
-                    $q->where(function($subQ) use ($studentTargets) {
-                        foreach($studentTargets as $target) {
-                            $subQ->orWhere(function($targetQ) use ($target) {
-                                $targetQ->where('target_type', $target['type'])
-                                        ->where('target_id', $target['id']);
-                            });
-                        }
-                    });
-                })->orDoesntHave('targets');
-            })->get()->keyBy('name');
+        $templates = RequirementAudience::scopeTemplatesForStudent(
+            \App\Models\OjtRequirementTemplate::where('is_active', true)->with('creator'),
+            $user
+        )->get()->keyBy('name');
 
         $validTypes = $templates->keys()->toArray();
 
@@ -561,13 +511,14 @@ class StudentController extends Controller
         }
 
         $internship = $this->internship($request);
-        
+        $reviewStage = $template?->creator?->role === 'faculty' ? 'faculty' : 'coordinator';
+
         $existing = $internship->documents()->where('document_type', $request->document_type)->first();
 
         if ($existing) {
             $updateData = [
                 'status'        => 'pending',
-                'current_stage' => 'coordinator',
+                'current_stage' => $reviewStage,
                 'submitted_at'  => now(),
                 'remarks'       => null,
             ];
@@ -583,12 +534,20 @@ class StudentController extends Controller
                 'document_type' => $request->document_type,
                 'drive_link'    => $request->drive_link,
                 'status'        => 'pending',
-                'current_stage' => 'coordinator',
+                'current_stage' => $reviewStage,
                 'submitted_at'  => now(),
             ]);
         }
 
         if ($request->hasFile('files')) {
+            $doc->load('attachments');
+            foreach ($doc->attachments as $old) {
+                if ($old->file_path) {
+                    Storage::disk('local')->delete($old->file_path);
+                }
+                $old->delete();
+            }
+
             foreach ($request->file('files') as $file) {
                 $doc->attachments()->create([
                     'file_path' => $file->store("internships/{$internship->id}/documents", 'local'),
@@ -600,6 +559,27 @@ class StudentController extends Controller
         }
 
         audit_log($request->user()->id, 'upload_document', ['type' => $request->document_type]);
+
+        if ($template?->created_by && (int) $template->created_by !== (int) $user->id) {
+            $creator = $template->creator;
+            $reviewPath = $creator?->isCoordinator()
+                ? '/coordinator/requirements'
+                : '/faculty/requirements';
+            $studentName = $user->profile_name ?: ($user->student_number ?? 'A student');
+
+            Notification::notify(
+                (int) $template->created_by,
+                'document_pending_faculty',
+                'New document submitted',
+                "{$studentName} submitted \"{$request->document_type}\".",
+                $reviewPath,
+                [
+                    'document_id' => $doc->id,
+                    'document_type' => $request->document_type,
+                    'student_id' => $user->id,
+                ]
+            );
+        }
 
         return response()->json(['message' => 'Document uploaded successfully.', 'document' => $doc->load('attachments')], 201);
     }

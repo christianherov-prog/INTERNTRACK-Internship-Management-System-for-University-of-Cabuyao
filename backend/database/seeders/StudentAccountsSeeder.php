@@ -176,11 +176,39 @@ class StudentAccountsSeeder extends Seeder
                 ],
                 'internship'     => null, // fresh / pending_placement
             ],
+            [
+                'student_number' => '2300608',
+                'email'          => 'coe.cpe@uc.edu.ph',
+                'profile'        => [
+                    'student_number'    => '2300608',
+                    'first_name'        => 'COE',
+                    'middle_name'       => null,
+                    'last_name'         => 'Computer Engineering',
+                    'email'             => 'coe.cpe@uc.edu.ph',
+                    'contact_number'    => '09175550608',
+                    'sex'               => 'Male',
+                    'program'           => 'Bachelor of Science in Computer Engineering',
+                    'department'        => 'College of Engineering',
+                    'year_level'        => 4,
+                    'section'           => '4BSCPE-A',
+                    'school_year'       => '2025-2026',
+                    'semester'          => '2nd Semester',
+                    'enrollment_status' => 'Enrolled',
+                ],
+                'internship'     => null,
+            ],
         ];
 
         foreach ($students as $row) {
-            $departmentId = $this->ensureDepartment($row['profile']['department']);
-            $programId = $this->ensureProgram($row['profile']['program'], $departmentId);
+            $departmentId = $this->ensureDepartment(
+                $row['profile']['department'],
+                $this->departmentCode($row['profile']['department'])
+            );
+            $programId = $this->ensureProgram(
+                $row['profile']['program'],
+                $departmentId,
+                $this->programCode($row['profile']['program'])
+            );
 
             // Username for students = student_number
             $user = User::withTrashed()->updateOrCreate(
@@ -253,5 +281,39 @@ class StudentAccountsSeeder extends Seeder
         $this->command?->info('  2300600 (Christian Valinado) — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300590 (John Taac-Taac)     — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300592 (Clarence Montealegre) — interntrack123 (Populated: TechCorp PH)');
+        $this->command?->info('  2300601 (COED Student)       — interntrack123 (Fresh/Pending)');
+        $this->command?->info('  2300602 (COE Civil Eng)      — interntrack123 (Fresh/Pending)');
+        $this->command?->info('  2300608 (COE CpE)            — interntrack123 (Fresh/Pending)');
+    }
+
+    private function departmentCode(string $name): ?string
+    {
+        return match ($name) {
+            'College of Computing Studies' => 'CCS',
+            'College of Education' => 'COED',
+            'College of Engineering' => 'COE',
+            'College of Health and Allied Sciences' => 'CHAS',
+            'College of Arts and Sciences' => 'CAS',
+            'College of Business, Accountancy and Administration' => 'CBAA',
+            default => null,
+        };
+    }
+
+    private function programCode(string $name): ?string
+    {
+        return match ($name) {
+            'Bachelor of Science in Information Technology' => 'BSIT',
+            'Bachelor of Science in Computer Science' => 'BSCS',
+            'Bachelor of Secondary Education' => 'BSED',
+            'Bachelor of Elementary Education' => 'BEED',
+            'Bachelor of Science in Civil Engineering' => 'BSCE',
+            'Bachelor of Science in Computer Engineering' => 'BSCPE',
+            'Bachelor of Science in Nursing' => 'BSN',
+            'Bachelor of Science in Psychology' => 'BSPSY',
+            'Bachelor of Science in Business Administration major in Marketing Management' => 'BSBAMM',
+            'Bachelor of Science in Business Administration major in Financial Management' => 'BSBAFM',
+            'Bachelor of Science in Accountancy' => 'BSA',
+            default => null,
+        };
     }
 }

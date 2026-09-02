@@ -162,8 +162,19 @@ class AuthController extends Controller
     /** PUT /api/v1/auth/profile */
     public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
+        $user = $request->user();
+
+        if ($user->role !== 'supervisor') {
+            return response()->json([
+                'message' => 'Profile updates are disabled. Identity fields are managed entirely by iEnroll.',
+            ], 403);
+        }
+
+        $user = $this->auth->updateProfile($user, $request->validated());
+
         return response()->json([
-            'message' => 'Profile updates are disabled. Identity fields are managed entirely by iEnroll.',
-        ], 403);
+            'message' => 'Profile updated.',
+            'user'    => new UserResource($user),
+        ]);
     }
 }

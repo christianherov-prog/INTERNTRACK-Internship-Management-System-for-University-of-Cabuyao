@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { InternTrackMark } from '../../components/InternTrackLogo'
 
 function ChangePasswordConfirmPage() {
   const [searchParams] = useSearchParams()
@@ -64,8 +65,8 @@ function ChangePasswordConfirmPage() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0d1b40 0%, #1a3a6b 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ width: '100%', maxWidth: '480px' }}>
         <div className="text-center mb-4">
-          <h1 style={{ color: '#fff', fontWeight: 700, fontSize: '1.6rem' }}>
-            <span style={{ color: '#4fc3f7' }}>INTERN</span>TRACK
+          <h1 className="text-center mb-0">
+            <InternTrackMark variant="dark" className="public-wordmark" />
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem' }}>Secure Password Confirmation</p>
         </div>

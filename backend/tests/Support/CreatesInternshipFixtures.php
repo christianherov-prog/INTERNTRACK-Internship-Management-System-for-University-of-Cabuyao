@@ -3,8 +3,10 @@
 namespace Tests\Support;
 
 use App\Models\Company;
+use App\Models\Department;
 use App\Models\FacultySectionAssignment;
 use App\Models\Internship;
+use App\Models\Program;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -23,19 +25,27 @@ trait CreatesInternshipFixtures
     protected function makeStudentWithSection(string $section = '4ITD'): User
     {
         $student = $this->makeUser('student', '20'.fake()->unique()->numerify('##-#####'));
+        $department = Department::firstOrCreate(
+            ['code' => 'CCS'],
+            ['name' => 'College of Computer Studies', 'is_active' => true]
+        );
+        $program = Program::firstOrCreate(
+            ['name' => 'Bachelor of Science in Information Technology'],
+            ['code' => 'BSIT', 'department_id' => $department->id, 'is_active' => true]
+        );
         StudentProfile::create([
             'user_id' => $student->id,
             'student_number' => $student->student_number,
             'first_name' => 'Test',
             'last_name' => 'Student',
-            'program' => 'BSIT',
-            'course_name' => 'BSIT',
+            'department_id' => $department->id,
+            'program_id' => $program->id,
             'section' => $section,
             'school_year' => '2024-2025',
             'semester' => 2,
         ]);
 
-        return $student->fresh('studentProfile');
+        return $student->fresh('studentProfile.program');
     }
 
     protected function mapFacultyForSection(User $faculty, string $section = '4ITD'): FacultySectionAssignment

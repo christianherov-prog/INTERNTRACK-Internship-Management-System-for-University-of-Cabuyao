@@ -117,6 +117,49 @@ class FacultySectionAssignmentSeeder extends Seeder
             }
         }
 
+        $this->assignCollegeFacultySections($ay, $sem);
+
         $this->command?->info('✅ Faculty section assignments seeded. Login: username=FAC-1001, password=interntrack123');
+    }
+
+    private function assignCollegeFacultySections(string $ay, string $sem): void
+    {
+        $maps = [
+            'FAC-CCS-001' => [
+                ['section' => '4IT-A', 'program' => 'Bachelor of Science in Information Technology'],
+                ['section' => '4IT-B', 'program' => 'Bachelor of Science in Information Technology'],
+                ['section' => '4IT-C', 'program' => 'Bachelor of Science in Information Technology'],
+                ['section' => '4IT-D', 'program' => 'Bachelor of Science in Information Technology'],
+            ],
+            'FAC-COED-001' => [
+                ['section' => '4BSED-A', 'program' => 'Bachelor of Secondary Education'],
+            ],
+            'FAC-COE-001' => [
+                ['section' => '4BSCE-A', 'program' => 'Bachelor of Science in Civil Engineering'],
+                ['section' => '4BSCPE-A', 'program' => 'Bachelor of Science in Computer Engineering'],
+            ],
+        ];
+
+        foreach ($maps as $facultyNumber => $rows) {
+            $user = User::where('faculty_number', $facultyNumber)->first();
+            if (!$user) {
+                continue;
+            }
+
+            foreach ($rows as $row) {
+                FacultySectionAssignment::updateOrCreate(
+                    [
+                        'section' => $row['section'],
+                        'school_year' => $ay,
+                        'semester' => $sem,
+                    ],
+                    [
+                        'faculty_user_id' => $user->id,
+                        'program' => $row['program'],
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
     }
 }

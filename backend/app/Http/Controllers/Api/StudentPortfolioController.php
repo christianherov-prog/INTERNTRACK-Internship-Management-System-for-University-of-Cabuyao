@@ -46,7 +46,7 @@ class StudentPortfolioController extends Controller
         ]);
 
         $internship = $this->getInternship($request);
-        $internship->load(['company', 'portfolio', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile', 'student.studentProfile']);
+        $internship->load(['company', 'portfolio', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile', 'student.studentProfile.program', 'student.studentProfile.department']);
 
         $portfolio = $internship->portfolio;
         $companyName = $internship->company?->company_name ?? ($internship->company?->name ?? 'Host Establishment');
@@ -167,7 +167,7 @@ class StudentPortfolioController extends Controller
         return response()->json([
             'portfolio' => $portfolioData,
             'internship' => $internshipData,
-            'user' => ($request->user() ?? auth()->user())?->load('studentProfile'),
+            'user' => ($request->user() ?? auth()->user())?->load(['studentProfile.program', 'studentProfile.department']),
             'stats' => [
                 'journals_count' => $journals->count(),
                 'dtr_count' => AttendanceLog::where('internship_id', $internship->id)->count(),
@@ -194,25 +194,57 @@ class StudentPortfolioController extends Controller
         $assessmentRecommendations = $request->input('assessment_recommendations', $request->input('recommendations'));
         $assessmentAdvice = $request->input('assessment_advice', $request->input('advice'));
 
-        $customFields = $request->input('custom_fields', []);
+        $existing = StudentPortfolio::where('internship_id', $internship->id)->first();
+        $customFields = $existing?->custom_fields;
+        if (! is_array($customFields)) {
+            $customFields = [];
+        }
+        if ($request->exists('custom_fields')) {
+            $incoming = $request->input('custom_fields', []);
+            if (! is_array($incoming)) {
+                $incoming = [];
+            }
+            $mergedSpecial = false;
+            foreach (['psychology', 'nursing'] as $bucket) {
+                if (isset($incoming[$bucket])) {
+                    $customFields[$bucket] = $incoming[$bucket];
+                    $mergedSpecial = true;
+                }
+            }
+            if (! $mergedSpecial) {
+                $customFields = $incoming;
+            }
+        }
+
+        $payload = [
+            'user_id' => $internship->student_id,
+            'custom_fields' => $customFields,
+        ];
+        if ($request->exists('company_name')) {
+            $payload['company_name'] = $request->input('company_name', $internship->company?->company_name ?? 'Host Establishment');
+        } elseif (! $existing) {
+            $payload['company_name'] = $internship->company?->company_name ?? 'Host Establishment';
+        }
+        if ($request->exists('company_address')) {
+            $payload['company_address'] = $request->input('company_address', $internship->company?->address ?? '');
+        }
+        if ($request->exists('company_vision') || $request->exists('company_mission') || $request->exists('company_history') || $request->exists('company_background')) {
+            $payload['company_vision'] = $request->input('company_vision');
+            $payload['company_mission'] = $request->input('company_mission');
+            $payload['company_history'] = $companyHistory;
+        }
+        if ($request->exists('assessment_ethical') || $request->exists('prof_ethical_responsibilities')) {
+            $payload['assessment_ethical'] = $assessmentEthical;
+            $payload['assessment_learnings'] = $assessmentLearnings;
+            $payload['assessment_experience'] = $assessmentExperience;
+            $payload['assessment_standards'] = $assessmentStandards;
+            $payload['assessment_recommendations'] = $assessmentRecommendations;
+            $payload['assessment_advice'] = $assessmentAdvice;
+        }
 
         $portfolio = StudentPortfolio::updateOrCreate(
             ['internship_id' => $internship->id],
-            [
-                'user_id' => $internship->student_id,
-                'company_name' => $request->input('company_name', $internship->company?->company_name ?? 'Host Establishment'),
-                'company_address' => $request->input('company_address', $internship->company?->address ?? ''),
-                'company_vision' => $request->input('company_vision'),
-                'company_mission' => $request->input('company_mission'),
-                'company_history' => $companyHistory,
-                'assessment_ethical' => $assessmentEthical,
-                'assessment_learnings' => $assessmentLearnings,
-                'assessment_experience' => $assessmentExperience,
-                'assessment_standards' => $assessmentStandards,
-                'assessment_recommendations' => $assessmentRecommendations,
-                'assessment_advice' => $assessmentAdvice,
-                'custom_fields' => $customFields,
-            ]
+            $payload
         );
 
         return response()->json([

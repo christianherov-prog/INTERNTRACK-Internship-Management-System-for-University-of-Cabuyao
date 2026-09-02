@@ -77,11 +77,24 @@ function NotificationBell() {
   const [liveStatus, setLiveStatus]       = useState('polling')
   const dropRef                           = useRef(null)
   const pollRef                           = useRef(null)
+  const seenNotifIdsRef                   = useRef(new Set())
 
   const fetchNotifs = () => {
     api.get('/notifications')
       .then(res => {
-        setNotifications(unwrapList(res.data).items)
+        const items = unwrapList(res.data).items
+        const seen = seenNotifIdsRef.current
+        const isFirstLoad = seen.size === 0
+        if (!isFirstLoad) {
+          const hasReviewUpdate = items.some((n) =>
+            !seen.has(n.id) && (n.type === 'document_approved' || n.type === 'document_rejected')
+          )
+          if (hasReviewUpdate) {
+            window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
+          }
+        }
+        seenNotifIdsRef.current = new Set(items.map((n) => n.id))
+        setNotifications(items)
         setUnread(res.data.unread_count ?? 0)
       })
       .catch(() => {}) // silent fail
@@ -97,6 +110,10 @@ function NotificationBell() {
         return [payload, ...prev].slice(0, 30)
       })
       setUnread((u) => u + 1)
+      if (payload?.id) seenNotifIdsRef.current.add(payload.id)
+      if (payload?.type === 'document_approved' || payload?.type === 'document_rejected') {
+        window.dispatchEvent(new CustomEvent('interntrack:document-reviewed', { detail: payload }))
+      }
     })
 
     const startPoll = () => {
@@ -136,6 +153,9 @@ function NotificationBell() {
       setUnread(u => Math.max(0, u - 1))
     }
     setOpen(false)
+    if (n.type === 'document_approved' || n.type === 'document_rejected') {
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed', { detail: n }))
+    }
     if (n.link) {
       if (n.link.startsWith('http://') || n.link.startsWith('https://')) {
         window.location.href = n.link

@@ -87,7 +87,7 @@ export function PageHeader({ companyLogoPath }) {
       {/* Left Side: University Logo */}
       <div style={styles.sideCol}>
         <img
-          src="/images/ccs-logo.png"
+          src="/images/pnc-logo.png"
           alt="UC Logo"
           style={{
             width: "78px",

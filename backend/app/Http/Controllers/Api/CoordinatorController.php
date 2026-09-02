@@ -262,7 +262,8 @@ class CoordinatorController extends Controller
         $coordinatorReqs = \App\Models\OjtRequirementTemplate::where('created_by', $coordId)->pluck('name');
 
         $docs = \App\Models\Document::whereIn('document_type', $coordinatorReqs)
-            ->with(['internship.student.studentProfile'])
+            ->with(['internship.student.studentProfile', 'attachments'])
+            ->whereIn('status', ['pending', 'pending_review', 'under_review', 'pending_faculty', 'resubmitted'])
             ->orderByDesc('submitted_at')
             ->paginate(25);
 
@@ -362,7 +363,7 @@ class CoordinatorController extends Controller
     public function placementOptions(Request $request)
     {
         $companies = Company::where('moa_status', 'active')->get();
-        $faculty = User::where('role', 'faculty')->with('facultyProfile')->get();
+        $faculty = User::whereIn('role', ['faculty', 'coordinator'])->with('facultyProfile')->get();
         $supervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
 
         $sections = \App\Services\FacultySectionAssignmentService::SECTIONS;
@@ -771,7 +772,7 @@ class CoordinatorController extends Controller
 
         // Faculty options for filter dropdown
         $facultyOptions = \App\Models\User::inDepartment()
-            ->where('role', 'faculty')
+            ->whereIn('role', ['faculty', 'coordinator'])
             ->with('facultyProfile')
             ->get()
             ->map(fn($f) => [

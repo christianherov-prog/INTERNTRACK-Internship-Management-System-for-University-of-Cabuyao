@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\Internship;
 use App\Support\InternshipAccess;
+use App\Support\RequirementAudience;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -93,6 +94,34 @@ class SecureFileController extends Controller
             return;
         }
 
+        if (str_starts_with($path, 'requirement_templates/')) {
+            if ($this->studentCanAccessRequirementTemplateFile($user, $path)) {
+                return;
+            }
+
+            abort(403, 'You do not have access to this file.');
+        }
+
         abort(403, 'You do not have access to this file.');
+    }
+
+    private function studentCanAccessRequirementTemplateFile($user, string $path): bool
+    {
+        if ($user->role !== 'student') {
+            return false;
+        }
+
+        $attachment = \App\Models\RequirementTemplateAttachment::with('requirementTemplate.targets')
+            ->where('file_path', $path)
+            ->first();
+
+        $template = $attachment?->requirementTemplate
+            ?? \App\Models\OjtRequirementTemplate::with('targets')->where('template_file_path', $path)->first();
+
+        if (!$template || !$template->is_active) {
+            return false;
+        }
+
+        return RequirementAudience::studentCanAccessTemplate($user, $template);
     }
 }

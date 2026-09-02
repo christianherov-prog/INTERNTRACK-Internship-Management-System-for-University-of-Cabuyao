@@ -117,7 +117,7 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
 
       <div style={{ position: 'relative', textAlign: 'center', marginBottom: '10px', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-60%)', width: '75px', height: '75px', left: '0' }}>
-          <img src="/images/ccs-logo.png" alt="University of Cabuyao Logo" style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
+          <img src="/images/pnc-logo.png" alt="University of Cabuyao Logo" style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
         </div>
         <div style={{ fontSize: '9.5pt' }}>Republic of the Philippines</div>
         <div style={{ fontSize: '22pt', fontWeight: 'bold', fontFamily: '"Old English Text MT", serif', color: '#004d00', lineHeight: '1', margin: '0' }}>
@@ -253,7 +253,7 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
 
       <div style={{ position: 'relative', textAlign: 'center', marginBottom: '12px', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ position: 'absolute', top: '50%', left: '0px', transform: 'translateY(-50%)', width: '75px', height: '75px' }}>
-          <img src="/images/ccs-logo.png" alt="University of Cabuyao Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src="/images/pnc-logo.png" alt="University of Cabuyao Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div style={{ fontSize: '9.5pt', lineHeight: '1' }}>Republic of the Philippines</div>
         <div style={{ fontSize: '22pt', fontWeight: 'bold', fontFamily: '"Old English Text MT", serif', color: '#004d00', lineHeight: '1', margin: '2px 0' }}>
@@ -421,7 +421,7 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
 
       <div style={{ position: 'relative', textAlign: 'center', marginBottom: '12px', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '0', width: '75px', height: '75px' }}>
-          <img src="/images/ccs-logo.png" alt="University of Cabuyao Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src="/images/pnc-logo.png" alt="University of Cabuyao Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div style={{ fontSize: '9.5pt', lineHeight: '1' }}>Republic of the Philippines</div>
         <div style={{ fontSize: '22pt', fontWeight: 'bold', fontFamily: '"Old English Text MT", serif', color: '#004d00', lineHeight: '1', margin: '2px 0' }}>Pamantasan ng Cabuyao</div>
@@ -581,7 +581,7 @@ export const PrintFO23 = ({ evalData, internship, tocId }) => {
       </div>
       <div style={{ position: 'relative', textAlign: 'center', marginBottom: '12px', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-60%)', width: '75px', height: '75px', left: '0' }}>
-          <img src="/images/ccs-logo.png" alt="University of Cabuyao Logo" style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
+          <img src="/images/pnc-logo.png" alt="University of Cabuyao Logo" style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
         </div>
         <div style={{ fontSize: '9.5pt', lineHeight: '1' }}>Republic of the Philippines</div>
         <div style={{ fontSize: '22pt', fontWeight: 'bold', fontFamily: '"Old English Text MT", serif', color: '#004d00', lineHeight: '1', margin: '2px 0' }}>University of Cabuyao</div>

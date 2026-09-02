@@ -61,7 +61,7 @@ api.interceptors.response.use(
       window.location.href = '/'
     }
 
-    if (status === 403) {
+    if (status === 403 && !requestUrl.includes('/files/download')) {
       const detail = error.response?.data?.message || 'Access Denied: You do not have permission to access this resource.'
       window.dispatchEvent(new CustomEvent('access-denied', { detail }))
     }

@@ -264,7 +264,7 @@ class DirectorController extends Controller
     public function placementOptions(Request $request)
     {
         $companies = Company::where('moa_status', 'active')->get();
-        $faculty = User::where('role', 'faculty')->with('facultyProfile')->get();
+        $faculty = User::whereIn('role', ['faculty', 'coordinator'])->with('facultyProfile')->get();
         $supervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
 
         return response()->json([

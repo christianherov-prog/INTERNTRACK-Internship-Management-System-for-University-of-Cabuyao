@@ -32,8 +32,10 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>🎓 InternTrack</h1>
-            <p>Internship Management System</p>
+            <div style="font-family: Arial Black, Arial, Helvetica, sans-serif; font-weight: 900; font-size: 22px; letter-spacing: 0.5px; line-height: 1;">
+                <span style="color: #c5cae9;">INTERN</span><span style="color: #ffffff;">TRACK</span>
+            </div>
+            <p>Internship Monitoring &amp; Documentation System</p>
         </div>
         <div class="body">
             <span class="badge">System Notification</span>

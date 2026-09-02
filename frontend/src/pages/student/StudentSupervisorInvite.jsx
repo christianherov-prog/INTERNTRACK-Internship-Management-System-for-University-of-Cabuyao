@@ -80,10 +80,10 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
   // Determine current step index based on state
   // Steps: 1: Invite, 2: Registers, 3: Faculty Approval, 4: Attendance Access
   let stepIndex = 1;
-  if (state === 'invite_pending') stepIndex = 2;
+  if (state === 'invite_pending' || state === 'awaiting_supervisor') stepIndex = 2;
   if (state === 'pending_approval') stepIndex = 3;
   if (state === 'assigned') stepIndex = 4;
-  if (state === 'rejected') stepIndex = 1; // back to step 1
+  if (state === 'rejected' || state === 'declined') stepIndex = 1;
 
   const renderProgress = () => {
     const steps = [
@@ -109,7 +109,7 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
           
           let circleClass = "bg-light text-muted border border-2 border-light";
           if (step.active) circleClass = "bg-success text-white border border-2 border-success";
-          if (step.current && state !== 'rejected') circleClass = "bg-primary text-white border border-2 border-primary";
+          if (step.current && state !== 'rejected') circleClass = "bg-success text-white border border-2 border-success";
           if (step.current && state === 'rejected') circleClass = "bg-danger text-white border border-2 border-danger";
 
           return (
@@ -131,19 +131,21 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
     <div>
       {error && <PageError message={error} onRetry={fetchStatus} />}
       {/* STATE 1: NOT_INVITED */}
-      {(state === 'none' || (invite && invite.status === 'expired')) && (
+      {(state === 'none' || state === 'declined' || (invite && invite.status === 'expired')) && (
         <div className="content-card border-0 shadow-sm text-center">
           <div className="p-5">
             <i className="fa fa-user-plus fa-4x text-muted mb-4"></i>
-            <h4 className="fw-bold mb-3">Invite Your HTE Supervisor</h4>
+            {state === 'declined' && (
+              <p className="text-warning mb-3">The previous supervisor declined this invite. Generate a new one to try again.</p>
+            )}
             <p className="text-muted mb-4 mx-auto" style={{ maxWidth: '500px' }}>
               Before you can record your internship attendance, you need to invite an HTE Supervisor and have them approved by your faculty supervisor.
             </p>
-            <button className="btn btn-primary btn-lg px-5 shadow-sm rounded-pill mb-3" onClick={handleGenerate} disabled={generating}>
+            <button type="button" className="btn-green btn-lg px-5 shadow-sm rounded-pill mb-3" onClick={handleGenerate} disabled={generating}>
               {generating ? <><i className="fa fa-spinner fa-spin me-2"></i>Generating...</> : <><i className="fa fa-qrcode me-2"></i>Generate Supervisor Invite</>}
             </button>
             <p className="text-muted small mt-2">
-              Your supervisor will scan the QR code, provide their details, and wait for faculty approval.
+              Your supervisor will scan the QR code to sign in or register. New accounts still need faculty approval.
             </p>
           </div>
         </div>
@@ -151,35 +153,52 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
 
       {/* STATE 2: INVITED */}
       {state === 'invite_pending' && (
-        <div className="content-card border-0 shadow-sm text-center">
-          <div className="content-card-header bg-white border-bottom pt-4 pb-3">
-            <span className="badge bg-primary px-3 py-2 rounded-pill mb-2 shadow-sm"><i className="fa fa-paper-plane me-2"></i>Invitation Sent</span>
-            <h5 className="mb-0 fw-bold mt-2">Supervisor Invitation</h5>
+        <div className="supervisor-invite-card content-card border-0 shadow-sm text-center">
+          <div className="invite-status-head">
+            <span className="badge bg-success px-3 py-2 rounded-pill shadow-sm"><i className="fa fa-paper-plane me-2"></i>Invitation Sent</span>
+            <h5 className="mb-0 fw-bold">Supervisor Invitation</h5>
           </div>
-          <div className="p-4">
-            <div className="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-4">
-              <QRCodeSVG value={registerUrl} size={220} level="H" includeMargin />
+          <div className="invite-body p-4">
+            <div className="invite-qr-wrap bg-light p-3 d-inline-block rounded-4 shadow-sm mb-4">
+              <QRCodeSVG value={registerUrl} size={195} level="H" includeMargin />
             </div>
-            <p className="text-muted mb-4 mx-auto" style={{ maxWidth: '400px' }}>
-              Ask your HTE Supervisor to scan this QR code using their phone to register.
+            <p className="invite-instructions text-muted mb-4 mx-auto" style={{ maxWidth: '400px' }}>
+              Ask your HTE Supervisor to scan this QR code to sign in or register.
             </p>
 
-            <div className="bg-light rounded p-3 text-start mx-auto mb-4" style={{ maxWidth: '500px' }}>
-              <div className="d-flex justify-content-between align-items-center mb-2">
+            <div className="invite-link-box bg-light rounded p-3 text-start mx-auto mb-4" style={{ maxWidth: '500px' }}>
+              <div className="invite-meta d-flex justify-content-between align-items-center mb-2">
                 <span className="text-muted small">Invited: {new Date(invite?.created_at || Date.now()).toLocaleDateString()}</span>
                 <span className="text-muted small"><i className="fa fa-clock me-1"></i>Waiting for registration</span>
               </div>
               <div className="input-group">
                 <input type="text" className="form-control bg-white" value={registerUrl} readOnly />
-                <button className="btn btn-primary" onClick={handleCopy}>
+                <button type="button" className="btn-green" onClick={handleCopy}>
                   <i className={`fa ${copied ? 'fa-check' : 'fa-copy'} me-1`}></i>{copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
             </div>
 
-            <button className="btn btn-outline-secondary btn-sm rounded-pill" onClick={handleGenerate} disabled={generating}>
+            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={handleGenerate} disabled={generating}>
               <i className="fa fa-refresh me-1"></i>Regenerate QR Code
             </button>
+          </div>
+        </div>
+      )}
+
+      {state === 'awaiting_supervisor' && (
+        <div className="content-card border-0 shadow-sm text-center">
+          <div className="invite-status-head">
+            <span className="badge bg-success px-3 py-2 rounded-pill shadow-sm"><i className="fa fa-hourglass-half me-2"></i>Waiting for Supervisor</span>
+            <h5 className="mb-0 fw-bold">Invite received</h5>
+          </div>
+          <div className="p-5">
+            <i className="fa fa-user-check fa-4x text-success mb-3"></i>
+            <h4 className="fw-bold mb-2">{invite?.first_name} {invite?.last_name}</h4>
+            <p className="text-muted mb-0">{invite?.position}</p>
+            <p className="text-muted mx-auto" style={{ maxWidth: 480 }}>
+              Your supervisor signed in with an existing account and still needs to accept this intern linkage. Attendance unlocks after they accept.
+            </p>
           </div>
         </div>
       )}
@@ -187,13 +206,13 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
       {/* STATE 3: REGISTERED / PENDING_APPROVAL */}
       {state === 'pending_approval' && (
         <div className="content-card border-0 shadow-sm text-center">
-          <div className="content-card-header bg-white border-bottom pt-4 pb-3">
-            <span className="badge bg-warning text-dark px-3 py-2 rounded-pill mb-2 shadow-sm"><i className="fa fa-clock me-2"></i>Awaiting Faculty Approval</span>
-            <h5 className="mb-0 fw-bold mt-2">Supervisor Details</h5>
+          <div className="invite-status-head">
+            <span className="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm"><i className="fa fa-clock me-2"></i>Awaiting Faculty Approval</span>
+            <h5 className="mb-0 fw-bold">Supervisor Details</h5>
           </div>
           <div className="p-5">
             <div className="mb-4">
-              <i className="fa fa-user-tie fa-4x text-info mb-3"></i>
+              <i className="fa fa-user-tie fa-4x text-success mb-3"></i>
               <h4 className="fw-bold mb-1">{invite?.first_name} {invite?.last_name}</h4>
               <p className="text-muted mb-0">{invite?.position}</p>
               <p className="text-muted">{invite?.email}</p>
@@ -242,7 +261,7 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
             <div className="card bg-light border-0 mx-auto mb-4" style={{ maxWidth: '400px' }}>
               <div className="card-body p-4 text-start d-flex align-items-center">
                 <div className="bg-white rounded-circle shadow-sm d-flex justify-content-center align-items-center me-3" style={{ width: '50px', height: '50px' }}>
-                  <i className="fa fa-user-tie text-primary fa-lg"></i>
+                  <i className="fa fa-user-tie text-success fa-lg"></i>
                 </div>
                 <div>
                   <h6 className="mb-0 fw-bold">{supervisor?.name}</h6>

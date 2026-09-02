@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Internship;
 use App\Models\Evaluation;
 use App\Models\Notification;
+use App\Models\SupervisorInviteToken;
 use App\Models\User;
 use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
@@ -56,10 +57,10 @@ class SupervisorController extends Controller
 
         $recentActivity = $recentAttendance->sortByDesc('action_at')->take(5)->values();
 
-        $supervisor = $request->user()->load('supervisorProfile');
+        $supervisor = $request->user()->load('supervisorProfile.company');
 
         $allInterns = Internship::where('supervisor_id', $supervisorId)
-            ->with(['student.studentProfile', 'evaluations' => function ($query) {
+            ->with(['student.studentProfile.program', 'company', 'evaluations' => function ($query) {
                 $query->where('evaluator_type', 'supervisor');
             }])
             ->get()
@@ -67,14 +68,17 @@ class SupervisorController extends Controller
                 $evals = $internship->evaluations;
                 $hasMidterm = $evals->contains('evaluation_period', 'midterm');
                 $hasFinal = $evals->contains('evaluation_period', 'final');
+                $profile = $internship->student?->studentProfile;
                 
                 return [
                     'id' => $internship->id,
-                    'student' => $internship->student->studentProfile ? trim("{$internship->student->studentProfile->last_name}, {$internship->student->studentProfile->first_name}") : $internship->student->username,
-                    'course' => $internship->student->studentProfile->program?->name ?? 'N/A',
+                    'student' => $profile ? trim("{$profile->last_name}, {$profile->first_name}") : $internship->student?->username,
+                    'course' => $profile?->program?->name ?? $profile?->course_name ?? 'N/A',
                     'status' => $internship->status,
                     'hours_rendered' => $internship->total_hours_rendered,
                     'target_hours' => $internship->target_hours,
+                    'company' => $internship->company?->company_name,
+                    'term' => $internship->term,
                     'evaluation_status' => [
                         'midterm' => $hasMidterm,
                         'final' => $hasFinal
@@ -458,5 +462,55 @@ class SupervisorController extends Controller
         return response()->json([
             'message' => 'Only the PALD Director may finalize absorption.',
         ], 403);
+    }
+
+    /** GET /api/v1/supervisor/companies — active HTEs for profile editing */
+    public function companies()
+    {
+        $companies = \App\Models\Company::where('moa_status', 'active')
+            ->orderBy('company_name')
+            ->get(['id', 'company_name']);
+
+        return response()->json(['companies' => $companies]);
+    }
+
+    /**
+     * POST /api/v1/supervisor/internships/{id}/end-supervision
+     * Unlinks this supervisor from one internship without deleting the account
+     * or affecting other internships they supervise.
+     */
+    public function endSupervision(Request $request, int $id)
+    {
+        $request->validate(['reason' => 'nullable|string|max:500']);
+
+        $internship = Internship::where('id', $id)
+            ->where('supervisor_id', $request->user()->id)
+            ->firstOrFail();
+
+        $studentId = $internship->student_id;
+        $internship->update(['supervisor_id' => null]);
+
+        SupervisorInviteToken::where('internship_id', $internship->id)
+            ->whereIn('status', ['pending', 'pending_accept', 'registered'])
+            ->update(['status' => 'expired']);
+
+        $profile = $request->user()->supervisorProfile;
+        $name = trim(($profile?->last_name ?? 'Supervisor') . ', ' . ($profile?->first_name ?? ''));
+
+        Notification::notify(
+            $studentId,
+            'supervisor_unlinked',
+            'Supervisor Ended Supervision',
+            "{$name} is no longer supervising this internship. You can invite a new supervisor.",
+            '/student/attendance'
+        );
+
+        audit_log($request->user()->id, 'end_supervision', [
+            'internship_id' => $internship->id,
+            'student_id'    => $studentId,
+            'reason'        => $request->input('reason'),
+        ]);
+
+        return response()->json(['message' => 'Supervision ended for this intern. Your other internships are unchanged.']);
     }
 }

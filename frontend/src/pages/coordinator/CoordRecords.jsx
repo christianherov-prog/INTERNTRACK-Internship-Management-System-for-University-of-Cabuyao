@@ -7,6 +7,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
 import { formatStudentName } from '../../utils/formatName'
+import ClassListUploadModal from '../../components/ClassListUploadModal'
 
 
 function ChangeSectionModal({ student, onClose, onUpdated }) {
@@ -186,6 +187,7 @@ function CoordRecords() {
   const [certLoading, setCertLoading] = useState(null)
   const [archived, setArchived] = useState(false)
   const [archiveBusy, setArchiveBusy] = useState(null)
+  const [showClassListUpload, setShowClassListUpload] = useState(false)
 
   const [search, setSearch] = useState("")
   const [programFilter, setProgramFilter] = useState("all")
@@ -288,6 +290,17 @@ function CoordRecords() {
         </div>
       )}
 
+      {showClassListUpload && (
+        <ClassListUploadModal
+          onClose={() => setShowClassListUpload(false)}
+          onSuccess={(text) => {
+            setShowClassListUpload(false)
+            setMessage({ type: 'success', text })
+            fetchRecords()
+          }}
+        />
+      )}
+
       {assigning && (
         <AssignPlacementModal
           student={assigning}
@@ -372,6 +385,9 @@ function CoordRecords() {
         </select>
 
         <div className="ms-auto btn-group">
+          <button type="button" className="btn btn-sm btn-outline-success" onClick={() => setShowClassListUpload(true)}>
+            <i className="fa fa-file-excel me-1"></i> Upload class list
+          </button>
           <button className={`btn btn-sm ${!archived ? "btn-primary" : "btn-outline-secondary"}`} onClick={() => setArchived(false)}>Active</button>
           <button className={`btn btn-sm ${archived ? "btn-secondary" : "btn-outline-secondary"}`} onClick={() => setArchived(true)}>Archived</button>
         </div>

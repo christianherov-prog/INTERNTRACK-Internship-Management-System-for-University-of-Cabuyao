@@ -27,19 +27,14 @@ class RequirementTemplateController extends Controller
 
         // 2. Fetch scoped students
         $studentsQuery = User::where('role', 'student')->with('studentProfile.program');
-        
-        if ($user->hasRole('faculty')) {
-            $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $user->id)->pluck('section');
-            $studentsQuery->whereHas('studentProfile', fn($q) => $q->whereIn('section', $sections));
-        } elseif ($user->hasRole('coordinator')) {
-            $deptId = $user->facultyProfile?->department_id;
-            if ($deptId) {
-                $studentsQuery->whereHas('studentProfile', fn($q) => $q->where('department_id', $deptId));
-            }
-        }
+        $this->applyStudentTargetScope($studentsQuery, $user);
         
         $students = $studentsQuery->get();
-        $internships = Internship::whereIn('student_id', $students->pluck('id'))->get()->keyBy('student_id');
+        $internships = Internship::whereIn('student_id', $students->pluck('id'))
+            ->orderByDesc('id')
+            ->get()
+            ->unique('student_id')
+            ->keyBy('student_id');
         
         $handledStudents = [];
         foreach ($students as $student) {
@@ -68,19 +63,22 @@ class RequirementTemplateController extends Controller
                 return false;
             })->values();
 
-            $validInternshipIds = $assignedStudents->pluck('internship_id')->filter()->values();
-            
+            $validStudentIds = $assignedStudents->pluck('id')->map(fn ($id) => (int) $id)->filter()->values();
+
             $submissions = collect();
-            if ($validInternshipIds->isNotEmpty()) {
-                $submissions = Document::with(['reviewer.facultyProfile', 'attachments'])
+            if ($validStudentIds->isNotEmpty()) {
+                $submissions = Document::with(['internship', 'reviewer.facultyProfile', 'attachments'])
                     ->where('document_type', $req->name)
-                    ->whereIn('internship_id', $validInternshipIds)
+                    ->whereHas('internship', fn ($q) => $q->whereIn('student_id', $validStudentIds))
+                    ->orderByDesc('submitted_at')
+                    ->orderByDesc('id')
                     ->get()
-                    ->keyBy('internship_id');
+                    ->unique(fn ($doc) => (int) $doc->internship?->student_id)
+                    ->keyBy(fn ($doc) => (int) $doc->internship?->student_id);
             }
 
             $mappedSubmissions = $assignedStudents->map(function ($hs) use ($submissions, $req) {
-                $doc = $hs['internship_id'] ? $submissions->get($hs['internship_id']) : null;
+                $doc = $submissions->get((int) $hs['id']);
                 
                 $status = $doc?->status ?? 'not_submitted';
                 if ($req->deadline && now()->greaterThan($req->deadline)) {
@@ -124,6 +122,10 @@ class RequirementTemplateController extends Controller
                 ];
             });
 
+            foreach ($req->targets as $target) {
+                $target->setAttribute('label', $this->labelForTarget($target, $handledStudents));
+            }
+
             $req->submissions = $mappedSubmissions;
             $req->total_assigned = $assignedStudents->count();
             $req->completed_count = $mappedSubmissions->whereIn('status', ['approved', 'completed'])->count();
@@ -140,57 +142,60 @@ class RequirementTemplateController extends Controller
     public function options(Request $request)
     {
         $user = $request->user();
-        
+
         $studentsQuery = User::where('role', 'student')->with('studentProfile.program');
-        
-        if ($user->hasRole('faculty')) {
-            $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $user->id)->pluck('section');
-            $studentsQuery->whereHas('studentProfile', fn($q) => $q->whereIn('section', $sections));
-        } elseif ($user->hasRole('coordinator')) {
-            $deptId = $user->facultyProfile?->department_id;
-            if ($deptId) {
-                $studentsQuery->whereHas('studentProfile', fn($q) => $q->where('department_id', $deptId));
-            }
-        }
-        
+        $this->applyStudentTargetScope($studentsQuery, $user);
+
         $users = $studentsQuery->get();
 
         $students = [];
         $sections = [];
-        $programs = [];
-        
         $seenSections = [];
-        $seenPrograms = [];
-        
-        foreach($users as $u) {
+
+        foreach ($users as $u) {
             $profile = $u->studentProfile;
-            if (!$profile) continue;
-            
+            if (!$profile) {
+                continue;
+            }
+
             $middleInitial = $profile->middle_name ? substr($profile->middle_name, 0, 1) . '.' : '';
             $name = trim(($profile->last_name ?? '') . ', ' . ($profile->first_name ?? '') . ' ' . $middleInitial);
             $students[] = [
                 'id' => $u->id,
                 'name' => $name ?: $u->username,
-                'section' => $profile->section
+                'section' => $profile->section,
             ];
 
-            if ($profile->section && !in_array($profile->section, $seenSections)) {
+            if ($profile->section && !in_array($profile->section, $seenSections, true)) {
                 $sections[] = [
                     'id' => $profile->section,
                     'name' => $profile->section,
                 ];
                 $seenSections[] = $profile->section;
             }
+        }
 
-            $programName = $profile->program ? $profile->program->name : 'Program ' . $profile->program_id;
-            if ($profile->program_id && !in_array($programName, $seenPrograms)) {
-                $programs[] = [
-                    'id' => $programName,
-                    'name' => $programName,
+        foreach ($this->assignedSectionsFor($user) as $sectionName) {
+            if ($sectionName && !in_array($sectionName, $seenSections, true)) {
+                $sections[] = [
+                    'id' => $sectionName,
+                    'name' => $sectionName,
                 ];
-                $seenPrograms[] = $programName;
+                $seenSections[] = $sectionName;
             }
         }
+
+        $programsQuery = \App\Models\Program::where('is_active', true)->orderBy('name');
+        if ($user->hasRole('faculty') || $user->hasRole('coordinator')) {
+            $deptId = $user->facultyProfile?->department_id;
+            if ($deptId) {
+                $programsQuery->where('department_id', $deptId);
+            }
+        }
+        $programs = $programsQuery->get()->map(fn ($p) => [
+            'id' => $p->name,
+            'name' => $p->name,
+        ])->values()->all();
 
         usort($students, fn($a, $b) => strcmp($a['name'], $b['name']));
 
@@ -322,11 +327,19 @@ class RequirementTemplateController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        $requirement = OjtRequirementTemplate::where('created_by', $request->user()->id)->findOrFail($id);
+        $requirement = OjtRequirementTemplate::where('created_by', $request->user()->id)
+            ->with('attachments')
+            ->findOrFail($id);
 
         return DB::transaction(function () use ($requirement) {
             if ($requirement->template_file_path) {
                 Storage::disk('local')->delete($requirement->template_file_path);
+            }
+            foreach ($requirement->attachments as $attachment) {
+                if ($attachment->file_path) {
+                    Storage::disk('local')->delete($attachment->file_path);
+                }
+                $attachment->delete();
             }
             $requirement->targets()->delete();
             $requirement->delete();
@@ -340,27 +353,109 @@ class RequirementTemplateController extends Controller
      */
     public function downloadTemplate(Request $request, $id)
     {
-        $requirement = OjtRequirementTemplate::findOrFail($id);
-        
-        if (!$requirement->template_file_path || !Storage::disk('local')->exists($requirement->template_file_path)) {
+        $requirement = OjtRequirementTemplate::with('attachments')->findOrFail($id);
+        $attachment = $requirement->attachments->first();
+        $path = $attachment?->file_path ?: $requirement->template_file_path;
+
+        if (!$path || !Storage::disk('local')->exists($path)) {
             return response()->json(['message' => 'Template file not found.'], 404);
         }
 
-        $fileName = $requirement->name . '_template.' . pathinfo($requirement->template_file_path, PATHINFO_EXTENSION);
-        
+        $fileName = $attachment?->file_name
+            ?: ($requirement->name.'_template.'.pathinfo($path, PATHINFO_EXTENSION));
+
         if ($request->query('preview')) {
-            $mime = Storage::disk('local')->mimeType($requirement->template_file_path) ?: 'application/octet-stream';
+            $mime = Storage::disk('local')->mimeType($path) ?: 'application/octet-stream';
             return Storage::disk('local')->response(
-                $requirement->template_file_path,
+                $path,
                 $fileName,
                 [
                     'Content-Type' => $mime,
-                    'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+                    'Content-Disposition' => 'inline; filename="'.$fileName.'"',
                 ]
             );
         }
 
-        return Storage::disk('local')->download($requirement->template_file_path, $fileName);
+        return Storage::disk('local')->download($path, $fileName);
+    }
+
+    /**
+     * Coordinator sees the college; faculty sees assigned sections, or the college if none are mapped.
+     * Coordinators also match hasRole('faculty'), so coordinator must be checked first.
+     */
+    private function applyStudentTargetScope($query, User $user): void
+    {
+        $user->loadMissing('facultyProfile');
+        $deptId = $user->facultyProfile?->department_id;
+
+        if ($user->isCoordinator()) {
+            if ($deptId) {
+                $query->whereHas('studentProfile', fn ($q) => $q->where('department_id', $deptId));
+            }
+
+            return;
+        }
+
+        if (!$user->isFaculty()) {
+            return;
+        }
+
+        $sections = $this->assignedSectionsFor($user);
+
+        $query->whereHas('studentProfile', function ($q) use ($sections, $deptId) {
+            $q->where(function ($inner) use ($sections, $deptId) {
+                if ($sections->isNotEmpty()) {
+                    $inner->whereIn('section', $sections);
+                }
+                if ($deptId) {
+                    $inner->orWhere('department_id', $deptId);
+                }
+                if ($sections->isEmpty() && !$deptId) {
+                    $inner->whereRaw('0 = 1');
+                }
+            });
+        });
+    }
+
+    private function assignedSectionsFor(User $user)
+    {
+        $query = \App\Models\FacultySectionAssignment::query()->where('is_active', true);
+
+        if ($user->isCoordinator()) {
+            $deptId = $user->facultyProfile?->department_id;
+            if (!$deptId) {
+                return collect();
+            }
+
+            return $query
+                ->whereHas('faculty.facultyProfile', fn ($q) => $q->where('department_id', $deptId))
+                ->pluck('section')
+                ->filter()
+                ->unique()
+                ->values();
+        }
+
+        return $query
+            ->where('faculty_user_id', $user->id)
+            ->pluck('section')
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function labelForTarget($target, array $handledStudents): string
+    {
+        if ($target->target_type === 'student') {
+            foreach ($handledStudents as $student) {
+                if ((string) $student['id'] === (string) $target->target_id) {
+                    return $student['name'] ?: ('Student #'.$target->target_id);
+                }
+            }
+
+            return 'Student #'.$target->target_id;
+        }
+
+        return (string) $target->target_id;
     }
 
     /**
@@ -378,7 +473,7 @@ class RequirementTemplateController extends Controller
             return [
                 'requirement_template_id' => $requirement->id,
                 'target_type' => $t['type'],
-                'target_id' => $t['id'],
+                'target_id' => (string) $t['id'],
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

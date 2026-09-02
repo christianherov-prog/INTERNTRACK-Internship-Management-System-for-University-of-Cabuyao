@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\User;
 use App\Models\StudentProfile;
 use App\Models\FacultySectionAssignment;
+use App\Models\Program;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -44,6 +45,13 @@ class StudentsImport implements ToCollection, WithHeadingRow
 
         $facultyProfile = \App\Models\FacultyProfile::where('user_id', $this->facultyId)->first();
         $facultyEmp = $facultyProfile?->faculty_number ?? 'FAC-1001';
+
+        $programModel = Program::where('name', $this->program)
+            ->orWhere('code', $this->program)
+            ->first();
+        if (! $programModel) {
+            throw new \Exception("Unknown program \"{$this->program}\". Choose a program from the academic catalog.");
+        }
 
         $errors = [];
         foreach ($rows as $index => $row) {
@@ -86,7 +94,8 @@ class StudentsImport implements ToCollection, WithHeadingRow
                     'first_name'     => $row['first_name'] ?? 'Unknown',
                     'last_name'      => $row['last_name'] ?? 'Unknown',
                     'middle_name'    => $row['middle_name'] ?? null,
-                    'program'        => $this->program,
+                    'program_id'     => $programModel->id,
+                    'department_id'  => $programModel->department_id,
                     'section'        => $this->section,
                     'school_year'    => $this->schoolYear,
                     'semester'       => $this->semester,

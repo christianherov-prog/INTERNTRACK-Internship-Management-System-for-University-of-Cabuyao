@@ -13,6 +13,7 @@ function SignatureUpload() {
   const [removing, setRemoving]         = useState(false)
   const [message, setMessage]           = useState(null)
   const [preview, setPreview]           = useState(null)
+  const [fileName, setFileName]         = useState('')
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -21,10 +22,25 @@ function SignatureUpload() {
       .catch(() => {})
   }, [])
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0]
+  const applyFile = (file) => {
     if (!file) return
+    setFileName(file.name)
     setPreview(URL.createObjectURL(file))
+    setMessage(null)
+  }
+
+  const handleFileChange = (e) => {
+    applyFile(e.target.files[0])
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    applyFile(e.dataTransfer.files?.[0])
+    if (fileRef.current && e.dataTransfer.files?.[0]) {
+      const dt = new DataTransfer()
+      dt.items.add(e.dataTransfer.files[0])
+      fileRef.current.files = dt.files
+    }
   }
 
   const handleUpload = async () => {
@@ -41,6 +57,7 @@ function SignatureUpload() {
       await api.post('/auth/signature', fd)
       setHasSignature(true)
       setPreview(null)
+      setFileName('')
       if (fileRef.current) fileRef.current.value = ''
       setMessage({ type: 'success', text: 'Signature uploaded! Background has been automatically removed.' })
     } catch (err) {
@@ -93,20 +110,28 @@ function SignatureUpload() {
 
         <div className="d-flex align-items-start gap-3 flex-wrap">
           <div style={{ flex: 1, minWidth: 260 }}>
-            <label className="form-label fw-semibold">Upload Signature Image</label>
             <input
               ref={fileRef}
+              id="signature-file"
               type="file"
-              className="form-control mb-2"
+              className="d-none"
               accept="image/png,image/jpeg,image/jpg"
               onChange={handleFileChange}
             />
-            <small className="text-muted d-block mb-3">
-              Accepted: PNG, JPG. Max 5MB. For best results, sign on white paper and take a clear photo.
-            </small>
+            <label
+              htmlFor="signature-file"
+              className={`upload-dropzone sig-dropzone mb-3${fileName ? ' is-filled' : ''}`}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+            >
+              <i className="fa fa-cloud-upload-alt" aria-hidden="true"></i>
+              <strong>{fileName ? fileName : 'Choose a signature image'}</strong>
+              <span>PNG or JPG · Max 5MB · Sign on white paper for best results</span>
+            </label>
             <div className="d-flex gap-2">
               <button
-                className="btn btn-primary"
+                type="button"
+                className="btn-green"
                 onClick={handleUpload}
                 disabled={uploading}
               >
@@ -115,6 +140,7 @@ function SignatureUpload() {
               </button>
               {hasSignature && (
                 <button
+                  type="button"
                   className="btn btn-outline-danger"
                   onClick={handleRemove}
                   disabled={removing}
@@ -126,14 +152,13 @@ function SignatureUpload() {
             </div>
           </div>
 
-          {/* Preview */}
           {preview && (
             <div
               style={{
-                border: '1px solid #dee2e6',
+                border: '1px solid #d9e9de',
                 borderRadius: 8,
                 padding: 12,
-                background: '#f8f9fa',
+                background: '#f8fdf9',
                 textAlign: 'center',
               }}
             >

@@ -1,11 +1,13 @@
 import RoleSettings from '../../components/RoleSettings'
 import SignatureUpload from '../../components/SignatureUpload'
+import SupervisorProfileEditor from '../../components/SupervisorProfileEditor'
 
 function SupervisorSettings() {
   return (
     <RoleSettings
       bodyClass="supervisor-page"
       subtitleLabel="Supervisor"
+      identityLocked={true}
       notificationsIntro="Choose which intern-monitoring alerts you want to receive at your host training establishment."
       securityIntro="Update your password and strengthen account protection for your supervisor credentials."
       metaFields={[
@@ -46,6 +48,7 @@ function SupervisorSettings() {
         },
       ]}
     >
+      <SupervisorProfileEditor />
       <SignatureUpload />
     </RoleSettings>
   )

@@ -122,22 +122,23 @@ class User extends Authenticatable
 
     public function isStudent(): bool     { return $this->role === 'student'; }
     public function isSupervisor(): bool  { return $this->role === 'supervisor'; }
-    public function isFaculty(): bool     { return $this->role === 'faculty'; }
+    public function isFaculty(): bool     { return $this->role === 'faculty' || $this->role === 'coordinator'; }
     public function isCoordinator(): bool { return $this->role === 'coordinator'; }
     public function isDirector(): bool    { return $this->role === 'director'; }
     public function isAdmin(): bool       { return $this->role === 'admin'; }
 
     public function hasRole($roles): bool
     {
-        if (is_array($roles)) {
-            return in_array($this->role, $roles);
+        $check = is_array($roles) ? $roles : [$roles];
+        if ($this->role === 'coordinator' && in_array('faculty', $check)) {
+            return true;
         }
-        return $this->role === $roles;
+        return in_array($this->role, $check);
     }
 
     public function hasAnyRole(array $roles): bool
     {
-        return in_array($this->role, $roles);
+        return $this->hasRole($roles);
     }
 
     /** Whether this user wants inbox notifications for a Settings preference key. */
