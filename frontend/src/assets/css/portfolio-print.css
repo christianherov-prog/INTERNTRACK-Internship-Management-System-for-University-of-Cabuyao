@@ -1,0 +1,367 @@
+/* ==========================================================
+   INTERNTRACK PORTFOLIO PRINT CSS
+   Word-like A4 Layout
+   ========================================================== */
+
+/* ===========================
+   GLOBAL PAGE STYLE (Web Preview)
+   =========================== */
+
+.a4-page {
+    width: 210mm !important;
+
+    /* FIX: Make height flexible for the web preview so long forms don't cut off */
+    min-height: 297mm !important;
+    height: max-content !important;
+    max-height: none !important;
+
+    margin: 20px auto;
+    background: #ffffff;
+    box-sizing: border-box;
+
+    /* Microsoft Word Normal Margin */
+    padding: 1.27cm 1.27cm 1.8cm 1.27cm !important;
+    position: relative !important;
+
+    /* FIX: Allow overflow on the web preview so you can scroll down */
+    overflow: visible !important;
+
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.cover-page-banner {
+    height: 297mm !important;
+    max-height: 297mm !important;
+    min-height: 297mm !important;
+    overflow: hidden !important;
+}
+
+/* ===========================
+   SCREEN PREVIEW
+   =========================== */
+
+@media screen {
+    body {
+        background: #e5e5e5;
+    }
+
+    .a4-page {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, .18);
+    }
+}
+
+/* ===========================
+   PRINT SETTINGS (Physical Printer)
+   =========================== */
+
+@media print {
+
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    html,
+    body,
+    #root {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .a4-page {
+        width: 210mm !important;
+
+        /* RESTORE STRICT PRINT HEIGHT: Forces standard A4 sizes for paper */
+        height: 297mm !important;
+        min-height: 297mm !important;
+        max-height: 297mm !important;
+
+        margin: 0 !important;
+        padding: 1.27cm 1.27cm 1.8cm 1.27cm !important;
+        box-shadow: none;
+
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        position: relative !important;
+
+        /* RESTORE CLIP: Hides overflowing content when actually printing */
+        overflow: hidden !important;
+    }
+
+    .a4-page:last-child {
+        page-break-after: auto !important;
+    }
+
+}
+
+/* ===========================
+   PAGE BREAK & NATURAL FLOW
+   =========================== */
+
+.page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+.force-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+}
+
+/* Ensure headings don't become orphaned at the bottom of a page */
+.portfolio-document h1,
+.portfolio-document h2,
+.portfolio-document h3,
+.portfolio-document h4,
+.portfolio-document h5,
+.portfolio-document h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+/* Avoid slicing photos, diagrams, cards, or dashed boxes across page breaks */
+.portfolio-document img,
+.portfolio-document [style*="dashed"],
+.portfolio-document [style*="border"],
+.portfolio-document .content-card,
+.portfolio-document .portfolio-upload-tile {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+/* Let blocks and paragraphs flow naturally across page boundaries ONLY when not a locked card/container */
+.portfolio-document p,
+.portfolio-document section,
+.portfolio-document article,
+.portfolio-document table,
+.portfolio-document tr,
+.portfolio-document td,
+.portfolio-document li {
+    page-break-inside: auto;
+    break-inside: auto;
+}
+
+/* ===========================
+   DOCUMENT TYPOGRAPHY
+   =========================== */
+
+.portfolio-document {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #000;
+}
+
+.portfolio-document p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+    text-indent: .5in;
+}
+
+.portfolio-document h1,
+.portfolio-document h2,
+.portfolio-document h3,
+.portfolio-document h4,
+.portfolio-document h5 {
+    margin: 0;
+    text-align: center;
+}
+
+/* ===========================
+   TABLE OF CONTENTS
+   =========================== */
+
+.toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 6px;
+    font-size: 10.5pt;
+}
+
+.toc-list li span:first-child {
+    flex: 1;
+    border-bottom: 1px dotted #444;
+    margin-right: 8px;
+    padding-bottom: 2px;
+}
+
+/* ===========================
+   CHAPTER III
+   =========================== */
+
+.chapter3-content {
+    padding-bottom: 18mm;
+}
+
+.chapter3-section {
+    margin-bottom: 20px;
+}
+
+.chapter3-section p {
+    margin-bottom: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* ===========================
+   PAGE NUMBER (AUTOMATIC SEQUENTIAL COUNTING)
+   =========================== */
+
+body {
+    counter-reset: a4-page-counter !important;
+}
+
+.a4-page {
+    counter-increment: a4-page-counter;
+}
+
+.page-number {
+    position: absolute;
+    bottom: 1cm;
+    right: 1.27cm;
+    font-size: 0 !important;
+    /* Hide out-of-order text */
+    color: transparent !important;
+    font-family: Arial, sans-serif;
+    line-height: 1;
+}
+
+.page-number::after {
+    content: counter(a4-page-counter);
+    font-size: 10pt !important;
+    color: #000 !important;
+}
+
+/* ===========================
+   IMAGES
+   =========================== */
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Psychology: centered PnC seal watermark on every A4 sheet */
+.pnc-page-watermark {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%);
+    width: 70% !important;
+    max-width: none !important;
+    height: auto !important;
+    opacity: 1;
+    z-index: 0;
+    pointer-events: none;
+    object-fit: contain;
+}
+
+.a4-page:has(.pnc-page-watermark) > *:not(.pnc-page-watermark):not(.page-number):not(.cas-page-footer):not(.chas-page-footer) {
+    position: relative;
+    z-index: 1;
+}
+
+.cas-page-footer {
+    position: absolute !important;
+    bottom: 40px;
+    left: 45px;
+    right: 45px;
+    height: 24px;
+    background-color: #680000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    z-index: 2;
+    color: #fff;
+    font-weight: bold;
+    font-size: 13pt;
+    letter-spacing: 1px;
+    font-family: Arial, sans-serif;
+}
+
+.chas-page-footer {
+    position: absolute !important;
+    left: -1.27cm;
+    right: -1.27cm;
+    bottom: 0;
+    height: auto;
+    background: none;
+    display: block;
+    padding: 0;
+    z-index: 2;
+    line-height: 0;
+}
+
+.chas-page-footer img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.a4-page:has(.cas-page-footer) {
+    padding-bottom: 90px !important;
+}
+
+.a4-page:has(.chas-page-footer) {
+    padding-bottom: 28mm !important;
+}
+
+.a4-page:has(.cas-page-footer) .page-number {
+    bottom: 40px;
+    right: 52px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    z-index: 3;
+}
+
+.a4-page:has(.chas-page-footer) .page-number {
+    bottom: 22mm;
+    right: 1.27cm;
+    height: auto;
+    z-index: 3;
+}
+
+.a4-page:has(.cas-page-footer) .page-number::after {
+    color: #fff !important;
+    font-weight: bold;
+    font-size: 11pt !important;
+}
+
+.a4-page:has(.chas-page-footer) .page-number::after {
+    color: #111 !important;
+    font-weight: 600;
+    font-size: 10pt !important;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+* {
+    box-sizing: border-box;
+}
