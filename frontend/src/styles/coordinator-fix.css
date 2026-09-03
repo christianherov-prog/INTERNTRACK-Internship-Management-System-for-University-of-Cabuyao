@@ -1,0 +1,168 @@
+/* Coordinator shell repair loaded after styles.css */
+
+.coordinator-page .topbar {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  right: 0;
+  width: auto;
+  height: 60px;
+  margin-left: 0;
+  padding: 0 28px;
+}
+
+.coordinator-page .main-content {
+  margin-left: var(--sidebar-w);
+  margin-top: 60px;
+  width: calc(100% - var(--sidebar-w));
+  padding: 24px 32px;
+}
+
+.announcements-page .main-content,
+.doc-approvals-page .main-content,
+.logbook-review-page .main-content,
+.roster-page .main-content,
+.reports-page .main-content {
+  margin-top: 0;
+  /* Match fixed .topbar clearance from the unified layout shell */
+  padding-top: calc(var(--topbar-h, 72px) + 24px);
+}
+
+.announcements-page .page-topbar-hero,
+.doc-approvals-page .page-topbar-hero,
+.logbook-review-page .page-topbar-hero,
+.roster-page .page-topbar-hero,
+.reports-page .page-topbar-hero {
+  position: sticky;
+  top: 0;
+  left: auto;
+  right: auto;
+  width: auto;
+  height: 60px;
+  margin: 0 -32px 0;
+  padding: 0;
+  display: block;
+  background: #fff;
+  border-bottom: 1px solid rgba(26,122,63,0.10);
+  box-shadow: 0 2px 16px rgba(10,92,46,0.07);
+  z-index: 80;
+}
+
+.announcements-page .page-hero,
+.doc-approvals-page .page-hero,
+.logbook-review-page .page-hero,
+.roster-page .page-hero,
+.reports-page .page-hero {
+  width: 100%;
+  height: 60px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.announcements-page .page-hero-title,
+.doc-approvals-page .page-hero-title,
+.logbook-review-page .page-hero-title,
+.roster-page .page-hero-title,
+.reports-page .page-hero-title {
+  font-size: 17px;
+  line-height: 1.2;
+  color: var(--green-dark);
+}
+
+.announcements-page .page-hero-sub,
+.doc-approvals-page .page-hero-sub,
+.logbook-review-page .page-hero-sub,
+.roster-page .page-hero-sub,
+.reports-page .page-hero-sub {
+  display: none;
+}
+
+.announcements-page .page-hero-icon,
+.doc-approvals-page .page-hero-icon,
+.logbook-review-page .page-hero-icon,
+.roster-page .page-hero-icon,
+.reports-page .page-hero-icon {
+  width: auto;
+  height: auto;
+  background: transparent;
+  border-radius: 0;
+  color: var(--green-main);
+  font-size: 15px;
+}
+
+.announcements-page .page-hero-left,
+.doc-approvals-page .page-hero-left,
+.logbook-review-page .page-hero-left,
+.roster-page .page-hero-left,
+.reports-page .page-hero-left {
+  gap: 8px;
+}
+
+.announcements-page .page-hero-term-select,
+.doc-approvals-page .page-hero-term-select,
+.logbook-review-page .page-hero-term-select,
+.roster-page .page-hero-term-select,
+.reports-page .page-hero-term-select,
+.announcements-page .page-hero-badge,
+.doc-approvals-page .page-hero-badge,
+.logbook-review-page .page-hero-badge,
+.roster-page .page-hero-badge,
+.reports-page .page-hero-badge {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.announcements-page .page-inner,
+.doc-approvals-page .page-inner,
+.logbook-review-page .page-inner,
+.roster-page .page-inner,
+.reports-page .page-inner {
+  padding-top: 0;
+}
+
+.roster-page .page-topbar-hero + .page-inner > .coord-stat-grid:first-child {
+  margin-top: 0;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 991px) {
+  .coordinator-page .topbar {
+    left: 0;
+    width: 100%;
+    padding-left: 58px;
+  }
+
+  .coordinator-page .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 18px 16px;
+  }
+
+  .announcements-page .main-content,
+  .doc-approvals-page .main-content,
+  .logbook-review-page .main-content,
+  .roster-page .main-content,
+  .reports-page .main-content {
+    padding-top: calc(var(--topbar-h, 72px) + 18px);
+  }
+
+  .announcements-page .page-topbar-hero,
+  .doc-approvals-page .page-topbar-hero,
+  .logbook-review-page .page-topbar-hero,
+  .roster-page .page-topbar-hero,
+  .reports-page .page-topbar-hero {
+    margin: 0 -16px 18px;
+  }
+
+  .announcements-page .page-hero,
+  .doc-approvals-page .page-hero,
+  .logbook-review-page .page-hero,
+  .roster-page .page-hero,
+  .reports-page .page-hero {
+    padding: 0 16px 0 58px;
+  }
+}
