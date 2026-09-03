@@ -5,7 +5,7 @@ export const PSY_COURSE = 'PSE 106 - Practicum in Psychology'
 export const PSY_ROTATIONS = [
   { id: 1, key: 'r1', title: 'Rotation 1: Educational Setting' },
   { id: 2, key: 'r2', title: 'Rotation 2: Clinical Setting' },
-  { id: 3, key: 'r3', title: 'Rotation 3: Industrial Setting' },
+  { id: 3, key: 'r3', title: 'Rotation 3: Industrial/Organizational Setting' },
 ]
 
 export const emptyRotationFields = () => ({

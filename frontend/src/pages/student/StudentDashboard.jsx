@@ -199,6 +199,86 @@ function StudentDashboard() {
         </div>
       </div>
 
+      {/* ── Placement Breakdown (Multi-HTE Programs) ── */}
+      {internship?.placements && internship.placements.length > 1 && (
+        <div className="content-card mb-4">
+          <div className="content-card-header">
+            <i className="fa fa-building"></i>
+            <h6>Placement Progress</h6>
+          </div>
+          <div className="p-3">
+            <div className="row g-3">
+              {internship.placements.map((placement, idx) => {
+                const progress = placement.progress_percent || 0
+                const isCurrent = placement.is_current
+                const isComplete = placement.status === 'completed'
+                const isPending = placement.status === 'pending'
+                
+                return (
+                  <div key={placement.id} className="col-md-6 col-lg-4">
+                    <div className={`p-3 rounded border ${isCurrent ? 'border-primary bg-light' : ''}`} style={{ position: 'relative' }}>
+                      {isCurrent && (
+                        <span className="badge bg-primary position-absolute top-0 end-0 m-2" style={{ fontSize: '0.7rem' }}>
+                          ACTIVE
+                        </span>
+                      )}
+                      <div className="d-flex align-items-center mb-2">
+                        <div className={`me-2 ${isComplete ? 'text-success' : isCurrent ? 'text-primary' : 'text-muted'}`}>
+                          <i className={`fa ${isComplete ? 'fa-check-circle' : isCurrent ? 'fa-circle-dot' : 'fa-circle'} fa-lg`}></i>
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark">{placement.label}</div>
+                          <div className="text-muted small">
+                            {placement.company_name || (isPending ? 'Not assigned' : 'No company')}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="small text-muted">Progress</span>
+                          <span className="small fw-bold">{placement.accumulated_hours}h / {placement.required_hours}h</span>
+                        </div>
+                        <div className="progress" style={{ height: '8px' }}>
+                          <div 
+                            className={`progress-bar ${isComplete ? 'bg-success' : 'bg-primary'}`}
+                            style={{ width: `${Math.min(100, progress)}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-end mt-1">
+                          <span className={`badge ${isComplete ? 'bg-success' : isCurrent ? 'bg-primary' : 'bg-secondary'}`} style={{ fontSize: '0.75rem' }}>
+                            {Math.round(progress)}%
+                          </span>
+                        </div>
+                      </div>
+                      {isCurrent && placement.supervisor_name && (
+                        <div className="small text-muted mt-2">
+                          <i className="fa fa-user me-1"></i>{placement.supervisor_name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {internship.current_placement && (
+              <div className="mt-3 p-3 bg-light rounded border">
+                <div className="small text-muted mb-1">Current Rotation</div>
+                <div className="fw-bold text-dark">{internship.current_placement.label}</div>
+                <div className="mt-2">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="small">Rotation Progress:</span>
+                    <span className="fw-bold">
+                      {internship.current_placement.accumulated_hours}h / {internship.current_placement.required_hours}h
+                      <span className="text-muted ms-2">({Math.round(internship.current_placement.progress_percent)}%)</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       <div className="row g-3 mb-4">
         {/* ── Quick Overview ── */}

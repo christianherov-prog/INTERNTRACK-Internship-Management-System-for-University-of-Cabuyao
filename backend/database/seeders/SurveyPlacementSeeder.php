@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Hash;
  *                 2300590 (Taac-Taac) is intentionally NOT placed (fresh enrollee)
  *   Faculty:      FAC-1001
  *   Coordinator:  COR-1001
- *   Supervisor:   SUP-1001 (created here if missing)
+ *   Supervisor:   first existing supervisor, or SUP-0001 if none exist
  *   Company:      first active MOA company (TechCorp PH when freshly seeded)
  *
  * Password for all: interntrack123
@@ -41,18 +41,15 @@ class SurveyPlacementSeeder extends Seeder
             return;
         }
 
-        $supervisor = User::withTrashed()->updateOrCreate(
-            ['username' => 'SUP-1001'],
-            [
+        $supervisor = User::where('role', 'supervisor')->first();
+        if (! $supervisor) {
+            $supervisor = User::create([
+                'faculty_number' => \App\Support\SupervisorIds::nextFacultyNumber(),
                 'email' => 'supervisor.demo@interntrack.local',
                 'password' => $password,
                 'role' => 'supervisor',
                 'is_active' => true,
-                'deleted_at' => null,
-            ]
-        );
-        if ($supervisor->trashed()) {
-            $supervisor->restore();
+            ]);
         }
 
         SupervisorProfile::updateOrCreate(
@@ -112,7 +109,7 @@ class SurveyPlacementSeeder extends Seeder
 
             $this->command?->info(
                 "Placed internship #{$internship->id} for {$username}: ".
-                "FAC-1001 + SUP-1001 + COR-1001".
+                ($faculty->faculty_number ?? 'faculty').' + '.($supervisor->faculty_number ?? 'supervisor').' + '.($coordinator->faculty_number ?? 'coordinator').
                 ($company ? " @ {$company->company_name}" : '')
             );
         }

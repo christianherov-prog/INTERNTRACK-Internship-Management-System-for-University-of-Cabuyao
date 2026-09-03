@@ -43,7 +43,7 @@ class MisdIntegrationService
         // Allow ADMIN-1001 and ADMIN-MISD-001 (hyphenated suffixes).
         if (preg_match('/^(MISD|ADMIN)-[A-Z0-9]+(?:-[A-Z0-9]+)*$/', $id)) return 'admin';
         if (preg_match('/^DIR-[A-Z0-9]+$/', $id))                  return 'director';
-        if (preg_match('/^SUP-[A-Z0-9]+$/', $id))                  return 'supervisor';
+        if (preg_match('/^SUP-?[A-Z0-9]+$/', $id))                 return 'supervisor';
         if (preg_match('/^FAC-[A-Z0-9]+$/', $id))                  return 'faculty';
         if (preg_match('/^(EMP|COORD|COR)-[A-Z0-9]+$/', $id))      return 'coordinator';
         return null;

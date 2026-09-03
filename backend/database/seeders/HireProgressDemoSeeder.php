@@ -61,18 +61,15 @@ class HireProgressDemoSeeder extends Seeder
             return;
         }
 
-        $supervisor = User::withTrashed()->updateOrCreate(
-            ['username' => 'SUP-DEMO1'],
-            [
+        $supervisor = User::where('role', 'supervisor')->first();
+        if (! $supervisor) {
+            $supervisor = User::create([
+                'faculty_number' => \App\Support\SupervisorIds::nextFacultyNumber(),
                 'email' => 'demo.supervisor@interntrack.local',
                 'password' => $password,
                 'role' => 'supervisor',
                 'is_active' => true,
-                'deleted_at' => null,
-            ]
-        );
-        if ($supervisor->trashed()) {
-            $supervisor->restore();
+            ]);
         }
 
         SupervisorProfile::updateOrCreate(
@@ -197,7 +194,7 @@ class HireProgressDemoSeeder extends Seeder
         }
 
         $this->command?->info('Hire-progress demo seeded:');
-        $this->command?->info('  Supervisor: SUP-DEMO1 / interntrack123');
+        $this->command?->info('  Supervisor: '.($supervisor->faculty_number ?? $supervisor->email).' / interntrack123');
         foreach ($demos as $demo) {
             $this->command?->info("  {$demo['username']} — {$demo['label']}");
         }

@@ -152,7 +152,7 @@ class StudentController extends Controller
     public function dashboard(Request $request)
     {
         $user       = $request->user()->load('studentProfile.program');
-        $internship = $this->internship($request)->load('company');
+        $internship = $this->internship($request)->load('company', 'placements.company', 'placements.supervisor', 'currentPlacement');
         $profile    = $user->studentProfile;
 
         // Attendance stats
@@ -268,6 +268,25 @@ class StudentController extends Controller
                 'status_reason' => $internship->status_reason,
                 'company_name'  => $internship->company?->company_name ?? '—',
                 'start_date'    => $internship->start_date?->toDateString(),
+                'placements'    => $internship->placements->map(fn ($p) => [
+                    'id'                => $p->id,
+                    'sequence_order'    => $p->sequence_order,
+                    'label'             => $p->label,
+                    'required_hours'    => (float) $p->required_hours,
+                    'accumulated_hours' => (float) $p->accumulated_hours,
+                    'progress_percent'  => $p->progress_percent,
+                    'status'            => $p->status,
+                    'company_name'      => $p->company?->company_name ?? null,
+                    'supervisor_name'   => $p->supervisor?->name ?? null,
+                    'is_current'        => $p->id === $internship->current_placement_id,
+                ]),
+                'current_placement' => $internship->currentPlacement ? [
+                    'id'                => $internship->currentPlacement->id,
+                    'label'             => $internship->currentPlacement->label,
+                    'required_hours'    => (float) $internship->currentPlacement->required_hours,
+                    'accumulated_hours' => (float) $internship->currentPlacement->accumulated_hours,
+                    'progress_percent'  => $internship->currentPlacement->progress_percent,
+                ] : null,
             ],
         ]);
     }
@@ -280,6 +299,7 @@ class StudentController extends Controller
             return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
         }
         $logs = $internship->attendance()
+            ->with('placement')
             ->orderByDesc('date')
             ->paginate(20);
 
@@ -312,6 +332,7 @@ class StudentController extends Controller
 
         $log = $internship->attendance()->create([
             'date'              => $today,
+            'placement_id'      => $internship->current_placement_id,
             'clock_in'          => $clockIn,
             'am_time_in'        => $clockIn,
             'status'            => 'pending',

@@ -10,7 +10,7 @@ class Internship extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'student_id', 'company_id', 'supervisor_id', 'faculty_id', 'coordinator_id',
+        'student_id', 'company_id', 'supervisor_id', 'current_placement_id', 'faculty_id', 'coordinator_id',
         'school_year', 'semester', 'term', 'program',
         'target_hours', 'total_hours_rendered', 'status', 'status_reason',
         'start_date', 'end_date', 'expected_end_date',
@@ -67,6 +67,16 @@ class Internship extends Model
         return $this->hasOne(StudentPortfolio::class);
     }
 
+    public function placements()
+    {
+        return $this->hasMany(InternshipPlacement::class);
+    }
+
+    public function currentPlacement()
+    {
+        return $this->belongsTo(InternshipPlacement::class, 'current_placement_id');
+    }
+
     public function statusHistories()
     {
 
@@ -114,9 +124,18 @@ class Internship extends Model
 
     public function refreshTotalHours(): void
     {
-        $total = $this->attendance()
-            ->where('status', 'validated')
-            ->sum('hours_rendered');
+        // Sum hours from all placements, or fallback to attendance logs if no placements
+        $placementHours = $this->placements()->sum('accumulated_hours');
+        
+        if ($placementHours > 0) {
+            $total = $placementHours;
+        } else {
+            // Legacy: sum directly from attendance logs (for internships created before placement model)
+            $total = $this->attendance()
+                ->where('status', 'validated')
+                ->sum('hours_rendered');
+        }
+        
         $this->update(['total_hours_rendered' => $total]);
     }
 
@@ -163,5 +182,8 @@ class Internship extends Model
 
         static::creating($resolveFaculty);
         static::updating($resolveFaculty);
+        static::created(function (Internship $internship) {
+            \App\Services\InternshipPlacementService::ensurePlacements($internship);
+        });
     }
 }

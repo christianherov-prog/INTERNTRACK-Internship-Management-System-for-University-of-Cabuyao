@@ -16,4 +16,9 @@ class Program extends Model
     {
         return $this->belongsTo(Department::class);
     }
+
+    public function hteRequirements()
+    {
+        return $this->hasMany(ProgramHteRequirement::class);
+    }
 }

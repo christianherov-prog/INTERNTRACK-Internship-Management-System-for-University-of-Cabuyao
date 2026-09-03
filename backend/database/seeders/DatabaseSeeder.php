@@ -67,6 +67,7 @@ class DatabaseSeeder extends Seeder
         $this->ensureProgram('Bachelor of Science in Computer Engineering', $coeDepartmentId, 'BSCPE');
 
         $this->call(AcademicCollegesSeeder::class);
+        $this->call(ProgramHteRequirementsSeeder::class);
 
         // ─── 1. Staff users (faculty_number = employee/faculty number) ──────────────
         $admin    = User::updateOrCreate(['faculty_number' => 'ADMIN-MISD-001'], ['email' => 'misd.admin@uc.edu.ph',     'password' => $pw, 'role' => 'admin',       'is_active' => true]);
@@ -212,6 +213,7 @@ class DatabaseSeeder extends Seeder
 
         // ─── 3b. Supervisor demo account (Patrick Bateman at TechCorp PH) ────
         $supervisor = User::updateOrCreate(['email' => 'patrick.bateman@techcorp.ph'], [
+            'faculty_number' => 'SUP-0001',
             'email' => 'patrick.bateman@techcorp.ph',
             'password' => $pw,
             'role' => 'supervisor',
@@ -257,7 +259,7 @@ class DatabaseSeeder extends Seeder
   Facul (COED)  FAC-COED-001           interntrack123
   Coord (COE)   COR-COE-001            interntrack123
   Facul (COE)   FAC-COE-001            interntrack123
-  Supervisor    SUP-1001               interntrack123 (Patrick Bateman)
+  Supervisor    SUP-0001               interntrack123 (Patrick Bateman)
   Stud (CCS)    2300600                interntrack123 (Fresh/Pending)
   Stud (CCS)    2300590                interntrack123 (Fresh/Pending)
   Stud (CCS)    2300592                interntrack123 (Populated: TechCorp PH)

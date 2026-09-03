@@ -10,6 +10,7 @@ import {
   subscribeLiveStatus,
   notificationPollMs,
 } from '../services/echo'
+import { isMultiHteProgram } from '../utils/hteProgram'
 
 function StudentDeploymentSwitcher() {
   const { user } = useAuth()
@@ -17,9 +18,10 @@ function StudentDeploymentSwitcher() {
   const [selectedId, setSelectedId] = useState(
     sessionStorage.getItem('interntrack_active_internship') || ''
   )
+  const showSwitcher = user?.role === 'student' && isMultiHteProgram(user)
 
   useEffect(() => {
-    if (user?.role !== 'student') return
+    if (!showSwitcher) return
     // Fetch all deployments without passing the header so we get them all
     api.get('/student/internships', {
       headers: { 'X-Internship-Id': '' } // Override to not filter by active
@@ -32,9 +34,9 @@ function StudentDeploymentSwitcher() {
         sessionStorage.setItem('interntrack_active_internship', data[0].id)
       }
     }).catch(() => {})
-  }, [user])
+  }, [user, showSwitcher])
 
-  if (user?.role !== 'student' || internships.length <= 1) return null
+  if (!showSwitcher || internships.length <= 1) return null
 
   const handleChange = (e) => {
     const id = e.target.value

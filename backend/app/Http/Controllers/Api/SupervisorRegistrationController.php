@@ -9,6 +9,7 @@ use App\Models\Notification;
 use App\Models\SupervisorInviteToken;
 use App\Models\SupervisorProfile;
 use App\Models\User;
+use App\Support\SupervisorIds;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -204,14 +205,7 @@ class SupervisorRegistrationController extends Controller
         }
 
         return DB::transaction(function () use ($request, $invite) {
-            $nextId  = (User::where('role', 'supervisor')->count()) + 1;
-            $supCode = 'SUP-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
-
-            // Prevent collision
-            while (User::where('faculty_number', $supCode)->exists()) {
-                $nextId++;
-                $supCode = 'SUP-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
-            }
+            $supCode = SupervisorIds::nextFacultyNumber();
 
             $user = User::create([
                 'faculty_number' => $supCode,

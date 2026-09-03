@@ -284,6 +284,10 @@ class SupervisorController extends Controller
             'validated_at' => now(),
         ]);
 
+        // Refresh placement hours (if placement is linked) then internship total
+        if ($log->placement_id && $request->action === 'validated') {
+            $log->placement?->refreshAccumulatedHours();
+        }
         $log->internship->refreshTotalHours();
 
         audit_log($request->user()->id, 'validate_attendance', [
@@ -323,6 +327,12 @@ class SupervisorController extends Controller
                 'validated_by' => $request->user()->id,
                 'validated_at' => now(),
             ]);
+            
+            // Refresh placement hours if placement is linked
+            if ($log->placement_id && $request->action === 'validated') {
+                $log->placement?->refreshAccumulatedHours();
+            }
+            
             $affectedInternships->push($log->internship);
         }
 

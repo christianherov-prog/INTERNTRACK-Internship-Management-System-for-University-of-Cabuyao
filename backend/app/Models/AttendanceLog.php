@@ -10,7 +10,7 @@ class AttendanceLog extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'internship_id', 'date',
+        'internship_id', 'placement_id', 'date',
         'clock_in', 'clock_out',
         'am_time_in', 'am_time_out', 'pm_time_in', 'pm_time_out',
         'hours_rendered', 'overtime_hours', 'status', 'remarks',
@@ -35,6 +35,11 @@ class AttendanceLog extends Model
     public function internship()
     {
         return $this->belongsTo(Internship::class);
+    }
+
+    public function placement()
+    {
+        return $this->belongsTo(InternshipPlacement::class, 'placement_id');
     }
 
     public function validator()

@@ -62,6 +62,10 @@ function StudentAttendance({ embedded = false }) {
 
   const todayStatus = data?.today_status ?? 'not_clocked_in'
   const logs = data?.attendance?.data ?? []
+  
+  // Check if student has multiple placements (to show placement column)
+  const uniquePlacements = new Set(logs.map(log => log.placement?.label).filter(Boolean))
+  const showPlacementColumn = uniquePlacements.size > 1
 
   
 
@@ -125,6 +129,7 @@ function StudentAttendance({ embedded = false }) {
                 <thead>
                   <tr>
                     <th>Date</th>
+                    {showPlacementColumn && <th>Placement</th>}
                     <th>Clock In</th>
                     <th>Clock Out</th>
                     <th>Hours</th>
@@ -135,6 +140,13 @@ function StudentAttendance({ embedded = false }) {
                   {logs.map((log) => (
                     <tr key={log.id}>
                       <td>{new Date(log.date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                      {showPlacementColumn && (
+                        <td>
+                          <span className="badge bg-light text-dark border" style={{ fontSize: '0.75rem' }}>
+                            {log.placement?.label || 'N/A'}
+                          </span>
+                        </td>
+                      )}
                       <td>{fmtTime(log.clock_in)}</td>
                       <td>{log.clock_out ? fmtTime(log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
                       <td>{log.hours_rendered != null ? `${log.hours_rendered} hrs` : '—'}</td>

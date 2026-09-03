@@ -96,7 +96,7 @@ class SupervisorInviteFlowTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ])->assertCreated();
-        $this->assertStringStartsWith('SUP-', (string) $created->json('username'));
+        $this->assertSame('SUP-0001', $created->json('username'));
 
         $invite = SupervisorInviteToken::where('token', $token)->first();
         $this->assertSame('registered', $invite->status);
