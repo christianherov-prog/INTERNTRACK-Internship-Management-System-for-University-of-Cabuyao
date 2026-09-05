@@ -1,13 +1,39 @@
+# Root-level ignores (backend/frontend also have their own .gitignore files)
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
 # Dependencies
-node_modules/
-vendor/
+**/node_modules/
+**/vendor/
 
-# Builds
-frontend/dist/
+# Uploaded / generated storage (symlink + files); keep Laravel placeholders tracked
+backend/public/storage
+backend/storage/app/public/*
+!backend/storage/app/public/.gitignore
 
-# Environment secrets (examples are committed instead)
-backend/.env
+# Build / cache
+**/dist/
+**/build/
+*.log
 
-# OS / editor noise
-Thumbs.db
+# OS / IDE
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Large binary assets accidentally at repo root
+*.pdf
+*.docx
+
+# Junk / local scratch files
+_docx_extract.txt
+tinker_check.php
+**/tinker_check.php
+backend/storage/audit_discover.php
+backend/php-local.ini
+/logo.jpg
