@@ -391,6 +391,8 @@ class RequirementTemplateController extends Controller
         if ($user->isCoordinator()) {
             if ($deptId) {
                 $query->whereHas('studentProfile', fn ($q) => $q->where('department_id', $deptId));
+            } else {
+                $query->whereRaw('1 = 0');
             }
 
             return;

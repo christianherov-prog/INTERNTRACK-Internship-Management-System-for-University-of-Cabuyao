@@ -1,6 +1,7 @@
 import React from 'react';
 import '../../assets/css/portfolio-print.css';
 import { AuthenticatedFileImage } from '../AuthenticatedFile';
+import { displayLabel } from '../../utils/displayLabel';
 
 export function PageHeader({ companyLogoPath }) {
   const styles = {
@@ -203,7 +204,7 @@ const WeeklyInternshipJournal = ({
               </div>
               <div style={styles.infoCellRight}>
                 <span style={styles.label}>PROGRAM:</span>
-                <span style={styles.infoValue}>{program || 'BSIT / BSCS'}</span>
+                <span style={styles.infoValue}>{displayLabel(program, 'BSIT / BSCS')}</span>
               </div>
             </div>
             <div style={{ ...styles.infoRowTop, borderBottom: 'none' }}>

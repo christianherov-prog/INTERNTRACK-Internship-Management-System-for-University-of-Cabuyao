@@ -5,6 +5,7 @@ import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
+import { displayLabel } from '../../utils/displayLabel'
 
 const REPORT_TYPES = [
   {
@@ -50,7 +51,7 @@ function InternshipSummaryTable({ data }) {
         <tbody>
           {data.map((r, i) => (
             <tr key={i}>
-              <td className="fw-semibold">{r.program ?? 'Unknown'}</td>
+              <td className="fw-semibold">{displayLabel(r.program, 'Unknown')}</td>
               <td>{r.ongoing ?? 0}</td>
               <td>{r.completed ?? 0}</td>
               <td>{r.count ?? 0}</td>

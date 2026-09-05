@@ -89,22 +89,12 @@ class User extends Authenticatable
     // ─── Scopes ─────────────────────────────────────────────────────────────
     public function scopeInDepartment($query)
     {
-        $user = auth()->user();
-        if (!$user) return $query;
+        return \App\Support\DepartmentScope::constrainStudents($query, auth()->user());
+    }
 
-        // Directors/Admins see all
-        if ($user->hasRole('director') || $user->hasRole('admin')) {
-            return $query;
-        }
-
-        $deptId = $user->facultyProfile?->department_id;
-        if ($deptId) {
-            return $query->whereHas('studentProfile', function ($q) use ($deptId) {
-                $q->where('department_id', $deptId);
-            });
-        }
-
-        return $query;
+    public function scopeInStaffDepartment($query)
+    {
+        return \App\Support\DepartmentScope::constrainStaff($query, auth()->user());
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────

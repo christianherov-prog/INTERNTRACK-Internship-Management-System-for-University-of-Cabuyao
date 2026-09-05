@@ -166,7 +166,8 @@ class InternshipStatusController extends Controller
         }
 
         if ($role === 'coordinator') {
-            // Own assigned internships, or unassigned (null) so a coordinator can place/manage.
+            \App\Support\DepartmentScope::abortUnlessInternshipInDepartment($request->user(), $internship);
+
             if ($internship->coordinator_id !== null
                 && (int) $internship->coordinator_id !== (int) $request->user()->id) {
                 abort(403, 'You may only manage internships assigned to you as coordinator.');

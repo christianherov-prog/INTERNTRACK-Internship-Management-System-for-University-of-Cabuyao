@@ -9,6 +9,7 @@ import { PaginatedTextSection, PaginatedImageCollection } from '../../../compone
 import WeeklyInternshipJournal from '../../../components/portfolio/WeeklyInternshipJournal';
 import DailyTimeRecord from '../../../components/portfolio/DailyTimeRecord';
 import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/portfolio/EvaluationsPreview';
+import { displayLabel } from '../../../utils/displayLabel';
 
 // --- Reusable Header Component ---
 function PageHeader({ companyLogoPath }) {
@@ -228,9 +229,11 @@ function PortfolioPreview() {
 
   const section = sp?.section ?? '_________';
 
-  const programTitle = (sp?.course_name ?? i?.program ?? '').includes('Computer Science')
+  const rawProgram = displayLabel(sp?.course_name || sp?.program || i?.program, 'Bachelor of Science in Information Technology');
+  const isCs = rawProgram.toLowerCase().includes('computer science');
+  const programTitle = isCs
     ? 'Bachelor of Science in Computer Science'
-    : 'Bachelor of Science in Information Technology';
+    : (rawProgram.toLowerCase().includes('information technology') ? 'Bachelor of Science in Information Technology' : rawProgram);
 
   const practicumCode = programTitle.includes('Computer Science')
     ? 'CSP115 - CS Practicum (300 hours)'

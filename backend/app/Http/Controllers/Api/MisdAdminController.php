@@ -11,6 +11,8 @@ use App\Services\FacultySectionAssignmentService;
 use App\Services\MisdIntegrationService;
 use App\Services\StaffAssignmentService;
 use App\Support\ApiResponse;
+use App\Support\DepartmentScope;
+use App\Models\Program;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -345,6 +347,8 @@ class MisdAdminController extends Controller
             throw ValidationException::withMessages(['faculty_user_id' => 'Faculty user not found.']);
         }
 
+        $this->abortUnlessFacultyMatchesProgram($faculty, $data['program'] ?? null);
+
         $assignment = FacultySectionAssignment::create([
             'program'         => $data['program'] ?? null,
             'section'         => $section,
@@ -375,7 +379,14 @@ class MisdAdminController extends Controller
             if (!$faculty) {
                 throw ValidationException::withMessages(['faculty_user_id' => 'Faculty user not found.']);
             }
+        } else {
+            $faculty = $assignment->faculty;
         }
+
+        $this->abortUnlessFacultyMatchesProgram(
+            $faculty,
+            $data['program'] ?? $assignment->program
+        );
 
         $assignment->update(array_filter([
             'program'         => $data['program'] ?? null,
@@ -691,6 +702,23 @@ class MisdAdminController extends Controller
             'message' => ucfirst($role) . ' assigned successfully.',
             'staff'   => $this->staff->formatStaff($user),
         ], 201);
+    }
+
+    private function abortUnlessFacultyMatchesProgram(?User $faculty, ?string $programName): void
+    {
+        if (! $faculty || ! $programName) {
+            return;
+        }
+
+        $program = Program::where('name', $programName)->orWhere('code', $programName)->first();
+        if (! $program?->department_id) {
+            return;
+        }
+
+        $facultyDept = DepartmentScope::departmentIdFor($faculty);
+        if ($facultyDept && (int) $facultyDept !== (int) $program->department_id) {
+            DepartmentScope::abortDifferentDepartment();
+        }
     }
 
     private function validateSectionPayload(Request $request, bool $partial = false): array

@@ -47,7 +47,7 @@ class StudentProfile extends Model {
                                 'total_hours_rendered' => 0,
                             ]);
                     }
-                } elseif ($internship->faculty_id !== $facultyId) {
+                } elseif ($facultyId && $internship->faculty_id !== $facultyId) {
                     $internship->forceFill(['faculty_id' => $facultyId])->saveQuietly();
                 }
             }

@@ -100,7 +100,9 @@ class UserResource extends JsonResource
             'student_number'    => $this->studentProfile?->student_number,
             'section'           => $this->studentProfile?->section,
             'year_level'        => $this->studentProfile?->year_level,
-            'department'        => $this->studentProfile?->department ?? $this->facultyProfile?->department,
+            'department'        => $this->studentProfile?->department?->name
+                ?? $this->facultyProfile?->department?->name
+                ?? '',
             'faculty_number'    => $this->facultyProfile?->faculty_number,
             'employment_status' => $this->facultyProfile?->employment_status,
 

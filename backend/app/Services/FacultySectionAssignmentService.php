@@ -44,12 +44,18 @@ class FacultySectionAssignmentService
 
         $programName = is_object($profile->program) ? ($profile->program->name) : $profile->program;
 
-        return $this->suggestFacultyForSection(
+        $faculty = $this->suggestFacultyForSection(
             $profile->section,
             $programName,
             $profile->school_year,
             $profile->semester
         );
+
+        if ($faculty && !\App\Support\DepartmentScope::facultyMatchesStudent($faculty, $profile)) {
+            return null;
+        }
+
+        return $faculty;
     }
 
     /**
@@ -134,7 +140,8 @@ class FacultySectionAssignmentService
      */
     public function facultyOptions(): array
     {
-        return User::whereIn('role', ['faculty', 'coordinator'])
+        return User::inStaffDepartment()
+            ->whereIn('role', ['faculty', 'coordinator'])
             ->where('is_active', true)
             ->with('facultyProfile')
             ->orderBy('faculty_number')
@@ -175,7 +182,7 @@ class FacultySectionAssignmentService
         return [
             'section'                   => $profile?->section,
             'section_normalized'        => self::normalizeSection($profile?->section),
-            'program'                   => $profile?->program,
+            'program'                   => $profile?->program?->name,
             'school_year'             => $profile?->school_year,
             'semester'                  => $profile?->semester,
             'resolved_faculty'          => $this->formatFaculty($faculty),
@@ -210,11 +217,16 @@ class FacultySectionAssignmentService
                 continue;
             }
 
+            $assignableFacultyId = $facultyId;
+            if ($faculty && !\App\Support\DepartmentScope::facultyMatchesStudent($faculty, $profile)) {
+                $assignableFacultyId = null;
+            }
+
             $internship = Internship::where('student_id', $profile->user_id)->first();
             if (!$internship) {
                 $user = User::find($profile->user_id);
                 if ($user && $user->role === 'student') {
-                    $prog = $profile->program ?: ($program ?: 'Bachelor of Science in Information Technology');
+                    $prog = $profile->program?->name ?: ($program ?: 'Bachelor of Science in Information Technology');
                     $targetHours = 500;
                     if (stripos($prog, 'Computer Science') !== false) $targetHours = 300;
                     if (stripos($prog, 'Engineering') !== false || stripos($profile->department, 'Engineering') !== false) $targetHours = 240;
@@ -225,13 +237,13 @@ class FacultySectionAssignmentService
                         'semester' => $profile->semester ?: ($semester ?: '2nd Semester'),
                         'term' => "AY " . ($profile->school_year ?: ($schoolYear ?: '2025-2026')) . ", " . ($profile->semester ?: ($semester ?: '2nd Semester')),
                         'program' => $prog,
-                        'faculty_id' => $facultyId,
+                        'faculty_id' => $assignableFacultyId,
                         'target_hours' => $targetHours,
                         'total_hours_rendered' => 0,
                     ]);
                 }
-            } elseif ($facultyId && $internship->faculty_id !== $facultyId) {
-                $internship->forceFill(['faculty_id' => $facultyId])->saveQuietly();
+            } elseif ($assignableFacultyId && $internship->faculty_id !== $assignableFacultyId) {
+                $internship->forceFill(['faculty_id' => $assignableFacultyId])->saveQuietly();
             }
         }
     }

@@ -10,6 +10,7 @@ import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/
 import '../../../assets/css/portfolio-print.css';
 
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow';
+import { displayLabel } from '../../../utils/displayLabel';
 
 // --- Reusable Header Component ---
 const COEHeader = ({ programTitle, companyLogoPath }) => {
@@ -267,7 +268,7 @@ function COEPortfolioPreview() {
   const companyLogoPath = p.company_logo_path;
 
   const studentName = sp.first_name ? `${sp.first_name.toUpperCase()} ${sp.last_name.toUpperCase()}` : '[STUDENT FULL NAME]';
-  const programTitle = sp.program?.name || sp.course_name || i.program?.name || i.program || 'Bachelor of Science in Computer Engineering';
+  const programTitle = displayLabel(sp.program || sp.course_name || i.program, 'Bachelor of Science in Computer Engineering');
   const practicumCode = programTitle.includes('Computer Engineering') ? 'COE114: On-the-Job Training (240hrs)' : '[Course Code]: On-the-Job Training';
 
   const companyName = p.company_name || i.company?.company_name || '[COMPANY NAME]';

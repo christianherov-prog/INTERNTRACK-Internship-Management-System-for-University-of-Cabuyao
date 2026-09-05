@@ -5,6 +5,7 @@ import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { displayLabel } from '../../utils/displayLabel'
 
 const MOA_COLORS = {
   active:      { bg: '#dcfce7', color: '#166534', label: 'Active' },
@@ -23,7 +24,7 @@ function ProgramBar({ programs, total }) {
         <tbody>
           {programs.map((p, i) => (
             <tr key={i}>
-              <td className="fw-semibold">{p.program ?? 'Unknown'}</td>
+              <td className="fw-semibold">{displayLabel(p.program, 'Unknown')}</td>
               <td><span className="badge bg-success">{p.ongoing ?? p.count ?? 0}</span></td>
               <td><span className="badge bg-primary">{p.completed ?? 0}</span></td>
               <td style={{ minWidth: '140px' }}>

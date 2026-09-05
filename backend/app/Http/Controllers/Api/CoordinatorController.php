@@ -26,6 +26,10 @@ class CoordinatorController extends Controller
         if (!$internship) {
             abort(404, 'Internship not found for this record.');
         }
+        $actor = auth()->user();
+        if ($actor && !\App\Support\DepartmentScope::internshipBelongsToActor($actor, $internship)) {
+            \App\Support\DepartmentScope::abortDifferentDepartment();
+        }
         if ($internship->coordinator_id !== null && (int) $internship->coordinator_id !== $actorId) {
             abort(403, 'Forbidden. You are not the assigned coordinator for this internship.');
         }
@@ -39,7 +43,7 @@ class CoordinatorController extends Controller
     {
         $student = User::where('role', 'student')->with('studentProfile.program')->findOrFail($userId);
         if (!User::inDepartment()->where('id', $userId)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
 
         $internship = Internship::inDepartment()->where('student_id', $userId)
@@ -262,6 +266,7 @@ class CoordinatorController extends Controller
         $coordinatorReqs = \App\Models\OjtRequirementTemplate::where('created_by', $coordId)->pluck('name');
 
         $docs = \App\Models\Document::whereIn('document_type', $coordinatorReqs)
+            ->whereHas('internship', fn ($q) => $q->inDepartment())
             ->with(['internship.student.studentProfile', 'attachments'])
             ->whereIn('status', ['pending', 'pending_review', 'under_review', 'pending_faculty', 'resubmitted'])
             ->orderByDesc('submitted_at')
@@ -277,7 +282,7 @@ class CoordinatorController extends Controller
     {
         $coordId = $request->user()->id;
         $journals = JournalEntry::where('status', 'submitted')
-            ->whereHas('internship', fn ($q) => $q->where('coordinator_id', $coordId))
+            ->whereHas('internship', fn ($q) => $q->inDepartment()->where('coordinator_id', $coordId))
             ->with(['internship.student.studentProfile'])
             ->orderByDesc('date')
             ->paginate(25);
@@ -294,7 +299,7 @@ class CoordinatorController extends Controller
 
         $journal = JournalEntry::whereHas(
             'internship',
-            fn ($q) => $q->where('coordinator_id', $request->user()->id)
+            fn ($q) => $q->inDepartment()->where('coordinator_id', $request->user()->id)
         )->findOrFail($id);
 
         $journal->update([
@@ -340,7 +345,7 @@ class CoordinatorController extends Controller
 
         $student = User::where('role', 'student')->findOrFail($userId);
         if (!User::inDepartment()->where('id', $userId)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
         $student->is_active = !$request->boolean('archived');
         $student->save();
@@ -363,7 +368,17 @@ class CoordinatorController extends Controller
     public function placementOptions(Request $request)
     {
         $companies = Company::where('moa_status', 'active')->get();
-        $faculty = User::whereIn('role', ['faculty', 'coordinator'])->with('facultyProfile')->get();
+        $faculty = User::whereIn('role', ['faculty', 'coordinator'])
+            ->whereHas('facultyProfile', function ($q) use ($request) {
+                $deptId = \App\Support\DepartmentScope::departmentIdFor($request->user());
+                if ($deptId) {
+                    $q->where('department_id', $deptId);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            })
+            ->with('facultyProfile')
+            ->get();
         $supervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
 
         $sections = \App\Services\FacultySectionAssignmentService::SECTIONS;
@@ -371,6 +386,9 @@ class CoordinatorController extends Controller
         $service = app(\App\Services\FacultySectionAssignmentService::class);
         foreach ($sections as $sec) {
             $fac = $service->suggestFacultyForSection($sec);
+            if ($fac && !\App\Support\DepartmentScope::facultyBelongsToActor($request->user(), $fac)) {
+                $fac = null;
+            }
             $map[$sec] = $fac ? $service->formatFaculty($fac) : null;
         }
 
@@ -394,7 +412,7 @@ class CoordinatorController extends Controller
 
         $internship = Internship::with('student.studentProfile')->findOrFail($id);
         if (!Internship::inDepartment()->where('id', $id)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
 
         $this->assertCoordinatorOwns($internship, $request->user()->id);
@@ -419,10 +437,16 @@ class CoordinatorController extends Controller
         }
 
         $service = app(\App\Services\FacultySectionAssignmentService::class);
-        $assignedFaculty = $service->resolveFacultyForProfile($profile);
+        $assignedFaculty = $service->suggestFacultyForSection(
+            $profile?->section,
+            is_object($profile?->program) ? $profile->program->name : $profile?->program,
+            $profile?->school_year,
+            $profile?->semester
+        );
+        \App\Support\DepartmentScope::abortUnlessFacultyMatchesStudent($assignedFaculty, $profile);
         $facultyId = $assignedFaculty?->id;
 
-        $program = $internship->program ?: ($profile?->program);
+        $program = $internship->program ?: ($profile?->program?->name);
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($request, $internship, $program, $facultyId) {
@@ -511,7 +535,7 @@ class CoordinatorController extends Controller
 
         $internship = Internship::findOrFail($id);
         if (!Internship::inDepartment()->where('id', $id)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
         $this->assertCoordinatorOwns($internship, $request->user()->id);
         $updated = AbsorptionService::recordOutcome(
@@ -548,7 +572,7 @@ class CoordinatorController extends Controller
 
         $pendingDocs = Document::query()
             ->whereIn('status', ['pending_review', 'resubmitted', 'under_review'])
-            ->whereHas('internship', fn ($q) => $q->where('coordinator_id', $coordId))
+            ->whereHas('internship', fn ($q) => $q->inDepartment()->where('coordinator_id', $coordId))
             ->count();
 
         return response()->json([
@@ -660,6 +684,7 @@ class CoordinatorController extends Controller
             evaluator_type,
             AVG(average_score) as avg_overall
         ')
+        ->whereHas('internship', fn ($q) => $q->inDepartment())
         ->groupBy('evaluator_type')
         ->get();
 
@@ -696,10 +721,12 @@ class CoordinatorController extends Controller
     /** Distinct program / industry values for report filter dropdowns. */
     private function reportFilterOptions(): array
     {
-        $deptId = auth()->user()?->facultyProfile?->department_id;
+        $deptId = \App\Support\DepartmentScope::departmentIdFor(auth()->user());
         $programsQuery = \App\Models\Program::where('is_active', true);
         if ($deptId) {
             $programsQuery->where('department_id', $deptId);
+        } else {
+            $programsQuery->whereRaw('1 = 0');
         }
         $programs = $programsQuery->orderBy('name')->get()->map(fn($p) => ['id' => $p->id, 'name' => $p->name]);
 
@@ -771,7 +798,7 @@ class CoordinatorController extends Controller
         $internships = $query->orderByDesc('created_at')->paginate(40);
 
         // Faculty options for filter dropdown
-        $facultyOptions = \App\Models\User::inDepartment()
+        $facultyOptions = \App\Models\User::inStaffDepartment()
             ->whereIn('role', ['faculty', 'coordinator'])
             ->with('facultyProfile')
             ->get()
@@ -790,6 +817,7 @@ class CoordinatorController extends Controller
     public function supervisorFeedback(Request $request)
     {
         $journals = JournalEntry::whereNotNull('supervisor_feedback')
+            ->whereHas('internship', fn ($q) => $q->inDepartment())
             ->with(['internship.student.studentProfile', 'internship.company', 'internship.supervisor.supervisorProfile'])
             ->orderByDesc('supervisor_reviewed_at')
             ->paginate(40);
@@ -804,6 +832,7 @@ class CoordinatorController extends Controller
         ]);
         
         $user = User::where('role', 'student')->findOrFail($userId);
+        \App\Support\DepartmentScope::abortUnlessStudentInDepartment($request->user(), (int) $userId);
         $profile = $user->studentProfile;
         
         if (!$profile) {
@@ -815,12 +844,20 @@ class CoordinatorController extends Controller
         $profile->save();
         
         $service = app(\App\Services\FacultySectionAssignmentService::class);
-        $assignedFaculty = $service->resolveFacultyForProfile($profile);
-        
-        $internships = Internship::where('student_id', $userId)->get();
-        foreach ($internships as $internship) {
-            $internship->faculty_id = $assignedFaculty?->id;
-            $internship->save();
+        $assignedFaculty = $service->suggestFacultyForSection(
+            $profile->section,
+            is_object($profile->program) ? $profile->program->name : $profile->program,
+            $profile->school_year,
+            $profile->semester
+        );
+        \App\Support\DepartmentScope::abortUnlessFacultyMatchesStudent($assignedFaculty, $profile);
+
+        if ($assignedFaculty) {
+            $internships = Internship::where('student_id', $userId)->get();
+            foreach ($internships as $internship) {
+                $internship->faculty_id = $assignedFaculty->id;
+                $internship->save();
+            }
         }
         
         return response()->json([
@@ -842,13 +879,26 @@ class CoordinatorController extends Controller
         $service = app(\App\Services\FacultySectionAssignmentService::class);
         
         $assignedFaculty = $service->suggestFacultyForSection($section);
+        if ($assignedFaculty && !\App\Support\DepartmentScope::facultyBelongsToActor($request->user(), $assignedFaculty)) {
+            \App\Support\DepartmentScope::abortDifferentDepartment();
+        }
         $facultyId = $assignedFaculty?->id;
         
-        \Illuminate\Support\Facades\DB::transaction(function() use ($request, $section, $facultyId) {
-            $studentIds = $request->student_ids;
-            
-            \App\Models\StudentProfile::whereIn('user_id', $studentIds)->update(['section' => $section]);
-            \App\Models\Internship::whereIn('student_id', $studentIds)->update(['faculty_id' => $facultyId]);
+        $studentIds = collect($request->student_ids)->map(fn ($id) => (int) $id)->unique()->values();
+        $allowedIds = User::inDepartment()->where('role', 'student')->whereIn('id', $studentIds)->pluck('id');
+        if ($allowedIds->count() !== $studentIds->count()) {
+            \App\Support\DepartmentScope::abortDifferentDepartment();
+        }
+
+        if ($assignedFaculty) {
+            User::whereIn('id', $allowedIds)->with('studentProfile')->get()->each(function (User $student) use ($assignedFaculty) {
+                \App\Support\DepartmentScope::abortUnlessFacultyMatchesStudent($assignedFaculty, $student);
+            });
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function() use ($allowedIds, $section, $facultyId) {
+            \App\Models\StudentProfile::whereIn('user_id', $allowedIds)->update(['section' => $section]);
+            \App\Models\Internship::whereIn('student_id', $allowedIds)->update(['faculty_id' => $facultyId]);
         });
         
         return response()->json([
@@ -876,7 +926,9 @@ class CoordinatorController extends Controller
 
     public function hteRequests()
     {
-        $requests = \App\Models\HteRequest::with('student.studentProfile.program')->get();
+        $requests = \App\Models\HteRequest::with('student.studentProfile.program')
+            ->whereHas('student', fn ($q) => $q->inDepartment())
+            ->get();
         return response()->json(['requests' => $requests]);
     }
 
@@ -884,6 +936,7 @@ class CoordinatorController extends Controller
     {
         $request->validate(['status' => 'required']);
         $req = \App\Models\HteRequest::findOrFail($id);
+        \App\Support\DepartmentScope::abortUnlessStudentInDepartment($request->user(), (int) $req->student_id);
         $req->update(['status' => $request->status]);
         return response()->json(['message' => 'Status updated', 'request' => $req]);
     }

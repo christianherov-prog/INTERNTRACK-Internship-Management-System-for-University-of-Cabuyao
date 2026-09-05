@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
-import ConfirmModal from '../../components/modals/ConfirmModal'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
-import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
+import { AuthenticatedFileLink, AuthenticatedFilePreview } from '../../components/AuthenticatedFile'
+
+function studentLabel(inv) {
+  const studentP = inv.student?.student_profile || inv.student?.studentProfile
+  return studentP ? `${studentP.last_name}, ${studentP.first_name}` : (inv.student?.username || '—')
+}
+
+function reviewerLabel(inv) {
+  const reviewerP = inv.reviewer?.faculty_profile || inv.reviewer?.facultyProfile || inv.reviewer?.supervisor_profile
+  return reviewerP ? `${reviewerP.last_name}, ${reviewerP.first_name}` : (inv.reviewer?.username || '—')
+}
 
 function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-page' }) {
   const [pending, setPending] = useState([])
@@ -13,8 +22,8 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
   const [actionLoading, setActionLoading] = useState(null)
   const [message, setMessage] = useState(null)
   const [remarks, setRemarks] = useState('')
-  const [rejectTarget, setRejectTarget] = useState(null)
-  const [approveTarget, setApproveTarget] = useState(null)
+  const [reviewTarget, setReviewTarget] = useState(null)
+  const [activeFormIndex, setActiveFormIndex] = useState(0)
 
   const fetchData = () => {
     setLoading(true)
@@ -34,12 +43,26 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
 
   useEffect(() => { fetchData() }, [apiBase])
 
+  const openReview = (inv) => {
+    setReviewTarget(inv)
+    setActiveFormIndex(0)
+    setRemarks('')
+    setMessage(null)
+  }
+
+  const closeReview = () => {
+    if (actionLoading) return
+    setReviewTarget(null)
+    setRemarks('')
+  }
+
   const handleApprove = async () => {
-    if (!approveTarget) return
-    setActionLoading(approveTarget)
+    if (!reviewTarget) return
+    setActionLoading(reviewTarget.id)
     try {
-      await api.patch(`${apiBase}/supervisor-approvals/${approveTarget}/approve`, { remarks: '' })
-      setApproveTarget(null)
+      await api.patch(`${apiBase}/supervisor-approvals/${reviewTarget.id}/approve`, { remarks: remarks.trim() })
+      setReviewTarget(null)
+      setRemarks('')
       fetchData()
     } catch (err) {
       setMessage(err.response?.data?.message || 'Failed to approve.')
@@ -49,14 +72,15 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
   }
 
   const handleReject = async () => {
+    if (!reviewTarget) return
     if (!remarks.trim()) {
       setMessage('Please provide a reason for rejection.')
       return
     }
-    setActionLoading(rejectTarget)
+    setActionLoading(reviewTarget.id)
     try {
-      await api.patch(`${apiBase}/supervisor-approvals/${rejectTarget}/reject`, { remarks })
-      setRejectTarget(null)
+      await api.patch(`${apiBase}/supervisor-approvals/${reviewTarget.id}/reject`, { remarks: remarks.trim() })
+      setReviewTarget(null)
       setRemarks('')
       setMessage(null)
       fetchData()
@@ -66,6 +90,9 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
       setActionLoading(null)
     }
   }
+
+  const forms = reviewTarget?.acceptance_forms || []
+  const activeForm = forms[activeFormIndex] || null
 
   if (loading) {
     return (
@@ -85,16 +112,6 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
         </div>
       )}
 
-      <ConfirmModal
-        open={!!approveTarget}
-        title="Approve supervisor?"
-        message="Approve this supervisor and assign them to the student's internship?"
-        confirmLabel="Approve"
-        loading={!!actionLoading && actionLoading === approveTarget}
-        onCancel={() => !actionLoading && setApproveTarget(null)}
-        onConfirm={handleApprove}
-      />
-      {/* Pending Registrations */}
       <div className="content-card mb-4">
         <div className="content-card-header bg-light d-flex justify-content-between align-items-center">
           <h6 className="mb-0"><i className="fa fa-clock me-2 text-warning"></i>Pending Supervisor Registrations</h6>
@@ -116,15 +133,14 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                     <th>Position</th>
                     <th>Company</th>
                     <th>Student</th>
-                    <th>Forms</th>
+                    <th>Acceptance form</th>
                     <th>Registered</th>
                     <th className="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pending.map(inv => {
-                    const sup = inv.supervisor?.supervisor_profile || inv
-                    const studentP = inv.student?.student_profile
+                    const formCount = (inv.acceptance_forms || []).length
                     return (
                       <tr key={inv.id}>
                         <td>
@@ -134,46 +150,20 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                         <td><small>{inv.contact_number || '—'}</small></td>
                         <td><small>{inv.position || '—'}</small></td>
                         <td><small>{inv.company?.company_name || '—'}</small></td>
+                        <td><small>{studentLabel(inv)}</small></td>
                         <td>
-                          <small>
-                            {studentP ? `${studentP.last_name}, ${studentP.first_name}` : inv.student?.username || '—'}
-                          </small>
-                        </td>
-                        <td>
-                          {inv.internship?.documents?.length > 0 ? (
-                            inv.internship.documents.map(doc => (
-                              <div key={doc.id} className="mb-1">
-                                <AuthenticatedFileLink 
-                                  path={doc.file_path}
-                                  className="btn btn-sm btn-outline-primary"
-                                  title={doc.file_name}
-                                >
-                                  <i className="fa fa-file-alt me-1"></i> View Form
-                                </AuthenticatedFileLink>
-                              </div>
-                            ))
-                          ) : (
-                            <small className="text-muted">None</small>
-                          )}
+                          {formCount > 0
+                            ? <span className="badge bg-success-subtle text-success border">{formCount} file{formCount === 1 ? '' : 's'}</span>
+                            : <small className="text-muted">None uploaded</small>}
                         </td>
                         <td><small>{new Date(inv.updated_at).toLocaleDateString('en-PH')}</small></td>
                         <td className="text-center">
                           <button
-                            className="btn btn-success btn-sm me-1"
-                            disabled={actionLoading === inv.id}
-                            onClick={() => setApproveTarget(inv.id)}
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => openReview(inv)}
                           >
-                            {actionLoading === inv.id
-                              ? <i className="fa fa-spinner fa-spin"></i>
-                              : <><i className="fa fa-check me-1"></i>Approve</>
-                            }
-                          </button>
-                          <button
-                            className="btn btn-outline-danger btn-sm"
-                            disabled={actionLoading === inv.id}
-                            onClick={() => setRejectTarget(inv.id)}
-                          >
-                            <i className="fa fa-times me-1"></i>Reject
+                            <i className="fa fa-file-alt me-1"></i>Review form
                           </button>
                         </td>
                       </tr>
@@ -186,23 +176,98 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
         </div>
       </div>
 
-      {/* Reject Modal */}
-      {rejectTarget && (
-        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setRejectTarget(null)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+      {reviewTarget && (
+        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={closeReview}>
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
-                <h6 className="modal-title"><i className="fa fa-times-circle text-danger me-2"></i>Reject Supervisor Registration</h6>
-                <button type="button" className="btn-close" onClick={() => setRejectTarget(null)}></button>
+                <h6 className="modal-title">
+                  <i className="fa fa-file-signature me-2 text-primary"></i>
+                  Review acceptance form — {reviewTarget.first_name} {reviewTarget.last_name}
+                </h6>
+                <button type="button" className="btn-close" onClick={closeReview} disabled={!!actionLoading}></button>
               </div>
               <div className="modal-body">
-                <label className="form-label fw-semibold">Reason for Rejection <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows={3} value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Provide a reason..." />
+                <div className="row g-3 mb-3">
+                  <div className="col-md-4">
+                    <div className="text-muted small">Supervisor</div>
+                    <div className="fw-semibold">{reviewTarget.first_name} {reviewTarget.last_name}</div>
+                    <div className="small">{reviewTarget.email}</div>
+                    <div className="small text-muted">{reviewTarget.contact_number || '—'}</div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="text-muted small">Placement</div>
+                    <div className="fw-semibold">{reviewTarget.position || '—'}</div>
+                    <div className="small">{reviewTarget.company?.company_name || '—'}</div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="text-muted small">Inviting student</div>
+                    <div className="fw-semibold">{studentLabel(reviewTarget)}</div>
+                  </div>
+                </div>
+
+                <h6 className="fw-semibold mb-2">Acceptance form</h6>
+                {forms.length === 0 ? (
+                  <div className="alert alert-warning mb-3">No acceptance form was uploaded with this registration.</div>
+                ) : (
+                  <>
+                    {forms.length > 1 && (
+                      <div className="d-flex flex-wrap gap-2 mb-2">
+                        {forms.map((form, idx) => (
+                          <button
+                            key={form.path || idx}
+                            type="button"
+                            className={`btn btn-sm ${idx === activeFormIndex ? 'btn-primary' : 'btn-outline-primary'}`}
+                            onClick={() => setActiveFormIndex(idx)}
+                          >
+                            {form.name || `File ${idx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mb-2 d-flex justify-content-between align-items-center">
+                      <small className="text-muted">{activeForm?.name || 'Acceptance form'}</small>
+                      {activeForm?.path && (
+                        <AuthenticatedFileLink path={activeForm.path} className="btn btn-sm btn-outline-secondary">
+                          <i className="fa fa-external-link-alt me-1"></i>Open in new tab
+                        </AuthenticatedFileLink>
+                      )}
+                    </div>
+                    <AuthenticatedFilePreview
+                      path={activeForm?.path}
+                      mime={activeForm?.mime}
+                      name={activeForm?.name}
+                      height={520}
+                    />
+                  </>
+                )}
+
+                <label className="form-label fw-semibold mt-3">Remarks {reviewTarget ? <span className="text-muted fw-normal">(required to reject)</span> : null}</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={remarks}
+                  onChange={e => setRemarks(e.target.value)}
+                  placeholder="Optional for approval. Required if you reject the registration."
+                />
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary btn-sm" onClick={() => setRejectTarget(null)}>Cancel</button>
-                <button className="btn btn-danger btn-sm" onClick={handleReject} disabled={actionLoading === rejectTarget}>
-                  {actionLoading === rejectTarget ? <i className="fa fa-spinner fa-spin"></i> : <><i className="fa fa-times me-1"></i>Reject</>}
+                <button type="button" className="btn btn-secondary btn-sm" onClick={closeReview} disabled={!!actionLoading}>Close</button>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={handleReject}
+                  disabled={actionLoading === reviewTarget.id}
+                >
+                  {actionLoading === reviewTarget.id ? <i className="fa fa-spinner fa-spin"></i> : <><i className="fa fa-times me-1"></i>Reject</>}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success btn-sm"
+                  onClick={handleApprove}
+                  disabled={actionLoading === reviewTarget.id}
+                >
+                  {actionLoading === reviewTarget.id ? <i className="fa fa-spinner fa-spin"></i> : <><i className="fa fa-check me-1"></i>Approve</>}
                 </button>
               </div>
             </div>
@@ -210,7 +275,6 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
         </div>
       )}
 
-      {/* History */}
       {history.length > 0 && (
         <div className="content-card">
           <div className="content-card-header bg-light">
@@ -224,6 +288,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                     <th>Supervisor</th>
                     <th>Company</th>
                     <th>Student</th>
+                    <th>Acceptance form</th>
                     <th>Status</th>
                     <th>Reviewed By</th>
                     <th>Date</th>
@@ -231,26 +296,33 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                   </tr>
                 </thead>
                 <tbody>
-                  {history.map(inv => {
-                    const studentP = inv.student?.student_profile
-                    const reviewerP = inv.reviewer?.faculty_profile || inv.reviewer?.supervisor_profile
-                    return (
-                      <tr key={inv.id} className="small">
-                        <td>{inv.first_name} {inv.last_name}</td>
-                        <td>{inv.company?.company_name || '—'}</td>
-                        <td>{studentP ? `${studentP.last_name}, ${studentP.first_name}` : '—'}</td>
-                        <td>
-                          {inv.status === 'approved'
-                            ? <span className="badge bg-success">Approved</span>
-                            : <span className="badge bg-danger">Rejected</span>
-                          }
-                        </td>
-                        <td>{reviewerP ? `${reviewerP.last_name}, ${reviewerP.first_name}` : inv.reviewer?.username || '—'}</td>
-                        <td>{inv.reviewed_at ? new Date(inv.reviewed_at).toLocaleDateString('en-PH') : '—'}</td>
-                        <td>{inv.review_remarks || '—'}</td>
-                      </tr>
-                    )
-                  })}
+                  {history.map(inv => (
+                    <tr key={inv.id} className="small">
+                      <td>{inv.first_name} {inv.last_name}</td>
+                      <td>{inv.company?.company_name || '—'}</td>
+                      <td>{studentLabel(inv)}</td>
+                      <td>
+                        {(inv.acceptance_forms || []).length > 0
+                          ? (inv.acceptance_forms || []).map((form, idx) => (
+                            <div key={form.path || idx}>
+                              <AuthenticatedFileLink path={form.path} className="small">
+                                {form.name || `Form ${idx + 1}`}
+                              </AuthenticatedFileLink>
+                            </div>
+                          ))
+                          : '—'}
+                      </td>
+                      <td>
+                        {inv.status === 'approved'
+                          ? <span className="badge bg-success">Approved</span>
+                          : <span className="badge bg-danger">Rejected</span>
+                        }
+                      </td>
+                      <td>{reviewerLabel(inv)}</td>
+                      <td>{inv.reviewed_at ? new Date(inv.reviewed_at).toLocaleDateString('en-PH') : '—'}</td>
+                      <td>{inv.review_remarks || '—'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

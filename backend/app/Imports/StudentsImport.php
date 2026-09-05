@@ -32,6 +32,20 @@ class StudentsImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
+        $programModel = Program::where('name', $this->program)
+            ->orWhere('code', $this->program)
+            ->first();
+        if (! $programModel) {
+            throw new \Exception("Unknown program \"{$this->program}\". Choose a program from the academic catalog.");
+        }
+
+        $facultyUser = User::find($this->facultyId);
+        $facultyDept = \App\Support\DepartmentScope::departmentIdFor($facultyUser);
+        if ($facultyUser && $facultyDept && $programModel->department_id
+            && (int) $facultyDept !== (int) $programModel->department_id) {
+            abort(403, \App\Support\DepartmentScope::DENIED_MESSAGE);
+        }
+
         // First, ensure the faculty-section assignment exists
         FacultySectionAssignment::firstOrCreate([
             'faculty_user_id' => $this->facultyId,
@@ -46,13 +60,6 @@ class StudentsImport implements ToCollection, WithHeadingRow
         $facultyProfile = \App\Models\FacultyProfile::where('user_id', $this->facultyId)->first();
         $facultyEmp = $facultyProfile?->faculty_number ?? 'FAC-1001';
 
-        $programModel = Program::where('name', $this->program)
-            ->orWhere('code', $this->program)
-            ->first();
-        if (! $programModel) {
-            throw new \Exception("Unknown program \"{$this->program}\". Choose a program from the academic catalog.");
-        }
-
         $errors = [];
         foreach ($rows as $index => $row) {
             $rowNum = $index + 2;
@@ -63,6 +70,10 @@ class StudentsImport implements ToCollection, WithHeadingRow
             $existingById = StudentProfile::where('student_number', $row['student_id'])->first();
             if ($existingById && !empty($existingById->section) && $existingById->section !== $this->section) {
                 $errors[] = "Row {$rowNum}: Student {$row['student_id']} is already assigned to section {$existingById->section}.";
+            }
+            if ($existingById && $facultyDept && $existingById->department_id
+                && (int) $existingById->department_id !== (int) $facultyDept) {
+                abort(403, \App\Support\DepartmentScope::DENIED_MESSAGE);
             }
         }
 

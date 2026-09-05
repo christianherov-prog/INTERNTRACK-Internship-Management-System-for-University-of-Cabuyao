@@ -20,13 +20,14 @@ class FacultyAssignmentAutoSyncTest extends TestCase
     {
         // 1. Create a faculty member assigned to BSIT section 4ITA
         $faculty = $this->makeUser('faculty', 'FAC-001');
-        FacultyProfile::create([
-            'user_id' => $faculty->id,
-            'faculty_number' => 'FAC-001',
-            'first_name' => 'Prof',
-            'last_name' => 'Teacher',
-            'department' => 'BSIT',
-        ]);
+        FacultyProfile::updateOrCreate(
+            ['user_id' => $faculty->id],
+            [
+                'faculty_number' => 'FAC-001',
+                'first_name' => 'Prof',
+                'last_name' => 'Teacher',
+            ]
+        );
 
         FacultySectionAssignment::create([
             'program' => 'BSIT',
@@ -67,13 +68,14 @@ class FacultyAssignmentAutoSyncTest extends TestCase
     public function test_internship_model_hook_assigns_faculty_on_create_even_if_not_provided(): void
     {
         $faculty = $this->makeUser('faculty', 'FAC-002');
-        FacultyProfile::create([
-            'user_id' => $faculty->id,
-            'faculty_number' => 'FAC-002',
-            'first_name' => 'Prof',
-            'last_name' => 'Two',
-            'department' => 'BSIT',
-        ]);
+        FacultyProfile::updateOrCreate(
+            ['user_id' => $faculty->id],
+            [
+                'faculty_number' => 'FAC-002',
+                'first_name' => 'Prof',
+                'last_name' => 'Two',
+            ]
+        );
 
         FacultySectionAssignment::create([
             'program' => 'BSIT',
@@ -115,13 +117,14 @@ class FacultyAssignmentAutoSyncTest extends TestCase
     public function test_student_profile_creation_immediately_initializes_unplaced_internship_record_assigned_to_teacher(): void
     {
         $faculty = $this->makeUser('faculty', 'FAC-003');
-        FacultyProfile::create([
-            'user_id' => $faculty->id,
-            'faculty_number' => 'FAC-003',
-            'first_name' => 'Prof',
-            'last_name' => 'Three',
-            'department' => 'BSIT',
-        ]);
+        FacultyProfile::updateOrCreate(
+            ['user_id' => $faculty->id],
+            [
+                'faculty_number' => 'FAC-003',
+                'first_name' => 'Prof',
+                'last_name' => 'Three',
+            ]
+        );
 
         FacultySectionAssignment::create([
             'program' => 'BSIT',
@@ -177,13 +180,14 @@ class FacultyAssignmentAutoSyncTest extends TestCase
 
         // Now assign a teacher to section 4ITD
         $faculty = $this->makeUser('faculty', 'FAC-004');
-        FacultyProfile::create([
-            'user_id' => $faculty->id,
-            'faculty_number' => 'FAC-004',
-            'first_name' => 'Prof',
-            'last_name' => 'Four',
-            'department' => 'BSIT',
-        ]);
+        FacultyProfile::updateOrCreate(
+            ['user_id' => $faculty->id],
+            [
+                'faculty_number' => 'FAC-004',
+                'first_name' => 'Prof',
+                'last_name' => 'Four',
+            ]
+        );
 
         FacultySectionAssignment::create([
             'program' => 'BSIT',

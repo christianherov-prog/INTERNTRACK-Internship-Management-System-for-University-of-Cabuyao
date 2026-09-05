@@ -67,17 +67,7 @@ class JournalPdfController extends Controller
 
     protected function authorizeInternshipAccess($user, Internship $internship): void
     {
-        $allowed = match ($user->role) {
-            'student'     => $internship->student_id === $user->id,
-            'supervisor'  => $internship->supervisor_id === $user->id,
-            'faculty'     => $internship->faculty_id === $user->id,
-            'coordinator',
-            'director',
-            'admin'       => true,
-            default       => false,
-        };
-
-        abort_if(!$allowed, 403, 'Access denied to this internship.');
+        \App\Support\InternshipAccess::abortUnlessCanView($user, $internship);
     }
 
     protected function getSignaturePath($user): ?string

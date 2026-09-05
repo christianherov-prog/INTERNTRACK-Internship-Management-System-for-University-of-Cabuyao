@@ -5,6 +5,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { displayLabel } from '../../utils/displayLabel'
 
 function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
   const [action, setAction]   = useState('approved')
@@ -135,7 +136,7 @@ function SupervisorJournalValidation() {
       type: 'journal',
       data: {
         studentName: name,
-        program: profile?.program?.name || profile?.program?.code || profile?.program || '—',
+        program: displayLabel(profile?.program, '—'),
         companyName: j.internship?.company?.company_name || '—',
         weekNumber: j.week_number ?? j.entry_number,
         date: j.date,

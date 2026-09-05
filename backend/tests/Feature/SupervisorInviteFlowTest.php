@@ -8,6 +8,8 @@ use App\Models\SupervisorInviteToken;
 use App\Models\SupervisorProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\CreatesInternshipFixtures;
 use Tests\TestCase;
@@ -76,15 +78,17 @@ class SupervisorInviteFlowTest extends TestCase
             'password_confirmation' => 'password123',
             'company_id' => $party['company']->id,
         ])->assertStatus(422)
-            ->assertJsonValidationErrors(['first_name', 'last_name', 'contact_number', 'position', 'sex']);
+            ->assertJsonValidationErrors(['first_name', 'last_name', 'contact_number', 'position', 'sex', 'acceptance_forms']);
     }
 
     public function test_new_supervisor_registers_via_invite_and_faculty_approves(): void
     {
+        Storage::fake('local');
         $party = $this->studentReadyForInvite();
         $token = $this->generateInviteToken($party['student']);
+        $form = UploadedFile::fake()->create('acceptance.pdf', 120, 'application/pdf');
 
-        $created = $this->postJson('/api/v1/supervisor-register', [
+        $created = $this->post('/api/v1/supervisor-register', [
             'token' => $token,
             'first_name' => 'Maria',
             'last_name' => 'Reyes',
@@ -95,12 +99,15 @@ class SupervisorInviteFlowTest extends TestCase
             'company_id' => $party['company']->id,
             'password' => 'password123',
             'password_confirmation' => 'password123',
-        ])->assertCreated();
+            'acceptance_forms' => [$form],
+        ], ['Accept' => 'application/json'])->assertCreated();
         $this->assertSame('SUP-0001', $created->json('username'));
 
         $invite = SupervisorInviteToken::where('token', $token)->first();
         $this->assertSame('registered', $invite->status);
+        $this->assertNotEmpty($invite->acceptance_forms);
         $this->assertNull($party['internship']->fresh()->supervisor_id);
+        Storage::disk('local')->assertExists($invite->acceptance_forms[0]['path']);
 
         $newUser = User::find($invite->supervisor_user_id);
         $this->assertFalse((bool) $newUser->is_active);
@@ -112,6 +119,9 @@ class SupervisorInviteFlowTest extends TestCase
         ])->assertStatus(422);
 
         Sanctum::actingAs($party['faculty']);
+        $pending = $this->getJson('/api/v1/faculty/supervisor-approvals')->assertOk();
+        $this->assertNotEmpty($pending->json('pending.0.acceptance_forms.0.path'));
+
         $this->patchJson("/api/v1/faculty/supervisor-approvals/{$invite->id}/approve")
             ->assertOk();
 
@@ -122,11 +132,13 @@ class SupervisorInviteFlowTest extends TestCase
 
     public function test_existing_email_is_rejected_so_supervisor_must_sign_in(): void
     {
+        Storage::fake('local');
         $party = $this->studentReadyForInvite();
         $existing = $this->makeSupervisorAccount('SUP-9002');
         $token = $this->generateInviteToken($party['student']);
+        $form = UploadedFile::fake()->create('acceptance.pdf', 80, 'application/pdf');
 
-        $this->postJson('/api/v1/supervisor-register', [
+        $this->post('/api/v1/supervisor-register', [
             'token' => $token,
             'first_name' => 'Dup',
             'last_name' => 'Account',
@@ -137,7 +149,8 @@ class SupervisorInviteFlowTest extends TestCase
             'company_id' => $party['company']->id,
             'password' => 'password123',
             'password_confirmation' => 'password123',
-        ])->assertStatus(409)
+            'acceptance_forms' => [$form],
+        ], ['Accept' => 'application/json'])->assertStatus(409)
             ->assertJsonPath('code', 'existing_account');
 
         $this->assertSame('pending', SupervisorInviteToken::where('token', $token)->value('status'));

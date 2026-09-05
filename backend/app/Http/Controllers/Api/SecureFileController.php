@@ -69,7 +69,7 @@ class SecureFileController extends Controller
 
     private function authorizePath($user, string $path): void
     {
-        if (in_array($user->role, ['director', 'admin', 'faculty', 'coordinator'], true)) {
+        if (in_array($user->role, ['director', 'admin'], true)) {
             return;
         }
 
@@ -77,9 +77,10 @@ class SecureFileController extends Controller
 
         if ($internshipId) {
             $internship = Internship::find($internshipId);
-            if (!$internship || !InternshipAccess::canView($user, $internship)) {
+            if (!$internship) {
                 abort(403, 'You do not have access to this file.');
             }
+            InternshipAccess::abortUnlessCanView($user, $internship);
 
             return;
         }
@@ -87,15 +88,20 @@ class SecureFileController extends Controller
         // signatures/document-reviews/{documentId}/...
         if (preg_match('#^signatures/document-reviews/(\d+)/#', $path, $m)) {
             $doc = Document::with('internship')->find((int) $m[1]);
-            if (!$doc?->internship || !InternshipAccess::canView($user, $doc->internship)) {
+            if (!$doc?->internship) {
                 abort(403, 'You do not have access to this file.');
             }
+            InternshipAccess::abortUnlessCanView($user, $doc->internship);
 
             return;
         }
 
         if (str_starts_with($path, 'requirement_templates/')) {
             if ($this->studentCanAccessRequirementTemplateFile($user, $path)) {
+                return;
+            }
+
+            if ($this->staffCanAccessRequirementTemplateFile($user, $path)) {
                 return;
             }
 
@@ -123,5 +129,29 @@ class SecureFileController extends Controller
         }
 
         return RequirementAudience::studentCanAccessTemplate($user, $template);
+    }
+
+    private function staffCanAccessRequirementTemplateFile($user, string $path): bool
+    {
+        if ($user->role === 'director' || $user->role === 'admin') {
+            return true;
+        }
+
+        if (! in_array($user->role, ['faculty', 'coordinator'], true)) {
+            return false;
+        }
+
+        $attachment = \App\Models\RequirementTemplateAttachment::with('requirementTemplate')
+            ->where('file_path', $path)
+            ->first();
+
+        $template = $attachment?->requirementTemplate
+            ?? \App\Models\OjtRequirementTemplate::where('template_file_path', $path)->first();
+
+        if (! $template) {
+            return false;
+        }
+
+        return (int) $template->created_by === (int) $user->id;
     }
 }

@@ -8,6 +8,7 @@ import { DEFAULT_TARGET_HOURS } from '../../config/hours'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatStudentName } from '../../utils/formatName'
+import { displayLabel } from '../../utils/displayLabel'
 
 function statusBadge(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -165,7 +166,7 @@ function SupervisorAssignedInterns() {
                                 type: 'dtr',
                                 data: {
                                   studentName: name,
-                                  program: profile?.program?.name || profile?.program || profile?.course_name || '—',
+                                  program: displayLabel(profile?.program || profile?.course_name, '—'),
                                   companyName: i.company?.company_name || '—',
                                   companyLogoPath: i.company?.company_logo_path || '',
                                   supervisorName: user?.username,
@@ -185,7 +186,7 @@ function SupervisorAssignedInterns() {
                                 type: 'journal',
                                 data: {
                                   studentName: name,
-                                  program: profile?.program?.name || profile?.program || profile?.course_name || '—',
+                                  program: displayLabel(profile?.program || profile?.course_name, '—'),
                                   companyName: i.company?.company_name || '—',
                                   companyLogoPath: i.company?.company_logo_path || '',
                                 },

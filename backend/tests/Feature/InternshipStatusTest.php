@@ -4,33 +4,21 @@ namespace Tests\Feature;
 
 use App\Models\Internship;
 use App\Models\InternshipStatusHistory;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
+use Tests\Support\CreatesInternshipFixtures;
 use Tests\TestCase;
 
 class InternshipStatusTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesInternshipFixtures;
 
-    private function createUser(string $role, string $username, string $email): User
-    {
-        $field = $role === 'student' ? 'student_number' : 'faculty_number';
-        return User::create([
-            $field      => $username,
-            'email'     => $email,
-            'password'  => Hash::make('password123'),
-            'role'      => $role,
-            'is_active' => true,
-        ]);
-    }
-
-    private function createActiveInternship(User $student, ?User $coordinator = null): Internship
+    private function createActiveInternship($student, $coordinator = null): Internship
     {
         return Internship::create([
             'student_id'     => $student->id,
             'coordinator_id' => $coordinator?->id,
-            'school_year'  => '2024-2025',
+            'school_year'    => '2024-2025',
             'semester'       => 2,
             'term'           => 'AY 2024-2025, Sem 2',
             'status'         => 'active',
@@ -40,8 +28,8 @@ class InternshipStatusTest extends TestCase
 
     public function test_coordinator_can_patch_active_to_completed_with_reason(): void
     {
-        $coordinator = $this->createUser('coordinator', 'COR-1001', 'coord@example.com');
-        $student = $this->createUser('student', 'STU-2001', 'stu2001@example.com');
+        $coordinator = $this->makeUser('coordinator', 'COR-1001');
+        $student = $this->makeStudentWithSection();
         $internship = $this->createActiveInternship($student, $coordinator);
 
         $response = $this->actingAs($coordinator, 'sanctum')
@@ -69,8 +57,8 @@ class InternshipStatusTest extends TestCase
 
     public function test_patch_status_without_reason_returns_422(): void
     {
-        $coordinator = $this->createUser('coordinator', 'COR-1002', 'coord2@example.com');
-        $student = $this->createUser('student', 'STU-2002', 'stu2002@example.com');
+        $coordinator = $this->makeUser('coordinator', 'COR-1002');
+        $student = $this->makeStudentWithSection();
         $internship = $this->createActiveInternship($student, $coordinator);
 
         $response = $this->actingAs($coordinator, 'sanctum')
@@ -84,8 +72,8 @@ class InternshipStatusTest extends TestCase
 
     public function test_patch_to_same_status_returns_422(): void
     {
-        $coordinator = $this->createUser('coordinator', 'COR-1003', 'coord3@example.com');
-        $student = $this->createUser('student', 'STU-2003', 'stu2003@example.com');
+        $coordinator = $this->makeUser('coordinator', 'COR-1003');
+        $student = $this->makeStudentWithSection();
         $internship = $this->createActiveInternship($student, $coordinator);
 
         $response = $this->actingAs($coordinator, 'sanctum')

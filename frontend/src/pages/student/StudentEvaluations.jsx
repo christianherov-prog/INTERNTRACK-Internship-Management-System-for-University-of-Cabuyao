@@ -220,9 +220,13 @@ function StudentEvaluations() {
 
     api.get('/student/records')
       .then(res => {
-        const history = res.data?.data || res.data
-        if (history && history.length > 0) {
-          setInternship(history[0])
+        const items = unwrapList(res.data).items
+        const profile = res.data?.profile
+        if (items.length > 0) {
+          setInternship({
+            ...items[0],
+            student: items[0].student || { student_profile: profile },
+          })
         }
       })
       .catch(() => { })

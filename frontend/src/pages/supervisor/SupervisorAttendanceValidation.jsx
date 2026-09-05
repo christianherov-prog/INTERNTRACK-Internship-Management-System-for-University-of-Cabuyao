@@ -15,6 +15,10 @@ function fmtTime(t) {
 function SupervisorAttendanceValidation() {
   const currentTerm = useCurrentTerm()
   const [attendance, setAttendance] = useState([])
+  const [schedules, setSchedules] = useState([])
+  const [overtime, setOvertime] = useState([])
+  const [corrections, setCorrections] = useState([])
+  const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(null)
@@ -27,8 +31,20 @@ function SupervisorAttendanceValidation() {
   const fetchAttendance = () => {
     setLoading(true)
     setError(null)
-    api.get('/supervisor/attendance')
-      .then((res) => setAttendance(unwrapList(res.data).items))
+    Promise.all([
+      api.get('/supervisor/attendance'),
+      api.get('/supervisor/dtr/schedules').catch(() => ({ data: { data: [] } })),
+      api.get('/supervisor/dtr/overtime').catch(() => ({ data: { data: [] } })),
+      api.get('/supervisor/dtr/corrections').catch(() => ({ data: { data: [] } })),
+      api.get('/supervisor/dtr/history').catch(() => ({ data: { data: [] } })),
+    ])
+      .then(([attRes, schedRes, otRes, corrRes, histRes]) => {
+        setAttendance(unwrapList(attRes.data).items)
+        setSchedules(unwrapList(schedRes.data).items)
+        setOvertime(unwrapList(otRes.data).items)
+        setCorrections(unwrapList(corrRes.data).items)
+        setHistory(unwrapList(histRes.data).items)
+      })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load attendance.')
         setAttendance([])
@@ -69,6 +85,19 @@ function SupervisorAttendanceValidation() {
       fetchAttendance()
     } catch (err) {
       setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Bulk action failed.' })
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const reviewDtr = async (path, id, action, remarks = '') => {
+    setProcessing(`${path}-${id}`)
+    try {
+      const res = await api.patch(`/supervisor/dtr/${path}/${id}`, { action, remarks })
+      setMessage({ type: action === 'approved' || action === 'validated' ? 'success' : 'warning', text: res.data.message })
+      fetchAttendance()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Action failed.' })
     } finally {
       setProcessing(null)
     }
@@ -225,6 +254,138 @@ function SupervisorAttendanceValidation() {
             </div>
             )
           })()}
+        </div>
+      </div>
+
+      {schedules.length > 0 && (
+        <div className="content-card mt-4">
+          <div className="content-card-header">
+            <i className="fa fa-calendar-week"></i>
+            <h6>Pending Working Hours Schedules</h6>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 align-middle">
+              <thead>
+                <tr><th>Student</th><th>Proposed hours</th><th className="text-center">Actions</th></tr>
+              </thead>
+              <tbody>
+                {schedules.map((s) => (
+                  <tr key={s.id}>
+                    <td className="fw-semibold">{formatStudentName(s.internship)}</td>
+                    <td>{fmtTime(s.start_time)}–{fmtTime(s.end_time)}</td>
+                    <td className="text-center">
+                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === `schedules-${s.id}`} onClick={() => reviewDtr('schedules', s.id, 'approved')}>Approve</button>
+                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === `schedules-${s.id}`} onClick={() => reviewDtr('schedules', s.id, 'rejected')}>Reject</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {overtime.length > 0 && (
+        <div className="content-card mt-4">
+          <div className="content-card-header">
+            <i className="fa fa-hourglass-half"></i>
+            <h6>Pending Overtime Entries</h6>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 align-middle">
+              <thead>
+                <tr><th>Student</th><th>Date</th><th>Excess</th><th>Original hours</th><th className="text-center">Actions</th></tr>
+              </thead>
+              <tbody>
+                {overtime.map((o) => (
+                  <tr key={o.id}>
+                    <td className="fw-semibold">{formatStudentName(o.internship)}</td>
+                    <td>{o.attendance_log?.date || '—'}</td>
+                    <td>{o.excess_minutes} min</td>
+                    <td>{o.original_hours_rendered ?? '—'} hrs</td>
+                    <td className="text-center">
+                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === `overtime-${o.id}`} onClick={() => reviewDtr('overtime', o.id, 'approved')}>Approve</button>
+                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === `overtime-${o.id}`} onClick={() => reviewDtr('overtime', o.id, 'rejected')}>Reject</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {corrections.length > 0 && (
+        <div className="content-card mt-4">
+          <div className="content-card-header">
+            <i className="fa fa-clipboard-list"></i>
+            <h6>Correction Requests (Supervisor Review)</h6>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 align-middle">
+              <thead>
+                <tr><th>Student</th><th>Date</th><th>Original</th><th>Requested</th><th>Status</th><th className="text-center">Actions</th></tr>
+              </thead>
+              <tbody>
+                {corrections.map((c) => (
+                  <tr key={c.id}>
+                    <td className="fw-semibold">{c.student_name || formatStudentName(c.internship)}</td>
+                    <td>{c.date}</td>
+                    <td>{fmtTime(c.original_clock_in)}–{fmtTime(c.original_clock_out)}</td>
+                    <td>{fmtTime(c.requested_clock_in)}–{fmtTime(c.requested_clock_out)}</td>
+                    <td>{c.status_label || c.status}</td>
+                    <td className="text-center">
+                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === `corrections-${c.id}`} onClick={() => reviewDtr('corrections', c.id, 'approved')}>Approve</button>
+                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === `corrections-${c.id}`} onClick={() => reviewDtr('corrections', c.id, 'rejected')}>Reject</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="content-card mt-4">
+        <div className="content-card-header">
+          <i className="fa fa-history"></i>
+          <h6>Clock-in / Clock-out History</h6>
+        </div>
+        <div className="table-card">
+          {history.length === 0 ? (
+            <div className="text-center py-4 text-muted">No attendance history yet.</div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Date</th>
+                    <th>In</th>
+                    <th>Out</th>
+                    <th>Hours</th>
+                    <th>DTR status</th>
+                    <th>Correction</th>
+                    <th>Overtime</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((log) => (
+                    <tr key={log.id}>
+                      <td className="fw-semibold">{profileName(log)}</td>
+                      <td>{log.date ? String(log.date).slice(0, 10) : '—'}</td>
+                      <td>{fmtTime(log.clock_in)}</td>
+                      <td>{fmtTime(log.clock_out)}</td>
+                      <td>{log.hours_rendered != null ? `${log.hours_rendered} hrs` : '—'}</td>
+                      <td>{log.status}</td>
+                      <td>{log.correction_status_label || '—'}</td>
+                      <td>{log.overtime_status || 'none'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

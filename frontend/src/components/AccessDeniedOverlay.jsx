@@ -5,7 +5,7 @@ export default function AccessDeniedOverlay() {
 
   useEffect(() => {
     const handleAccessDenied = (e) => {
-      setDeniedMessage(e.detail || 'Access Denied: You do not have permission to access this department\'s resources.')
+      setDeniedMessage(e.detail || 'Access denied — different department')
     }
 
     window.addEventListener('access-denied', handleAccessDenied)

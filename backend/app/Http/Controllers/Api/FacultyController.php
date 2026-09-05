@@ -122,7 +122,9 @@ class FacultyController extends Controller
                 'user_id' => $student->id,
                 'student_id' => $student->id,
                 'status' => $internship?->status ?? 'unplaced',
-                'program' => $internship?->program ?? $profile?->program?->name ?? '—',
+                'program' => is_object($internship?->program)
+                    ? ($internship->program->name ?? $internship->program->code ?? ($profile?->program?->name ?? '—'))
+                    : ($internship?->program ?: ($profile?->program?->name ?? '—')),
                 'section' => $profile?->section ?? '—',
                 'company' => $internship?->company?->company_name ?? null,
                 'supervisor' => $internship?->supervisor?->supervisorProfile?->full_name ?? null,
@@ -150,9 +152,12 @@ class FacultyController extends Controller
         $request->validate(['archived' => 'required|boolean']);
 
         $facultyId = $request->user()->id;
-        $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
         $student = User::where('role', 'student')->findOrFail($userId);
+        if (!User::inDepartment()->where('id', $userId)->exists()) {
+            \App\Support\DepartmentScope::abortDifferentDepartment();
+        }
 
+        $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
         $assigned = $sections->contains($student->studentProfile?->section)
             || Internship::inDepartment()->where('faculty_id', $facultyId)
                 ->where('student_id', $userId)
@@ -160,9 +165,6 @@ class FacultyController extends Controller
 
         if (!$assigned) {
             return response()->json(['message' => 'You can only archive students assigned to you.'], 403);
-        }
-        if (!User::inDepartment()->where('id', $userId)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
         }
         $student->is_active = !$request->boolean('archived');
         $student->save();
@@ -189,7 +191,7 @@ class FacultyController extends Controller
     {
         $student = User::where('role', 'student')->with('studentProfile.program')->findOrFail($userId);
         if (!User::inDepartment()->where('id', $userId)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
         
         $facultyId = $request->user()->id;
@@ -332,7 +334,10 @@ class FacultyController extends Controller
             $query->where('status', $request->status);
         }
 
-        return ApiResponse::list($query->paginate(25));
+        $page = $query->paginate(25);
+        app(\App\Services\DtrWorkflowService::class)->decorateLogs(collect($page->items()));
+
+        return ApiResponse::list($page);
     }
 
     public function journals(Request $request)
@@ -349,7 +354,10 @@ class FacultyController extends Controller
     public function reviewJournal(Request $request, int $id)
     {
         $request->validate(['action' => 'required|in:approved,needs_revision', 'feedback' => 'nullable|string|max:1000', 'score' => 'nullable|numeric|min:0|max:100']);
-        $journal = \App\Models\JournalEntry::whereHas('internship', fn($q) => $q->where('faculty_id', $request->user()->id))->findOrFail($id);
+        $journal = \App\Models\JournalEntry::whereHas(
+            'internship',
+            fn ($q) => $q->inDepartment()->where('faculty_id', $request->user()->id)
+        )->findOrFail($id);
         
         $updateData = ['status' => $request->action, 'faculty_feedback' => $request->feedback, 'faculty_reviewed_by' => $request->user()->id, 'faculty_reviewed_at' => now()];
         if ($request->has('score') && $request->action === 'approved') {
@@ -382,8 +390,10 @@ class FacultyController extends Controller
 
     public function studentJournalHistory(Request $request, int $studentId)
     {
+        \App\Support\DepartmentScope::abortUnlessStudentInDepartment($request->user(), $studentId);
+
         $journals = \App\Models\JournalEntry::whereHas('internship', function($q) use ($request, $studentId) {
-            $q->where('faculty_id', $request->user()->id)->where('student_id', $studentId);
+            $q->inDepartment()->where('faculty_id', $request->user()->id)->where('student_id', $studentId);
         })
         ->orderBy('week_number', 'asc')
         ->orderBy('entry_number', 'asc')
@@ -406,9 +416,10 @@ class FacultyController extends Controller
         $query = Internship::inDepartment()
             ->where('faculty_id', $facultyId)
             ->with([
-                'student.studentProfile',
+                'student.studentProfile.program',
                 'company',
                 'supervisor.supervisorProfile',
+                'faculty.facultyProfile',
                 'evaluations' => function ($q) {
                     $q->whereIn('form_type', ['FO-24']);
                 },
@@ -447,9 +458,12 @@ class FacultyController extends Controller
     public function submitFeedback(Request $request, int $internshipId)
     {
         $request->validate(['feedback' => 'required|string|min:5']);
-        $internship = Internship::where('faculty_id', $request->user()->id)->findOrFail($internshipId);
+        $internship = Internship::findOrFail($internshipId);
         if (!Internship::inDepartment()->where('id', $internshipId)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
+        }
+        if ((int) $internship->faculty_id !== (int) $request->user()->id) {
+            abort(403, 'Internship not assigned to you.');
         }
         $journal = $internship->journals()->latest('date')->first();
         if ($journal) {

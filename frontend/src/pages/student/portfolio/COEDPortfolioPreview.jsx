@@ -7,6 +7,7 @@ import '../../../assets/css/portfolio-print.css';
 import WeeklyInternshipJournal from '../../../components/portfolio/WeeklyInternshipJournal';
 import DailyTimeRecord from '../../../components/portfolio/DailyTimeRecord';
 import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/portfolio/EvaluationsPreview';
+import { displayLabel } from '../../../utils/displayLabel';
 
 const TocRow = ({ label, page = '', bold = false, indent = 0 }) => (
   <div style={{
@@ -48,7 +49,7 @@ function COEDPortfolioPreview() {
 
   // --- Extracted Information for the Cover Page ---
   const fullName = `${profile.first_name || ''} ${profile.middle_name ? profile.middle_name[0] + '.' : ''} ${profile.last_name || ''}`.trim();
-  const program = profile.program || 'Bachelor of Elementary Education';
+  const program = displayLabel(profile.program, 'Bachelor of Elementary Education');
   const section = profile.section || '';
   const schoolYear = data.internship.school_year || '2025 - 2026';
 

@@ -2,6 +2,7 @@ import React from 'react';
 import '../../assets/css/portfolio-print.css';
 import { PageHeader as DefaultPageHeader } from './WeeklyInternshipJournal';
 import { AuthenticatedFileImage } from '../AuthenticatedFile';
+import { displayLabel } from '../../utils/displayLabel';
 
 export function PageHeader({ companyLogoPath }) {
   const styles = {
@@ -238,7 +239,7 @@ const DailyTimeRecord = ({
             </div>
             <div style={styles.infoRowTop}>
               <span style={styles.label}>Program:</span>
-              <span style={styles.infoValue}>{program}</span>
+              <span style={styles.infoValue}>{displayLabel(program)}</span>
             </div>
             <div style={styles.infoRowBottom}>
               <span style={styles.label}>Company/School:</span>

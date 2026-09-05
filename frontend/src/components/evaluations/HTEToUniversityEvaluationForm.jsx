@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { useFormIdentity } from '../../hooks/useFormIdentity';
+import { FORM_IDENTITY_FIELDS } from '../../utils/formIdentity';
+import FormIdentityFields from './FormIdentityFields';
 
 export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing }) => {
+  const identity = useFormIdentity(internship);
   const [responses, setResponses] = useState({});
   const [generalComments, setGeneralComments] = useState('');
 
@@ -39,40 +43,16 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
     });
   };
 
-  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
-  const ayStr = internship?.academic_year || internship?.school_year || 'Unavailable';
-  const company = internship?.company || {};
-  const hteName = company.company_name || company.name || 'Unavailable';
-  const hteAddress = company.address || 'Unavailable';
-  const supervisor = internship?.supervisor?.supervisorProfile || {};
-  const supervisorName = `${supervisor.last_name || ''}, ${supervisor.first_name || ''}`.trim() || 'Unavailable';
-  const supervisorPos = supervisor.position || supervisor.designation || 'Unavailable';
+  
 
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center mb-4 fw-bold">HTE Evaluation to the University Internship Program</h3>
 
-        <div className="row g-3 mb-4">
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Semester" value={semStr} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Academic Year" value={ayStr} readOnly />
-          </div>
-          <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Host Training Establishment (HTE)" value={hteName} readOnly />
-          </div>
-          <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Company Address" value={hteAddress} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Evaluator/Supervisor Name" value={supervisorName} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Position" value={supervisorPos} readOnly />
-          </div>
-        </div>        <p className="fw-bold mb-2">Please rate the school's internship program based on your experience and observation:</p>
+        <FormIdentityFields identity={identity} fields={FORM_IDENTITY_FIELDS['FO-03']} />
+             
+        <p className="fw-bold mb-2">Please rate the school's internship program based on your experience and observation:</p>
         <div className="table-responsive mb-4">
           <table className="table table-bordered text-center align-middle">
             <thead className="table-light">

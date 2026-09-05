@@ -10,6 +10,7 @@ use App\Models\Announcement;
 use App\Models\Notification;
 use App\Services\AbsorptionService;
 use App\Services\CertificateEligibilityService;
+use App\Services\DtrWorkflowService;
 use App\Support\ApiResponse;
 use App\Support\RequiredDocuments;
 use App\Support\RequirementAudience;
@@ -20,6 +21,10 @@ use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
+    public function __construct(private DtrWorkflowService $dtr)
+    {
+    }
+
     private function internship(Request $request)
     {
         $user = $request->user();
@@ -260,6 +265,7 @@ class StudentController extends Controller
             ],
             'weekly_chart'  => ['labels' => $labels, 'hours' => $hours],
             'announcements' => $announcements,
+            'incomplete_dtr_days' => $internship->supervisor_id ? $this->dtr->incompleteDays($internship) : [],
             'internship'    => [
                 'id'            => $internship->id,
                 'term'          => $internship->term,
@@ -303,8 +309,20 @@ class StudentController extends Controller
             ->orderByDesc('date')
             ->paginate(20);
 
+        $this->dtr->decorateLogs(collect($logs->items()));
+
         $today       = now()->toDateString();
         $todayRecord = $internship->attendance()->whereDate('date', $today)->first();
+        $canUndo     = $todayRecord ? $this->dtr->canUndoClockOut($todayRecord) : false;
+        $undoExpires = null;
+        if ($todayRecord?->clock_out) {
+            $undoExpires = $this->dtr
+                ->combineDateAndTime($todayRecord->date, $todayRecord->clock_out)
+                ->addMinutes(DtrWorkflowService::GRACE_MINUTES)
+                ->toIso8601String();
+        }
+
+        $overtimePrompt = $todayRecord ? $this->dtr->overtimePromptFor($todayRecord->loadMissing('internship')) : null;
 
         return response()->json([
             'attendance'   => $logs,
@@ -312,6 +330,13 @@ class StudentController extends Controller
             'today_status' => $todayRecord
                 ? ($todayRecord->clock_out ? 'clocked_out' : 'clocked_in')
                 : 'not_clocked_in',
+            'can_undo_clock_out' => $canUndo,
+            'undo_expires_at' => $canUndo ? $undoExpires : null,
+            'overtime_prompt' => $overtimePrompt,
+            'active_schedule' => $this->dtr->serializeSchedule($this->dtr->activeScheduleFor($internship, now())),
+            'pending_schedule' => $this->dtr->serializeSchedule($this->dtr->pendingScheduleFor($internship)),
+            'schedule_history' => $this->dtr->scheduleHistory($internship)->map(fn ($s) => $this->dtr->serializeSchedule($s))->values(),
+            'incomplete_dtr_days' => $this->dtr->incompleteDays($internship),
         ]);
     }
 
@@ -353,22 +378,24 @@ class StudentController extends Controller
         }
         $today      = now()->toDateString();
         $log        = $internship->attendance()->whereDate('date', $today)->whereNull('clock_out')->firstOrFail();
+        $log->setRelation('internship', $internship);
 
-        $clockIn       = \Carbon\Carbon::parse($log->clock_in);
-        $clockOut      = now();
-        $hoursRendered = round($clockIn->diffInMinutes($clockOut) / 60, 2);
-        $clockOutTime  = $clockOut->toTimeString();
+        $result = $this->dtr->finalizeClockOut($log, now(), $request->location ?? null);
 
-        $log->update([
-            'clock_out'          => $clockOutTime,
-            'am_time_out'        => $clockOutTime,
-            'hours_rendered'     => $hoursRendered,
-            'clock_out_location' => $request->location ?? null,
+        audit_log($request->user()->id, 'clock_out', [
+            'date' => $today,
+            'hours' => $result['record']->hours_rendered,
+            'overtime_detected' => $result['overtime_detected'],
         ]);
 
-        audit_log($request->user()->id, 'clock_out', ['date' => $today, 'hours' => $hoursRendered]);
-
-        return response()->json(['message' => 'Clocked out successfully.', 'record' => $log]);
+        return response()->json([
+            'message' => 'Clocked out successfully.',
+            'record' => $result['record'],
+            'overtime_detected' => $result['overtime_detected'],
+            'excess_minutes' => $result['excess_minutes'],
+            'undo_expires_at' => $result['undo_expires_at'],
+            'can_undo_clock_out' => $result['can_undo_clock_out'],
+        ]);
     }
 
     /** GET /api/v1/student/logbook */
@@ -655,7 +682,7 @@ class StudentController extends Controller
     public function records(Request $request)
     {
         $user    = $request->user()->load('studentProfile.program');
-        $history = $user->internshipsAsStudent()->with(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile'])->orderBy('school_year', 'desc')
+        $history = $user->internshipsAsStudent()->with(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'student.studentProfile.program'])->orderBy('school_year', 'desc')
             ->withCount(['attendance as validated_days' => fn($q) => $q->where('status', 'validated')])
             ->orderByDesc('created_at')
             ->get();

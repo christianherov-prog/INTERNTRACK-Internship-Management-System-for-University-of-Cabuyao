@@ -240,6 +240,8 @@ class SupervisorController extends Controller
             ->orderByDesc('date')
             ->paginate(25);
 
+        app(\App\Services\DtrWorkflowService::class)->decorateLogs(collect($pending->items()));
+
         $recentValidated = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
             ->with(['internship.student.studentProfile'])
             ->where('status', 'validated')
@@ -365,11 +367,11 @@ class SupervisorController extends Controller
 
         $evaluations = Evaluation::whereIn('internship_id', $internshipIds)
             ->where('evaluator_type', 'supervisor')
-            ->with('internship.student.studentProfile')
+            ->with(['internship.student.studentProfile.program', 'internship.company', 'internship.supervisor.supervisorProfile', 'internship.faculty.facultyProfile'])
             ->get();
 
         $pending = Internship::whereIn('id', $internshipIds)
-            ->with('student.studentProfile')
+            ->with(['student.studentProfile.program', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile'])
             ->get()
             ->map(function ($internship) use ($evaluations) {
                 $internshipEvals = $evaluations->where('internship_id', $internship->id);

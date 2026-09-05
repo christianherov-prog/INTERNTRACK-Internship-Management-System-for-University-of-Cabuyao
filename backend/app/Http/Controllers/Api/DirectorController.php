@@ -242,7 +242,7 @@ class DirectorController extends Controller
 
         $student = User::where('role', 'student')->findOrFail($userId);
         if (!User::inDepartment()->where('id', $userId)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
         $student->is_active = !$request->boolean('archived');
         $student->save();
@@ -284,7 +284,7 @@ class DirectorController extends Controller
 
         $internship = Internship::with('student.studentProfile.program')->findOrFail($id);
         if (!Internship::inDepartment()->where('id', $id)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
 
         if ($internship->status !== 'pending_placement') {
@@ -298,6 +298,8 @@ class DirectorController extends Controller
                 'errors' => ['faculty_id' => ['The selected faculty must have the faculty role.']],
             ], 422);
         }
+
+        \App\Support\DepartmentScope::abortUnlessFacultyMatchesStudent($faculty, $internship->student);
 
         $supervisor = User::findOrFail((int) $request->supervisor_id);
         if ($supervisor->role !== 'supervisor') {
@@ -454,7 +456,7 @@ class DirectorController extends Controller
 
         $internship = Internship::findOrFail($id);
         if (!Internship::inDepartment()->where('id', $id)->exists()) {
-            abort(403, 'Access Denied: You do not have permission to access resources from this department.');
+            \App\Support\DepartmentScope::abortDifferentDepartment();
         }
         $updated = AbsorptionService::recordOutcome(
             $internship,

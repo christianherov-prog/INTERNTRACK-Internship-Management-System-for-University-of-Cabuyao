@@ -47,6 +47,21 @@ class Internship extends Model
         return $this->hasMany(AttendanceLog::class);
     }
 
+    public function workSchedules()
+    {
+        return $this->hasMany(WorkSchedule::class);
+    }
+
+    public function overtimeEntries()
+    {
+        return $this->hasMany(OvertimeEntry::class);
+    }
+
+    public function correctionRequests()
+    {
+        return $this->hasMany(AttendanceCorrectionRequest::class);
+    }
+
     public function journals()
     {
         return $this->hasMany(JournalEntry::class);
@@ -142,28 +157,7 @@ class Internship extends Model
     // ─── Scopes ────────────────────────────────────────────────────────────────
     public function scopeInDepartment($query)
     {
-        $user = auth()->user();
-        if (!$user) return $query;
-
-        // Admins see all
-        if ($user->hasRole('admin')) {
-            return $query;
-        }
-
-        // Coordinators/Faculty only see their own department's students
-        // Directors see ALL students (since 'director' isn't checked, the if ($deptId) ensures they see everything if they have no department, but wait: we want Director to see all)
-        if ($user->hasRole('director')) {
-            return $query;
-        }
-
-        $deptId = $user->facultyProfile?->department_id;
-        if ($deptId) {
-            return $query->whereHas('student.studentProfile', function ($q) use ($deptId) {
-                $q->where('department_id', $deptId);
-            });
-        }
-
-        return $query;
+        return \App\Support\DepartmentScope::constrainInternships($query, auth()->user());
     }
 
     protected static function booted(): void

@@ -29,6 +29,10 @@ class MeetingController extends Controller
                     $q->where('created_by', $user->id)
                         ->orWhereHas('attendees', fn ($a) => $a->where('user_id', $user->id));
                 });
+                $query->where(function ($q) {
+                    $q->whereNull('internship_id')
+                        ->orWhereHas('internship', fn ($i) => $i->inDepartment());
+                });
             }
         } else {
             $query->whereHas('attendees', fn ($a) => $a->where('user_id', $user->id));
@@ -71,6 +75,9 @@ class MeetingController extends Controller
         if (!empty($data['internship_id'])) {
             $internship = Internship::find($data['internship_id']);
             if ($internship) {
+                if (in_array($user->role, ['faculty', 'coordinator'], true)) {
+                    \App\Support\DepartmentScope::abortUnlessInternshipInDepartment($user, $internship);
+                }
                 if ($user->role === 'faculty' && (int) $internship->faculty_id !== (int) $user->id) {
                     abort(403, 'You may only schedule meetings for your assigned interns.');
                 }
@@ -112,7 +119,7 @@ class MeetingController extends Controller
                     abort(422, 'Meetings may only invite internship-related roles.');
                 }
                 if ($user->role === 'faculty') {
-                    $ok = Internship::where('faculty_id', $user->id)
+                    $ok = Internship::inDepartment()->where('faculty_id', $user->id)
                         ->where(function ($q) use ($invitee) {
                             $q->where('student_id', $invitee->id)
                                 ->orWhere('supervisor_id', $invitee->id)
@@ -126,7 +133,7 @@ class MeetingController extends Controller
                     }
                 }
                 if ($user->role === 'coordinator') {
-                    $ok = Internship::where('coordinator_id', $user->id)
+                    $ok = Internship::inDepartment()->where('coordinator_id', $user->id)
                         ->where(function ($q) use ($invitee) {
                             $q->where('student_id', $invitee->id)
                                 ->orWhere('supervisor_id', $invitee->id)

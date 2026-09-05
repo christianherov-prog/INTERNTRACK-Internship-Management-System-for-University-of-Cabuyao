@@ -4,6 +4,7 @@ import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import ReportExportModal from '../../components/modals/ReportExportModal'
+import { displayLabel } from '../../utils/displayLabel'
 
 const REPORT_TYPES = [
   {
@@ -61,7 +62,7 @@ function StudentSummaryTable({ data }) {
                 <div className="fw-semibold">{r.student_name}</div>
                 <div className="text-muted">{r.student_number}</div>
               </td>
-              <td>{r.program}</td>
+              <td>{displayLabel(r.program, '—')}</td>
               <td>{r.company}</td>
               <td><StatusBadge status={r.status} /></td>
               <td>{r.hours_rendered}/{r.target_hours}</td>
@@ -96,7 +97,7 @@ function ComplianceTable({ data }) {
             <tr key={i}>
               <td>{i + 1}</td>
               <td className="fw-semibold">{r.student_name}</td>
-              <td>{r.program}</td>
+              <td>{displayLabel(r.program, '—')}</td>
               <td>
                 <div className="d-flex align-items-center gap-2">
                   <div className="progress flex-grow-1" style={{ height: '8px' }}>
@@ -139,7 +140,7 @@ function PerformanceTable({ data }) {
           <tbody>
             {byProgram.map((p, i) => (
               <tr key={i}>
-                <td className="fw-semibold">{p.program}</td>
+                <td className="fw-semibold">{displayLabel(p.program, '—')}</td>
                 <td>{p.total}</td>
                 <td>{p.completed}</td>
                 <td>{parseFloat(p.avg_hours ?? 0).toFixed(1)}</td>

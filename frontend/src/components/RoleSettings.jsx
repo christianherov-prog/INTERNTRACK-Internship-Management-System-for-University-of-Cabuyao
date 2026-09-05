@@ -5,6 +5,7 @@ import Layout from './Layout'
 import ImageCropModal from './ImageCropModal'
 import api from '../services/api'
 import { getAvatarSrc } from '../utils/avatar'
+import { displayLabel } from '../utils/displayLabel'
 
 /**
  * Shared Settings UI for all roles (Student, Coordinator, Supervisor, Faculty, Director, Admin).
@@ -45,7 +46,7 @@ function RoleSettings({
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    program: user?.program || '',
+    program: displayLabel(user?.program),
     course_description: user?.course_description || '',
     contact: user?.contact || '',
     company: user?.company || '',
@@ -82,9 +83,9 @@ function RoleSettings({
     setFormData({
       name: user?.name || '',
       email: user?.email || '',
-      program: user?.program || '',
+      program: displayLabel(user?.program),
       course_description: user?.course_description || '',
-      department: user?.department || '',
+      department: displayLabel(user?.department),
       contact: user?.contact || '',
       company: user?.company || '',
       position: user?.position || '',
@@ -224,9 +225,9 @@ function RoleSettings({
     setFormData({
       name: user?.name || '',
       email: user?.email || '',
-      program: user?.program || '',
+      program: displayLabel(user?.program),
       course_description: user?.course_description || '',
-      department: user?.department || '',
+      department: displayLabel(user?.department),
       contact: user?.contact || '',
       company: user?.company || '',
       position: user?.position || '',

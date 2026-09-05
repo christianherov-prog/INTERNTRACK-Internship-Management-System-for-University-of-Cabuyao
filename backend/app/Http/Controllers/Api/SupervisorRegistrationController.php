@@ -187,6 +187,8 @@ class SupervisorRegistrationController extends Controller
             'sex'            => \App\Support\SexOptions::validationRule(true),
             'company_id'     => 'required|exists:companies,id',
             'password'       => 'required|string|min:8|confirmed',
+            'acceptance_forms'   => 'required|array|min:1',
+            'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
         $invite = SupervisorInviteToken::where('token', $request->token)->first();
@@ -228,6 +230,15 @@ class SupervisorRegistrationController extends Controller
                 'company_id'     => $request->company_id,
             ]);
 
+            $forms = [];
+            foreach ($request->file('acceptance_forms') as $file) {
+                $forms[] = [
+                    'path' => $file->store("internships/{$invite->internship_id}/supervisor-invites/{$invite->id}", 'local'),
+                    'name' => $file->getClientOriginalName(),
+                    'mime' => $file->getClientMimeType(),
+                ];
+            }
+
             $invite->update([
                 'status'             => 'registered',
                 'supervisor_user_id' => $user->id,
@@ -239,6 +250,8 @@ class SupervisorRegistrationController extends Controller
                 'contact_number'     => $request->contact_number,
                 'position'           => $request->position,
                 'company_id'         => $request->company_id,
+                'fo29_file_path'     => $forms[0]['path'] ?? null,
+                'acceptance_form_paths' => $forms,
             ]);
 
             $displayName = \App\Support\NameParts::display(
@@ -282,15 +295,20 @@ class SupervisorRegistrationController extends Controller
                 'student.studentProfile',
                 'supervisor.supervisorProfile',
                 'company',
-                'internship.documents',
+                'internship',
             ])
             ->orderByDesc('updated_at');
 
-        // Faculty only sees invites for their assigned internships (or unassigned faculty).
-        if ($user->role === 'faculty') {
+        // Faculty/coordinator only see invites for internships in their department.
+        if (in_array($user->role, ['faculty', 'coordinator'], true)) {
             $pendingQuery->whereHas('internship', function ($q) use ($user) {
-                $q->where('faculty_id', $user->id)
-                    ->orWhereNull('faculty_id');
+                $q->inDepartment();
+                if ($user->role === 'faculty') {
+                    $q->where(function ($sub) use ($user) {
+                        $sub->where('faculty_id', $user->id)
+                            ->orWhereNull('faculty_id');
+                    });
+                }
             });
         }
 
@@ -302,16 +320,19 @@ class SupervisorRegistrationController extends Controller
                 'supervisor.supervisorProfile',
                 'company',
                 'reviewer',
-                'internship.documents',
+                'internship',
             ])
             ->orderByDesc('reviewed_at')
             ->limit(20);
 
-        if ($user->role === 'faculty') {
-            $historyQuery->where(function ($q) use ($user) {
-                $q->where('reviewed_by', $user->id)
-                    ->orWhereHas('internship', fn ($iq) => $iq->where('faculty_id', $user->id));
-            });
+        if (in_array($user->role, ['faculty', 'coordinator'], true)) {
+            $historyQuery->whereHas('internship', fn ($iq) => $iq->inDepartment());
+            if ($user->role === 'faculty') {
+                $historyQuery->where(function ($q) use ($user) {
+                    $q->where('reviewed_by', $user->id)
+                        ->orWhereHas('internship', fn ($iq) => $iq->where('faculty_id', $user->id));
+                });
+            }
         }
 
         $history = $historyQuery->get();
@@ -422,6 +443,8 @@ class SupervisorRegistrationController extends Controller
         if (!$internship) {
             abort(404, 'Internship not found for this registration.');
         }
+
+        \App\Support\DepartmentScope::abortUnlessInternshipInDepartment($user, $internship);
 
         if ($internship->faculty_id !== null && (int) $internship->faculty_id !== (int) $user->id) {
             abort(403, 'You may only review supervisor registrations for your assigned students.');

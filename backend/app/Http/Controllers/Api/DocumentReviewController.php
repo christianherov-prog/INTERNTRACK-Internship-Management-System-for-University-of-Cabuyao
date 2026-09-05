@@ -25,6 +25,11 @@ class DocumentReviewController extends Controller
 
         $document = Document::with('internship.student.studentProfile')->findOrFail($id);
 
+        $internship = $document->internship;
+        if ($internship) {
+            \App\Support\DepartmentScope::abortUnlessInternshipInDepartment($request->user(), $internship);
+        }
+
         // Authorization: confirm the reviewer created the requirement template
         // Match by name AND created_by so we never cross role boundaries.
         $template = OjtRequirementTemplate::where('name', $document->document_type)

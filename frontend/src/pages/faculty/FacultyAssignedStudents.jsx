@@ -10,6 +10,7 @@ import { AuthenticatedFileImage, AuthenticatedFileLink } from "../../components/
 import { useCurrentTerm } from "../../hooks/useCurrentTerm"
 import FormPreviewModal from "../../components/portfolio/FormPreviewModal"
 import { formatStudentName as studentName } from "../../utils/formatName"
+import { displayLabel } from "../../utils/displayLabel"
 
 function studentSection(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
@@ -350,7 +351,7 @@ function TabJournals() {
       type: 'journal',
       data: {
         studentName: name,
-        program: profile?.program?.name || profile?.program?.code || profile?.program || '—',
+        program: displayLabel(profile?.program, '—'),
         companyName: j.internship?.company?.company_name || '—',
         weekNumber: j.week_number ?? j.entry_number,
         date: j.date,
@@ -410,18 +411,27 @@ function TabJournals() {
 function TabAttendance() {
   const [rows, setRows] = useState([])
   const [students, setStudents] = useState([])
+  const [corrections, setCorrections] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [statusFilter, setStatusFilter] = useState("all")
   const [internshipId, setInternshipId] = useState("")
+  const [processing, setProcessing] = useState(null)
+  const [message, setMessage] = useState(null)
 
   const fetchAttendance = () => {
     setLoading(true); setError(null)
     const params = {}
     if (statusFilter && statusFilter !== "all") params.status = statusFilter
     if (internshipId) params.internship_id = internshipId
-    api.get("/faculty/attendance", { params })
-      .then(res => setRows(unwrapList(res.data).items))
+    Promise.all([
+      api.get("/faculty/attendance", { params }),
+      api.get("/faculty/dtr/corrections").catch(() => ({ data: { data: [] } })),
+    ])
+      .then(([res, corrRes]) => {
+        setRows(unwrapList(res.data).items)
+        setCorrections(unwrapList(corrRes.data).items)
+      })
       .catch(err => { setError(err.response?.data?.message || "Failed to load attendance."); setRows([]) })
       .finally(() => setLoading(false))
   }
@@ -430,9 +440,54 @@ function TabAttendance() {
   }, [])
   useEffect(() => { fetchAttendance() }, [statusFilter, internshipId])
 
+  const reviewCorrection = async (id, action) => {
+    setProcessing(id)
+    try {
+      const res = await api.patch(`/faculty/dtr/corrections/${id}`, { action })
+      setMessage(res.data.message)
+      fetchAttendance()
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Action failed.")
+    } finally {
+      setProcessing(null)
+    }
+  }
+
   return (
     <>
       {error && <PageError message={error} onRetry={fetchAttendance} />}
+      {message && <div className="alert alert-info">{message}</div>}
+      {corrections.length > 0 && (
+        <div className="content-card mb-3">
+          <div className="content-card-header">
+            <i className="fa fa-clipboard-check"></i>
+            <h6>Correction Requests (Faculty Review)</h6>
+            <span className="ms-auto badge bg-warning text-dark">{corrections.length}</span>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 align-middle">
+              <thead>
+                <tr><th>Student</th><th>Date</th><th>Original</th><th>Requested</th><th>Status</th><th className="text-center">Actions</th></tr>
+              </thead>
+              <tbody>
+                {corrections.map((c) => (
+                  <tr key={c.id}>
+                    <td className="fw-semibold">{c.student_name || "—"}</td>
+                    <td>{c.date}</td>
+                    <td>{c.original_clock_in || "—"} – {c.original_clock_out || "—"}</td>
+                    <td>{c.requested_clock_in || "—"} – {c.requested_clock_out || "—"}</td>
+                    <td>{c.status_label || c.status}</td>
+                    <td className="text-center">
+                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === c.id} onClick={() => reviewCorrection(c.id, "approved")}>Approve</button>
+                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === c.id} onClick={() => reviewCorrection(c.id, "rejected")}>Reject</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       <div className="content-card mb-3">
         <div className="content-card-header"><i className="fa fa-filter"></i><h6>Filters</h6></div>
         <div className="p-3 row g-3">
@@ -470,7 +525,7 @@ function TabAttendance() {
               : (
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
-                    <thead><tr><th>Student</th><th>Company</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th><th>Remarks</th></tr></thead>
+                    <thead><tr><th>Student</th><th>Company</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th><th>Correction</th><th>Overtime</th><th>Remarks</th></tr></thead>
                     <tbody>
                       {rows.map(log => {
                         const p = log?.internship?.student?.student_profile || log?.internship?.student?.studentProfile
@@ -484,6 +539,8 @@ function TabAttendance() {
                             <td>{log.clock_out || "—"}</td>
                             <td>{log.hours_rendered != null ? Number(log.hours_rendered).toFixed(2) : "—"}</td>
                             <td>{attStatusBadge(log.status)}</td>
+                            <td>{log.correction_status_label || "—"}</td>
+                            <td>{log.overtime_status || "none"}</td>
                             <td className="text-muted" style={{ fontSize: "0.85rem", maxWidth: 180 }}>{log.remarks || "—"}</td>
                           </tr>
                         )
@@ -493,7 +550,7 @@ function TabAttendance() {
                 </div>
               )}
         </div>
-        <p className="text-muted px-3 pb-3 mb-0" style={{ fontSize: "0.8rem" }}>Read-only monitoring. Industry supervisors validate attendance; faculty review logged hours here.</p>
+        <p className="text-muted px-3 pb-3 mb-0" style={{ fontSize: "0.8rem" }}>Read-only monitoring of official DTR rows. Industry supervisors validate daily attendance; correction requests appear above only after supervisor approval.</p>
       </div>
     </>
   )

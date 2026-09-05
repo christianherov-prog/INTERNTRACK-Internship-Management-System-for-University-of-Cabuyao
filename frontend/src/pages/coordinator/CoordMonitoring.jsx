@@ -1,4 +1,5 @@
 import { formatYearSection } from '../../utils/formatSection'
+import { displayLabel } from '../../utils/displayLabel'
 import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
@@ -38,7 +39,7 @@ function CoordMonitoring() {
   const sections = ['all', ...new Set(allRows.map(r => formatYearSection(r.section)).filter(s => s && s !== '—'))]
 
   const rows = allRows.filter(r => {
-    const matchSearch = !search || r.student_name?.toLowerCase().includes(search.toLowerCase()) || r.program?.toLowerCase().includes(search.toLowerCase()) || r.faculty_name?.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || r.student_name?.toLowerCase().includes(search.toLowerCase()) || displayLabel(r.program).toLowerCase().includes(search.toLowerCase()) || r.faculty_name?.toLowerCase().includes(search.toLowerCase())
     const matchSection = sectionFilter === 'all' || formatYearSection(r.section) === sectionFilter
     const matchSex = sexFilter === 'all' || r.sex?.toLowerCase() === sexFilter.toLowerCase()
     return matchSearch && matchSection && matchSex
@@ -169,7 +170,7 @@ function CoordMonitoring() {
                       <td className="fw-semibold">{r.student_name}</td>
                       <td style={{fontSize:'0.82rem'}}><span className="fw-semibold">{formatYearSection(r.section)}</span><br/><span style={{fontSize:'0.75rem',color:'#64748b'}}>{r.faculty_name}</span></td>
                       <td style={{fontSize:'0.82rem'}}>{r.sex}</td>
-                      <td style={{fontSize:'0.82rem'}}>{r.program}</td>
+                      <td style={{fontSize:'0.82rem'}}>{displayLabel(r.program, '—')}</td>
                       <td style={{fontSize:'0.82rem'}}>{r.supervisor_name}</td>
                       <td style={{fontSize:'0.82rem'}}>{r.company}</td>
                       <td style={{minWidth:'130px'}}>

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Internship;
 use App\Models\InternshipPlacement;
 use App\Models\ProgramHteRequirement;
+use Illuminate\Support\Facades\Schema;
 
 class InternshipPlacementService
 {
@@ -14,6 +15,10 @@ class InternshipPlacementService
      */
     public static function ensurePlacements(Internship $internship): void
     {
+        if (! Schema::hasTable('internship_placements') || ! Schema::hasTable('program_hte_requirements')) {
+            return;
+        }
+
         $internship->loadMissing('student.studentProfile.program', 'placements');
 
         $program = $internship->student?->studentProfile?->program;

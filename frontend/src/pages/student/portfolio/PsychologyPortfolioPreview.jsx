@@ -5,6 +5,7 @@ import PageError from '../../../components/PageError'
 import api from '../../../services/api'
 import '../../../assets/css/portfolio-print.css'
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow'
+import { displayLabel } from '../../../utils/displayLabel'
 import {
   PSY_COURSE,
   PSY_ROTATIONS,
@@ -171,9 +172,7 @@ function PsychologyPortfolioPreview() {
     ...emptyPsychologyFields(),
     ...(p.custom_fields?.psychology?.rotations || {}),
   }
-  const programName = typeof user.program === 'string'
-    ? user.program
-    : (user.program?.name || profile.program?.name || 'Bachelor of Science in Psychology')
+  const programName = displayLabel(user.program || profile.program, 'Bachelor of Science in Psychology')
   const collegeName = typeof user.department === 'object'
     ? (user.department?.name || 'College of Arts and Sciences')
     : (user.department || profile.department?.name || 'College of Arts and Sciences')

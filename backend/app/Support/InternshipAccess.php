@@ -12,41 +12,46 @@ class InternshipAccess
 {
     public static function canView(User $user, Internship $internship): bool
     {
-        if ($user->role === 'admin') {
+        if ($user->role === 'admin' || $user->role === 'director') {
             return true;
         }
 
-        if (in_array($user->role, ['director', 'coordinator', 'faculty'], true)) {
-            $userDept = $user->facultyProfile?->department;
-            $internship->loadMissing('student.studentProfile');
-            $studentDept = $internship->student?->studentProfile?->department;
-
-            if ($userDept && $studentDept) {
-                $isEngineering = stripos($userDept, 'Engineering') !== false || stripos($userDept, 'COE') !== false;
-                if ($isEngineering) {
-                    if (stripos($studentDept, 'Engineering') === false && stripos($studentDept, 'COE') === false) {
-                        return false;
-                    }
-                } elseif ($userDept !== $studentDept) {
-                    return false;
-                }
-            }
-        }
-
         return match ($user->role) {
-            'director' => true, // Assuming department check above passed
             'student' => (int) $internship->student_id === (int) $user->id,
             'supervisor' => (int) $internship->supervisor_id === (int) $user->id,
-            'faculty' => (int) $internship->faculty_id === (int) $user->id,
-            'coordinator' => (int) $internship->coordinator_id === (int) $user->id,
+            'faculty' => (int) $internship->faculty_id === (int) $user->id
+                && DepartmentScope::internshipBelongsToActor($user, $internship),
+            'coordinator' => DepartmentScope::internshipBelongsToActor($user, $internship),
             default => false,
         };
     }
 
+    public static function abortUnlessCanView(User $user, Internship $internship): void
+    {
+        if (self::canView($user, $internship)) {
+            return;
+        }
+
+        if (in_array($user->role, ['faculty', 'coordinator'], true)
+            && ! DepartmentScope::internshipBelongsToActor($user, $internship)) {
+            DepartmentScope::abortDifferentDepartment();
+        }
+
+        abort(403, 'Access denied to this internship.');
+    }
+
     public static function canManageAsCoordinator(User $user, Internship $internship): bool
     {
-        return $user->role === 'coordinator'
-            && (int) $internship->coordinator_id === (int) $user->id;
+        if ($user->role !== 'coordinator') {
+            return false;
+        }
+
+        if (! DepartmentScope::internshipBelongsToActor($user, $internship)) {
+            return false;
+        }
+
+        return $internship->coordinator_id === null
+            || (int) $internship->coordinator_id === (int) $user->id;
     }
 
     /**

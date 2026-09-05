@@ -62,7 +62,7 @@ api.interceptors.response.use(
     }
 
     if (status === 403 && !requestUrl.includes('/files/download')) {
-      const detail = error.response?.data?.message || 'Access Denied: You do not have permission to access this resource.'
+      const detail = error.response?.data?.message || 'Access denied — different department'
       window.dispatchEvent(new CustomEvent('access-denied', { detail }))
     }
 

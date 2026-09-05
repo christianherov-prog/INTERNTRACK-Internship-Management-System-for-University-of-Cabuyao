@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { useFormIdentity } from '../../hooks/useFormIdentity';
+import { FORM_IDENTITY_FIELDS } from '../../utils/formIdentity';
+import FormIdentityFields from './FormIdentityFields';
 
 export const StudentInternPerformanceForm = ({ internship, onSubmit, processing }) => {
+  const identity = useFormIdentity(internship);
   const [responses, setResponses] = useState({});
   const [generalComments, setGeneralComments] = useState('');
   const [recommendations, setRecommendations] = useState('');
-  const [period, setPeriod] = useState('1st');
 
   const criteriaList = [
     { label: "1. Knowledge, Skills, and Abilities (exhibits the required level of work knowledge, skills, and values to perform the tasks assigned)", weight: "25" },
@@ -35,50 +38,22 @@ export const StudentInternPerformanceForm = ({ internship, onSubmit, processing 
     }
 
     onSubmit({
-      evaluation_period: period, // Can be midterm, final etc. mapped to 1st, 2nd, midyear
+      evaluation_period: identity.evaluationPeriod || 'final',
       form_type: 'FO-24',
       responses,
       general_comments: generalComments,
-      recommendations // Storing recommendations in backend if needed or add to general comments
+      recommendations
     });
   };
 
-  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim() || 'Unavailable';
-  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || 'Unavailable';
-  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
-  const ayStr = internship?.academic_year || internship?.school_year || 'Unavailable';
-  const company = internship?.company || {};
-  const hteName = company.company_name || company.name || 'Unavailable';
-  const supervisor = internship?.supervisor?.supervisorProfile || {};
-  const supervisorName = `${supervisor.last_name || ''}, ${supervisor.first_name || ''}`.trim() || 'Unavailable';
-
+  
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center fw-bold">STUDENT INTERN PERFORMANCE EVALUATION FORM</h3>
         <p className="text-center text-muted mb-4" style={{ fontSize: '0.9rem' }}>(PNC:AA-FO-24)</p>
 
-        <div className="row g-3 mb-4">
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Semester/Midyear" value={semStr} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Academic Year" value={ayStr} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Student Name" value={studentName} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Program" value={program} readOnly />
-          </div>
-          <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Host Training Establishment (HTE)" value={hteName} readOnly />
-          </div>
-          <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Evaluator/Supervisor Name" value={supervisorName} readOnly />
-          </div>
-        </div>
+        <FormIdentityFields identity={identity} fields={FORM_IDENTITY_FIELDS['FO-24']} />
 
         <div className="alert alert-info py-2 mb-4">
           <p className="fw-bold mb-1">Grading Scale (65-100):</p>

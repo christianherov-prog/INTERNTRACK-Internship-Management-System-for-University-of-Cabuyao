@@ -5,6 +5,7 @@ import PageError from '../../../components/PageError'
 import api from '../../../services/api'
 import { AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
+import { displayLabel } from '../../../utils/displayLabel'
 import {
   NUR_COURSE,
   NUR_ROTATIONS,
@@ -114,9 +115,7 @@ function NursingPortfolioBuilder() {
   const photos = p?.photos || []
   const user = data?.user
   const profile = user?.student_profile
-  const programName = typeof user?.program === 'string'
-    ? user.program
-    : (user?.program?.name || profile?.program?.name || 'Bachelor of Science in Nursing')
+  const programName = displayLabel(user?.program || profile?.program, 'Bachelor of Science in Nursing')
   const collegeName = typeof user?.department === 'object'
     ? (user.department?.name || NUR_COLLEGE)
     : (user?.department || profile?.department?.name || NUR_COLLEGE)

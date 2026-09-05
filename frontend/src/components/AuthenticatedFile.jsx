@@ -97,3 +97,67 @@ export function AuthenticatedFileImage({ path, alt = '', className, style, fallb
   if (!src) return fallback || null
   return <img src={src} alt={alt} className={className} style={style} />
 }
+
+/** Image or PDF preview for private storage files (faculty review). */
+export function AuthenticatedFilePreview({ path, mime, name, height = 480 }) {
+  const [src, setSrc] = useState(() => (path && urlCache.has(path) ? urlCache.get(path) : ''))
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    if (!path) {
+      setSrc('')
+      return undefined
+    }
+    if (urlCache.has(path)) {
+      setSrc(urlCache.get(path))
+      return undefined
+    }
+    fetchBlobUrl(path)
+      .then((url) => {
+        if (!active) return
+        setSrc(url)
+        setFailed(false)
+      })
+      .catch(() => {
+        if (active) {
+          setSrc('')
+          setFailed(true)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [path])
+
+  const label = name || (path ? path.split('/').pop() : 'file')
+  const isImage = (mime && String(mime).startsWith('image/')) || /\.(png|jpe?g|gif|webp)$/i.test(label)
+  const isPdf = (mime && String(mime).includes('pdf')) || /\.pdf$/i.test(label)
+
+  if (!path) return <p className="text-muted mb-0">No file.</p>
+  if (failed) {
+    return (
+      <p className="text-danger mb-0">Unable to load this file. You may not have access, or it was removed.</p>
+    )
+  }
+  if (!src) {
+    return <div className="text-center text-muted py-4"><i className="fa fa-spinner fa-spin me-2"></i>Loading {label}…</div>
+  }
+  if (isImage) {
+    return <img src={src} alt={label} style={{ maxWidth: '100%', maxHeight: height, objectFit: 'contain' }} />
+  }
+  if (isPdf) {
+    return (
+      <iframe
+        title={label}
+        src={src}
+        style={{ width: '100%', height, border: '1px solid #dee2e6', borderRadius: 4, background: '#fff' }}
+      />
+    )
+  }
+  return (
+    <AuthenticatedFileLink path={path} className="btn btn-sm btn-outline-primary">
+      <i className="fa fa-download me-1"></i>Open {label}
+    </AuthenticatedFileLink>
+  )
+}

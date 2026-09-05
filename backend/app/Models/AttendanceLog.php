@@ -47,6 +47,16 @@ class AttendanceLog extends Model
         return $this->belongsTo(User::class, 'validated_by');
     }
 
+    public function overtimeEntries()
+    {
+        return $this->hasMany(OvertimeEntry::class);
+    }
+
+    public function correctionRequests()
+    {
+        return $this->hasMany(AttendanceCorrectionRequest::class);
+    }
+
     public function getStudentPreparedAttribute(): bool
     {
         return (bool) ($this->student_signature_path && $this->student_signed_name && $this->student_privacy_accepted_at);

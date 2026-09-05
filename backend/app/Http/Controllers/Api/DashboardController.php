@@ -67,13 +67,14 @@ class DashboardController extends Controller
 
     private function coordinatorSummary(User $user, array $base): array
     {
-        $assignedIds = $user->internshipsCoordinated()->pluck('id');
+        $assignedQuery = Internship::inDepartment()->where('coordinator_id', $user->id);
+        $assignedIds = (clone $assignedQuery)->pluck('id');
 
-        $assignedStudents = $user->internshipsCoordinated()
+        $assignedStudents = (clone $assignedQuery)
             ->whereIn('status', ['pending_placement', 'placed', 'ongoing', 'active', 'for_evaluation'])
             ->count();
 
-        $assignedCompanies = $user->internshipsCoordinated()
+        $assignedCompanies = (clone $assignedQuery)
             ->whereNotNull('company_id')
             ->distinct()
             ->count('company_id');
@@ -90,7 +91,8 @@ class DashboardController extends Controller
             ->count();
 
         // ── Faculty stats (coordinator inherits faculty role) ──────────────
-        $advisedIds = $user->internshipsAdvised()
+        $advisedIds = Internship::inDepartment()
+            ->where('faculty_id', $user->id)
             ->whereIn('status', ['ongoing', 'active', 'for_evaluation'])
             ->pluck('id');
 
@@ -119,7 +121,8 @@ class DashboardController extends Controller
 
     private function facultySummary(User $user, array $base): array
     {
-        $internshipIds = $user->internshipsAdvised()
+        $internshipIds = Internship::inDepartment()
+            ->where('faculty_id', $user->id)
             ->whereIn('status', ['ongoing', 'active', 'for_evaluation'])
             ->pluck('id');
 

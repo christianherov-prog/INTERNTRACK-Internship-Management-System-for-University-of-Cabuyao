@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { useFormIdentity } from '../../hooks/useFormIdentity';
+import { FORM_IDENTITY_FIELDS } from '../../utils/formIdentity';
+import FormIdentityFields from './FormIdentityFields';
 
 export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processing }) => {
+  const identity = useFormIdentity(internship);
   const [responses, setResponses] = useState({});
   const [generalComments, setGeneralComments] = useState('');
 
@@ -64,35 +68,13 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
 
   let globalIndex = 1;
 
-  const student = internship?.student?.student_profile || internship?.student?.studentProfile || {};
-  const studentName = `${student.last_name || ''}, ${student.first_name || ''}`.trim() || 'Unavailable';
-  const program = (typeof student.program === 'string' ? student.program : student.program?.name || student.program?.code) || 'Unavailable';
-  const semStr = internship?.semester === 1 ? '1st Semester' : internship?.semester === 2 ? '2nd Semester' : internship?.semester === 3 ? 'Midyear' : 'Unavailable';
-  const faculty = internship?.faculty?.facultyProfile || internship?.faculty?.faculty_profile || {};
-  const facultyName = `${faculty.last_name || ''}, ${faculty.first_name || ''}`.trim() || 'Unavailable';
-
+  
   return (
     <form onSubmit={handleSubmit} className="card shadow-sm mb-4 border-0">
       <div className="card-body p-4">
         <h3 className="card-title text-center mb-4 fw-bold">INTERNSHIP PROGRAM EVALUATION FORM</h3>
 
-        <div className="row g-3 mb-4">
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Semester/Midyear" value={semStr} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Academic Year" value={internship?.academic_year || internship?.school_year || 'Unavailable'} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Student Name" value={studentName} readOnly />
-          </div>
-          <div className="col-md-6">
-            <input type="text" className="form-control" placeholder="Program" value={program} readOnly />
-          </div>
-          <div className="col-md-12">
-            <input type="text" className="form-control" placeholder="Internship Teaching Personnel" value={facultyName} readOnly />
-          </div>
-        </div>
+        <FormIdentityFields identity={identity} fields={FORM_IDENTITY_FIELDS['FO-23']} />
 
         <div className="alert alert-info text-center py-2 mb-4">
           <span className="fw-bold">Rating Scale:</span> 5=Outstanding | 4=Very Satisfactory | 3=Satisfactory | 2=Unsatisfactory | 1=Poor

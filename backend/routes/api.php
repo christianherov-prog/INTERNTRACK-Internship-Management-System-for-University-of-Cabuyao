@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\JournalPdfController;
 use App\Http\Controllers\Api\PortfolioPdfController;
 use App\Http\Controllers\Api\StudentPortfolioController;
 use App\Http\Controllers\Api\AcademicStructureController;
+use App\Http\Controllers\Api\DtrWorkflowController;
 
 
 
@@ -116,6 +117,13 @@ Route::prefix('v1')->group(function () {
             Route::get('/attendance',            [StudentController::class, 'attendance']);
             Route::post('/attendance/clock-in',  [StudentController::class, 'clockIn']);
             Route::post('/attendance/clock-out', [StudentController::class, 'clockOut']);
+            Route::post('/attendance/undo-clock-out', [DtrWorkflowController::class, 'undoClockOut']);
+            Route::post('/attendance/overtime-decision', [DtrWorkflowController::class, 'decideOvertime']);
+            Route::get('/attendance/schedules', [DtrWorkflowController::class, 'studentSchedules']);
+            Route::post('/attendance/schedules', [DtrWorkflowController::class, 'proposeSchedule']);
+            Route::get('/attendance/corrections', [DtrWorkflowController::class, 'studentCorrections']);
+            Route::post('/attendance/corrections', [DtrWorkflowController::class, 'submitCorrection']);
+            Route::get('/attendance/dtr-audits', [DtrWorkflowController::class, 'studentAudits']);
             Route::get('/logbook',               [StudentController::class, 'logbook']);
             Route::post('/logbook',              [StudentController::class, 'submitJournal']);
             Route::get('/documents',             [StudentController::class, 'documents']);
@@ -158,6 +166,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/attendance',                     [SupervisorController::class, 'attendance']);
             Route::patch('/attendance/{id}/validate',     [SupervisorController::class, 'validateAttendance']);
             Route::patch('/attendance/bulk-validate',     [SupervisorController::class, 'bulkValidateAttendance']);
+            Route::get('/dtr/schedules',                  [DtrWorkflowController::class, 'supervisorSchedules']);
+            Route::patch('/dtr/schedules/{id}',           [DtrWorkflowController::class, 'reviewSchedule']);
+            Route::get('/dtr/overtime',                   [DtrWorkflowController::class, 'supervisorOvertime']);
+            Route::patch('/dtr/overtime/{id}',            [DtrWorkflowController::class, 'reviewOvertime']);
+            Route::get('/dtr/corrections',                [DtrWorkflowController::class, 'supervisorCorrections']);
+            Route::patch('/dtr/corrections/{id}',         [DtrWorkflowController::class, 'reviewCorrectionAsSupervisor']);
+            Route::get('/dtr/history',                    [DtrWorkflowController::class, 'supervisorHistory']);
+            Route::get('/dtr/audits',                     [DtrWorkflowController::class, 'supervisorAudits']);
             Route::get('/journals',                       [SupervisorController::class, 'journals']);
             Route::patch('/journals/{id}/review',         [SupervisorController::class, 'reviewJournal']);
             Route::get('/evaluations',                    [SupervisorController::class, 'evaluations']);
@@ -188,6 +204,10 @@ Route::prefix('v1')->group(function () {
             Route::patch('/students/{userId}/archive', [FacultyController::class, 'setStudentArchived']);
             Route::get('/students/{userId}/progress',  [FacultyController::class, 'studentProgress']);
             Route::get('/attendance',                  [FacultyController::class, 'attendance']);
+            Route::get('/dtr/corrections',             [DtrWorkflowController::class, 'facultyCorrections']);
+            Route::patch('/dtr/corrections/{id}',      [DtrWorkflowController::class, 'reviewCorrectionAsFaculty']);
+            Route::get('/dtr/history',                 [DtrWorkflowController::class, 'facultyHistory']);
+            Route::get('/dtr/audits',                  [DtrWorkflowController::class, 'facultyAudits']);
             Route::get('/journals',                    [FacultyController::class, 'journals']);
             Route::patch('/journals/{id}/review',      [FacultyController::class, 'reviewJournal']);
             Route::get('/evaluations',                 [FacultyController::class, 'evaluations']);
@@ -232,6 +252,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/announcements/{id}',     [AnnouncementController::class, 'destroy']);
             Route::get('/records',                   [CoordinatorController::class, 'records']);
             Route::patch('/students/{userId}/archive',[CoordinatorController::class, 'setStudentArchived']);
+            Route::get('/students/{userId}/progress', [CoordinatorController::class, 'studentProgress']);
             Route::get('/placement-options',         [CoordinatorController::class, 'placementOptions']);
             Route::post('/internships/{id}/place',   [CoordinatorController::class, 'assignPlacement']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
