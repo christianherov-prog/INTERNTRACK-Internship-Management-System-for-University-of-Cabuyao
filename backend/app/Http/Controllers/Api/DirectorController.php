@@ -132,8 +132,11 @@ class DirectorController extends Controller
     {
         $programs = $this->internsByProgram()->map(fn ($row) => [
             'program' => $row->program,
-            'total' => $row->count,
+            'ongoing' => $row->ongoing,
             'completed' => $row->completed,
+            'other' => $row->other,
+            'total' => $row->total,
+            'count' => $row->total,
             'avg_hours' => $row->avg_hours,
         ])->values();
 
@@ -155,11 +158,15 @@ class DirectorController extends Controller
                 $active = $rows->whereIn('status', ['ongoing', 'active'])->count();
                 $completed = $rows->where('status', 'completed')->count();
 
+                $other = $rows->count() - $active - $completed;
+
                 return (object) [
                     'program' => $program,
                     'count' => $rows->count(),
+                    'total' => $rows->count(),
                     'completed' => $completed,
                     'ongoing' => $active,
+                    'other' => $other,
                     'avg_hours' => round((float) $rows->avg('total_hours_rendered'), 2),
                 ];
             })

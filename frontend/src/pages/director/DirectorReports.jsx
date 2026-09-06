@@ -6,6 +6,7 @@ import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import { displayLabel } from '../../utils/displayLabel'
+import ReportExportModal from '../../components/modals/ReportExportModal'
 
 const REPORT_TYPES = [
   {
@@ -46,7 +47,7 @@ function InternshipSummaryTable({ data }) {
     <div className="table-responsive">
       <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
-          <tr><th>Program</th><th>Ongoing</th><th>Completed</th><th>Total</th></tr>
+          <tr><th>Program</th><th>Ongoing</th><th>Completed</th><th>Other</th><th>Total</th></tr>
         </thead>
         <tbody>
           {data.map((r, i) => (
@@ -54,7 +55,8 @@ function InternshipSummaryTable({ data }) {
               <td className="fw-semibold">{displayLabel(r.program, 'Unknown')}</td>
               <td>{r.ongoing ?? 0}</td>
               <td>{r.completed ?? 0}</td>
-              <td>{r.count ?? 0}</td>
+              <td>{r.other ?? Math.max(0, (r.total ?? r.count ?? 0) - (r.ongoing ?? 0) - (r.completed ?? 0))}</td>
+              <td>{r.total ?? r.count ?? ((r.ongoing ?? 0) + (r.completed ?? 0) + (r.other ?? 0))}</td>
             </tr>
           ))}
         </tbody>
@@ -167,6 +169,7 @@ function DirectorReports({ embedded = false }) {
   const [activeReport, setActiveReport] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [chedData, setChedData] = useState(null)
+  const [exportPreview, setExportPreview] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -201,54 +204,47 @@ function DirectorReports({ embedded = false }) {
     }
   }
 
-  // Generate CSV manually instead of using modal
   const handleExportCsv = () => {
-    let csvContent = "data:text/csv;charset=utf-8,"
     let rows = []
 
     if (activeReport === 'internship-summary') {
-      rows = [['Program', 'Ongoing', 'Completed', 'Total']]
-      byProgram.forEach(r => {
-        rows.push([r.program ?? 'Unknown', r.ongoing ?? 0, r.completed ?? 0, r.count ?? 0])
-      })
+      rows = byProgram.map(r => ({
+        Program: r.program ?? 'Unknown',
+        Ongoing: r.ongoing ?? 0,
+        Completed: r.completed ?? 0,
+        Other: r.other ?? Math.max(0, (r.total ?? r.count ?? 0) - (r.ongoing ?? 0) - (r.completed ?? 0)),
+        Total: r.total ?? r.count ?? 0,
+      }))
     } else if (activeReport === 'company-partnerships') {
-      rows = [['Company', 'Industry', 'MOA Status', 'Interns']]
-      topCompanies.forEach(r => {
-        rows.push([r.company_name, r.industry ?? '-', r.moa_status ?? '-', r.internships_count ?? 0])
-      })
+      rows = topCompanies.map(r => ({
+        Company: r.company_name,
+        Industry: r.industry ?? '-',
+        'MOA Status': r.moa_status ?? '-',
+        Interns: r.internships_count ?? 0,
+      }))
     } else if (activeReport === 'moa-status') {
-      rows = [['Status', 'Count']]
-      Object.entries(moaByStatus).forEach(([status, count]) => {
-        rows.push([status, count])
-      })
+      rows = Object.entries(moaByStatus).map(([status, count]) => ({
+        Status: status,
+        Count: count,
+      }))
     } else if (activeReport === 'ched-annual') {
-      rows = [['Company / HTE', 'Address', 'Industry', 'MOA Status', 'Total Interns', 'Ongoing', 'Completed']]
-      ;(chedData || []).forEach(r => {
-        rows.push([
-          r.company_name, r.address, r.industry, r.moa_status,
-          r.total_interns, r.ongoing, r.completed
-        ])
-      })
+      rows = (chedData || []).map(r => ({
+        'Company / HTE': r.company_name,
+        Address: r.address,
+        Industry: r.industry,
+        'MOA Status': r.moa_status,
+        'Total Interns': r.total_interns,
+        Ongoing: r.ongoing,
+        Completed: r.completed,
+      }))
     }
 
     if (rows.length === 0) return
-
-    // Escape CSV values
-    csvContent += rows.map(e => e.map(item => {
-      let str = String(item).replace(/"/g, '""')
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        str = `"${str}"`
-      }
-      return str
-    }).join(",")).join("\n")
-
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `${activeReport}-export.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    setExportPreview({
+      title: REPORT_TYPES.find((r) => r.key === activeReport)?.title || 'Director report',
+      filename: `${activeReport}-export`,
+      rows,
+    })
   }
 
   const printRef = useRef(null)
@@ -349,6 +345,7 @@ function DirectorReports({ embedded = false }) {
               </div>
             </div>
           )}
+          <ReportExportModal preview={exportPreview} onClose={() => setExportPreview(null)} />
         </>
       )}
     </Wrapper>

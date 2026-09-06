@@ -1,5 +1,6 @@
 import { formatYearSection } from '../../utils/formatSection'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import StatusChangeModal from '../../components/StatusChangeModal'
 import StatusHistoryModal from '../../components/StatusHistoryModal'
@@ -7,6 +8,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
 import { formatStudentName } from '../../utils/formatName'
+import { displayLabel } from '../../utils/displayLabel'
 
 function AssignPlacementModal({ student, onClose, onAssigned }) {
   const [loading, setLoading] = useState(true)
@@ -123,6 +125,9 @@ function statusLabel(status) {
 }
 
 function DirectorInternships() {
+  const [searchParams] = useSearchParams()
+  const initialProgram = searchParams.get('program') || 'all'
+  const skipProgramReset = useRef(true)
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(null)
@@ -138,7 +143,7 @@ function DirectorInternships() {
   
   const [search, setSearch] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [programFilter, setProgramFilter] = useState("all")
+  const [programFilter, setProgramFilter] = useState(initialProgram)
   const [sectionFilter, setSectionFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
 
@@ -158,8 +163,19 @@ function DirectorInternships() {
         .then(res => setPrograms(res.data))
         .catch(console.error)
     }
-    setProgramFilter('all') // reset program when department changes
+    if (skipProgramReset.current) {
+      skipProgramReset.current = false
+      return
+    }
+    setProgramFilter('all')
   }, [departmentFilter])
+
+  useEffect(() => {
+    if (!programs.length || programFilter === 'all') return
+    if (programs.some((p) => String(p.id) === String(programFilter))) return
+    const match = programs.find((p) => p.name === programFilter || p.code === programFilter)
+    if (match) setProgramFilter(String(match.id))
+  }, [programs, programFilter])
 
   const fetchRecords = () => {
     setLoading(true)
@@ -221,11 +237,15 @@ function DirectorInternships() {
     const name = formatStudentName(student).toLowerCase()
     const deptId = student.student_profile?.department_id || "none"
     const progId = student.student_profile?.program_id || "none"
+    const progName = displayLabel(student.student_profile?.program || student.active_internship?.program)
     const sec = formatYearSection(student.student_profile?.section) || "—"
     const st = student.active_internship?.status || "none"
+    const programMatch = programFilter === "all"
+      || String(progId) === String(programFilter)
+      || (progName && progName.toLowerCase() === String(programFilter).toLowerCase())
     return (!search || name.includes(search.toLowerCase()))
       && (departmentFilter === "all" || deptId == departmentFilter)
-      && (programFilter === "all" || progId == programFilter)
+      && programMatch
       && (sectionFilter === "all" || sec === sectionFilter)
       && (statusFilter === "all" || st === statusFilter)
   })

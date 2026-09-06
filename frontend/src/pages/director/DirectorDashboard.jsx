@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Layout from '../../components/Layout'
 import EmptyState from '../../components/EmptyState'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
@@ -15,7 +16,7 @@ const MOA_COLORS = {
   'on-process':{ bg: '#f3e8ff', color: '#6b21a8', label: 'On-Process' },
 }
 
-function ProgramBar({ programs, total }) {
+function ProgramBar({ programs, total, onSelectProgram }) {
   if (!programs?.length) return <EmptyState icon="fa-graduation-cap" title="No program data" message="Intern counts by program will appear once internships are active." />
   return (
     <div className="table-responsive">
@@ -23,7 +24,13 @@ function ProgramBar({ programs, total }) {
         <thead className="table-light"><tr><th>Program</th><th>Active</th><th>Completed</th><th>Distribution</th></tr></thead>
         <tbody>
           {programs.map((p, i) => (
-            <tr key={i}>
+            <tr
+              key={i}
+              role="button"
+              style={{ cursor: 'pointer' }}
+              onClick={() => onSelectProgram?.(p.program)}
+              title="View placements for this program"
+            >
               <td className="fw-semibold">{displayLabel(p.program, 'Unknown')}</td>
               <td><span className="badge bg-success">{p.ongoing ?? p.count ?? 0}</span></td>
               <td><span className="badge bg-primary">{p.completed ?? 0}</span></td>
@@ -94,6 +101,7 @@ function CompetencyBars({ evalBreakdown }) {
 }
 
 function DirectorDashboard() {
+  const navigate = useNavigate()
   const currentTerm = useCurrentTerm()
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -137,7 +145,11 @@ function DirectorDashboard() {
                   <h6>Interns by Program</h6>
                 </div>
                 <div className="p-3">
-                  <ProgramBar programs={byProgram} total={s.active_interns ?? 1} />
+                  <ProgramBar
+                    programs={byProgram}
+                    total={s.active_interns ?? 1}
+                    onSelectProgram={(program) => navigate(`/director/internships?program=${encodeURIComponent(program || '')}`)}
+                  />
                 </div>
               </div>
             </div>
