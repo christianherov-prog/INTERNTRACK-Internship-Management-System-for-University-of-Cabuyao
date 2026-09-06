@@ -26,7 +26,7 @@ class PasswordChangeMail extends Mailable
     {
         return new Envelope(
             to:      $this->user->email,
-            subject: 'Confirm Password Change - INTERNTRACK',
+            subject: 'Confirm Password Change - InternTrack',
         );
     }
 
