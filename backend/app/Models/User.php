@@ -119,11 +119,17 @@ class User extends Authenticatable
 
     public function hasRole($roles): bool
     {
+        return $this->hasExactRole($roles);
+    }
+
+    /**
+     * Exact persisted role match. Coordinators do not inherit faculty API access.
+     */
+    public function hasExactRole($roles): bool
+    {
         $check = is_array($roles) ? $roles : [$roles];
-        if ($this->role === 'coordinator' && in_array('faculty', $check)) {
-            return true;
-        }
-        return in_array($this->role, $check);
+
+        return in_array($this->role, $check, true);
     }
 
     public function hasAnyRole(array $roles): bool

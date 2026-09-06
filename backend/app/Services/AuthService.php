@@ -51,17 +51,35 @@ class AuthService
      */
     public function login(string $username, string $password, string $ip): array
     {
-        $username = strtoupper(trim($username));
-        $user     = User::where('student_number', $username)->orWhere('faculty_number', $username)->first();
+        $raw = trim($username);
+        $upper = strtoupper($raw);
+        $looksLikeEmail = filter_var($raw, FILTER_VALIDATE_EMAIL) !== false;
+
+        $user = User::query()
+            ->where(function ($q) use ($raw, $upper, $looksLikeEmail) {
+                $q->where('student_number', $upper)
+                    ->orWhere('faculty_number', $upper);
+                if ($looksLikeEmail) {
+                    $q->orWhereRaw('LOWER(email) = ?', [strtolower($raw)]);
+                }
+            })
+            ->first();
+
         if (app()->runningUnitTests()) {
-            \Illuminate\Support\Facades\Log::info('AuthService Login Dump: ' . json_encode($user));
-            \Illuminate\Support\Facades\Log::info('Username queried: ' . $username);
+            Log::info('AuthService Login Dump: '.json_encode($user));
+            Log::info('Username queried: '.$raw);
         }
 
-        // Auto-provision from iEnroll if no local account exists yet.
-        if (!$user) {
-            $user = $this->misd->provision($username, $password);
-            if (!$user) {
+        // Auto-provision from iEnroll only for campus IDs — never for email logins.
+        if (! $user) {
+            if ($looksLikeEmail) {
+                throw ValidationException::withMessages([
+                    'username' => ['Invalid credentials. Please check your ID and password.'],
+                ]);
+            }
+
+            $user = $this->misd->provision($upper, $password);
+            if (! $user) {
                 throw ValidationException::withMessages([
                     'username' => ['Invalid credentials. Please check your ID and password.'],
                 ]);
@@ -309,9 +327,8 @@ class AuthService
     {
         $user->load(['studentProfile', 'facultyProfile', 'supervisorProfile']);
 
-        if (IenrollProfileLock::containsLockedFields($data, $user->role)) {
-            abort(422, 'Profile identity fields are managed by iEnroll and cannot be changed here.');
-        }
+        $contactProvided = array_key_exists('contact', $data) || array_key_exists('contact_number', $data);
+        $data = IenrollProfileLock::stripLocked($data, $user->role);
 
         // Sex is iEnroll-managed for non-supervisor roles.
         if (!SexOptions::isEditableRole($user->role)) {
@@ -326,6 +343,31 @@ class AuthService
         }
 
         $contact = $data['contact_number'] ?? $data['contact'] ?? null;
+
+        if (IenrollProfileLock::isIenrollRole($user->role)) {
+            if (! $contactProvided) {
+                abort(403, 'Profile identity fields are managed by iEnroll and cannot be changed here.');
+            }
+
+            $normalizedContact = preg_replace('/[\s-]/', '', (string) $contact);
+            if ($normalizedContact !== '' && ! preg_match('/^(\+63|0)9\d{9}$/', $normalizedContact)) {
+                abort(422, 'Enter a valid Philippine mobile number (e.g. 09XXXXXXXXX).');
+            }
+
+            $contactValue = $normalizedContact === '' ? null : $normalizedContact;
+
+            if ($user->studentProfile) {
+                $user->studentProfile->update(['contact_number' => $contactValue]);
+            } elseif ($user->facultyProfile) {
+                $user->facultyProfile->update(['contact_number' => $contactValue]);
+            } else {
+                abort(422, 'No editable profile record found for this account.');
+            }
+
+            audit_log($user->id, 'update_profile', ['fields' => ['contact_number']]);
+
+            return $user->refresh()->load(self::USER_RELATIONS);
+        }
 
         if ($user->role === 'supervisor' && $user->supervisorProfile) {
             $payload = array_filter([

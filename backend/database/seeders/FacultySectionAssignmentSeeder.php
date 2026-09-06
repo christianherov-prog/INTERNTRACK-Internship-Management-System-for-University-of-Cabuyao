@@ -49,7 +49,7 @@ class FacultySectionAssignmentSeeder extends Seeder
 
     public function run(): void
     {
-        $pw  = Hash::make('interntrack123');
+        $pw  = Hash::make(config('interntrack.default_password'));
         $ay  = '2025-2026';
         $sem = '2nd Semester';
 
@@ -118,19 +118,16 @@ class FacultySectionAssignmentSeeder extends Seeder
         }
 
         $this->assignCollegeFacultySections($ay, $sem);
+        $this->restoreBsitSectionsToPrimaryFaculty($ay, $sem);
 
-        $this->command?->info('✅ Faculty section assignments seeded. Login: username=FAC-1001, password=interntrack123');
+        $this->command?->info('✅ Faculty section assignments seeded. Login: username=FAC-1001, password='.config('interntrack.default_password'));
     }
 
     private function assignCollegeFacultySections(string $ay, string $sem): void
     {
         $maps = [
-            'FAC-CCS-001' => [
-                ['section' => '4IT-A', 'program' => 'Bachelor of Science in Information Technology'],
-                ['section' => '4IT-B', 'program' => 'Bachelor of Science in Information Technology'],
-                ['section' => '4IT-C', 'program' => 'Bachelor of Science in Information Technology'],
-                ['section' => '4IT-D', 'program' => 'Bachelor of Science in Information Technology'],
-            ],
+            // FAC-CCS-001 is the college dummy faculty account — do not steal 4IT sections from FAC-1001.
+            'FAC-CCS-001' => [],
             'FAC-COED-001' => [
                 ['section' => '4BSED-A', 'program' => 'Bachelor of Secondary Education'],
             ],
@@ -161,5 +158,28 @@ class FacultySectionAssignmentSeeder extends Seeder
                 );
             }
         }
+    }
+
+    /**
+     * If a previous seed gave 4IT sections to the dummy FAC-CCS-001 account,
+     * return those mappings to FAC-1001 without deleting student records.
+     */
+    private function restoreBsitSectionsToPrimaryFaculty(string $ay, string $sem): void
+    {
+        $primary = User::where('faculty_number', 'FAC-1001')->first();
+        $dummy = User::where('faculty_number', 'FAC-CCS-001')->first();
+        if (! $primary || ! $dummy) {
+            return;
+        }
+
+        FacultySectionAssignment::query()
+            ->where('faculty_user_id', $dummy->id)
+            ->where('school_year', $ay)
+            ->where('semester', $sem)
+            ->where(function ($q) {
+                $q->whereIn('section', ['4IT-A', '4IT-B', '4IT-C', '4IT-D', '4ITA', '4ITB', '4ITC', '4ITD'])
+                    ->orWhere('section', 'like', '4IT%');
+            })
+            ->update(['faculty_user_id' => $primary->id]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AttendanceLog;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\Internship;
@@ -53,7 +54,7 @@ class StudentAccountsSeeder extends Seeder
 
     public function run(): void
     {
-        $password = Hash::make('interntrack123');
+        $password = Hash::make(config('interntrack.default_password'));
 
         $techCorp = Company::where('company_name', 'TechCorp PH')->first();
         $coordUser = User::where('role', 'coordinator')->first();
@@ -241,6 +242,8 @@ class StudentAccountsSeeder extends Seeder
             $ay  = $profile->school_year ?: '2025-2026';
             $sem = $profile->semester    ?: '2nd Semester';
 
+            $programHours = \App\Services\ProgramRequirementService::targetHoursForProfile($profile);
+
             if (!empty($row['internship'])) {
                 // Populated internship state for progressed demo accounts (e.g. 2300592)
                 $internshipData = array_merge($row['internship'], [
@@ -249,14 +252,15 @@ class StudentAccountsSeeder extends Seeder
                     'supervisor_id'  => $supervisorUser?->id,
                     'faculty_id'     => $facultyUser?->id ?? app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id,
                     'coordinator_id' => $coordUser?->id,
+                    'target_hours'   => $programHours > 0 ? $programHours : ($row['internship']['target_hours'] ?? 0),
                 ]);
 
                 $existingInternship = $user->internshipsAsStudent()->first();
-                if ($existingInternship) {
-                    $existingInternship->update($internshipData);
-                } else {
-                    $user->internshipsAsStudent()->create($internshipData);
-                }
+                $internship = $existingInternship
+                    ? tap($existingInternship)->update($internshipData)
+                    : $user->internshipsAsStudent()->create($internshipData);
+
+                $this->seedValidatedHoursIfMissing($internship, (float) ($row['internship']['total_hours_rendered'] ?? 0));
             } else {
                 // Fresh internship state
                 if (!$user->internshipsAsStudent()->exists()) {
@@ -265,12 +269,12 @@ class StudentAccountsSeeder extends Seeder
                         'school_year'          => $ay,
                         'semester'             => $sem,
                         'term'                 => "AY {$ay}, {$sem}",
-                        'program'              => $profile->program,
+                        'program'              => $profile->program?->name,
                         'company_id'           => null,
                         'supervisor_id'        => null,
                         'faculty_id'           => app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id,
                         'coordinator_id'       => null,
-                        'target_hours'         => config('interntrack.target_hours', 500),
+                        'target_hours'         => $programHours,
                         'total_hours_rendered' => 0,
                     ]);
                 }
@@ -315,5 +319,52 @@ class StudentAccountsSeeder extends Seeder
             'Bachelor of Science in Accountancy' => 'BSA',
             default => null,
         };
+    }
+
+    /**
+     * Persist validated attendance that matches a seeded hours total so dashboard
+     * and records share the same source of truth after refreshTotalHours().
+     */
+    private function seedValidatedHoursIfMissing(Internship $internship, float $hours): void
+    {
+        if ($hours <= 0) {
+            return;
+        }
+
+        $existing = (float) $internship->attendance()->where('status', 'validated')->sum('hours_rendered');
+        if ($existing >= $hours) {
+            return;
+        }
+
+        $remaining = $hours - $existing;
+        $fullDays = (int) floor($remaining / 8);
+        $leftover = $remaining - ($fullDays * 8);
+        $start = now()->subMonths(2)->startOfDay();
+
+        for ($i = 0; $i < $fullDays; $i++) {
+            AttendanceLog::create([
+                'internship_id' => $internship->id,
+                'date' => $start->copy()->addDays($i)->toDateString(),
+                'clock_in' => '08:00:00',
+                'clock_out' => '16:00:00',
+                'hours_rendered' => 8,
+                'status' => 'validated',
+                'validated_at' => now(),
+            ]);
+        }
+
+        if ($leftover > 0) {
+            AttendanceLog::create([
+                'internship_id' => $internship->id,
+                'date' => $start->copy()->addDays($fullDays)->toDateString(),
+                'clock_in' => '08:00:00',
+                'clock_out' => '12:00:00',
+                'hours_rendered' => $leftover,
+                'status' => 'validated',
+                'validated_at' => now(),
+            ]);
+        }
+
+        $internship->refreshTotalHours();
     }
 }

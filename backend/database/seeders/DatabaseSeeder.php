@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Main database seeder.
  *
- * Login credentials (all accounts use password: interntrack123):
+ * Login credentials (all accounts use INTERNTRACK_DEFAULT_PASSWORD, default InternTrack123!):
  *   Admin       → username: ADMIN-MISD-001
  *   Director    → username: DIR-1001
  *   Coordinator → username: COR-1001
@@ -39,7 +39,7 @@ class DatabaseSeeder extends Seeder
     private function ensureProgram(string $name, int $departmentId, ?string $code = null): int
     {
         $name = trim($name);
-        $code = $code ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', substr($name, 0, 10)) ?: 'PROG');
+        $code = $code ?: (\App\Support\ProgramCatalog::codeForName($name) ?: strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $name) ?: 'PROG'));
 
         $program = Program::firstOrCreate(
             ['name' => $name],
@@ -51,7 +51,7 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $pw = Hash::make('interntrack123');
+        $pw = Hash::make(config('interntrack.default_password'));
         $misdDepartmentId = $this->ensureDepartment('Management Information Systems Department', 'MISD');
         $paldDepartmentId = $this->ensureDepartment('Placement, Alumni, & Linkages Department', 'PALD');
         $ccsDepartmentId = $this->ensureDepartment('College of Computing Studies', 'CCS');
@@ -212,13 +212,33 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ─── 3b. Supervisor demo account (Patrick Bateman at TechCorp PH) ────
-        $supervisor = User::updateOrCreate(['email' => 'patrick.bateman@techcorp.ph'], [
-            'faculty_number' => 'SUP-0001',
-            'email' => 'patrick.bateman@techcorp.ph',
-            'password' => $pw,
-            'role' => 'supervisor',
-            'is_active' => true,
-        ]);
+        $techCorp = Company::where('company_name', 'TechCorp PH')->first();
+        $supervisor = User::where('email', 'patrick.bateman@techcorp.ph')->first();
+        $sup0001Owner = User::where('faculty_number', 'SUP-0001')->first();
+
+        if (! $supervisor) {
+            $supervisorCode = ($sup0001Owner && $sup0001Owner->email !== 'patrick.bateman@techcorp.ph')
+                ? \App\Support\SupervisorIds::nextFacultyNumber()
+                : 'SUP-0001';
+            $supervisor = User::create([
+                'faculty_number' => $supervisorCode,
+                'email' => 'patrick.bateman@techcorp.ph',
+                'password' => $pw,
+                'role' => 'supervisor',
+                'is_active' => true,
+            ]);
+        } else {
+            if (blank($supervisor->faculty_number)) {
+                $supervisor->faculty_number = ($sup0001Owner && $sup0001Owner->id !== $supervisor->id)
+                    ? \App\Support\SupervisorIds::nextFacultyNumber()
+                    : 'SUP-0001';
+            }
+            $supervisor->forceFill([
+                'password' => $pw,
+                'role' => 'supervisor',
+                'is_active' => true,
+            ])->save();
+        }
 
         \App\Models\SupervisorProfile::updateOrCreate(['user_id' => $supervisor->id], [
             'first_name' => 'Patrick',
@@ -227,6 +247,7 @@ class DatabaseSeeder extends Seeder
             'contact_number' => '09170000001',
             'sex' => 'Male',
             'position' => 'Senior Vice President / OJT Supervisor',
+            'company_id' => $techCorp?->id,
         ]);
 
         // ─── 4. Faculty accounts + section assignments ────────────────────────
@@ -246,37 +267,38 @@ class DatabaseSeeder extends Seeder
             ['created_by' => $coordCcs->id, 'content' => 'Internship orientation will be held soon. Please wait for further announcements.', 'target_role' => 'all', 'is_pinned' => false]
         );
 
+        $demoPassword = config('interntrack.default_password');
         $this->command->info('');
         $this->command->info('✅ INTERNTRACK database seeded successfully!');
         $this->command->info('─────────────────────────────────────────────────────────────');
         $this->command->info('  ROLE          USERNAME/STUDENT NO.   PASSWORD');
         $this->command->info('─────────────────────────────────────────────────────────────');
-        $this->command->info('  Admin         ADMIN-MISD-001         interntrack123
-  Director      DIR-1001               interntrack123
-  Coord (CCS)   COR-CCS-001            interntrack123
-  Facul (CCS)   FAC-CCS-001            interntrack123
-  Coord (COED)  COR-COED-001           interntrack123
-  Facul (COED)  FAC-COED-001           interntrack123
-  Coord (COE)   COR-COE-001            interntrack123
-  Facul (COE)   FAC-COE-001            interntrack123
-  Supervisor    SUP-0001               interntrack123 (Patrick Bateman)
-  Stud (CCS)    2300600                interntrack123 (Fresh/Pending)
-  Stud (CCS)    2300590                interntrack123 (Fresh/Pending)
-  Stud (CCS)    2300592                interntrack123 (Populated: TechCorp PH)
-  Stud (COED)   2300601                interntrack123 (Fresh/Pending)
-  Stud (COE)    2300602                interntrack123 (Fresh/Pending)
-  Stud (COE)    2300608                interntrack123 (Fresh/Pending)
-  Coord (CHAS)  COR-CHAS-001           interntrack123
-  Facul (CHAS)  FAC-CHAS-001           interntrack123
-  Stud (BSN)    2300603                interntrack123 (Fresh/Pending)
-  Coord (CAS)   COR-CAS-001            interntrack123
-  Facul (CAS)   FAC-CAS-001            interntrack123
-  Stud (BSPSY)  2300604                interntrack123 (Fresh/Pending)
-  Coord (CBAA)  COR-CBAA-001           interntrack123
-  Facul (CBAA)  FAC-CBAA-001           interntrack123
-  Stud (BSBAMM) 2300605                interntrack123 (Fresh/Pending)
-  Stud (BSBAFM) 2300606                interntrack123 (Fresh/Pending)
-  Stud (BSA)    2300607                interntrack123 (Fresh/Pending)');
+        $this->command->info("  Admin         ADMIN-MISD-001         {$demoPassword}
+  Director      DIR-1001               {$demoPassword}
+  Coord (CCS)   COR-CCS-001            {$demoPassword}
+  Facul (CCS)   FAC-CCS-001            {$demoPassword}
+  Coord (COED)  COR-COED-001           {$demoPassword}
+  Facul (COED)  FAC-COED-001           {$demoPassword}
+  Coord (COE)   COR-COE-001            {$demoPassword}
+  Facul (COE)   FAC-COE-001            {$demoPassword}
+  Supervisor    SUP-0001               {$demoPassword} (Patrick Bateman)
+  Stud (CCS)    2300600                {$demoPassword} (Fresh/Pending)
+  Stud (CCS)    2300590                {$demoPassword} (Fresh/Pending)
+  Stud (CCS)    2300592                {$demoPassword} (Populated: TechCorp PH)
+  Stud (COED)   2300601                {$demoPassword} (Fresh/Pending)
+  Stud (COE)    2300602                {$demoPassword} (Fresh/Pending)
+  Stud (COE)    2300608                {$demoPassword} (Fresh/Pending)
+  Coord (CHAS)  COR-CHAS-001           {$demoPassword}
+  Facul (CHAS)  FAC-CHAS-001           {$demoPassword}
+  Stud (BSN)    2300603                {$demoPassword} (Fresh/Pending)
+  Coord (CAS)   COR-CAS-001            {$demoPassword}
+  Facul (CAS)   FAC-CAS-001            {$demoPassword}
+  Stud (BSPSY)  2300604                {$demoPassword} (Fresh/Pending)
+  Coord (CBAA)  COR-CBAA-001           {$demoPassword}
+  Facul (CBAA)  FAC-CBAA-001           {$demoPassword}
+  Stud (BSBAMM) 2300605                {$demoPassword} (Fresh/Pending)
+  Stud (BSBAFM) 2300606                {$demoPassword} (Fresh/Pending)
+  Stud (BSA)    2300607                {$demoPassword} (Fresh/Pending)');
         $this->command->info('─────────────────────────────────────────────────────────────');
     }
 }

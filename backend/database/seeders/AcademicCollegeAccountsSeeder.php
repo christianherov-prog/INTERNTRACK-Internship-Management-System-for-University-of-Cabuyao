@@ -21,7 +21,7 @@ class AcademicCollegeAccountsSeeder extends Seeder
     {
         (new AcademicCollegesSeeder())->run();
 
-        $pw = Hash::make('interntrack123');
+        $pw = Hash::make(config('interntrack.default_password'));
         $ay = '2025-2026';
         $sem = '2nd Semester';
 

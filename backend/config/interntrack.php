@@ -5,11 +5,12 @@ return [
     // Override in .env without a code deploy: INTERNTRACK_CURRENT_TERM="AY 2025-2026, Sem 2"
     'current_term'     => env('INTERNTRACK_CURRENT_TERM', 'AY 2025-2026, Sem 2'),
 
-    // CCS OJT requirement (BSIT / BSCS): uniform 500 hours — not per-program.
-    // Override: INTERNTRACK_TARGET_HOURS=500
+    // Legacy last-resort fallback only. Required internship hours come from
+    // program_hte_requirements via ProgramRequirementService — never assume 500
+    // in application code. Seeders/tests may still read this value.
     'target_hours'     => (int) env('INTERNTRACK_TARGET_HOURS', 500),
 
-    'default_password' => env('INTERNTRACK_DEFAULT_PASSWORD', 'interntrack123'),
+    'default_password' => env('INTERNTRACK_DEFAULT_PASSWORD', 'InternTrack123!'),
     'upload_max_mb'    => env('INTERNTRACK_UPLOAD_MAX_MB', 10),
     'misd_use_mock'    => env('MISD_USE_MOCK', true),
     // Default-password first-login provision: on in local; elsewhere only if explicitly true.
