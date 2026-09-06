@@ -7,7 +7,7 @@ import DashboardHeroBanner from '../../components/DashboardHeroBanner'
 import { AnnouncementAttachmentView } from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
-import { DEFAULT_TARGET_HOURS } from '../../config/hours'
+import { resolveTargetHours } from '../../config/hours'
 import { formatYearSection } from '../../utils/formatSection'
 
 function StudentDashboard() {
@@ -177,7 +177,7 @@ function StudentDashboard() {
           <div className="stat-card">
             <div className="stat-icon teal"><i className="fa fa-clock"></i></div>
             <div>
-              <div className="stat-value">{s.hours_rendered ?? 0}<span style={{ fontSize: '0.7em', fontWeight: 400 }}>/{s.target_hours ?? DEFAULT_TARGET_HOURS}</span></div>
+              <div className="stat-value">{s.hours_rendered ?? 0}<span style={{ fontSize: '0.7em', fontWeight: 400 }}>/{resolveTargetHours(s.target_hours)}</span></div>
               <div className="stat-label">Hours Rendered</div>
             </div>
           </div>
@@ -210,6 +210,27 @@ function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      {internship && (
+        <div className="content-card mb-4">
+          <div className="content-card-header">
+            <i className="fa fa-briefcase"></i>
+            <h6>Current Internship</h6>
+          </div>
+          <div className="p-3">
+            <div className="fw-semibold">
+              {internship.company_name && internship.company_name !== '—' ? internship.company_name : 'No company assigned'}
+            </div>
+            <div className="text-muted small">
+              {internship.status_label || internship.status || '—'}
+              {' · '}
+              {internship.supervisor_name || 'No supervisor assigned'}
+              {' · '}
+              {s.hours_rendered ?? 0}/{resolveTargetHours(s.target_hours)} hrs
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Placement Breakdown (Multi-HTE Programs) ── */}
       {internship?.placements && internship.placements.length > 1 && (
@@ -302,7 +323,7 @@ function StudentDashboard() {
             </div>
             <div className="px-3 pb-3 pt-2">
               {(() => {
-                const targetHours = s.target_hours ?? DEFAULT_TARGET_HOURS
+                const targetHours = resolveTargetHours(s.target_hours)
                 const hoursRendered = s.hours_rendered ?? 0
                 const hoursPct = targetHours > 0 ? Math.min(100, Math.max(0, Math.round((hoursRendered / targetHours) * 100))) : 0
 
@@ -314,7 +335,8 @@ function StudentDashboard() {
                 
                 // Calculate Overall Progress
                 // Placement: 10%, Hours: 40%, Docs: 30%, Evaluation: 20%
-                const isPlaced = !['unplaced', 'pending_placement'].includes(s.status)
+                const placementStatus = internship?.status ?? s.status
+                const isPlaced = placementStatus && !['unplaced', 'pending_placement'].includes(placementStatus)
                 const placementScore = isPlaced ? 10 : 0
                 const hoursScore = hoursPct * 0.40
                 const docsScore = docCompliance * 0.30

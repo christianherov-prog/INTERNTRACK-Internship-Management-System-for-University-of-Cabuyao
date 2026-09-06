@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Services\InternshipProgressService;
+use App\Services\ProgramRequirementService;
 use App\Support\IenrollProfileLock;
 use App\Support\NameParts;
 use App\Support\NotificationPreferences;
@@ -103,7 +105,7 @@ class UserResource extends JsonResource
             'department'        => $this->studentProfile?->department?->name
                 ?? $this->facultyProfile?->department?->name
                 ?? '',
-            'faculty_number'    => $this->facultyProfile?->faculty_number,
+            'faculty_number'    => $this->faculty_number ?? $this->facultyProfile?->faculty_number,
             'employment_status' => $this->facultyProfile?->employment_status,
 
             // Display helpers
@@ -119,14 +121,8 @@ class UserResource extends JsonResource
             'faculty'     => $this->resolveFacultyName(),
             'lastLoginAt' => optional($this->last_login_at)?->toIso8601String(),
 
-            // Practicum progress (for students)
-            'hours_rendered' => $this->isStudent() ? (float) ($this->activeInternship?->rendered_hours ?? 0) : null,
-            'target_hours'   => $this->isStudent() ? (float) ($this->activeInternship?->target_hours ?? 500) : null,
-            'hours_progress' => $this->isStudent() ? (int) (
-                ($this->activeInternship?->target_hours ?? 500) > 0
-                    ? min(100, max(0, round((($this->activeInternship?->rendered_hours ?? 0) / ($this->activeInternship?->target_hours ?? 500)) * 100)))
-                    : 0
-            ) : null,
+            // Practicum progress (for students) — same snapshot as dashboard/records
+            ...$this->resolveInternshipProgress(),
 
             // Preferences & security
             'notificationPreferences' => NotificationPreferences::mergeForUser(
@@ -138,6 +134,38 @@ class UserResource extends JsonResource
     }
 
     // ─── Private Resolvers ────────────────────────────────────────────────────
+
+    /**
+     * @return array{hours_rendered: float|null, target_hours: float|null, hours_progress: int|null}
+     */
+    private function resolveInternshipProgress(): array
+    {
+        if (! $this->isStudent()) {
+            return [
+                'hours_rendered' => null,
+                'target_hours' => null,
+                'hours_progress' => null,
+            ];
+        }
+
+        if ($this->activeInternship) {
+            $snapshot = InternshipProgressService::snapshot($this->activeInternship);
+
+            return [
+                'hours_rendered' => $snapshot['hours_rendered'],
+                'target_hours' => $snapshot['target_hours'],
+                'hours_progress' => (int) $snapshot['progress_pct'],
+            ];
+        }
+
+        $target = ProgramRequirementService::targetHoursForProfile($this->studentProfile);
+
+        return [
+            'hours_rendered' => 0.0,
+            'target_hours' => $target,
+            'hours_progress' => 0,
+        ];
+    }
 
     private function resolveCompany(): string
     {

@@ -3,7 +3,7 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
-import { DEFAULT_TARGET_HOURS } from '../../config/hours'
+import { resolveTargetHours } from '../../config/hours'
 
 function absorptionBadge(status) {
   if (status === 'absorbed') return 'badge bg-success'
@@ -126,7 +126,7 @@ function StudentRecords() {
                 <div className="fw-semibold">{active.company?.company_name || 'No company assigned'}</div>
                 <div className="text-muted small">
                   {(active.status || '').replace(/_/g, ' ')} · {active.term || '—'} ·{' '}
-                  {active.total_hours_rendered || 0}/{active.target_hours || DEFAULT_TARGET_HOURS} hrs
+                  {active.total_hours_rendered || 0}/{resolveTargetHours(active.target_hours)} hrs
                 </div>
               </div>
             </div>
@@ -220,7 +220,7 @@ function StudentRecords() {
                             {(row.status || '—').replace(/_/g, ' ')}
                           </span>
                         </td>
-                        <td>{row.total_hours_rendered || 0}/{row.target_hours || DEFAULT_TARGET_HOURS}</td>
+                        <td>{row.total_hours_rendered || 0}/{resolveTargetHours(row.target_hours)}</td>
                         <td>{row.validated_days ?? 0}</td>
                       </tr>
                     ))}

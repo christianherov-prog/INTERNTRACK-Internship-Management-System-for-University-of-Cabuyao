@@ -1,5 +1,6 @@
 <?php
 namespace App\Models;
+use App\Services\ProgramRequirementService;
 use App\Support\NameParts;
 use Illuminate\Database\Eloquent\Model;
 class StudentProfile extends Model {
@@ -30,20 +31,16 @@ class StudentProfile extends Model {
                 if (!$internship) {
                     $user = \App\Models\User::find($profile->user_id);
                     if ($user && $user->role === 'student') {
-                            $progName = $profile->program ? $profile->program->name : 'Bachelor of Science in Information Technology';
-                            $deptName = $profile->department ? $profile->department->name : '';
-                            
-                            $targetHours = 500;
-                            if (stripos($progName, 'Computer Science') !== false) $targetHours = 300;
-                            if (stripos($progName, 'Engineering') !== false || stripos($deptName, 'Engineering') !== false) $targetHours = 240;
+                            $progName = $profile->program ? $profile->program->name : null;
 
                             $user->internshipsAsStudent()->create([
                                 'status' => 'pending_placement',
                                 'school_year' => $profile->school_year ?: '2025-2026',
                                 'semester' => $profile->semester ?: '2nd Semester',
                                 'term' => "AY " . ($profile->school_year ?: '2025-2026') . ", " . ($profile->semester ?: '2nd Semester'),
+                                'program' => $progName,
                                 'faculty_id' => $facultyId,
-                                'target_hours' => $targetHours,
+                                'target_hours' => ProgramRequirementService::targetHoursForProfile($profile),
                                 'total_hours_rendered' => 0,
                             ]);
                     }

@@ -35,6 +35,7 @@ class AcademicCollegesSeeder extends Seeder
             'BSBAFM'
         );
         $this->ensureProgram('Bachelor of Science in Accountancy', $cbaaId, 'BSA');
+        \App\Support\ProgramCatalog::repairStoredCodes();
     }
 
     private function ensureDepartment(string $name, ?string $code = null): int

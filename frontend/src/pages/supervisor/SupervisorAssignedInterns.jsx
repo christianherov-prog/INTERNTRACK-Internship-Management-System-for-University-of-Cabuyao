@@ -4,7 +4,7 @@ import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
-import { DEFAULT_TARGET_HOURS } from '../../config/hours'
+import { resolveTargetHours } from '../../config/hours'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatStudentName } from '../../utils/formatName'
@@ -137,7 +137,7 @@ function SupervisorAssignedInterns() {
                       const profile = i.student?.student_profile || i.student?.studentProfile
                       const name = formatStudentName(i.student)
                       const hours = parseFloat(i.total_hours_rendered || 0)
-                    const target = parseInt(i.target_hours || DEFAULT_TARGET_HOURS, 10)
+                    const target = resolveTargetHours(i.target_hours)
                     return (
                       <tr key={i.id}>
                         <td className="fw-semibold">{name}</td>

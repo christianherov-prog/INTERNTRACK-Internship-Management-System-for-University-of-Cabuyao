@@ -232,7 +232,7 @@ function TabStudents() {
                       const profile = row.student?.student_profile || row.student?.studentProfile
                       const supervisorName = row.supervisor?.supervisorProfile?.full_name || row.supervisor?.supervisor_profile?.full_name || "—"
                       const totalHours = row.total_hours_rendered ?? 0
-                      const targetHours = row.target_hours ?? 500
+                      const targetHours = Number(row.target_hours) || 0
                       const progressPct = targetHours > 0 ? Math.min(100, Math.round((totalHours / targetHours) * 100)) : 0
 
                       const progressColor = (pct) => {

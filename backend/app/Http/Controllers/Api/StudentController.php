@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceLog;
+use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\Document;
 use App\Models\Announcement;
@@ -11,6 +12,8 @@ use App\Models\Notification;
 use App\Services\AbsorptionService;
 use App\Services\CertificateEligibilityService;
 use App\Services\DtrWorkflowService;
+use App\Services\InternshipProgressService;
+use App\Services\ProgramRequirementService;
 use App\Support\ApiResponse;
 use App\Support\RequiredDocuments;
 use App\Support\RequirementAudience;
@@ -47,10 +50,7 @@ class StudentController extends Controller
             $ay = $profile?->school_year ?: '2025-2026';
             $sem = $profile?->semester ?: '2nd Semester';
             $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
-            $targetHours = 500;
-            if (in_array($profile?->program?->name, ['Bachelor of Secondary Education', 'Bachelor of Elementary Education'])) {
-                $targetHours = 360;
-            }
+            $targetHours = ProgramRequirementService::targetHoursForProfile($profile);
 
             $internship = $user->internshipsAsStudent()->create([
                 'status' => 'pending_placement',
@@ -87,7 +87,16 @@ class StudentController extends Controller
             }
         }
 
-        return $internship;
+        InternshipProgressService::synchronize($internship);
+
+        return $internship->fresh([
+            'student.studentProfile.program',
+            'company',
+            'supervisor.supervisorProfile',
+            'faculty.facultyProfile',
+            'coordinator.facultyProfile',
+            'placements',
+        ]);
     }
 
     /** Build the compact student summary used by the dashboard hero banner. */
@@ -131,11 +140,7 @@ class StudentController extends Controller
         $ay = $profile?->school_year ?: '2025-2026';
         $sem = $profile?->semester ?: '2nd Semester';
         $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
-        
-        $targetHours = 500;
-        if (in_array($profile?->program?->name, ['Bachelor of Secondary Education', 'Bachelor of Elementary Education'])) {
-            $targetHours = 360;
-        }
+        $targetHours = ProgramRequirementService::targetHoursForProfile($profile);
 
         $internship = $user->internshipsAsStudent()->create([
             'status' => 'pending_placement',
@@ -157,14 +162,16 @@ class StudentController extends Controller
     public function dashboard(Request $request)
     {
         $user       = $request->user()->load('studentProfile.program');
-        $internship = $this->internship($request)->load('company', 'placements.company', 'placements.supervisor', 'currentPlacement');
+        $internship = $this->internship($request);
         $profile    = $user->studentProfile;
+        $progress   = InternshipProgressService::snapshot($internship);
+        $internship->load('company', 'placements.company', 'placements.supervisor', 'currentPlacement');
 
         // Attendance stats
         $daysPresent     = $internship->attendance()->where('status', 'validated')->count();
-        $hoursRendered   = (float) $internship->attendance()->where('status', 'validated')->sum('hours_rendered');
-        $targetHours     = $internship->target_hours ?: config('interntrack.target_hours', 500);
-        $progressPercent = $targetHours > 0 ? (float) min(100, max(0, round(($hoursRendered / $targetHours) * 100, 1))) : 0.0;
+        $hoursRendered   = $progress['hours_rendered'];
+        $targetHours     = $progress['target_hours'];
+        $progressPercent = $progress['progress_pct'];
 
         // Journal stats
         $journalCount = $internship->journals()->whereIn('status', ['submitted', 'approved'])->count();
@@ -177,7 +184,7 @@ class StudentController extends Controller
             if ($profile->section) {
                 $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
             }
-            $program = $profile->program?->name ?: 'Bachelor of Science in Information Technology';
+            $program = $profile->program?->name;
             if ($program) {
                 $studentTargets[] = ['type' => 'program', 'id' => $program];
             }
@@ -262,6 +269,7 @@ class StudentController extends Controller
                 'progress_percent' => $progressPercent,
                 'doc_compliance'   => $docCompliance,
                 'evaluation_score' => $evaluationScore,
+                'status'           => \App\Support\InternshipStatuses::normalize($internship->status),
             ],
             'weekly_chart'  => ['labels' => $labels, 'hours' => $hours],
             'announcements' => $announcements,
@@ -273,6 +281,8 @@ class StudentController extends Controller
                 'status_label'  => \App\Support\InternshipStatuses::label($internship->status),
                 'status_reason' => $internship->status_reason,
                 'company_name'  => $internship->company?->company_name ?? '—',
+                'supervisor_name'=> $internship->supervisor?->supervisorProfile?->full_name
+                    ?? $internship->supervisor?->profile_name,
                 'start_date'    => $internship->start_date?->toDateString(),
                 'placements'    => $internship->placements->map(fn ($p) => [
                     'id'                => $p->id,
@@ -402,7 +412,26 @@ class StudentController extends Controller
     public function logbook(Request $request)
     {
         $internship = $this->internship($request);
+        $internship->loadMissing('company', 'student.studentProfile.program');
         $journals   = $internship->journals()->orderByDesc('week_number')->paginate(20);
+        $student = $request->user()->loadMissing('studentProfile.program');
+        $profile = $student->studentProfile;
+        $journals->getCollection()->transform(function (JournalEntry $journal) use ($profile, $student, $internship) {
+            $journal->setAttribute('date', $journal->date?->toDateString());
+            $journal->setAttribute('end_date', $journal->end_date?->toDateString());
+            $journal->setAttribute('editable', ! in_array($journal->status, ['approved'], true));
+            $journal->setAttribute('lock_reason', $journal->status === 'approved'
+                ? 'Approved journals cannot be edited.'
+                : null);
+            $journal->setAttribute('student_name', $profile
+                ? trim(($profile->last_name ?? '').', '.($profile->first_name ?? ''))
+                : $student->username);
+            $journal->setAttribute('program', $profile?->program?->name ?: $internship->program);
+            $journal->setAttribute('company_name', $internship->company?->company_name);
+
+            return $journal;
+        });
+
         return ApiResponse::list($journals);
     }
 
@@ -422,8 +451,8 @@ class StudentController extends Controller
         $internship = $this->internship($request);
         $journal = $internship->journals()->where('week_number', $request->week_number)->first();
 
-        if ($journal && in_array($journal->status, ['approved', 'submitted'])) {
-            return response()->json(['message' => 'Journal for this week is already submitted or approved.'], 422);
+        if ($journal && $journal->status === 'approved') {
+            return response()->json(['message' => 'Approved journals cannot be edited.'], 422);
         }
 
         $data = [
@@ -453,6 +482,7 @@ class StudentController extends Controller
     public function documents(Request $request)
     {
         $internship = $this->internship($request);
+        $internship->loadMissing('faculty.facultyProfile', 'coordinator.facultyProfile');
         $user = $request->user();
 
         $templates = RequirementAudience::scopeTemplatesForStudent(
@@ -465,7 +495,7 @@ class StudentController extends Controller
 
         $submitted = $internship->documents()->with('attachments')->get()->keyBy('document_type');
 
-        $docs = $templates->map(function ($template) use ($submitted) {
+        $docs = $templates->map(function ($template) use ($submitted, $internship) {
             $type = $template->name;
             $doc = $submitted->get($type);
             
@@ -480,8 +510,12 @@ class StudentController extends Controller
             }
 
             $creator = $template->creator;
-            $senderName = $creator ? $creator->profile_name : 'System';
-            $senderRole = $creator ? ucfirst($creator->role) : 'Admin';
+            $reviewStage = $creator?->role === 'faculty' ? 'faculty' : 'coordinator';
+            $responsible = $reviewStage === 'faculty'
+                ? ($internship->faculty ?: $creator)
+                : ($creator ?: $internship->coordinator);
+            $senderName = $responsible?->profile_name ?: ($creator?->profile_name ?: 'System');
+            $senderRole = $responsible ? ucfirst($responsible->role) : ($creator ? ucfirst($creator->role) : 'Admin');
 
             return [
                 'template_id'   => $template->id,
@@ -685,7 +719,21 @@ class StudentController extends Controller
         $history = $user->internshipsAsStudent()->with(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'student.studentProfile.program'])->orderBy('school_year', 'desc')
             ->withCount(['attendance as validated_days' => fn($q) => $q->where('status', 'validated')])
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->map(function ($internship) {
+                $snapshot = InternshipProgressService::snapshot($internship);
+                $internship->total_hours_rendered = $snapshot['hours_rendered'];
+                $internship->target_hours = $snapshot['target_hours'];
+                $internship->setAttribute('hours_rendered', $snapshot['hours_rendered']);
+                $internship->setAttribute('progress_pct', $snapshot['progress_pct']);
+                $internship->setAttribute('remaining_hours', $snapshot['remaining_hours']);
+                $internship->setAttribute('hte_count', $snapshot['hte_count']);
+                $internship->setAttribute('hte_completed', $snapshot['hte_completed']);
+                $internship->setAttribute('company_name', $snapshot['company_name']);
+                $internship->setAttribute('status_label', $snapshot['status_label']);
+
+                return $internship;
+            });
 
         return response()->json([
             'profile' => $user->studentProfile,
@@ -752,17 +800,64 @@ class StudentController extends Controller
 
     public function applications(Request $request)
     {
-        $applications = $request->user()->internshipsAsStudent()
-            ->where('status', 'pending_placement')
+        $applications = InternshipApplication::query()
+            ->where('student_id', $request->user()->id)
             ->with('company')
-            ->get();
+            ->latest()
+            ->get()
+            ->map(function (InternshipApplication $application) {
+                return [
+                    'id' => $application->id,
+                    'status' => $application->status,
+                    'company_id' => $application->company_id,
+                    'company' => $application->company,
+                    'company_name' => $application->company?->company_name,
+                    'created_at' => $application->created_at?->toDateTimeString(),
+                ];
+            });
+
+        if ($applications->isEmpty()) {
+            $applications = $request->user()->internshipsAsStudent()
+                ->whereNotNull('company_id')
+                ->with('company')
+                ->get()
+                ->map(fn ($internship) => [
+                    'id' => $internship->id,
+                    'status' => $internship->status,
+                    'company_id' => $internship->company_id,
+                    'company' => $internship->company,
+                    'company_name' => $internship->company?->company_name,
+                    'created_at' => $internship->created_at?->toDateTimeString(),
+                ]);
+        }
+
         return response()->json(['applications' => $applications]);
     }
 
     public function applyCompany(Request $request)
     {
-        $request->validate(['company_id' => 'required|exists:companies,id']);
-        return response()->json(['message' => 'Application submitted. Please await coordinator approval.']);
+        $data = $request->validate(['company_id' => 'required|exists:companies,id']);
+        $internship = $this->internship($request);
+        $internship->update(['company_id' => $data['company_id']]);
+
+        $application = InternshipApplication::updateOrCreate(
+            [
+                'student_id' => $request->user()->id,
+                'company_id' => $data['company_id'],
+            ],
+            ['status' => 'pending']
+        )->load('company');
+
+        return response()->json([
+            'message' => 'Application submitted. Please await coordinator approval.',
+            'application' => [
+                'id' => $application->id,
+                'status' => $application->status,
+                'company_id' => $application->company_id,
+                'company' => $application->company,
+                'company_name' => $application->company?->company_name,
+            ],
+        ]);
     }
 
     public function hteRequests(Request $request)

@@ -139,19 +139,29 @@ class Internship extends Model
 
     public function refreshTotalHours(): void
     {
-        // Sum hours from all placements, or fallback to attendance logs if no placements
-        $placementHours = $this->placements()->sum('accumulated_hours');
-        
-        if ($placementHours > 0) {
+        $this->loadMissing('placements');
+
+        foreach ($this->placements as $placement) {
+            $placement->refreshAccumulatedHours();
+        }
+
+        $attendanceHours = (float) $this->attendance()
+            ->where('status', 'validated')
+            ->sum('hours_rendered');
+        $placementHours = (float) $this->placements()->sum('accumulated_hours');
+
+        if ($attendanceHours > 0) {
+            $total = $attendanceHours;
+        } elseif ($placementHours > 0) {
             $total = $placementHours;
         } else {
-            // Legacy: sum directly from attendance logs (for internships created before placement model)
-            $total = $this->attendance()
-                ->where('status', 'validated')
-                ->sum('hours_rendered');
+            // Keep a seeded/legacy stored total when no validated attendance exists yet.
+            $total = (float) ($this->total_hours_rendered ?? 0);
         }
-        
-        $this->update(['total_hours_rendered' => $total]);
+
+        if ((float) $this->total_hours_rendered !== $total) {
+            $this->update(['total_hours_rendered' => $total]);
+        }
     }
 
     // ─── Scopes ────────────────────────────────────────────────────────────────
