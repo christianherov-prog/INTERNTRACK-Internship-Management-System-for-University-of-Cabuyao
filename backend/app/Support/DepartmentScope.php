@@ -30,10 +30,29 @@ final class DepartmentScope
             return null;
         }
 
-        $user->loadMissing('facultyProfile');
+        $user->loadMissing('facultyProfile.department');
         $id = $user->facultyProfile?->department_id;
+        if ($id) {
+            return (int) $id;
+        }
 
-        return $id ? (int) $id : null;
+        return self::departmentIdFromStaffNumber($user->faculty_number);
+    }
+
+    /**
+     * Resolve college from staff IDs such as COR-CCS-001 / FAC-CHAS-001.
+     */
+    public static function departmentIdFromStaffNumber(?string $number): ?int
+    {
+        if (! $number || ! preg_match('/-(CCS|COE|COED|CHAS|CAS|CBAA)-/i', $number, $match)) {
+            return null;
+        }
+
+        $code = strtoupper($match[1]);
+
+        return \App\Models\Department::query()
+            ->where('code', $code)
+            ->value('id');
     }
 
     public static function studentDepartmentId(User|StudentProfile|null $student): ?int

@@ -160,7 +160,7 @@ class MisdAdminController extends Controller
 
         return response()->json([
             'message' => 'Staff updated.',
-            'staff'   => $this->staff->formatStaff($user->fresh('facultyProfile')),
+            'staff'   => $this->staff->formatStaff($user->fresh('facultyProfile.department')),
         ]);
     }
 
@@ -454,7 +454,7 @@ class MisdAdminController extends Controller
         return response()->json([
             'found'    => true,
             'misd'     => $data,
-            'existing' => $existing ? $this->staff->formatStaff($existing->load('facultyProfile')) : null,
+            'existing' => $existing ? $this->staff->formatStaff($existing->load('facultyProfile.department')) : null,
         ]);
     }
 
@@ -661,7 +661,7 @@ class MisdAdminController extends Controller
 
     private function listStaffRole(string $role): JsonResponse
     {
-        $rows = User::with('facultyProfile')
+        $rows = User::with('facultyProfile.department')
             ->where('role', $role)
             ->orderByDesc('is_active')
             ->orderBy('faculty_number')
@@ -741,9 +741,12 @@ class MisdAdminController extends Controller
         $faculty = $a->faculty;
         $fp = $faculty?->facultyProfile;
 
-        $programName = $a->program;
-        if (!$programName || $programName === 'BACHELORO') {
-            $programName = 'Bachelor of Science in Information Technology';
+        $programName = \App\Support\ProgramCatalog::displayName($a->program);
+        if (! $programName) {
+            $programName = \App\Models\Program::query()
+                ->where('code', $a->program)
+                ->orWhere('name', $a->program)
+                ->value('name') ?: $a->program;
         }
 
         $sy = $a->school_year ?: '2025-2026';

@@ -49,6 +49,7 @@ const ROLE_NAV = {
   faculty: [
     { section: 'MAIN', to: '/faculty/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/faculty/assigned-students', icon: 'fa-users', text: 'Assigned Students' },
+    { section: 'TOOLS', to: '/faculty/documents', icon: 'fa-file-alt', text: 'Documents' },
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
     { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
@@ -70,10 +71,6 @@ const ROLE_NAV = {
     { section: 'DEPARTMENT', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'DEPARTMENT', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
     { section: 'DEPARTMENT', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },
-
-    // ── Section Level (Faculty) ─────────────────────────────────────────
-    // Other faculty tasks (Journals, Grading, Feedback) are accessible via the Dashboard Quick Actions
-    { section: 'MY SECTION (FACULTY)', to: '/faculty/assigned-students', icon: 'fa-users', text: 'My Students' },
 
     // ── Shared ──────────────────────────────────────────────────────────
     { section: 'COMMUNICATIONS', to: '/coordinator/messages', icon: 'fa-comments', text: 'Messages' },

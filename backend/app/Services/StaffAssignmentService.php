@@ -186,11 +186,12 @@ class StaffAssignmentService
             $user->update(['email' => $data['email']]);
         }
 
-        return $user->fresh(['facultyProfile']);
+        return $user->fresh(['facultyProfile.department']);
     }
 
     public function formatStaff(User $user): array
     {
+        $user->loadMissing('facultyProfile.department');
         $fp = $user->facultyProfile;
 
         return [

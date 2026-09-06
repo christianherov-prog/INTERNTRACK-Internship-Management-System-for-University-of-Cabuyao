@@ -16,7 +16,7 @@ class EnsureUserHasRole
         $user = $request->user();
 
         \Illuminate\Support\Facades\Log::info("Role check:", ["user" => $user ? $user->id : null, "user_role" => $user ? $user->role : null, "required" => $roles]); 
-        if (!$user || !$user->hasRole($roles)) {
+        if (!$user || !$user->hasExactRole($roles)) {
             return response()->json([
                 'message' => 'Forbidden. You do not have permission to access this resource.',
             ], 403);

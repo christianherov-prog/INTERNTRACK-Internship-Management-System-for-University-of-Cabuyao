@@ -28,7 +28,7 @@ function ProtectedRoute({ children, role, allowedRoles }) {
   }
 
   const roles = allowedRoles || (role ? [role] : null)
-  const userPassesRole = !roles || roles.includes(user.role) || (user.role === 'coordinator' && roles.includes('faculty'))
+  const userPassesRole = !roles || roles.includes(user.role)
   if (!userPassesRole) {
     const roleRoutes = {
       student: '/student/dashboard',
