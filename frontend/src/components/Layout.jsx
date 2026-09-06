@@ -26,7 +26,7 @@ function Layout({ children, title, subtitle, icon, bodyClass = '' }) {
       <main className="main-content">
         {children}
         <footer className="app-footer">
-          &copy; {new Date().getFullYear()} INTERNTRACK <span>{currentTerm}</span>
+          &copy; {new Date().getFullYear()} InternTrack <span>{currentTerm}</span>
         </footer>
       </main>
     </>

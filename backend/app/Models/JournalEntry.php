@@ -7,6 +7,19 @@ class JournalEntry extends Model {
     protected $fillable = ['internship_id','entry_number','date','end_date','activities_summary','learnings','challenges','status','supervisor_feedback','supervisor_reviewed_by','supervisor_reviewed_at','faculty_feedback','faculty_reviewed_by','faculty_reviewed_at', 'week_number', 'file_path', 'notes', 'score'];
     protected $casts = ['date'=>'date','end_date'=>'date','supervisor_reviewed_at'=>'datetime','faculty_reviewed_at'=>'datetime'];
     public function internship() { return $this->belongsTo(Internship::class); }
+
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+        if ($this->date) {
+            $array['date'] = $this->date->toDateString();
+        }
+        if ($this->end_date) {
+            $array['end_date'] = $this->end_date->toDateString();
+        }
+
+        return $array;
+    }
     public function supervisorReviewer() { return $this->belongsTo(User::class,'supervisor_reviewed_by'); }
     public function facultyReviewer() { return $this->belongsTo(User::class,'faculty_reviewed_by'); }
 }

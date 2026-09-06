@@ -74,7 +74,7 @@ class PortfolioPdfController extends Controller
         // 1. Cover & Header Metadata
         $companyName    = $portfolio?->company_name ?: ($internship->company?->company_name ?? ($internship->company?->name ?? 'Host Establishment'));
         $companyAddress = $portfolio?->company_address ?: ($internship->company?->address ?? 'City of Cabuyao, Laguna');
-        $course         = $studentProfile?->program?->name ?? ($internship->program ?? 'Bachelor of Science in Computer Science');
+        $course         = $studentProfile?->program?->name ?? ($internship->program ?? '');
 
         $middleInitial = $studentProfile?->middle_name ? substr($studentProfile->middle_name, 0, 1) . '.' : null;
         $studentName   = trim(implode(' ', array_filter([$studentProfile?->first_name, $middleInitial, $studentProfile?->last_name]))) ?: ($student->name ?? 'Student Name');

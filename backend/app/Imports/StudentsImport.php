@@ -46,11 +46,13 @@ class StudentsImport implements ToCollection, WithHeadingRow
             abort(403, \App\Support\DepartmentScope::DENIED_MESSAGE);
         }
 
-        // First, ensure the faculty-section assignment exists
+        $section = \App\Services\FacultySectionAssignmentService::normalizeSection($this->section) ?: $this->section;
+        $programKey = $programModel->code ?: $programModel->name;
+
         FacultySectionAssignment::firstOrCreate([
             'faculty_user_id' => $this->facultyId,
-            'section'         => $this->section,
-            'program'         => $this->program,
+            'section'         => $section,
+            'program'         => $programKey,
             'school_year'     => $this->schoolYear,
             'semester'        => $this->semester,
         ], [
@@ -68,7 +70,8 @@ class StudentsImport implements ToCollection, WithHeadingRow
             }
 
             $existingById = StudentProfile::where('student_number', $row['student_id'])->first();
-            if ($existingById && !empty($existingById->section) && $existingById->section !== $this->section) {
+            $existingSection = \App\Services\FacultySectionAssignmentService::normalizeSection($existingById?->section);
+            if ($existingById && $existingSection && $existingSection !== $section) {
                 $errors[] = "Row {$rowNum}: Student {$row['student_id']} is already assigned to section {$existingById->section}.";
             }
             if ($existingById && $facultyDept && $existingById->department_id
@@ -107,7 +110,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
                     'middle_name'    => $row['middle_name'] ?? null,
                     'program_id'     => $programModel->id,
                     'department_id'  => $programModel->department_id,
-                    'section'        => $this->section,
+                    'section'        => $section,
                     'school_year'    => $this->schoolYear,
                     'semester'       => $this->semester,
                     'email'          => $row['email'],
@@ -117,7 +120,7 @@ class StudentsImport implements ToCollection, WithHeadingRow
             // Sync with MISD / iEnroll
             app(\App\Services\MisdWriteService::class)->updateStudentSectionFaculty([
                 'student_number'          => (string) $row['student_id'],
-                'section'                 => $this->section,
+                'section'                 => $section,
                 'faculty_number'          => $facultyEmp,
                 'school_year'             => $this->schoolYear,
                 'semester'                => $this->semester,
@@ -126,5 +129,8 @@ class StudentsImport implements ToCollection, WithHeadingRow
                 'actor_user_id'           => $this->facultyId,
             ]);
         }
+
+        app(\App\Services\FacultySectionAssignmentService::class)
+            ->syncInternshipsForSection($section, $programModel->name, $this->schoolYear, $this->semester);
     }
 }

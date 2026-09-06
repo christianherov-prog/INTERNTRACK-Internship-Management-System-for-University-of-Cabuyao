@@ -377,7 +377,7 @@ class SupervisorRegistrationController extends Controller
                 'supervisor_approved',
                 'Supervisor Approved',
                 "Your supervisor {$invite->last_name}, {$invite->first_name} has been approved and assigned to your internship.",
-                '/student/dashboard'
+                '/student/attendance'
             );
 
             // Notify the supervisor
@@ -422,7 +422,7 @@ class SupervisorRegistrationController extends Controller
             'supervisor_rejected',
             'Supervisor Registration Rejected',
             "The supervisor registration for {$invite->last_name}, {$invite->first_name} was rejected: {$request->remarks}",
-            '/student/dashboard'
+            '/student/attendance'
         );
 
         audit_log($request->user()->id, 'reject_supervisor', ['invite_id' => $invite->id]);
@@ -552,7 +552,7 @@ class SupervisorRegistrationController extends Controller
                 'supervisor_approved',
                 'Supervisor Accepted',
                 "{$name} accepted your internship supervision invite.",
-                '/student/dashboard'
+                '/student/attendance'
             );
 
             return response()->json(['message' => 'Invitation accepted. The intern is now linked to your account.']);

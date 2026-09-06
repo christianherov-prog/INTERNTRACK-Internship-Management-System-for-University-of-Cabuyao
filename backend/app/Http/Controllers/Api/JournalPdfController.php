@@ -25,7 +25,7 @@ class JournalPdfController extends Controller
 
         $user       = auth()->user();
         $internship = Internship::with([
-            'student.studentProfile',
+            'student.studentProfile.program',
             'company',
             'supervisor.supervisorProfile',
             'faculty.facultyProfile',

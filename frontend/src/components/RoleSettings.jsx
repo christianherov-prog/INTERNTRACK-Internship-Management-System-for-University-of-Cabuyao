@@ -141,7 +141,7 @@ function RoleSettings({
   const [directPasswordLoading, setDirectPasswordLoading] = useState(false)
 
   const handleFormChange = (e) => {
-    if (identityLocked && e.target.name !== 'sex') return
+    if (identityLocked && e.target.name !== 'sex' && e.target.name !== 'contact') return
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
@@ -196,13 +196,15 @@ function RoleSettings({
   }
 
   const handleSaveProfile = async () => {
-    const updates = {
-      name: formData.name,
-      email: formData.email,
-      contact: formData.contact,
-      position: formData.position || undefined,
-      sex: formData.sex || undefined,
-    }
+    const updates = identityLocked
+      ? { contact: formData.contact }
+      : {
+          name: formData.name,
+          email: formData.email,
+          contact: formData.contact,
+          position: formData.position || undefined,
+          sex: formData.sex || undefined,
+        }
 
     setProfileSaving(true)
     try {
@@ -466,7 +468,7 @@ function RoleSettings({
                           Rendered: <strong className="text-dark">{user?.hours_rendered ?? 0} hrs</strong>
                         </span>
                         <span className="text-muted text-truncate">
-                          Target: <strong className="text-dark">{user?.target_hours ?? 500} hrs</strong>
+                          Target: <strong className="text-dark">{user?.target_hours ?? 0} hrs</strong>
                         </span>
                       </div>
                     </div>
@@ -550,6 +552,30 @@ function RoleSettings({
                     </div>
                   </div>
                 ))}
+
+                <div className="col-md-6">
+                  <div className="profile-detail-box h-100 d-flex flex-column justify-content-center">
+                    <label className="d-block text-muted fw-semibold text-uppercase" style={{ fontSize: '0.72rem', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                      Contact Number
+                    </label>
+                    <input
+                      name="contact"
+                      className="form-control form-control-sm"
+                      value={formData.contact}
+                      onChange={handleFormChange}
+                      placeholder="09XXXXXXXXX"
+                      inputMode="tel"
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-success mt-2"
+                      onClick={handleSaveProfile}
+                      disabled={profileSaving}
+                    >
+                      {profileSaving ? 'Saving…' : 'Save contact number'}
+                    </button>
+                  </div>
+                </div>
 
               </div>
 

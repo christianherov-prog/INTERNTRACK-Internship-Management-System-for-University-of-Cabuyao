@@ -119,7 +119,7 @@ class InternshipStatusController extends Controller
                 'internship_status_changed',
                 'Internship status updated',
                 'Your internship status is now '.InternshipStatuses::label($to).'. Reason: '.$reason,
-                '/student/dashboard',
+                '/student/records',
                 ['status' => $to, 'reason' => $reason]
             );
         }

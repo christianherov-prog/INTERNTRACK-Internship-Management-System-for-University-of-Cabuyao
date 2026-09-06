@@ -67,12 +67,9 @@ class DashboardController extends Controller
 
     private function coordinatorSummary(User $user, array $base): array
     {
-        $assignedQuery = Internship::inDepartment()->where('coordinator_id', $user->id);
-        $assignedIds = (clone $assignedQuery)->pluck('id');
-
-        $assignedStudents = (clone $assignedQuery)
-            ->whereIn('status', ['pending_placement', 'placed', 'ongoing', 'active', 'for_evaluation'])
-            ->count();
+        $assignedStudents = User::inDepartment()->where('role', 'student')->where('is_active', true)->count();
+        $assignedIds = Internship::inDepartment()->pluck('id');
+        $assignedQuery = Internship::inDepartment();
 
         $assignedCompanies = (clone $assignedQuery)
             ->whereNotNull('company_id')
@@ -121,9 +118,12 @@ class DashboardController extends Controller
 
     private function facultySummary(User $user, array $base): array
     {
+        $assignedCount = \App\Services\FacultySectionAssignmentService::assignedStudentsQuery($user)->count();
         $internshipIds = Internship::inDepartment()
-            ->where('faculty_id', $user->id)
-            ->whereIn('status', ['ongoing', 'active', 'for_evaluation'])
+            ->where(function ($q) use ($user) {
+                $q->where('faculty_id', $user->id)
+                    ->orWhereIn('student_id', \App\Services\FacultySectionAssignmentService::assignedStudentsQuery($user)->select('id'));
+            })
             ->pluck('id');
 
         // Advisees still missing a faculty evaluation submission.
@@ -132,14 +132,14 @@ class DashboardController extends Controller
             ->whereIn('internship_id', $internshipIds)
             ->pluck('internship_id');
 
-        $pendingJournals = JournalEntry::query()
+        $pendingJournals = $internshipIds->isEmpty() ? 0 : JournalEntry::query()
             ->whereIn('internship_id', $internshipIds)
             ->where('status', 'submitted')
             ->count();
 
         return array_merge($base, [
             'label'                     => 'FACULTY DASHBOARD',
-            'assigned_students_count'   => $internshipIds->count(),
+            'assigned_students_count'   => $assignedCount,
             'pending_evaluations_count' => $internshipIds->diff($evaluatedIds)->count(),
             'pending_journals_count'    => $pendingJournals,
         ]);
@@ -147,30 +147,34 @@ class DashboardController extends Controller
 
     private function supervisorSummary(User $user, array $base): array
     {
+        $user->loadMissing('supervisorProfile.company');
         $internships = Internship::where('supervisor_id', $user->id)
-            ->whereIn('status', ['ongoing', 'active', 'for_evaluation', 'placed', 'completed', 'suspended', 'deferred'])
-            ->with('company')
+            ->whereNotIn('status', ['terminated', 'withdrawn', 'cancelled'])
+            ->with(['company', 'evaluations' => fn ($q) => $q->where('evaluator_type', 'supervisor')])
             ->get();
 
         $internshipIds = $internships->pluck('id');
 
-        $pendingAttendance = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
-            ->where('status', 'pending')
-            ->count();
+        $pendingAttendance = $internshipIds->isEmpty()
+            ? 0
+            : \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
+                ->where('status', 'pending')
+                ->count();
 
-        $evaluatedIds = Evaluation::query()
-            ->where('evaluator_type', 'supervisor')
-            ->whereIn('internship_id', $internshipIds)
-            ->pluck('internship_id');
+        $pendingEvaluations = $internships->filter(function (Internship $internship) {
+            $evals = $internship->evaluations;
+            return ! $evals->contains('form_type', 'FO-24') || ! $evals->contains('form_type', 'FO-03');
+        })->count();
 
-        $companyName = $internships->pluck('company.company_name')->filter()->unique()->first();
+        $companyName = $internships->pluck('company.company_name')->filter()->unique()->first()
+            ?: $user->supervisorProfile?->company?->company_name;
 
         return array_merge($base, [
             'label'                     => 'SUPERVISOR DASHBOARD',
             'assigned_students_count'   => $internships->count(),
             'company_name'              => $companyName ?: '—',
             'pending_validations_count' => $pendingAttendance,
-            'pending_evaluations_count' => $internshipIds->diff($evaluatedIds)->count(),
+            'pending_evaluations_count' => $pendingEvaluations,
         ]);
     }
 

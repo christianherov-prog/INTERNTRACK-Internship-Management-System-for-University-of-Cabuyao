@@ -204,7 +204,7 @@ const WeeklyInternshipJournal = ({
               </div>
               <div style={styles.infoCellRight}>
                 <span style={styles.label}>PROGRAM:</span>
-                <span style={styles.infoValue}>{displayLabel(program, 'BSIT / BSCS')}</span>
+                <span style={styles.infoValue}>{displayLabel(program, 'Not available')}</span>
               </div>
             </div>
             <div style={{ ...styles.infoRowTop, borderBottom: 'none' }}>

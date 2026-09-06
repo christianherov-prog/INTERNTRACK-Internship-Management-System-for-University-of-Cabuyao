@@ -24,6 +24,7 @@ class ClassListUploadController extends Controller
         ]);
 
         $schoolYear = $request->input('school_year') ?: $request->input('academic_year');
+        $semester = $this->normalizeSemester((string) $request->input('semester'));
 
         $facultyUser = User::findOrFail($request->faculty_user_id);
         if (!$facultyUser->isFaculty()) {
@@ -63,7 +64,7 @@ class ClassListUploadController extends Controller
                     $request->section,
                     $request->program,
                     $schoolYear,
-                    $request->semester
+                    $semester
                 ),
                 $request->file('file')
             );
@@ -76,5 +77,17 @@ class ClassListUploadController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to process the uploaded file: ' . $e->getMessage()], 500);
         }
+    }
+
+    private function normalizeSemester(string $raw): string
+    {
+        $value = strtolower(trim($raw));
+
+        return match (true) {
+            in_array($value, ['1', '1st', '1st semester', 'sem 1', 'first'], true) => '1st Semester',
+            in_array($value, ['2', '2nd', '2nd semester', 'sem 2', 'second'], true) => '2nd Semester',
+            in_array($value, ['3', 'summer', 'midyear', 'mid-year', '3rd'], true) => 'Summer',
+            default => $raw,
+        };
     }
 }

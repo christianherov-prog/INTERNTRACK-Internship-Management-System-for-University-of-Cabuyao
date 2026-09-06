@@ -8,6 +8,8 @@ function SupervisorProfileEditor() {
   const toast = useToast()
   const [saving, setSaving] = useState(false)
   const [companies, setCompanies] = useState([])
+  const [companiesLoading, setCompaniesLoading] = useState(true)
+  const [companiesError, setCompaniesError] = useState(null)
   const [form, setForm] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -29,9 +31,18 @@ function SupervisorProfileEditor() {
   }, [user?.id, user?.name, user?.email, user?.contact, user?.position, user?.company_id, user?.sex])
 
   useEffect(() => {
+    setCompaniesLoading(true)
+    setCompaniesError(null)
     api.get('/supervisor/companies')
-      .then((res) => setCompanies(res.data.companies || []))
-      .catch(() => {})
+      .then((res) => {
+        const list = res.data?.companies || res.data?.data || (Array.isArray(res.data) ? res.data : [])
+        setCompanies(list)
+      })
+      .catch(() => {
+        setCompanies([])
+        setCompaniesError('Could not load host companies.')
+      })
+      .finally(() => setCompaniesLoading(false))
   }, [])
 
   const handleChange = (e) => {
@@ -89,12 +100,16 @@ function SupervisorProfileEditor() {
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Host Company</label>
-            <select name="company_id" className="form-select" value={form.company_id} onChange={handleChange}>
-              <option value="">Select company…</option>
+            <select name="company_id" className="form-select" value={form.company_id} onChange={handleChange} disabled={companiesLoading}>
+              <option value="">{companiesLoading ? 'Loading companies…' : 'Select company…'}</option>
               {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.company_name}</option>
+                <option key={c.id} value={c.id}>{c.company_name || c.name}</option>
               ))}
             </select>
+            {companiesError && <small className="text-danger">{companiesError}</small>}
+            {!companiesLoading && companies.length === 0 && !companiesError && (
+              <small className="text-muted">No host companies are available yet.</small>
+            )}
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Sex</label>

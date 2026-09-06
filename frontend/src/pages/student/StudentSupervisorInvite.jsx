@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import api from '../../services/api'
 import PageError from '../../components/PageError'
+import { useToast } from '../../contexts/ToastContext'
 
 function StudentSupervisorInvite({ embedded = false, initialStatusData = null, onStatusChange = () => { } }) {
+  const toast = useToast()
   const [invite, setInvite] = useState(initialStatusData?.invite || null)
   const [supervisor, setSupervisor] = useState(initialStatusData?.supervisor || null)
   const [state, setState] = useState(initialStatusData?.state || 'none')
@@ -60,12 +62,23 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
     }
   }
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     const url = invite?.register_url || `${window.location.origin}/register/supervisor?token=${invite?.token}`
-    navigator.clipboard.writeText(url).then(() => {
+    if (!url || !invite?.token) {
+      return
+    }
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard is not available')
+      }
+      await navigator.clipboard.writeText(url)
       setCopied(true)
+      toast.success('Invite link copied')
       setTimeout(() => setCopied(false), 2000)
-    })
+    } catch {
+      setCopied(false)
+      toast.error('Could not copy the invite link. Select the link and copy it manually.')
+    }
   }
 
   const registerUrl = invite?.register_url || (invite?.token ? `${window.location.origin}/register/supervisor?token=${invite.token}` : '')

@@ -36,9 +36,15 @@ class SupervisorController extends Controller
                 ->where('status', 'pending')
                 ->count();
 
-        $pendingEvals = $internships->whereNotIn('id',
-            Evaluation::where('evaluator_type', 'supervisor')->pluck('internship_id')->toArray()
-        )->count();
+        $pendingEvals = Internship::where('supervisor_id', $supervisorId)
+            ->whereNotIn('status', ['terminated', 'withdrawn', 'cancelled'])
+            ->with(['evaluations' => fn ($q) => $q->where('evaluator_type', 'supervisor')])
+            ->get()
+            ->filter(function (Internship $internship) {
+                $evals = $internship->evaluations;
+                return ! $evals->contains('form_type', 'FO-24') || ! $evals->contains('form_type', 'FO-03');
+            })
+            ->count();
 
         // Recent activity — last 5 validated attendance records
         $recentAttendance = \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
@@ -361,31 +367,42 @@ class SupervisorController extends Controller
     /** GET /api/v1/supervisor/evaluations */
     public function evaluations(Request $request)
     {
-        $internshipIds = Internship::where('supervisor_id', $request->user()->id)
-            ->whereIn('status', ['ongoing', 'active', 'for_evaluation', 'completed', 'placed'])
-            ->pluck('id');
+        $internships = Internship::where('supervisor_id', $request->user()->id)
+            ->whereNotIn('status', ['terminated', 'withdrawn', 'cancelled'])
+            ->with([
+                'student.studentProfile.program',
+                'company',
+                'supervisor.supervisorProfile',
+                'faculty.facultyProfile',
+                'evaluations' => fn ($q) => $q->where('evaluator_type', 'supervisor'),
+            ])
+            ->get();
 
-        $evaluations = Evaluation::whereIn('internship_id', $internshipIds)
+        $evaluations = Evaluation::whereIn('internship_id', $internships->pluck('id'))
             ->where('evaluator_type', 'supervisor')
             ->with(['internship.student.studentProfile.program', 'internship.company', 'internship.supervisor.supervisorProfile', 'internship.faculty.facultyProfile'])
             ->get();
 
-        $pending = Internship::whereIn('id', $internshipIds)
-            ->with(['student.studentProfile.program', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile'])
-            ->get()
-            ->map(function ($internship) use ($evaluations) {
-                $internshipEvals = $evaluations->where('internship_id', $internship->id);
-                $hasFO24 = $internshipEvals->contains('form_type', 'FO-24');
-                $hasFO03 = $internshipEvals->contains('form_type', 'FO-03');
-                
+        $pending = $internships
+            ->map(function (Internship $internship) {
+                $internshipEvals = $internship->evaluations;
                 $missing = [];
-                if (!$hasFO24) $missing[] = 'FO-24';
-                if (!$hasFO03) $missing[] = 'FO-03';
-                
-                $internship->missing_forms = $missing;
-                return $internship;
+                if (! $internshipEvals->contains('form_type', 'FO-24')) {
+                    $missing[] = 'FO-24';
+                }
+                if (! $internshipEvals->contains('form_type', 'FO-03')) {
+                    $missing[] = 'FO-03';
+                }
+
+                $row = $internship->toArray();
+                $row['missing_forms'] = $missing;
+                $row['student'] = $internship->student;
+                $row['company'] = $internship->company;
+                $row['program'] = $internship->student?->studentProfile?->program?->name ?: $internship->program;
+
+                return $row;
             })
-            ->filter(fn ($i) => count($i->missing_forms) > 0)
+            ->filter(fn ($row) => count($row['missing_forms']) > 0)
             ->values();
 
         return ApiResponse::groups(['completed' => $evaluations, 'pending' => $pending]);
@@ -479,11 +496,19 @@ class SupervisorController extends Controller
     /** GET /api/v1/supervisor/companies — active HTEs for profile editing */
     public function companies()
     {
-        $companies = \App\Models\Company::where('moa_status', 'active')
-            ->orderBy('company_name')
-            ->get(['id', 'company_name']);
+        $query = \App\Models\Company::query()
+            ->where(function ($q) {
+                $q->where('is_active', true)
+                    ->orWhere('moa_status', 'active');
+            })
+            ->orderBy('company_name');
 
-        return response()->json(['companies' => $companies]);
+        $currentId = auth()->user()?->supervisorProfile?->company_id;
+        if ($currentId) {
+            $query->orWhere('id', $currentId);
+        }
+
+        return response()->json(['companies' => $query->get(['id', 'company_name'])]);
     }
 
     /**

@@ -17,15 +17,31 @@ function ClassListUploadModal({ onClose, onSuccess }) {
     faculty_user_id: '',
   })
   const [programs, setPrograms] = useState([])
+  const [faculty, setFaculty] = useState([])
+  const [programsLoading, setProgramsLoading] = useState(true)
   const [file, setFile]         = useState(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError]       = useState(null)
   const fileRef = useRef(null)
 
   useEffect(() => {
-    api.get('/academic/programs')
-      .then((res) => setPrograms(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setPrograms([]))
+    setProgramsLoading(true)
+    Promise.all([
+      api.get('/academic/programs'),
+      api.get('/coordinator/placement-options').catch(() => ({ data: { faculty: [] } })),
+    ])
+      .then(([programRes, optionsRes]) => {
+        const raw = programRes.data
+        const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : [])
+        setPrograms(list)
+        setFaculty(optionsRes.data?.faculty || [])
+      })
+      .catch(() => {
+        setPrograms([])
+        setFaculty([])
+        setError('Could not load programs. Confirm your department assignment and try again.')
+      })
+      .finally(() => setProgramsLoading(false))
   }, [])
 
   const handleChange = e =>
@@ -101,11 +117,14 @@ function ClassListUploadModal({ onClose, onSuccess }) {
                     name="program" className="form-select"
                     value={form.program} onChange={handleChange} required
                   >
-                    <option value="">Select a program</option>
+                    <option value="">{programsLoading ? 'Loading programs…' : 'Select a program'}</option>
                     {programs.map((p) => (
-                      <option key={p.id} value={p.name}>{p.code} — {p.name}</option>
+                      <option key={p.id} value={p.name}>{p.name}{p.code ? ` (${p.code})` : ''}</option>
                     ))}
                   </select>
+                  {!programsLoading && programs.length === 0 && (
+                    <small className="text-danger">No programs available for your department.</small>
+                  )}
                 </div>
                 <div className="col-md-5">
                   <label className="form-label fw-semibold">Academic Year <span className="text-danger">*</span></label>
@@ -124,13 +143,31 @@ function ClassListUploadModal({ onClose, onSuccess }) {
                   </select>
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label fw-semibold">Faculty User ID <span className="text-danger">*</span></label>
-                  <input
-                    name="faculty_user_id" className="form-control" type="number"
-                    placeholder="e.g. 12"
-                    value={form.faculty_user_id} onChange={handleChange} required
-                  />
-                  <small className="text-muted">The system ID of the assigned faculty member.</small>
+                  <label className="form-label fw-semibold">Assigned Faculty <span className="text-danger">*</span></label>
+                  {faculty.length > 0 ? (
+                    <select
+                      name="faculty_user_id" className="form-select"
+                      value={form.faculty_user_id} onChange={handleChange} required
+                    >
+                      <option value="">Select faculty</option>
+                      {faculty.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name
+                            || [f.faculty_profile?.last_name, f.faculty_profile?.first_name].filter(Boolean).join(', ')
+                            || f.username
+                            || `Faculty #${f.id}`}
+                          {(f.faculty_number || f.faculty_profile?.faculty_number) ? ` (${f.faculty_number || f.faculty_profile?.faculty_number})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      name="faculty_user_id" className="form-control" type="number"
+                      placeholder="Faculty user ID"
+                      value={form.faculty_user_id} onChange={handleChange} required
+                    />
+                  )}
+                  <small className="text-muted">Faculty who will own this section roster.</small>
                 </div>
                 <div className="col-12">
                   <label className="form-label fw-semibold">Class List File <span className="text-danger">*</span></label>

@@ -115,9 +115,8 @@ function App() {
               <Route path="/supervisor/dashboard" element={<ProtectedRoute role="supervisor"><SupervisorDashboard /></ProtectedRoute>} />
               <Route path="/supervisor/assigned-interns" element={<ProtectedRoute role="supervisor"><SupervisorAssignedInterns /></ProtectedRoute>} />
               <Route path="/supervisor/attendance-validation" element={<ProtectedRoute role="supervisor"><SupervisorAttendanceValidation /></ProtectedRoute>} />
-              {/* Journal validation removed from supervisor role — faculty handles all journal reviews.
-              <Route path="/supervisor/journal-validation" element={<ProtectedRoute role="supervisor"><SupervisorJournalValidation /></ProtectedRoute>} />
-              */}
+              <Route path="/supervisor/journals" element={<Navigate to="/supervisor/assigned-interns" replace />} />
+              <Route path="/supervisor/journal-validation" element={<Navigate to="/supervisor/assigned-interns" replace />} />
               <Route path="/supervisor/performance-evaluation" element={<ProtectedRoute role="supervisor"><SupervisorPerformanceEvaluation /></ProtectedRoute>} />
               <Route path="/supervisor/absorption" element={<ProtectedRoute role="supervisor"><SupervisorAbsorption /></ProtectedRoute>} />
               <Route path="/supervisor/feedback" element={<ProtectedRoute role="supervisor"><SupervisorFeedback /></ProtectedRoute>} />

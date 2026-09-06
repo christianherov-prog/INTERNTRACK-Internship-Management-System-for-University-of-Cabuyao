@@ -6,6 +6,9 @@ use App\Models\FacultySectionAssignment;
 use App\Models\Internship;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Support\ProgramCatalog;
+use App\Services\ProgramRequirementService;
+use Illuminate\Database\Eloquent\Builder;
 
 class FacultySectionAssignmentService
 {
@@ -31,6 +34,48 @@ class FacultySectionAssignmentService
         $normalized = self::normalizeSection($section);
 
         return $normalized !== null && in_array($normalized, self::SECTIONS, true);
+    }
+
+    /**
+     * Students assigned to this faculty via section mapping or internship.faculty_id.
+     */
+    public static function assignedStudentsQuery(User $faculty, bool $activeOnly = true): Builder
+    {
+        $normalized = FacultySectionAssignment::query()
+            ->where('faculty_user_id', $faculty->id)
+            ->where('is_active', true)
+            ->pluck('section')
+            ->map(fn ($section) => self::normalizeSection($section))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $query = User::inDepartment()
+            ->where('role', 'student')
+            ->where(function ($q) use ($faculty, $normalized) {
+                $q->whereHas('internshipsAsStudent', function ($i) use ($faculty) {
+                    $i->where('faculty_id', $faculty->id);
+                });
+
+                if ($normalized->isNotEmpty()) {
+                    $q->orWhereHas('studentProfile', function ($p) use ($normalized) {
+                        $p->where(function ($inner) use ($normalized) {
+                            foreach ($normalized as $section) {
+                                $inner->orWhereRaw(
+                                    "REPLACE(REPLACE(UPPER(TRIM(section)), ' ', ''), '-', '') = ?",
+                                    [$section]
+                                );
+                            }
+                        });
+                    });
+                }
+            });
+
+        if ($activeOnly) {
+            $query->where('is_active', true);
+        }
+
+        return $query;
     }
 
     /**
@@ -226,10 +271,9 @@ class FacultySectionAssignmentService
             if (!$internship) {
                 $user = User::find($profile->user_id);
                 if ($user && $user->role === 'student') {
-                    $prog = $profile->program?->name ?: ($program ?: 'Bachelor of Science in Information Technology');
-                    $targetHours = 500;
-                    if (stripos($prog, 'Computer Science') !== false) $targetHours = 300;
-                    if (stripos($prog, 'Engineering') !== false || stripos($profile->department, 'Engineering') !== false) $targetHours = 240;
+                    $prog = $profile->program?->name
+                        ?: ProgramCatalog::displayName($program)
+                        ?: $program;
 
                     $user->internshipsAsStudent()->create([
                         'status' => 'pending_placement',
@@ -238,7 +282,7 @@ class FacultySectionAssignmentService
                         'term' => "AY " . ($profile->school_year ?: ($schoolYear ?: '2025-2026')) . ", " . ($profile->semester ?: ($semester ?: '2nd Semester')),
                         'program' => $prog,
                         'faculty_id' => $assignableFacultyId,
-                        'target_hours' => $targetHours,
+                        'target_hours' => ProgramRequirementService::targetHoursForProfile($profile),
                         'total_hours_rendered' => 0,
                     ]);
                 }

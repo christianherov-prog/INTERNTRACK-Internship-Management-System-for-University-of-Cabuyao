@@ -4,12 +4,35 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useAuth } from '../../contexts/AuthContext'
+import { displayLabel } from '../../utils/displayLabel'
 
 const STATUS_MAP = {
   submitted:      { cls: 'badge-pending',  label: 'Submitted' },
   approved:       { cls: 'badge-active',   label: 'Approved' },
   needs_revision: { cls: 'badge-inactive', label: 'Needs Revision' },
   draft:          { cls: 'badge-pending',  label: 'Draft' },
+}
+
+function toDateInput(value) {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+function formatDisplayDate(value) {
+  const iso = toDateInput(value)
+  if (!iso) return ''
+  const [year, month, day] = iso.split('-')
+  if (!year || !month || !day) return iso
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('en-PH', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function canEditJournal(journal) {
+  return journal && journal.status !== 'approved' && journal.editable !== false
 }
 
 const EMPTY_FORM = {
@@ -23,6 +46,7 @@ const EMPTY_FORM = {
 }
 
 function StudentLogbook() {
+  const { user } = useAuth()
   const [journals, setJournals]       = useState([])
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState(null)
@@ -58,10 +82,14 @@ function StudentLogbook() {
   }
 
   const openEditEntry = (j) => {
+    if (!canEditJournal(j)) {
+      setMessage({ type: 'danger', text: j.lock_reason || 'Approved journals cannot be edited.' })
+      return
+    }
     setForm({
       week_number:        j.week_number ?? '',
-      date:               j.date ?? '',
-      end_date:           j.end_date ?? '',
+      date:               toDateInput(j.date),
+      end_date:           toDateInput(j.end_date),
       activities_summary: j.activities_summary ?? '',
       challenges:         j.challenges ?? '',
       learnings:          j.learnings ?? '',
@@ -104,9 +132,9 @@ function StudentLogbook() {
     setPreviewModal({
       type: 'journal',
       data: {
-        studentName: j.student_name,
-        program: j.program,
-        companyName: j.company_name,
+        studentName: j.student_name || user?.name || '',
+        program: displayLabel(j.program || user?.program, ''),
+        companyName: j.company_name || user?.company || '',
         weekNumber: j.week_number ?? j.entry_number,
         date: j.date,
         endDate: j.end_date,
@@ -280,7 +308,8 @@ function StudentLogbook() {
                     Week {j.week_number}
                     {j.date && (
                       <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.88rem' }}>
-                        — {new Date(j.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        — {formatDisplayDate(j.date)}
+                        {j.end_date ? ` to ${formatDisplayDate(j.end_date)}` : ''}
                       </span>
                     )}
                   </div>
@@ -325,13 +354,19 @@ function StudentLogbook() {
                 <div className="d-flex flex-column align-items-end gap-2 ms-2">
                   {statusBadge(j.status)}
                   <div className="d-flex gap-1 flex-wrap justify-content-end mt-1">
-                    <button
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => openEditEntry(j)}
-                      title="Edit this journal entry"
-                    >
-                      <i className="fa fa-edit me-1"></i>Edit
-                    </button>
+                    {canEditJournal(j) ? (
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => openEditEntry(j)}
+                        title="Edit this journal entry"
+                      >
+                        <i className="fa fa-edit me-1"></i>Edit
+                      </button>
+                    ) : (
+                      <span className="small text-muted" title={j.lock_reason || 'Approved journals cannot be edited.'}>
+                        Locked
+                      </span>
+                    )}
                     <button
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => handlePreviewJournal(j)}

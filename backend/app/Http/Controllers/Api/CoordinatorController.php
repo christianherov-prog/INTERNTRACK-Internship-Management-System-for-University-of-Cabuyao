@@ -10,6 +10,9 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Models\Company;
 use App\Services\AbsorptionService;
+use App\Services\InternshipProgressService;
+use App\Services\ProgramRequirementService;
+use App\Support\NameParts;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
 use App\Support\SignatureCapture;
@@ -47,7 +50,7 @@ class CoordinatorController extends Controller
         }
 
         $internship = Internship::inDepartment()->where('student_id', $userId)
-            ->with(['company', 'supervisor.supervisorProfile', 'documents', 'journals'])
+            ->with(['company', 'supervisor.supervisorProfile', 'documents', 'journals', 'student.studentProfile.program'])
             ->latest()
             ->first();
 
@@ -55,7 +58,7 @@ class CoordinatorController extends Controller
             return response()->json([
                 'student'         => [
                     'id'            => $student->id,
-                    'name'          => $student->studentProfile?->full_name ?? $student->username,
+                    'name'          => NameParts::fromProfile($student->studentProfile) ?: ($student->studentProfile?->full_name ?? $student->username),
                     'student_number'=> $student->studentProfile?->student_number,
                     'program'       => $student->studentProfile?->program?->name,
                     'section'       => $student->studentProfile?->section,
@@ -63,7 +66,7 @@ class CoordinatorController extends Controller
                 'internship'      => null,
                 'progress'        => [
                     'hours_rendered'  => 0,
-                    'target_hours'    => 500,
+                    'target_hours'    => ProgramRequirementService::targetHoursForProfile($student->studentProfile),
                     'progress_pct'    => 0,
                 ],
                 'documents'       => [
@@ -82,9 +85,10 @@ class CoordinatorController extends Controller
             ]);
         }
 
-        $totalHours    = $internship->total_hours_rendered ?? 0;
-        $targetHours   = $internship->target_hours ?? 500;
-        $progressPct   = $targetHours > 0 ? min(100, round(($totalHours / $targetHours) * 100, 1)) : 0;
+        $progressSnap  = InternshipProgressService::snapshot($internship);
+        $totalHours    = $progressSnap['hours_rendered'];
+        $targetHours   = $progressSnap['target_hours'];
+        $progressPct   = $progressSnap['progress_pct'];
 
         $journals      = $internship->journals;
         $documents     = $internship->documents;
@@ -104,7 +108,7 @@ class CoordinatorController extends Controller
         return response()->json([
             'student'         => [
                 'id'            => $internship->student->id,
-                'name'          => $internship->student->studentProfile?->full_name ?? $internship->student->username,
+                'name'          => NameParts::fromProfile($internship->student->studentProfile) ?: ($internship->student->studentProfile?->full_name ?? $internship->student->username),
                 'student_number'=> $internship->student->studentProfile?->student_number,
                 'program'       => $internship->student->studentProfile?->program?->name,
                 'section'       => $internship->student->studentProfile?->section,
@@ -112,7 +116,7 @@ class CoordinatorController extends Controller
             'internship'      => [
                 'id'            => $internship->id,
                 'status'        => $internship->status,
-                'company'       => $internship->company?->name,
+                'company'       => $progressSnap['company_name'],
                 'supervisor'    => $internship->supervisor?->supervisorProfile?->full_name,
                 'start_date'    => $internship->start_date,
                 'end_date'      => $internship->end_date,
@@ -315,14 +319,11 @@ class CoordinatorController extends Controller
     /** GET /api/v1/coordinator/records */
     public function records(Request $request)
     {
-        $coordId = $request->user()->id;
         $query = User::inDepartment()->where('role', 'student')
-            ->whereHas('internshipsAsStudent', fn ($q) => $q->where('coordinator_id', $coordId))
             ->with([
                 'studentProfile.program',
                 'activeInternship.company',
                 'internshipsAsStudent' => fn ($q) => $q
-                    ->where('coordinator_id', $coordId)
                     ->withCount(['attendance as validated_days' => fn ($a) => $a->where('status', 'validated')]),
             ]);
 
@@ -381,7 +382,15 @@ class CoordinatorController extends Controller
             ->get();
         $supervisors = User::where('role', 'supervisor')->with('supervisorProfile')->get();
 
-        $sections = \App\Services\FacultySectionAssignmentService::SECTIONS;
+        $sections = \App\Models\FacultySectionAssignment::query()
+            ->where('is_active', true)
+            ->pluck('section')
+            ->merge(\App\Services\FacultySectionAssignmentService::SECTIONS)
+            ->map(fn ($s) => \App\Services\FacultySectionAssignmentService::normalizeSection($s) ?: $s)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
         $map = [];
         $service = app(\App\Services\FacultySectionAssignmentService::class);
         foreach ($sections as $sec) {
@@ -489,7 +498,7 @@ class CoordinatorController extends Controller
             'placement_assigned',
             'Internship Placement Assigned',
             'You have been officially deployed. You may now start logging your hours.',
-            '/student/dashboard',
+            '/student/records',
             ['internship_id' => $internship->id]
         );
 
@@ -802,10 +811,17 @@ class CoordinatorController extends Controller
             ->whereIn('role', ['faculty', 'coordinator'])
             ->with('facultyProfile')
             ->get()
-            ->map(fn($f) => [
-                'id'   => $f->id,
-                'name' => trim(($f->facultyProfile?->last_name ?? '') . ', ' . ($f->facultyProfile?->first_name ?? '')) ?: $f->username,
-            ]);
+            ->map(function ($f) {
+                $formatted = app(\App\Services\FacultySectionAssignmentService::class)->formatFaculty($f);
+
+                return [
+                    'id' => $f->id,
+                    'name' => $formatted['name'] ?? $f->username,
+                    'first_name' => $f->facultyProfile?->first_name,
+                    'last_name' => $f->facultyProfile?->last_name,
+                    'faculty_number' => $formatted['faculty_number'] ?? $f->username,
+                ];
+            });
 
         return response()->json([
             'internships'    => $internships,

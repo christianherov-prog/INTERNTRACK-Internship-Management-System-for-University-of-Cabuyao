@@ -7,7 +7,10 @@ use App\Models\Announcement;
 use App\Models\Internship;
 use App\Models\Notification;
 use App\Models\User;
+use App\Services\InternshipProgressService;
+use App\Services\ProgramRequirementService;
 use App\Support\ApiResponse;
+use App\Support\NameParts;
 use App\Support\RequiredDocuments;
 use App\Support\SignatureCapture;
 use Illuminate\Http\Request;
@@ -17,18 +20,7 @@ class FacultyController extends Controller
     public function dashboard(Request $request)
     {
         $facultyId  = $request->user()->id;
-        $sections   = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-        $assignedStudentsCount = User::inDepartment()->where('role', 'student')
-            ->where(function ($q) use ($facultyId, $sections) {
-                $q->whereHas('studentProfile', function ($p) use ($sections) {
-                    $p->whereIn('section', $sections);
-                })
-                ->orWhereHas('internshipsAsStudent', function ($i) use ($facultyId) {
-                    $i->where('faculty_id', $facultyId);
-                });
-            })
-            ->where('is_active', true)
-            ->count();
+        $assignedStudentsCount = \App\Services\FacultySectionAssignmentService::assignedStudentsQuery($request->user())->count();
 
         $internships = Internship::inDepartment()->where('faculty_id', $facultyId)
             ->whereIn('status', ['ongoing', 'active', 'for_evaluation'])
@@ -92,23 +84,13 @@ class FacultyController extends Controller
     public function assignedStudents(Request $request)
     {
         $facultyId = $request->user()->id;
-        $sections = \App\Models\FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-
-        $query = User::inDepartment()->where('role', 'student')
-            ->where(function ($q) use ($facultyId, $sections) {
-                $q->whereHas('studentProfile', function ($p) use ($sections) {
-                    $p->whereIn('section', $sections);
-                })
-                ->orWhereHas('internshipsAsStudent', function ($i) use ($facultyId) {
-                    $i->where('faculty_id', $facultyId);
-                });
-            })
-            ->with(['studentProfile.program', 'activeInternship.company', 'activeInternship.supervisor.supervisorProfile', 'activeInternship.attendance']);
+        $query = \App\Services\FacultySectionAssignmentService::assignedStudentsQuery(
+            $request->user(),
+            ! $request->boolean('archived')
+        )->with(['studentProfile.program', 'activeInternship.company', 'activeInternship.supervisor.supervisorProfile', 'activeInternship.attendance']);
 
         if ($request->boolean('archived')) {
             $query->where('is_active', false);
-        } else {
-            $query->where('is_active', true);
         }
 
         $paginator = $query->paginate(20);
@@ -204,7 +186,7 @@ class FacultyController extends Controller
         }
 
         $internship = Internship::inDepartment()->where('student_id', $userId)
-            ->with(['company', 'supervisor.supervisorProfile', 'documents', 'journals'])
+            ->with(['company', 'supervisor.supervisorProfile', 'documents', 'journals', 'student.studentProfile.program'])
             ->latest()
             ->first();
 
@@ -212,7 +194,7 @@ class FacultyController extends Controller
             return response()->json([
                 'student'         => [
                     'id'            => $student->id,
-                    'name'          => $student->studentProfile?->full_name ?? $student->username,
+                    'name'          => NameParts::fromProfile($student->studentProfile) ?: ($student->studentProfile?->full_name ?? $student->username),
                     'student_number'=> $student->studentProfile?->student_number,
                     'program'       => $student->studentProfile?->program?->name,
                     'section'       => $student->studentProfile?->section,
@@ -220,7 +202,7 @@ class FacultyController extends Controller
                 'internship'      => null,
                 'progress'        => [
                     'hours_rendered'  => 0,
-                    'target_hours'    => 500,
+                    'target_hours'    => ProgramRequirementService::targetHoursForProfile($student->studentProfile),
                     'progress_pct'    => 0,
                 ],
                 'documents'       => [
@@ -239,9 +221,10 @@ class FacultyController extends Controller
             ]);
         }
 
-        $totalHours    = $internship->total_hours_rendered ?? 0;
-        $targetHours   = $internship->target_hours ?? 500;
-        $progressPct   = $targetHours > 0 ? min(100, round(($totalHours / $targetHours) * 100, 1)) : 0;
+        $progressSnap  = InternshipProgressService::snapshot($internship);
+        $totalHours    = $progressSnap['hours_rendered'];
+        $targetHours   = $progressSnap['target_hours'];
+        $progressPct   = $progressSnap['progress_pct'];
 
         $journals      = $internship->journals;
         $documents     = $internship->documents;
@@ -261,7 +244,7 @@ class FacultyController extends Controller
         return response()->json([
             'student'         => [
                 'id'            => $internship->student->id,
-                'name'          => $internship->student->studentProfile?->full_name ?? $internship->student->username,
+                'name'          => NameParts::fromProfile($internship->student->studentProfile) ?: ($internship->student->studentProfile?->full_name ?? $internship->student->username),
                 'student_number'=> $internship->student->studentProfile?->student_number,
                 'program'       => $internship->student->studentProfile?->program?->name,
                 'section'       => $internship->student->studentProfile?->section,
@@ -269,7 +252,7 @@ class FacultyController extends Controller
             'internship'      => [
                 'id'            => $internship->id,
                 'status'        => $internship->status,
-                'company'       => $internship->company?->name,
+                'company'       => $progressSnap['company_name'],
                 'supervisor'    => $internship->supervisor?->supervisorProfile?->full_name,
                 'start_date'    => $internship->start_date,
                 'end_date'      => $internship->end_date,
@@ -519,15 +502,23 @@ class FacultyController extends Controller
         $students = $users->map(function ($u) {
             $i = $u->activeInternship;
             $p = $u->studentProfile;
+            $progress = $i
+                ? InternshipProgressService::snapshot($i)
+                : [
+                    'hours_rendered' => 0.0,
+                    'target_hours' => ProgramRequirementService::targetHoursForProfile($p),
+                    'progress_pct' => 0.0,
+                    'company_name' => null,
+                ];
             return [
-                'student_name' => trim(($p->last_name ?? '').', '.($p->first_name ?? '')),
+                'student_name' => NameParts::fromProfile($p) ?: trim(($p->last_name ?? '').', '.($p->first_name ?? '')),
                 'student_number' => $u->username,
                 'program' => $p->program?->name ?? $i?->program ?? '—',
-                'company' => $i->company?->company_name ?? '—',
+                'company' => $progress['company_name'] ?? $i?->company?->company_name ?? '—',
                 'status' => $i?->status ?? 'unplaced',
-                'hours_rendered' => (float) ($i?->total_hours_rendered ?? 0),
-                'target_hours' => $i?->target_hours ?? 500,
-                'progress_pct' => ($i?->target_hours ?? 500) > 0 ? round((($i?->total_hours_rendered ?? 0) / ($i?->target_hours ?? 500)) * 100, 1) : 0,
+                'hours_rendered' => $progress['hours_rendered'],
+                'target_hours' => $progress['target_hours'],
+                'progress_pct' => $progress['progress_pct'],
                 'validated_days' => $i?->validated_days ?? 0,
                 'approved_journals' => $i?->approved_journals ?? 0,
                 'approved_docs' => $i?->approved_docs ?? 0,

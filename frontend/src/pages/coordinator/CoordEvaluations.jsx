@@ -68,7 +68,7 @@ function CoordEvaluations() {
         <select className="form-select form-select-sm text-secondary" style={{ width: 180 }} value={filters.faculty_id} onChange={e => setFilters({ ...filters, faculty_id: e.target.value })}>
           <option value="">All Faculty</option>
           {facultyOptions.map(f => (
-            <option key={f.id} value={f.id}>{f.first_name} {f.last_name}</option>
+            <option key={f.id} value={f.id}>{f.name || [f.last_name, f.first_name].filter(Boolean).join(', ') || f.faculty_number || `Faculty #${f.id}`}</option>
           ))}
         </select>
       </div>
