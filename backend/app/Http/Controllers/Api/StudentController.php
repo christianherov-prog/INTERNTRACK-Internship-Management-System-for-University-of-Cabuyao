@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceLog;
+use App\Models\Internship;
 use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\Document;
@@ -17,7 +18,10 @@ use App\Services\ProgramRequirementService;
 use App\Support\ApiResponse;
 use App\Support\RequiredDocuments;
 use App\Support\RequirementAudience;
+use App\Support\UniqueWrite;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -357,24 +361,38 @@ class StudentController extends Controller
         if (!$internship->supervisor_id) {
             return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
         }
-        $today      = now()->toDateString();
 
-        if ($internship->attendance()->whereDate('date', $today)->exists()) {
-            return response()->json(['message' => 'You have already clocked in today.'], 422);
+        try {
+            $log = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $today = now()->toDateString();
+
+                if ($internship->attendance()->whereDate('date', $today)->exists()) {
+                    throw new \RuntimeException('You have already clocked in today.');
+                }
+
+                $clockIn = now()->toTimeString();
+                $log = $internship->attendance()->create([
+                    'date'              => $today,
+                    'placement_id'      => $internship->current_placement_id,
+                    'clock_in'          => $clockIn,
+                    'am_time_in'        => $clockIn,
+                    'status'            => 'pending',
+                    'clock_in_location' => $request->location ?? null,
+                ]);
+
+                audit_log($request->user()->id, 'clock_in', ['date' => $today]);
+
+                return $log;
+            }));
+        } catch (QueryException $e) {
+            if (UniqueWrite::isDuplicate($e)) {
+                return response()->json(['message' => 'You have already clocked in today.'], 422);
+            }
+            throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $clockIn = now()->toTimeString();
-
-        $log = $internship->attendance()->create([
-            'date'              => $today,
-            'placement_id'      => $internship->current_placement_id,
-            'clock_in'          => $clockIn,
-            'am_time_in'        => $clockIn,
-            'status'            => 'pending',
-            'clock_in_location' => $request->location ?? null,
-        ]);
-
-        audit_log($request->user()->id, 'clock_in', ['date' => $today]);
 
         return response()->json(['message' => 'Clocked in successfully.', 'record' => $log], 201);
     }
@@ -386,8 +404,25 @@ class StudentController extends Controller
         if (!$internship->supervisor_id) {
             return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
         }
-        $today      = now()->toDateString();
-        $log        = $internship->attendance()->whereDate('date', $today)->whereNull('clock_out')->firstOrFail();
+        $today = now()->toDateString();
+        try {
+            $log = DB::transaction(function () use ($internship, $today) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $open = $internship->attendance()
+                    ->whereDate('date', $today)
+                    ->whereNull('clock_out')
+                    ->lockForUpdate()
+                    ->first();
+                if (! $open) {
+                    throw new \RuntimeException('No open clock-in was found for today.');
+                }
+
+                return $open;
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
         $log->setRelation('internship', $internship);
 
         $result = $this->dtr->finalizeClockOut($log, now(), $request->location ?? null);
@@ -449,31 +484,71 @@ class StudentController extends Controller
         ]);
 
         $internship = $this->internship($request);
-        $journal = $internship->journals()->where('week_number', $request->week_number)->first();
 
-        if ($journal && $journal->status === 'approved') {
-            return response()->json(['message' => 'Approved journals cannot be edited.'], 422);
+        try {
+            $journal = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $journal = $internship->journals()
+                    ->withTrashed()
+                    ->where('week_number', $request->week_number)
+                    ->first();
+
+                if ($journal?->trashed()) {
+                    $journal->restore();
+                }
+
+                if ($journal && $journal->status === 'approved') {
+                    throw new \RuntimeException('Approved journals cannot be edited.');
+                }
+
+                $data = [
+                    'entry_number'       => $request->week_number,
+                    'week_number'        => $request->week_number,
+                    'date'               => $request->date,
+                    'end_date'           => $request->end_date,
+                    'activities_summary' => $request->activities_summary,
+                    'challenges'         => $request->challenges,
+                    'learnings'          => $request->learnings,
+                    'notes'              => $request->notes,
+                    'status'             => 'submitted',
+                ];
+
+                if ($journal) {
+                    $data['supervisor_reviewed_at'] = null;
+                    $data['supervisor_reviewed_by'] = null;
+                    $data['faculty_reviewed_at'] = null;
+                    $data['faculty_reviewed_by'] = null;
+                    $data['score'] = null;
+                    $journal->update($data);
+                } else {
+                    $journal = $internship->journals()->create($data);
+                }
+
+                audit_log($request->user()->id, 'submit_journal', ['week_number' => $request->week_number]);
+
+                return $journal->fresh();
+            }));
+        } catch (QueryException $e) {
+            if (UniqueWrite::isDuplicate($e)) {
+                $journal = $internship->journals()->where('week_number', $request->week_number)->first();
+
+                return response()->json(['message' => 'Weekly journal submitted successfully.', 'journal' => $journal], 201);
+            }
+            throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $data = [
-            'entry_number'       => $request->week_number,
-            'week_number'        => $request->week_number,
-            'date'               => $request->date,
-            'end_date'           => $request->end_date,
-            'activities_summary' => $request->activities_summary,
-            'challenges'         => $request->challenges,
-            'learnings'          => $request->learnings,
-            'notes'              => $request->notes,
-            'status'             => 'submitted',
-        ];
-
-        if ($journal) {
-            $journal->update($data);
-        } else {
-            $journal = $internship->journals()->create($data);
+        if ($internship->supervisor_id) {
+            Notification::notify(
+                (int) $internship->supervisor_id,
+                'journal_submitted',
+                'Weekly journal submitted',
+                'An assigned intern submitted Week '.($journal->week_number ?? $journal->entry_number ?? '—').' for validation.',
+                '/supervisor/journals',
+                ['journal_id' => $journal->id, 'internship_id' => $internship->id]
+            );
         }
-
-        audit_log($request->user()->id, 'submit_journal', ['week_number' => $request->week_number]);
 
         return response()->json(['message' => 'Weekly journal submitted successfully.', 'journal' => $journal], 201);
     }
@@ -595,29 +670,50 @@ class StudentController extends Controller
         $internship = $this->internship($request);
         $reviewStage = $template?->creator?->role === 'faculty' ? 'faculty' : 'coordinator';
 
-        $existing = $internship->documents()->where('document_type', $request->document_type)->first();
+        try {
+            $doc = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship, $reviewStage) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $existing = $internship->documents()
+                    ->withTrashed()
+                    ->where('document_type', $request->document_type)
+                    ->first();
 
-        if ($existing) {
-            $updateData = [
+                if ($existing?->trashed()) {
+                    $existing->restore();
+                }
+
+                $payload = [
+                    'status'        => 'pending',
+                    'current_stage' => $reviewStage,
+                    'submitted_at'  => now(),
+                    'remarks'       => null,
+                ];
+                if ($request->has('drive_link')) {
+                    $payload['drive_link'] = $request->drive_link;
+                }
+
+                if ($existing) {
+                    $existing->update($payload);
+
+                    return $existing->fresh();
+                }
+
+                return $internship->documents()->create(array_merge($payload, [
+                    'document_type' => $request->document_type,
+                    'drive_link'    => $request->drive_link,
+                ]));
+            }));
+        } catch (QueryException $e) {
+            if (! UniqueWrite::isDuplicate($e)) {
+                throw $e;
+            }
+            $doc = $internship->documents()->where('document_type', $request->document_type)->firstOrFail();
+            $doc->update([
                 'status'        => 'pending',
                 'current_stage' => $reviewStage,
                 'submitted_at'  => now(),
                 'remarks'       => null,
-            ];
-
-            if ($request->has('drive_link')) {
-                $updateData['drive_link'] = $request->drive_link;
-            }
-
-            $existing->update($updateData);
-            $doc = $existing;
-        } else {
-            $doc = $internship->documents()->create([
-                'document_type' => $request->document_type,
-                'drive_link'    => $request->drive_link,
-                'status'        => 'pending',
-                'current_stage' => $reviewStage,
-                'submitted_at'  => now(),
+                'drive_link'    => $request->has('drive_link') ? $request->drive_link : $doc->drive_link,
             ]);
         }
 
@@ -838,15 +934,29 @@ class StudentController extends Controller
     {
         $data = $request->validate(['company_id' => 'required|exists:companies,id']);
         $internship = $this->internship($request);
-        $internship->update(['company_id' => $data['company_id']]);
 
-        $application = InternshipApplication::updateOrCreate(
-            [
-                'student_id' => $request->user()->id,
-                'company_id' => $data['company_id'],
-            ],
-            ['status' => 'pending']
-        )->load('company');
+        try {
+            $application = DB::transaction(function () use ($request, $internship, $data) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $internship->update(['company_id' => $data['company_id']]);
+
+                return InternshipApplication::updateOrCreate(
+                    [
+                        'student_id' => $request->user()->id,
+                        'company_id' => $data['company_id'],
+                    ],
+                    ['status' => 'pending']
+                )->load('company');
+            });
+        } catch (QueryException $e) {
+            if (! UniqueWrite::isDuplicate($e)) {
+                throw $e;
+            }
+            $application = InternshipApplication::where('student_id', $request->user()->id)
+                ->where('company_id', $data['company_id'])
+                ->firstOrFail()
+                ->load('company');
+        }
 
         return response()->json([
             'message' => 'Application submitted. Please await coordinator approval.',

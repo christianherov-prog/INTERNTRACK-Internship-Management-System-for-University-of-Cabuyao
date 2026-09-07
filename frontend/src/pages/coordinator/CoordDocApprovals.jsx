@@ -17,6 +17,7 @@ function CoordDocApprovals() {
   const [bulkApproveOpen, setBulkApproveOpen] = useState(false)
   const [remark, setRemark]   = useState('')
   const [selected, setSelected] = useState([]) // array of doc ids
+  const [downloading, setDownloading] = useState(false)
   const [approveModal, setApproveModal] = useState(null) // { id }
   const [remarks, setRemarks] = useState('')
   const [search, setSearch] = useState('')
@@ -41,6 +42,30 @@ function CoordDocApprovals() {
 
   const toggleAll = () => setSelected(allSelected ? [] : docs.map(d => d.id))
   const toggleOne = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const downloadSelected = async () => {
+    if (selected.length === 0) return
+    setDownloading(true)
+    try {
+      const res = await api.post('/coordinator/documents/bulk-download', { document_ids: selected }, { responseType: 'blob' })
+      if (res.data?.type === 'application/json') {
+        const text = await res.data.text()
+        const json = JSON.parse(text)
+        setMessage({ type: 'danger', text: json.message || 'Download failed.' })
+        return
+      }
+      const url = window.URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `interntrack-documents.zip`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Download failed.' })
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const openApproveModal = (doc) => {
     setApproveModal(doc)
@@ -213,7 +238,10 @@ function CoordDocApprovals() {
         {selected.length > 0 && (
           <div className="d-flex align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
             <span className="fw-semibold" style={{ fontSize: '0.85rem' }}>{selected.length} selected</span>
-            <button className="btn btn-sm btn-success ms-auto" onClick={() => setBulkApproveOpen(true)} disabled={processing === 'bulk'}>
+            <button className="btn btn-sm btn-outline-primary ms-auto" onClick={downloadSelected} disabled={downloading}>
+              <i className={`fa fa-${downloading ? 'spinner fa-spin' : 'file-zipper'} me-1`}></i>Download ZIP
+            </button>
+            <button className="btn btn-sm btn-success" onClick={() => setBulkApproveOpen(true)} disabled={processing === 'bulk'}>
               <i className={`fa fa-${processing === 'bulk' ? 'spinner fa-spin' : 'check'} me-1`}></i>Forward Selected
             </button>
             <button className="btn btn-sm btn-danger" onClick={openBulkRejectModal} disabled={processing === 'bulk'}>

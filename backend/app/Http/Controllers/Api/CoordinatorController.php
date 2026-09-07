@@ -426,10 +426,6 @@ class CoordinatorController extends Controller
 
         $this->assertCoordinatorOwns($internship, $request->user()->id);
 
-        if ($internship->status !== 'pending_placement') {
-            return response()->json(['message' => 'Student is already placed or cannot be placed at this time.'], 422);
-        }
-
         $supervisor = User::findOrFail((int) $request->supervisor_id);
         if ($supervisor->role !== 'supervisor') {
             return response()->json([
@@ -459,12 +455,17 @@ class CoordinatorController extends Controller
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($request, $internship, $program, $facultyId) {
+                $lockedInternship = Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                if ($lockedInternship->status !== 'pending_placement') {
+                    throw new \RuntimeException('Student is already placed or cannot be placed at this time.');
+                }
+
                 $company = Company::lockForUpdate()->findOrFail((int) $request->company_id);
                 if (!$company->isEligibleForPlacement()) {
                     throw new \RuntimeException($company->ineligibilityReason());
                 }
 
-                $internship->update([
+                $lockedInternship->update([
                     'company_id'     => $company->id,
                     'faculty_id'     => $facultyId,
                     'supervisor_id'  => $request->supervisor_id,
@@ -478,7 +479,7 @@ class CoordinatorController extends Controller
                 $company->consumeSlot();
 
                 \App\Models\InternshipStatusHistory::create([
-                    'internship_id' => $internship->id,
+                    'internship_id' => $lockedInternship->id,
                     'from_status' => 'pending_placement',
                     'to_status' => 'active',
                     'reason' => 'Authorized deployment / placement by coordinator.',

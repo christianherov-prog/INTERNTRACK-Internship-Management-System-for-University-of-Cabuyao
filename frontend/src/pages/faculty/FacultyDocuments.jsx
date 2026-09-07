@@ -20,6 +20,8 @@ function FacultyDocuments() {
   const [remark, setRemark] = useState('')
   const [verifyModal, setVerifyModal] = useState(null) // { id, document_type }
   const [remarks, setRemarks] = useState('')
+  const [selected, setSelected] = useState([])
+  const [downloading, setDownloading] = useState(false)
 
   const fetchDocs = () => {
     setLoading(true)
@@ -52,6 +54,33 @@ function FacultyDocuments() {
       setMessage({ type: 'danger', text: 'Failed to approve document.' })
     } finally {
       setProcessing(null)
+    }
+  }
+
+  const toggleAll = () => setSelected(docs.length > 0 && selected.length === docs.length ? [] : docs.map(d => d.id))
+  const toggleOne = (id) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const downloadSelected = async () => {
+    if (selected.length === 0) return
+    setDownloading(true)
+    try {
+      const res = await api.post('/faculty/documents/bulk-download', { document_ids: selected }, { responseType: 'blob' })
+      if (res.data?.type === 'application/json') {
+        const text = await res.data.text()
+        const json = JSON.parse(text)
+        setMessage({ type: 'danger', text: json.message || 'Download failed.' })
+        return
+      }
+      const url = window.URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'interntrack-documents.zip'
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      setMessage({ type: 'danger', text: 'Download failed.' })
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -151,6 +180,15 @@ function FacultyDocuments() {
         <p className="px-3 pt-3 mb-0 text-muted" style={{ fontSize: '0.85rem' }}>
           Documents uploaded by your assigned students appear here directly for your approval.
         </p>
+        {selected.length > 0 && (
+          <div className="d-flex align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
+            <span className="fw-semibold" style={{ fontSize: '0.85rem' }}>{selected.length} selected</span>
+            <button className="btn btn-sm btn-outline-primary ms-auto" onClick={downloadSelected} disabled={downloading}>
+              <i className={`fa fa-${downloading ? 'spinner fa-spin' : 'file-zipper'} me-1`}></i>Download ZIP
+            </button>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelected([])}>Clear</button>
+          </div>
+        )}
         <div className="table-card">
           {loading ? (
             <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
@@ -165,6 +203,9 @@ function FacultyDocuments() {
               <table className="table table-hover mb-0">
                 <thead>
                   <tr>
+                    <th style={{ width: 36 }}>
+                      <input type="checkbox" className="form-check-input" checked={docs.length > 0 && selected.length === docs.length} onChange={toggleAll} />
+                    </th>
                     <th>Student</th>
                     <th>Document Type</th>
                     <th>File</th>
@@ -179,6 +220,9 @@ function FacultyDocuments() {
                     const name = p ? `${p.last_name}, ${p.first_name}` : '—'
                     return (
                       <tr key={doc.id}>
+                        <td>
+                          <input type="checkbox" className="form-check-input" checked={selected.includes(doc.id)} onChange={() => toggleOne(doc.id)} />
+                        </td>
                         <td className="fw-semibold">{name}</td>
                         <td>{doc.document_type}</td>
                         <td>

@@ -7,11 +7,25 @@ use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\OjtRequirementTemplate;
 use App\Models\Notification;
+use App\Support\DocumentZip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DocumentReviewController extends Controller
 {
+    /**
+     * POST /api/v1/{faculty|coordinator}/documents/bulk-download
+     */
+    public function bulkDownload(Request $request)
+    {
+        $data = $request->validate([
+            'document_ids' => 'required|array|min:1|max:'.DocumentZip::MAX_DOCUMENTS,
+            'document_ids.*' => 'integer',
+        ]);
+
+        return DocumentZip::download($request->user(), $data['document_ids']);
+    }
+
     /**
      * Approve or reject a document submission.
      * POST /api/v1/{faculty|coordinator}/documents/{id}/review
@@ -49,11 +63,17 @@ class DocumentReviewController extends Controller
         }
 
         $newStatus = $request->action === 'approve' ? 'approved' : 'rejected';
-        $oldStatus = $document->status;
         $reviewer = $request->user()->loadMissing('facultyProfile');
         $reviewerName = trim((string) ($reviewer->facultyProfile?->full_name ?: $reviewer->username ?: 'Faculty'));
 
-        DB::transaction(function () use ($request, $document, $oldStatus, $newStatus) {
+        $document = DB::transaction(function () use ($request, $id, $newStatus) {
+            $document = Document::with('internship.student.studentProfile')->lockForUpdate()->findOrFail($id);
+            $oldStatus = $document->status;
+
+            if ($oldStatus === $newStatus && (int) $document->reviewed_by === (int) $request->user()->id) {
+                return $document;
+            }
+
             $document->update([
                 'status'      => $newStatus,
                 'remarks'     => $request->remarks,
@@ -71,6 +91,8 @@ class DocumentReviewController extends Controller
                 'reviewed_by'  => $request->user()->id,
                 'signed_at'    => now(),
             ]);
+
+            return $document->fresh('internship.student.studentProfile');
         });
 
         $internship = $document->internship;

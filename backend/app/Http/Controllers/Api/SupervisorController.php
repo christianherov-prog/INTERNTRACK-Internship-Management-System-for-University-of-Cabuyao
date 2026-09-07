@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Internship;
 use App\Models\Evaluation;
+use App\Models\JournalEntry;
 use App\Models\Notification;
 use App\Models\SupervisorInviteToken;
 use App\Models\User;
@@ -12,7 +13,10 @@ use App\Services\AbsorptionService;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
 use App\Support\SignatureCapture;
+use App\Support\UniqueWrite;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SupervisorController extends Controller
 {
@@ -235,6 +239,101 @@ class SupervisorController extends Controller
         ]);
     }
 
+    /** GET /api/v1/supervisor/journals */
+    public function journals(Request $request)
+    {
+        $internshipIds = Internship::where('supervisor_id', $request->user()->id)->pluck('id');
+        $journals = JournalEntry::whereIn('internship_id', $internshipIds)
+            ->pendingSupervisorReview()
+            ->with(['internship.student.studentProfile', 'internship.company'])
+            ->orderByDesc('date')
+            ->paginate(25);
+
+        return ApiResponse::list($journals);
+    }
+
+    /** PATCH /api/v1/supervisor/journals/{id}/review */
+    public function reviewJournal(Request $request, int $id)
+    {
+        $request->validate([
+            'action' => 'required|in:approved,needs_revision',
+            'feedback' => 'nullable|string|max:1000',
+        ]);
+
+        if ($request->action === 'needs_revision') {
+            $request->validate(['feedback' => 'required|string|min:3|max:1000']);
+        }
+
+        $journal = JournalEntry::with('internship.student.studentProfile')->findOrFail($id);
+        if ((int) $journal->internship?->supervisor_id !== (int) $request->user()->id) {
+            abort(403, 'You are not assigned to this intern.');
+        }
+
+        if ($journal->status === 'approved' && $journal->faculty_reviewed_at) {
+            return response()->json(['message' => 'This journal has already been approved by faculty.'], 422);
+        }
+
+        $journal = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $id) {
+            $locked = JournalEntry::with('internship.student')->lockForUpdate()->findOrFail($id);
+            if ((int) $locked->internship?->supervisor_id !== (int) $request->user()->id) {
+                abort(403, 'You are not assigned to this intern.');
+            }
+
+            $payload = [
+                'supervisor_feedback' => $request->feedback,
+                'supervisor_reviewed_by' => $request->user()->id,
+                'supervisor_reviewed_at' => now(),
+            ];
+
+            if ($request->action === 'needs_revision') {
+                $payload['status'] = 'needs_revision';
+            } elseif ($locked->status !== 'approved') {
+                $payload['status'] = 'submitted';
+            }
+
+            $locked->update($payload);
+
+            return $locked->fresh(['internship.student.studentProfile', 'internship.company']);
+        }));
+
+        $studentId = $journal->internship?->student_id;
+        $weekLabel = 'Week '.($journal->week_number ?? $journal->entry_number ?? '—');
+        if ($studentId) {
+            Notification::notify(
+                $studentId,
+                $request->action === 'approved' ? 'journal_reviewed' : 'journal_needs_revision',
+                $request->action === 'approved' ? 'Journal validated by Industry Supervisor' : 'Journal needs revision',
+                $request->action === 'approved'
+                    ? "Your {$weekLabel} journal was validated by your industry supervisor and is awaiting faculty review."
+                    : "Your {$weekLabel} journal needs revision: ".($request->feedback ?? 'Please check your entry.'),
+                '/student/logbook',
+                ['journal_id' => $journal->id, 'week_number' => $journal->week_number, 'action' => $request->action, 'feedback' => $request->feedback]
+            );
+        }
+
+        $facultyId = $journal->internship?->faculty_id;
+        if ($facultyId && $request->action === 'approved') {
+            $studentName = $journal->internship?->student?->studentProfile
+                ? trim($journal->internship->student->studentProfile->last_name.', '.$journal->internship->student->studentProfile->first_name)
+                : ($journal->internship?->student?->username ?? 'Intern');
+            Notification::notify(
+                (int) $facultyId,
+                'journal_submitted',
+                'Journal ready for faculty review',
+                "{$studentName} — {$weekLabel} was validated by the industry supervisor.",
+                '/faculty/journals',
+                ['journal_id' => $journal->id, 'internship_id' => $journal->internship_id]
+            );
+        }
+
+        audit_log($request->user()->id, 'supervisor_review_journal', ['journal_id' => $id, 'action' => $request->action]);
+
+        return response()->json([
+            'message' => $request->action === 'approved' ? 'Journal validated.' : 'Journal returned for revision.',
+            'journal' => $journal,
+        ]);
+    }
+
     /** GET /api/v1/supervisor/attendance */
     public function attendance(Request $request)
     {
@@ -426,22 +525,70 @@ class SupervisorController extends Controller
 
         $formType = $request->input('form_type');
 
-        $eval = Evaluation::updateOrCreate(
-            [
-                'internship_id' => $internship->id,
-                'evaluator_type' => 'supervisor',
-                'evaluation_period' => $period,
-                'form_type' => $formType,
-            ],
-            [
-                'responses'         => $request->input('responses'),
-                'general_comments'  => $request->input('general_comments'),
-                'evaluated_by'      => $request->user()->id,
-                'submitted_at'      => now(),
-            ]
-        );
-        $eval->computeScores();
-        $eval->save();
+        $eval = null;
+        $created = false;
+        $attempt = 0;
+        while ($attempt < 4) {
+            try {
+                [$eval, $created] = DB::transaction(function () use ($request, $internship, $period, $formType) {
+                    Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+
+                    $eval = Evaluation::withTrashed()
+                        ->where('internship_id', $internship->id)
+                        ->where('evaluator_type', 'supervisor')
+                        ->where('evaluation_period', $period)
+                        ->where('form_type', $formType)
+                        ->first();
+
+                    $created = false;
+                    if ($eval) {
+                        if ($eval->trashed()) {
+                            $eval->restore();
+                        }
+                        $eval->fill([
+                            'responses'         => $request->input('responses'),
+                            'general_comments'  => $request->input('general_comments'),
+                            'evaluated_by'      => $request->user()->id,
+                            'submitted_at'      => now(),
+                        ]);
+                    } else {
+                        $eval = new Evaluation([
+                            'internship_id'     => $internship->id,
+                            'evaluator_type'    => 'supervisor',
+                            'evaluation_period' => $period,
+                            'form_type'         => $formType,
+                            'responses'         => $request->input('responses'),
+                            'general_comments'  => $request->input('general_comments'),
+                            'evaluated_by'      => $request->user()->id,
+                            'submitted_at'      => now(),
+                        ]);
+                        $created = true;
+                    }
+
+                    $eval->computeScores();
+                    $eval->save();
+
+                    return [$eval, $created];
+                });
+                break;
+            } catch (QueryException $e) {
+                if (UniqueWrite::isDeadlock($e) && $attempt < 3) {
+                    $attempt++;
+                    usleep(25000 * $attempt);
+                    continue;
+                }
+                if (! UniqueWrite::isDuplicate($e)) {
+                    throw $e;
+                }
+                $eval = Evaluation::where('internship_id', $internship->id)
+                    ->where('evaluator_type', 'supervisor')
+                    ->where('evaluation_period', $period)
+                    ->where('form_type', $formType)
+                    ->firstOrFail();
+                $created = false;
+                break;
+            }
+        }
 
         $studentName = $internship->student?->studentProfile
             ? trim($internship->student->studentProfile->last_name.', '.$internship->student->studentProfile->first_name)
@@ -453,15 +600,17 @@ class SupervisorController extends Controller
         if ($internship->coordinator_id) {
             $notifyIds->push($internship->coordinator_id);
         }
-        foreach ($notifyIds->unique() as $uid) {
-            Notification::notify(
-                $uid,
-                'supervisor_evaluation_submitted',
-                'Industry supervisor evaluation submitted',
-                "{$studentName} — {$period} evaluation (avg {$eval->average_score}).",
-                '/coordinator/evaluations',
-                ['evaluation_id' => $eval->id, 'internship_id' => $internshipId, 'student_id' => $internship->student_id]
-            );
+        if ($created) {
+            foreach ($notifyIds->unique() as $uid) {
+                Notification::notify(
+                    $uid,
+                    'supervisor_evaluation_submitted',
+                    'Industry supervisor evaluation submitted',
+                    "{$studentName} — {$period} evaluation (avg {$eval->average_score}).",
+                    '/coordinator/evaluations',
+                    ['evaluation_id' => $eval->id, 'internship_id' => $internshipId, 'student_id' => $internship->student_id]
+                );
+            }
         }
 
         audit_log($request->user()->id, 'submit_evaluation', [

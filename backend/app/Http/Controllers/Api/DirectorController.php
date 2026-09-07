@@ -40,6 +40,8 @@ class DirectorController extends Controller
             AVG(average_score) as avg_overall
         ')->first();
 
+        $hteUsage = $this->hteUsage();
+
         return response()->json([
             'stats' => [
                 'active_interns'    => $activeInterns,
@@ -50,6 +52,8 @@ class DirectorController extends Controller
             'by_program'     => $byProgram,
             'moa_by_status'  => $moaByStatus,
             'top_companies'  => $topCompanies,
+            'most_used_hte'  => $hteUsage['most_used_hte'],
+            'least_used_hte' => $hteUsage['least_used_hte'],
             'eval_breakdown' => $evalBreakdown,
             'absorption'     => AbsorptionService::analytics(),
         ]);
@@ -140,10 +144,41 @@ class DirectorController extends Controller
             'avg_hours' => $row->avg_hours,
         ])->values();
 
+        $hteUsage = $this->hteUsage();
+
         return response()->json([
             'by_program' => $programs,
             'absorption' => AbsorptionService::analytics(),
+            'most_used_hte' => $hteUsage['most_used_hte'],
+            'least_used_hte' => $hteUsage['least_used_hte'],
         ]);
+    }
+
+    /**
+     * Internship counts per HTE from existing placement records.
+     *
+     * @return array{most_used_hte: \Illuminate\Support\Collection, least_used_hte: \Illuminate\Support\Collection}
+     */
+    private function hteUsage(): array
+    {
+        $ranked = Company::query()
+            ->withCount(['internships' => fn ($q) => $q->whereNotIn('status', ['cancelled', 'withdrawn'])])
+            ->orderBy('company_name')
+            ->get(['id', 'company_name', 'industry', 'moa_status'])
+            ->filter(fn (Company $company) => (int) $company->internships_count > 0)
+            ->sortBy([
+                ['internships_count', 'desc'],
+                ['company_name', 'asc'],
+            ])
+            ->values();
+
+        return [
+            'most_used_hte' => $ranked->take(5)->values(),
+            'least_used_hte' => $ranked->sortBy([
+                ['internships_count', 'asc'],
+                ['company_name', 'asc'],
+            ])->take(5)->values(),
+        ];
     }
 
     /**

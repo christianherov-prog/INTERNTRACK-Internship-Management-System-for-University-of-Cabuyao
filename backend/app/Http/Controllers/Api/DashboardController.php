@@ -100,7 +100,7 @@ class DashboardController extends Controller
 
         $pendingJournals = $advisedIds->isEmpty() ? 0 : JournalEntry::query()
             ->whereIn('internship_id', $advisedIds)
-            ->where('status', 'submitted')
+            ->pendingFacultyReview()
             ->count();
 
         return array_merge($base, [
@@ -134,7 +134,7 @@ class DashboardController extends Controller
 
         $pendingJournals = $internshipIds->isEmpty() ? 0 : JournalEntry::query()
             ->whereIn('internship_id', $internshipIds)
-            ->where('status', 'submitted')
+            ->pendingFacultyReview()
             ->count();
 
         return array_merge($base, [

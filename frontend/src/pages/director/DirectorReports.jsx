@@ -185,6 +185,7 @@ function DirectorReports({ embedded = false }) {
   const stats = data?.stats ?? {}
   const byProgram = data?.by_program ?? []
   const topCompanies = data?.top_companies ?? []
+  const leastUsedHte = data?.least_used_hte ?? []
   const moaByStatus = data?.moa_by_status ?? {}
 
   const generateReport = async (key) => {
@@ -336,7 +337,12 @@ function DirectorReports({ embedded = false }) {
                 ) : activeReport === 'internship-summary' ? (
                   <InternshipSummaryTable data={byProgram} />
                 ) : activeReport === 'company-partnerships' ? (
-                  <CompanyPartnershipsTable data={topCompanies} />
+                  <>
+                    <h6 className="fw-semibold mb-2">Most-used HTEs</h6>
+                    <CompanyPartnershipsTable data={topCompanies} />
+                    <h6 className="fw-semibold mt-4 mb-2">Least-used HTEs</h6>
+                    <CompanyPartnershipsTable data={leastUsedHte} />
+                  </>
                 ) : activeReport === 'moa-status' ? (
                   <MoaStatusTable data={moaByStatus} />
                 ) : activeReport === 'ched-annual' ? (

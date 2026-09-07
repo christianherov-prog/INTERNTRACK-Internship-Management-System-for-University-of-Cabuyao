@@ -37,7 +37,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/supervisor/assigned-interns', icon: 'fa-users', text: 'Assigned Students' },
     { section: 'MAIN', to: '/supervisor/attendance-validation', icon: 'fa-calendar-check', text: 'Attendance Validation' },
-    // Journal Review removed from supervisor role — faculty handles all journal reviews.
+    { section: 'MAIN', to: '/supervisor/journals', icon: 'fa-book', text: 'Journals' },
     { section: 'MAIN', to: '/supervisor/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
     { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
@@ -50,6 +50,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/faculty/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/faculty/assigned-students', icon: 'fa-users', text: 'Assigned Students' },
     { section: 'TOOLS', to: '/faculty/documents', icon: 'fa-file-alt', text: 'Documents' },
+    { section: 'TOOLS', to: '/faculty/journals', icon: 'fa-book', text: 'Journals' },
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
     { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },

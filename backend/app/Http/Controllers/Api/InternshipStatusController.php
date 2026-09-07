@@ -83,22 +83,28 @@ class InternshipStatusController extends Controller
 
         try {
             DB::transaction(function () use ($request, $internship, $from, $to, $reason) {
-                if ($internship->company_id) {
-                    $company = Company::whereKey($internship->company_id)->lockForUpdate()->first();
+                $locked = Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $current = InternshipStatuses::normalize($locked->status);
+                if ($current !== $from) {
+                    throw new \RuntimeException('Internship status changed while this request was processing. Refresh and try again.');
+                }
+
+                if ($locked->company_id) {
+                    $company = Company::whereKey($locked->company_id)->lockForUpdate()->first();
                     if ($company) {
                         $this->adjustSlotsForTransition($company, $from, $to);
                     }
                 }
 
-                $internship->update([
+                $locked->update([
                     'status' => $to,
                     'status_reason' => $reason,
-                    'termination_reason' => in_array($to, ['expelled', 'terminated', 'failed'], true) ? $reason : $internship->termination_reason,
-                    'end_date' => $to === 'completed' ? ($internship->end_date ?? now()) : $internship->end_date,
+                    'termination_reason' => in_array($to, ['expelled', 'terminated', 'failed'], true) ? $reason : $locked->termination_reason,
+                    'end_date' => $to === 'completed' ? ($locked->end_date ?? now()) : $locked->end_date,
                 ]);
 
                 InternshipStatusHistory::create([
-                    'internship_id' => $internship->id,
+                    'internship_id' => $locked->id,
                     'from_status' => $from,
                     'to_status' => $to,
                     'reason' => $reason,

@@ -22,4 +22,38 @@ class JournalEntry extends Model {
     }
     public function supervisorReviewer() { return $this->belongsTo(User::class,'supervisor_reviewed_by'); }
     public function facultyReviewer() { return $this->belongsTo(User::class,'faculty_reviewed_by'); }
+
+    public function scopePendingSupervisorReview($query)
+    {
+        return $query->where('status', 'submitted')->whereNull('supervisor_reviewed_at');
+    }
+
+    public function scopePendingFacultyReview($query)
+    {
+        return $query->where('status', 'submitted')
+            ->where(function ($q) {
+                $q->whereNotNull('supervisor_reviewed_at')
+                    ->orWhereHas('internship', fn ($internship) => $internship->whereNull('supervisor_id'));
+            });
+    }
+
+    public function isAwaitingSupervisorValidation(): bool
+    {
+        return (bool) $this->internship?->supervisor_id
+            && $this->supervisor_reviewed_at === null
+            && $this->status === 'submitted';
+    }
+
+    public function facultyCanReview(): bool
+    {
+        if ($this->faculty_reviewed_at) {
+            return true;
+        }
+
+        if (! $this->internship?->supervisor_id) {
+            return true;
+        }
+
+        return $this->supervisor_reviewed_at !== null;
+    }
 }

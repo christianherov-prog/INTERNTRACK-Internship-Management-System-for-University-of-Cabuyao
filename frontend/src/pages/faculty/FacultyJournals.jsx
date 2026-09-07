@@ -28,6 +28,11 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
             <div className="mb-3 p-3 rounded" style={{ background: '#f8fafc', fontSize: '0.88rem' }}>
               <div className="fw-semibold mb-1">Week {journal.week_number ?? journal.entry_number}</div>
               {journal.notes && <p className="mb-0 text-muted"><strong>Notes:</strong> {journal.notes}</p>}
+              {journal.supervisor_feedback && (
+                <div className="mt-2 alert alert-secondary py-2 mb-0">
+                  <strong>Supervisor feedback:</strong> {journal.supervisor_feedback}
+                </div>
+              )}
               {journal.faculty_feedback && (
                 <div className="mt-2 alert alert-info py-2 mb-0">
                   <strong>Previous Feedback:</strong> {journal.faculty_feedback}
@@ -272,12 +277,14 @@ function FacultyJournals() {
                   <span className={`badge mt-1 ${j.status === 'approved' ? 'bg-success' : j.status === 'needs_revision' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
                     {j.status}
                   </span>
+                  {j.awaiting_supervisor && <span className="badge bg-warning text-dark mt-1 ms-1">Awaiting supervisor</span>}
+                  {j.supervisor_validated && <span className="badge bg-info text-dark mt-1 ms-1">Supervisor validated</span>}
                 </div>
                 <div className="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
                   <button className="btn btn-sm btn-outline-secondary" onClick={() => openHistory(j.internship?.student_id, name)}>
                     <i className="fa fa-history me-1"></i>History
                   </button>
-                  <button className="btn btn-sm btn-primary" onClick={() => setModal(j)}>
+                  <button className="btn btn-sm btn-primary" onClick={() => setModal(j)} disabled={j.faculty_can_review === false}>
                     <i className="fa fa-pen me-1"></i>Review
                   </button>
                 </div>

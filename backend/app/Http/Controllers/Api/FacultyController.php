@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Models\Evaluation;
 use App\Models\Internship;
 use App\Models\Notification;
 use App\Models\User;
@@ -13,7 +14,10 @@ use App\Support\ApiResponse;
 use App\Support\NameParts;
 use App\Support\RequiredDocuments;
 use App\Support\SignatureCapture;
+use App\Support\UniqueWrite;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FacultyController extends Controller
 {
@@ -32,11 +36,11 @@ class FacultyController extends Controller
         $pendingJournals = $internshipIds->isEmpty()
             ? 0
             : \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
-                ->where('status', 'submitted')
+                ->pendingFacultyReview()
                 ->count();
 
         $pendingEvals = $internships->whereNotIn('id',
-            \App\Models\Evaluation::where('evaluator_type', 'faculty')->pluck('internship_id')->toArray()
+            Evaluation::where('evaluator_type', 'faculty')->pluck('internship_id')->toArray()
         )->count();
 
         // Recent activity — last 5 journals or feedback the faculty has acted on
@@ -328,9 +332,18 @@ class FacultyController extends Controller
         $internshipIds = Internship::inDepartment()->where('faculty_id', $request->user()->id)->pluck('id');
         $journals = \App\Models\JournalEntry::whereIn('internship_id', $internshipIds)
             ->whereIn('status', ['submitted', 'approved', 'needs_revision'])
-            ->with(['internship.student.studentProfile'])
+            ->with(['internship.student.studentProfile', 'internship.company'])
             ->orderByDesc('date')
             ->paginate(25);
+
+        $journals->getCollection()->transform(function ($journal) {
+            $journal->setAttribute('awaiting_supervisor', $journal->isAwaitingSupervisorValidation());
+            $journal->setAttribute('supervisor_validated', $journal->supervisor_reviewed_at !== null);
+            $journal->setAttribute('faculty_can_review', $journal->facultyCanReview());
+
+            return $journal;
+        });
+
         return ApiResponse::list($journals);
     }
 
@@ -340,16 +353,37 @@ class FacultyController extends Controller
         $journal = \App\Models\JournalEntry::whereHas(
             'internship',
             fn ($q) => $q->inDepartment()->where('faculty_id', $request->user()->id)
-        )->findOrFail($id);
-        
-        $updateData = ['status' => $request->action, 'faculty_feedback' => $request->feedback, 'faculty_reviewed_by' => $request->user()->id, 'faculty_reviewed_at' => now()];
-        if ($request->has('score') && $request->action === 'approved') {
-            $updateData['score'] = $request->score;
-        } elseif ($request->action !== 'approved') {
-            $updateData['score'] = null; // Clear score if not approved
+        )->with('internship')->findOrFail($id);
+
+        if (! $journal->facultyCanReview()) {
+            return response()->json(['message' => 'Journal must be validated by the industry supervisor before faculty review.'], 422);
         }
-        
-        $journal->update($updateData);
+
+        try {
+            $journal = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $id) {
+                $locked = \App\Models\JournalEntry::whereHas(
+                    'internship',
+                    fn ($q) => $q->inDepartment()->where('faculty_id', $request->user()->id)
+                )->with('internship')->lockForUpdate()->findOrFail($id);
+
+                if (! $locked->facultyCanReview()) {
+                    throw new \RuntimeException('Journal must be validated by the industry supervisor before faculty review.');
+                }
+
+                $updateData = ['status' => $request->action, 'faculty_feedback' => $request->feedback, 'faculty_reviewed_by' => $request->user()->id, 'faculty_reviewed_at' => now()];
+                if ($request->has('score') && $request->action === 'approved') {
+                    $updateData['score'] = $request->score;
+                } elseif ($request->action !== 'approved') {
+                    $updateData['score'] = null;
+                }
+
+                $locked->update($updateData);
+
+                return $locked->fresh('internship.student.studentProfile');
+            }));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         // Notify student
         $studentId = $journal->internship?->student_id;
@@ -395,7 +429,7 @@ class FacultyController extends Controller
             $q->whereIn('id', $internshipIds);
         })->whereNotNull('section')->distinct()->pluck('section');
 
-        // Faculty sees only FO-24 (Supervisor performance rating — official basis for grading)
+        // Faculty sees FO-24 (industry) plus their own faculty_eval records.
         $query = Internship::inDepartment()
             ->where('faculty_id', $facultyId)
             ->with([
@@ -404,7 +438,7 @@ class FacultyController extends Controller
                 'supervisor.supervisorProfile',
                 'faculty.facultyProfile',
                 'evaluations' => function ($q) {
-                    $q->whereIn('form_type', ['FO-24']);
+                    $q->whereIn('form_type', ['FO-24', 'faculty_eval']);
                 },
             ]);
 
@@ -429,6 +463,130 @@ class FacultyController extends Controller
             'internships' => $internships,
             'available_sections' => $availableSections
         ]);
+    }
+
+    /** POST /api/v1/faculty/evaluations/{internshipId} */
+    public function submitEvaluation(Request $request, int $internshipId)
+    {
+        $request->validate([
+            'evaluation_period' => 'required|in:midterm,final',
+            'overall_score' => 'required|numeric|min:0|max:100',
+            'general_comments' => 'nullable|string|max:2000',
+        ]);
+
+        $internship = Internship::inDepartment()
+            ->where('faculty_id', $request->user()->id)
+            ->with(['student.studentProfile'])
+            ->find($internshipId);
+
+        if (! $internship) {
+            abort(403, 'Internship not assigned to you.');
+        }
+
+        if (in_array($internship->status, ['terminated', 'withdrawn', 'cancelled'], true)) {
+            return response()->json(['message' => 'This internship is not eligible for faculty evaluation.'], 422);
+        }
+
+        $period = $request->input('evaluation_period');
+        $score = round((float) $request->input('overall_score'), 2);
+        $formType = 'faculty_eval';
+        $rating = match (true) {
+            $score >= 96 => 'Excellent',
+            $score >= 90 => 'Very Good',
+            $score >= 85 => 'Good',
+            $score >= 80 => 'Fair',
+            $score >= 75 => 'Passed',
+            default => 'Failed',
+        };
+
+        $eval = null;
+        $created = false;
+        $attempt = 0;
+        while ($attempt < 4) {
+            try {
+                [$eval, $created] = DB::transaction(function () use ($request, $internship, $period, $formType, $score, $rating) {
+                    Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+
+                    $eval = Evaluation::withTrashed()
+                        ->where('internship_id', $internship->id)
+                        ->where('evaluator_type', 'faculty')
+                        ->where('evaluation_period', $period)
+                        ->where('form_type', $formType)
+                        ->first();
+
+                    $created = false;
+                    if ($eval) {
+                        if ($eval->trashed()) {
+                            $eval->restore();
+                        }
+                        $eval->fill([
+                            'responses' => ['overall' => $score],
+                            'total_score' => $score,
+                            'average_score' => $score,
+                            'rating' => $rating,
+                            'general_comments' => $request->input('general_comments'),
+                            'evaluated_by' => $request->user()->id,
+                            'submitted_at' => now(),
+                        ]);
+                    } else {
+                        $eval = new Evaluation([
+                            'internship_id' => $internship->id,
+                            'evaluator_type' => 'faculty',
+                            'evaluation_period' => $period,
+                            'form_type' => $formType,
+                            'responses' => ['overall' => $score],
+                            'total_score' => $score,
+                            'average_score' => $score,
+                            'rating' => $rating,
+                            'general_comments' => $request->input('general_comments'),
+                            'evaluated_by' => $request->user()->id,
+                            'submitted_at' => now(),
+                        ]);
+                        $created = true;
+                    }
+
+                    $eval->save();
+
+                    return [$eval, $created];
+                });
+                break;
+            } catch (QueryException $e) {
+                if (UniqueWrite::isDeadlock($e) && $attempt < 3) {
+                    $attempt++;
+                    usleep(25000 * $attempt);
+                    continue;
+                }
+                if (! UniqueWrite::isDuplicate($e)) {
+                    throw $e;
+                }
+                $eval = Evaluation::where('internship_id', $internship->id)
+                    ->where('evaluator_type', 'faculty')
+                    ->where('evaluation_period', $period)
+                    ->where('form_type', $formType)
+                    ->firstOrFail();
+                $created = false;
+                break;
+            }
+        }
+
+        if ($created && $internship->student_id) {
+            Notification::notify(
+                (int) $internship->student_id,
+                'evaluation_submitted',
+                'Faculty evaluation submitted',
+                'Your faculty supervisor submitted a '.$period.' evaluation.',
+                '/student/evaluations',
+                ['evaluation_id' => $eval->id, 'internship_id' => $internshipId, 'period' => $period]
+            );
+        }
+
+        audit_log($request->user()->id, 'submit_faculty_evaluation', [
+            'internship_id' => $internshipId,
+            'period' => $period,
+            'evaluation_id' => $eval->id,
+        ]);
+
+        return response()->json(['message' => 'Faculty evaluation submitted successfully.', 'evaluation' => $eval], 201);
     }
 
     public function feedback(Request $request)

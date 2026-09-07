@@ -26,6 +26,7 @@ import DirectorSettings from './pages/director/DirectorSettings'
 import SupervisorDashboard from './pages/supervisor/SupervisorDashboard'
 import SupervisorAssignedInterns from './pages/supervisor/SupervisorAssignedInterns'
 import SupervisorAttendanceValidation from './pages/supervisor/SupervisorAttendanceValidation'
+import SupervisorJournalValidation from './pages/supervisor/SupervisorJournalValidation'
 import FacultyFeedback from './pages/faculty/FacultyFeedback'
 import CoordDocApprovals from './pages/coordinator/CoordDocApprovals'
 import CoordLogbookReview from './pages/coordinator/CoordLogbookReview'
@@ -115,8 +116,8 @@ function App() {
               <Route path="/supervisor/dashboard" element={<ProtectedRoute role="supervisor"><SupervisorDashboard /></ProtectedRoute>} />
               <Route path="/supervisor/assigned-interns" element={<ProtectedRoute role="supervisor"><SupervisorAssignedInterns /></ProtectedRoute>} />
               <Route path="/supervisor/attendance-validation" element={<ProtectedRoute role="supervisor"><SupervisorAttendanceValidation /></ProtectedRoute>} />
-              <Route path="/supervisor/journals" element={<Navigate to="/supervisor/assigned-interns" replace />} />
-              <Route path="/supervisor/journal-validation" element={<Navigate to="/supervisor/assigned-interns" replace />} />
+              <Route path="/supervisor/journals" element={<ProtectedRoute role="supervisor"><SupervisorJournalValidation /></ProtectedRoute>} />
+              <Route path="/supervisor/journal-validation" element={<ProtectedRoute role="supervisor"><SupervisorJournalValidation /></ProtectedRoute>} />
               <Route path="/supervisor/performance-evaluation" element={<ProtectedRoute role="supervisor"><SupervisorPerformanceEvaluation /></ProtectedRoute>} />
               <Route path="/supervisor/absorption" element={<ProtectedRoute role="supervisor"><SupervisorAbsorption /></ProtectedRoute>} />
               <Route path="/supervisor/feedback" element={<ProtectedRoute role="supervisor"><SupervisorFeedback /></ProtectedRoute>} />

@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import DailyTimeRecord from './DailyTimeRecord';
 import WeeklyInternshipJournal from './WeeklyInternshipJournal';
-import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from './EvaluationsPreview';
+import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, PrintFacultyEval } from './EvaluationsPreview';
 const FormPreviewModal = ({
   isOpen,
   onClose,
@@ -202,6 +202,8 @@ const FormPreviewModal = ({
                 <PrintFO22 evalData={data.evalData} internship={data.internship} />
               ) : type === 'FO-23' ? (
                 <PrintFO23 evalData={data.evalData} internship={data.internship} />
+              ) : type === 'faculty_eval' ? (
+                <PrintFacultyEval evalData={data.evalData} internship={data.internship} />
               ) : (
                 <WeeklyInternshipJournal
                   studentName={data.studentName || data.name || ''}

@@ -22,25 +22,7 @@ final class SupervisorIds
             $locked = self::acquireAllocatorLock();
 
             try {
-                $codes = User::withTrashed()
-                    ->whereNotNull('faculty_number')
-                    ->pluck('faculty_number');
-
-                $max = 0;
-                foreach ($codes as $code) {
-                    if (preg_match('/^SUP-?(\d+)$/i', (string) $code, $match)) {
-                        $max = max($max, (int) $match[1]);
-                    }
-                }
-
-                $next = $max + 1;
-
-                do {
-                    $candidate = self::PREFIX.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
-                    $next++;
-                } while (User::withTrashed()->where('faculty_number', $candidate)->exists());
-
-                return $candidate;
+                return self::peekNext();
             } finally {
                 if ($locked) {
                     self::releaseAllocatorLock();
@@ -55,22 +37,34 @@ final class SupervisorIds
             return (string) $user->faculty_number;
         }
 
-        $attempts = 0;
-        while ($attempts < 25) {
-            $code = self::nextFacultyNumber();
-            try {
-                $user->forceFill(['faculty_number' => $code])->save();
+        $locked = self::acquireAllocatorLock();
 
-                return $code;
-            } catch (Throwable $e) {
-                $attempts++;
-                if ($attempts >= 25) {
-                    throw $e;
+        try {
+            $attempts = 0;
+            while ($attempts < 25) {
+                $code = self::peekNext();
+                try {
+                    $user->forceFill(['faculty_number' => $code])->save();
+
+                    return $code;
+                } catch (Throwable $e) {
+                    $attempts++;
+                    if ($attempts >= 25) {
+                        throw $e;
+                    }
+                    $user->refresh();
+                    if (filled($user->faculty_number)) {
+                        return (string) $user->faculty_number;
+                    }
                 }
             }
-        }
 
-        return (string) $user->faculty_number;
+            return (string) $user->faculty_number;
+        } finally {
+            if ($locked) {
+                self::releaseAllocatorLock();
+            }
+        }
     }
 
     /**
@@ -100,13 +94,36 @@ final class SupervisorIds
         return $assigned;
     }
 
+    private static function peekNext(): string
+    {
+        $codes = User::withTrashed()
+            ->whereNotNull('faculty_number')
+            ->pluck('faculty_number');
+
+        $max = 0;
+        foreach ($codes as $code) {
+            if (preg_match('/^SUP-?(\d+)$/i', (string) $code, $match)) {
+                $max = max($max, (int) $match[1]);
+            }
+        }
+
+        $next = $max + 1;
+
+        do {
+            $candidate = self::PREFIX.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+            $next++;
+        } while (User::withTrashed()->where('faculty_number', $candidate)->exists());
+
+        return $candidate;
+    }
+
     private static function acquireAllocatorLock(): bool
     {
         try {
             if (DB::getDriverName() === 'mysql') {
-                DB::select('SELECT GET_LOCK(?, 10)', ['interntrack-supervisor-ids']);
+                $row = DB::select('SELECT GET_LOCK(?, 15) AS got', ['interntrack-supervisor-ids']);
 
-                return true;
+                return (int) ($row[0]->got ?? 0) === 1;
             }
 
             User::withTrashed()

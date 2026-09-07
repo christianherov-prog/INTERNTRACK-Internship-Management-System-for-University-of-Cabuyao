@@ -215,6 +215,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/feedback',                    [FacultyController::class, 'feedback']);
             Route::post('/feedback/{internshipId}',    [FacultyController::class, 'submitFeedback']);
             Route::get('/documents',                   [FacultyController::class, 'documents']);
+            Route::post('/documents/bulk-download',    [DocumentReviewController::class, 'bulkDownload']);
             Route::post('/documents/{id}/review',      [DocumentReviewController::class, 'review']);
             Route::get('/reports/student-summary',     [FacultyController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance',          [FacultyController::class, 'reportCompliance']);
@@ -272,6 +273,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/logbook',                   [CoordinatorController::class, 'logbook']);
             Route::patch('/logbook/{id}/review',     [CoordinatorController::class, 'reviewLogbook']);
             Route::get('/documents',                 [CoordinatorController::class, 'documents']);
+            Route::post('/documents/bulk-download',  [DocumentReviewController::class, 'bulkDownload']);
             Route::patch('/documents/bulk-approve',  [CoordinatorController::class, 'bulkApproveDocuments']);
             Route::patch('/documents/bulk-reject',   [CoordinatorController::class, 'bulkRejectDocuments']);
             Route::post('/documents/{id}/review',    [DocumentReviewController::class, 'review']);

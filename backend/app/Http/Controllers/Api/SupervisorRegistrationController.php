@@ -10,6 +10,8 @@ use App\Models\SupervisorInviteToken;
 use App\Models\SupervisorProfile;
 use App\Models\User;
 use App\Support\SupervisorIds;
+use App\Support\UniqueWrite;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -29,24 +31,30 @@ class SupervisorRegistrationController extends Controller
             return response()->json(['message' => 'No active internship found.'], 404);
         }
 
-        if ($internship->supervisor_id) {
-            return response()->json(['message' => 'A supervisor is already assigned to your internship.'], 422);
+        try {
+            $invite = DB::transaction(function () use ($request, $internship) {
+                $locked = Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                if ($locked->supervisor_id) {
+                    throw new \RuntimeException('A supervisor is already assigned to your internship.');
+                }
+
+                SupervisorInviteToken::where('internship_id', $locked->id)
+                    ->whereIn('status', ['pending', 'pending_accept'])
+                    ->update(['status' => 'expired']);
+
+                return SupervisorInviteToken::create([
+                    'internship_id' => $locked->id,
+                    'student_id'    => $request->user()->id,
+                    'token'         => Str::random(48),
+                    'expires_at'    => now()->addDays(7),
+                    'status'        => 'pending',
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        // Expire any previous pending tokens for this internship
-        SupervisorInviteToken::where('internship_id', $internship->id)
-            ->whereIn('status', ['pending', 'pending_accept'])
-            ->update(['status' => 'expired']);
-
-        $token = Str::random(48);
-
-        $invite = SupervisorInviteToken::create([
-            'internship_id' => $internship->id,
-            'student_id'    => $request->user()->id,
-            'token'         => $token,
-            'expires_at'    => now()->addDays(7),
-            'status'        => 'pending',
-        ]);
+        $token = $invite->token;
 
         $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
         $registerUrl = "{$frontendUrl}/register/supervisor?token={$token}";
@@ -191,31 +199,44 @@ class SupervisorRegistrationController extends Controller
             'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
-        $invite = SupervisorInviteToken::where('token', $request->token)->first();
+        return DB::transaction(function () use ($request) {
+            $invite = SupervisorInviteToken::where('token', $request->token)->lockForUpdate()->first();
 
-        if (!$invite || !$invite->isUsable()) {
-            return response()->json(['message' => 'Invalid or expired invite link.'], 422);
-        }
+            if (!$invite || !$invite->isUsable()) {
+                return response()->json(['message' => 'Invalid or expired invite link.'], 422);
+            }
 
-        // Check for existing account with same email
-        $existing = User::where('email', $request->email)->first();
-        if ($existing) {
-            return response()->json([
-                'code'    => 'existing_account',
-                'message' => 'An account with this email already exists. Please sign in with your Supervisor ID instead of registering again.',
-            ], 409);
-        }
+            if ($invite->supervisor_user_id) {
+                return response()->json(['message' => 'This invite has already been used.'], 409);
+            }
 
-        return DB::transaction(function () use ($request, $invite) {
-            $supCode = SupervisorIds::nextFacultyNumber();
+            $existing = User::where('email', $request->email)->lockForUpdate()->first();
+            if ($existing) {
+                return response()->json([
+                    'code'    => 'existing_account',
+                    'message' => 'An account with this email already exists. Please sign in with your Supervisor ID instead of registering again.',
+                ], 409);
+            }
 
-            $user = User::create([
-                'faculty_number' => $supCode,
-                'email'     => $request->email,
-                'password'  => Hash::make($request->password),
-                'role'      => 'supervisor',
-                'is_active' => false, // Requires coordinator approval
-            ]);
+            try {
+                $user = User::create([
+                    'faculty_number' => null,
+                    'email'     => $request->email,
+                    'password'  => Hash::make($request->password),
+                    'role'      => 'supervisor',
+                    'is_active' => false, // Requires coordinator approval
+                ]);
+            } catch (QueryException $e) {
+                if (UniqueWrite::isDuplicate($e)) {
+                    return response()->json([
+                        'code'    => 'existing_account',
+                        'message' => 'An account with this email already exists. Please sign in with your Supervisor ID instead of registering again.',
+                    ], 409);
+                }
+                throw $e;
+            }
+
+            $supCode = SupervisorIds::ensureFor($user);
 
             SupervisorProfile::create([
                 'user_id'        => $user->id,
