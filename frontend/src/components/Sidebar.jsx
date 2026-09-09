@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useState } from 'react'
 import ConfirmLogoutModal from './modals/ConfirmLogoutModal'
 import InternTrackLogo from './InternTrackLogo'
+import { useStaffWorkspace } from '../hooks/useStaffWorkspace'
 
 const ROLE_NAV = {
   student: [
@@ -37,7 +38,6 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/supervisor/assigned-interns', icon: 'fa-users', text: 'Assigned Students' },
     { section: 'MAIN', to: '/supervisor/attendance-validation', icon: 'fa-calendar-check', text: 'Attendance Validation' },
-    { section: 'MAIN', to: '/supervisor/journals', icon: 'fa-book', text: 'Journals' },
     { section: 'MAIN', to: '/supervisor/feedback', icon: 'fa-comment-dots', text: 'Feedback' },
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
     { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
@@ -95,6 +95,7 @@ function Sidebar() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const { workspace } = useStaffWorkspace()
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [logoutLoading, setLogoutLoading] = useState(false)
@@ -139,7 +140,8 @@ function Sidebar() {
     }
   }
 
-  const navItems = user ? ROLE_NAV[user.role] || [] : []
+  // Coordinators can work in the Faculty Supervisor workspace with the same login.
+  const navItems = user ? ROLE_NAV[workspace || user.role] || [] : []
   let lastSection = ''
 
   return (

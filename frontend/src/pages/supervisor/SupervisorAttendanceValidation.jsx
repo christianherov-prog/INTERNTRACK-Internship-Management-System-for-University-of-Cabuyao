@@ -6,6 +6,9 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { formatStudentName } from '../../utils/formatName'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function fmtTime(t) {
   if (!t) return '—'
@@ -14,12 +17,12 @@ function fmtTime(t) {
 
 function SupervisorAttendanceValidation() {
   const currentTerm = useCurrentTerm()
-  const [attendance, setAttendance] = useState([])
-  const [schedules, setSchedules] = useState([])
-  const [overtime, setOvertime] = useState([])
-  const [corrections, setCorrections] = useState([])
-  const [history, setHistory] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('supervisor:attendance')
+  const [attendance, setAttendance] = useState(() => seed?.attendance ?? [])
+  const [schedules, setSchedules] = useState(() => seed?.schedules ?? [])
+  const [overtime, setOvertime] = useState(() => seed?.overtime ?? [])
+  const [corrections, setCorrections] = useState(() => seed?.corrections ?? [])
+  const [history, setHistory] = useState(() => seed?.history ?? [])
   const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(null)
   const [message, setMessage] = useState(null)
@@ -29,27 +32,33 @@ function SupervisorAttendanceValidation() {
   const [search, setSearch] = useState('')
 
   const fetchAttendance = () => {
-    setLoading(true)
     setError(null)
-    Promise.all([
+    run(() => Promise.all([
       api.get('/supervisor/attendance'),
       api.get('/supervisor/dtr/schedules').catch(() => ({ data: { data: [] } })),
       api.get('/supervisor/dtr/overtime').catch(() => ({ data: { data: [] } })),
       api.get('/supervisor/dtr/corrections').catch(() => ({ data: { data: [] } })),
       api.get('/supervisor/dtr/history').catch(() => ({ data: { data: [] } })),
-    ])
-      .then(([attRes, schedRes, otRes, corrRes, histRes]) => {
-        setAttendance(unwrapList(attRes.data).items)
-        setSchedules(unwrapList(schedRes.data).items)
-        setOvertime(unwrapList(otRes.data).items)
-        setCorrections(unwrapList(corrRes.data).items)
-        setHistory(unwrapList(histRes.data).items)
+    ]).then(([attRes, schedRes, otRes, corrRes, histRes]) => ({
+      attendance: unwrapList(attRes.data).items,
+      schedules: unwrapList(schedRes.data).items,
+      overtime: unwrapList(otRes.data).items,
+      corrections: unwrapList(corrRes.data).items,
+      history: unwrapList(histRes.data).items,
+    })))
+      .then((next) => {
+        if (next) {
+          setAttendance(next.attendance)
+          setSchedules(next.schedules)
+          setOvertime(next.overtime)
+          setCorrections(next.corrections)
+          setHistory(next.history)
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load attendance.')
         setAttendance([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchAttendance() }, [])
@@ -63,6 +72,7 @@ function SupervisorAttendanceValidation() {
     setProcessing(id)
     try {
       await api.patch(`/supervisor/attendance/${id}/validate`, { action, remarks })
+      invalidateStudentPortfolio()
       setMessage({ type: action === 'validated' ? 'success' : 'warning', text: `Attendance ${action} successfully.` })
       setRejectModal(null)
       setSelected((prev) => prev.filter((x) => x !== id))
@@ -130,7 +140,7 @@ function SupervisorAttendanceValidation() {
                   </p>
                 )}
                 <label className="form-label fw-semibold">Reason for Rejection</label>
-                <textarea className="form-control" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Provide a reason…" />
+                <textarea className="form-control" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Reason" />
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setRejectModal(null)}>Cancel</button>
@@ -152,7 +162,7 @@ function SupervisorAttendanceValidation() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search by student name…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -178,7 +188,7 @@ function SupervisorAttendanceValidation() {
 
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : attendance.length === 0 && !error ? (
             <EmptyState icon="fa-check-circle" title="No pending attendance" message="All clock records for your interns are validated." />
           ) : (() => {

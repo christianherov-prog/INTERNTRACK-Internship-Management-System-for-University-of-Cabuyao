@@ -15,6 +15,9 @@ class HteRequest extends Model
         'contact_number',
         'status',
         'remarks',
+        'moa_path',
+        'moa_original_name',
+        'coordinator_remarks',
     ];
 
     public function student()

@@ -4,10 +4,12 @@ import EmptyState from '../../components/EmptyState'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function DirectorCompanies() {
-  const [data, setData]       = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('director:companies')
+  const [data, setData]       = useState(() => unwrapList(seed).items)
   const [error, setError]     = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editItem, setEditItem] = useState(null)
@@ -16,15 +18,13 @@ function DirectorCompanies() {
   const [form, setForm] = useState({ company_name: '', address: '', industry: '', contact_person: '', contact_email: '', contact_number: '', moa_status: 'active', moa_start_date: '', moa_expiry_date: '', slots_available: 0, notes: '' })
 
   const fetchCompanies = () => {
-    setLoading(true)
     setError(null)
-    api.get('/director/companies')
-      .then(res => setData(unwrapList(res.data).items))
+    run(() => api.get('/director/companies').then(res => res.data))
+      .then((next) => { if (next) setData(unwrapList(next).items) })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load companies.')
         setData([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchCompanies() }, [])
@@ -106,7 +106,7 @@ function DirectorCompanies() {
         <div className="content-card-header"><i className="fa fa-table"></i><h6>All Partner Companies</h6></div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : data.length === 0 && !error ? (
             <EmptyState icon="fa-building" title="No companies registered" message="Add a partner company to start tracking MOAs and internship slots." />
           ) : data.length === 0 ? null : (

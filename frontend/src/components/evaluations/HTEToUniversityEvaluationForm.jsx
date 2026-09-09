@@ -113,7 +113,7 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
               <input type="radio" className="form-check-input" name="hire" value="no" onChange={(e) => handleRadioChange('would_hire', e.target.value)} />
               <label className="form-check-label">No</label>
             </div>
-            <input type="text" className="form-control flex-grow-1" placeholder="(Provide reasons)" value={responses['hire_reasons'] || ''} onChange={(e) => handleTextChange('hire_reasons', e.target.value)} />
+            <input type="text" className="form-control flex-grow-1" placeholder="Reason" value={responses['hire_reasons'] || ''} onChange={(e) => handleTextChange('hire_reasons', e.target.value)} />
           </div>
         </div>
 

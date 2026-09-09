@@ -32,9 +32,10 @@ class AcademicStructureController extends Controller
 
         if ($user && ($user->hasRole('coordinator') || $user->hasRole('faculty'))) {
             $deptId = \App\Support\DepartmentScope::departmentIdFor($user);
-            if ($deptId) {
-                $query->where('department_id', $deptId);
+            if (! $deptId) {
+                return response()->json([]);
             }
+            $query->where('department_id', $deptId);
         } elseif ($request->filled('department_id')) {
             $query->where('department_id', $request->query('department_id'));
         }

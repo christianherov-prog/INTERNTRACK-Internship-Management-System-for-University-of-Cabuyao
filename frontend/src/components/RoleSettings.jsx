@@ -563,7 +563,7 @@ function RoleSettings({
                       className="form-control form-control-sm"
                       value={formData.contact}
                       onChange={handleFormChange}
-                      placeholder="09XXXXXXXXX"
+                      placeholder="Contact Number"
                       inputMode="tel"
                     />
                     <button

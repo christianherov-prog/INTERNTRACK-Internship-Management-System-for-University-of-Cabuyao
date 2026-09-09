@@ -6,11 +6,13 @@ import api from '../../../services/api';
 import { AuthenticatedFileImage } from '../../../components/AuthenticatedFile';
 import WeeklyInternshipJournal from '../../../components/portfolio/WeeklyInternshipJournal';
 import DailyTimeRecord from '../../../components/portfolio/DailyTimeRecord';
-import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/portfolio/EvaluationsPreview';
+import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, pickLatestEvaluation } from '../../../components/portfolio/EvaluationsPreview';
 import '../../../assets/css/portfolio-print.css';
 
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow';
 import { displayLabel } from '../../../utils/displayLabel';
+import { useCachedPage } from '../../../hooks/useCachedPage';
+import InternTrackLoader from '../../../components/InternTrackLoader'
 
 // --- Reusable Header Component ---
 const COEHeader = ({ programTitle, companyLogoPath }) => {
@@ -153,8 +155,8 @@ const TocRow = ({ label, page, level = 0, style = {}, bold = false }) => (
 );
 
 function COEPortfolioPreview() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, seed, run } = useCachedPage('student:portfolio');
+  const [data, setData] = useState(seed ?? null);
   const [error, setError] = useState(null);
   const [toc, setToc] = useState({});
 
@@ -165,15 +167,13 @@ function COEPortfolioPreview() {
   });
 
   const load = () => {
-    setLoading(true);
     setError(null);
-    api.get('/student/portfolio')
-      .then(res => setData(res.data))
+    run(() => api.get('/student/portfolio').then(res => res.data))
+      .then(next => { if (next) setData(next); })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load portfolio.');
-        setData(null);
-      })
-      .finally(() => setLoading(false));
+        if (!seed) setData(null);
+      });
   };
 
   useEffect(() => { load(); }, []);
@@ -238,11 +238,11 @@ function COEPortfolioPreview() {
     return () => clearInterval(checkDomInterval);
   }, [data]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 text-muted">
-        <i className="fa fa-spinner fa-spin fa-2x mb-3" aria-hidden="true" />
-        <div className="small">Checking your session…</div>
+        <InternTrackLoader />
+        <div className="small">Loading preview…</div>
       </div>
     );
   }
@@ -258,31 +258,37 @@ function COEPortfolioPreview() {
     );
   }
 
-  const p = data?.internship?.portfolio || {};
+  const p = data?.internship?.portfolio || data?.portfolio || {};
   const i = data?.internship || {};
   const u = data?.user || {};
-  const sp = u?.student_profile || {};
+  const sp = u?.student_profile || u?.studentProfile || {};
+  const idn = data?.identity || {};
   const custom = p.custom_fields || {};
   const photos = p.photos || [];
   const journals = i.journals || [];
   const companyLogoPath = p.company_logo_path;
+  const attendanceLogs = i.attendance || i.attendance_logs || [];
 
-  const studentName = sp.first_name ? `${sp.first_name.toUpperCase()} ${sp.last_name.toUpperCase()}` : '[STUDENT FULL NAME]';
-  const programTitle = displayLabel(sp.program || sp.course_name || i.program, 'Bachelor of Science in Computer Engineering');
-  const practicumCode = programTitle.includes('Computer Engineering') ? 'COE114: On-the-Job Training (240hrs)' : '[Course Code]: On-the-Job Training';
+  const studentName = idn.student_name || (sp.first_name ? `${sp.first_name.toUpperCase()} ${sp.last_name.toUpperCase()}` : '');
+  const programTitle = displayLabel(idn.program || sp.program || sp.course_name || i.program);
+  const practicumCode = programTitle.toLowerCase().includes('computer engineering') ? 'COE114: On-the-Job Training (240hrs)' : (programTitle ? `${programTitle}` : '');
 
-  const companyName = p.company_name || i.company?.company_name || '[COMPANY NAME]';
-  const companyAddress = p.company_address || i.company?.address || '[Company Address]';
+  const companyName = idn.company_name || p.company_name || i.company?.company_name || '';
+  const companyAddress = idn.company_address || p.company_address || i.company?.address || '';
 
-  const supervisorName = i.supervisor?.supervisorProfile
-    ? `${i.supervisor.supervisorProfile.last_name}, ${i.supervisor.supervisorProfile.first_name}`
-    : '[SUPERVISOR NAME]';
+  const supervisorName = idn.supervisor_name
+    || (i.supervisor?.supervisor_profile || i.supervisor?.supervisorProfile
+      ? `${(i.supervisor.supervisor_profile || i.supervisor.supervisorProfile).last_name}, ${(i.supervisor.supervisor_profile || i.supervisor.supervisorProfile).first_name}`
+      : '');
 
-  const facultyName = i.faculty?.facultyProfile
-    ? `ENGR. ${i.faculty.facultyProfile.first_name.toUpperCase()} ${i.faculty.facultyProfile.last_name.toUpperCase()}`
-    : '[INSTRUCTOR FULL NAME WITH TITLE]';
+  const facultyName = idn.faculty_name
+    || (i.faculty?.faculty_profile || i.faculty?.facultyProfile
+      ? `${(i.faculty.faculty_profile || i.faculty.facultyProfile).first_name} ${(i.faculty.faculty_profile || i.faculty.facultyProfile).last_name}`
+      : '');
 
-  const date = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const date = new Date().toLocaleDateString('en-PH', { month: 'long', year: 'numeric', timeZone: 'Asia/Manila' });
+  const studentSignaturePath = idn.student_signature_path || '';
+  const supervisorSignaturePath = idn.supervisor_signature_path || '';
 
   // Separate out the Approval Sheet photos if uploaded
   const approvalSheetPhotos = photos.filter(photo => photo.type === 'approval_sheet');
@@ -451,7 +457,6 @@ function COEPortfolioPreview() {
           <TocRow label="HTE To University Evaluation (PNC:AA-FO-03)" page={toc['fo03']} level={1} />
           <TocRow label="HTE Evaluation (PNC:AA-FO-22)" page={toc['fo22']} level={1} />
           <TocRow label="Program Evaluation (PNC:AA-FO-23)" page={toc['fo23']} level={1} />
-          <TocRow label="Faculty Evaluation" page={toc['faculty_eval']} level={1} />
         </div>
       </Page>
 
@@ -585,12 +590,12 @@ function COEPortfolioPreview() {
       </Page>
 
       {journals.length === 0 && (
-        <WeeklyInternshipJournal studentName={studentName} program={programTitle} companyLogoPath={companyLogoPath} />
+        <WeeklyInternshipJournal studentName={studentName} program={programTitle} companyLogoPath={companyLogoPath} studentSignaturePath={studentSignaturePath} />
       )}
 
       {journals.map((j) => (
         (!j.file_path || j.file_path.endsWith(".pdf")) ? (
-          <WeeklyInternshipJournal key={j.id} studentName={studentName} program={programTitle} weekNumber={j.week_number || j.week} date={j.date} accomplishment={j.activities_summary || j.accomplishment} difficulties={j.challenges || j.difficulties} insights={j.learnings || j.insights} companyLogoPath={companyLogoPath} />
+          <WeeklyInternshipJournal key={j.id} studentName={studentName} program={programTitle} weekNumber={j.week_number || j.week} date={j.date} endDate={j.end_date} accomplishment={j.activities_summary || j.accomplishment} difficulties={j.challenges || j.difficulties} insights={j.learnings || j.insights} companyLogoPath={companyLogoPath} studentSignaturePath={studentSignaturePath} />
         ) : (
           <div key={j.id} className="a4-page portfolio-document position-relative text-center">
             <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />
@@ -628,36 +633,16 @@ function COEPortfolioPreview() {
       />
 
       {/* DAILY TIME RECORD (DTR) */}
-      {(() => {
-        const dtrTypes = ['dtr_form', 'PNC:AA-FO-30 DTR (manual form upload)', 'Daily Time Record', 'dtr'];
-        const dtrPhotos = photos.filter(x => dtrTypes.includes(x.type) || dtrTypes.includes(x.document_type) || dtrTypes.includes(x.original_type));
-        const imageDtrs = dtrPhotos.filter(x => x.file_path && !x.file_path.endsWith('.pdf'));
-
-        if (imageDtrs.length === 0) {
-          return (
-            <DailyTimeRecord studentName={studentName} program={programTitle} companyName={companyName} supervisorName={supervisorName} companyLogoPath={companyLogoPath} />
-          );
-        }
-
-        return (
-          <div className="a4-page portfolio-document position-relative">
-            <COEHeader programTitle={programTitle} companyLogoPath={companyLogoPath} />
-            <h4 style={{ fontWeight: "bold", marginTop: "20px", textAlign: "center", fontSize: "12pt" }}>Student Internship Daily Time Record</h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-              {imageDtrs.map((photo, index) => (
-                <div key={photo.id || index}>
-                  <AuthenticatedFileImage
-                    path={photo.file_path}
-                    alt="Daily Time Record"
-                    style={{ maxWidth: '100%', maxHeight: '600px', border: '1px solid #ccc', objectFit: 'contain' }}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="page-number"></div>
-          </div>
-        );
-      })()}
+      <DailyTimeRecord
+        studentName={studentName}
+        program={programTitle}
+        companyName={companyName}
+        supervisorName={supervisorName}
+        companyLogoPath={companyLogoPath}
+        studentSignaturePath={studentSignaturePath}
+        supervisorSignaturePath={supervisorSignaturePath}
+        logs={attendanceLogs}
+      />
 
       {/* CHAPTER IV (Dynamically mapped documents based on builder checks) */}
       <div className="a4-page force-page-break portfolio-document position-relative" data-toc-id="chap4">
@@ -691,19 +676,13 @@ function COEPortfolioPreview() {
       {/* EVALUATIONS */}
       {(() => {
         const evals = data?.internship?.evaluations || [];
-        const fo03 = evals.find(e => e.form_type === 'FO-03') || {};
-        const fo22 = evals.find(e => e.form_type === 'FO-22') || {};
-        const fo23 = evals.find(e => e.form_type === 'FO-23') || {};
-        const fo24 = evals.find(e => e.form_type === 'FO-24') || {};
-        const facultyEval = evals.find(e => e.form_type === 'faculty_eval') || {};
-
+        const evalProps = { internship: i, user: u, identity: idn };
         return (
           <>
-            <PrintFO24 evalData={fo24} internship={data?.internship} tocId="fo24" />
-            <PrintFO03 evalData={fo03} internship={data?.internship} tocId="fo03" />
-            <PrintFO22 evalData={fo22} internship={data?.internship} tocId="fo22" />
-            <PrintFO23 evalData={fo23} internship={data?.internship} tocId="fo23" />
-
+            <PrintFO24 evalData={pickLatestEvaluation(evals, 'FO-24')} tocId="fo24" {...evalProps} />
+            <PrintFO03 evalData={pickLatestEvaluation(evals, 'FO-03')} tocId="fo03" {...evalProps} />
+            <PrintFO22 evalData={pickLatestEvaluation(evals, 'FO-22')} tocId="fo22" {...evalProps} />
+            <PrintFO23 evalData={pickLatestEvaluation(evals, 'FO-23')} tocId="fo23" {...evalProps} />
           </>
         );
       })()}

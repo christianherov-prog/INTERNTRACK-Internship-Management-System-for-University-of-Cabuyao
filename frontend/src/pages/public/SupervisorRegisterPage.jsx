@@ -4,6 +4,7 @@ import api from '../../services/api'
 import { SUFFIX_OPTIONS, suffixToApi } from '../../utils/nameSuffix'
 import { InternTrackMark } from '../../components/InternTrackLogo'
 import { useAuth } from '../../contexts/AuthContext'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function SupervisorRegisterPage() {
   const [searchParams] = useSearchParams()
@@ -135,6 +136,8 @@ function SupervisorRegisterPage() {
       if (err.response?.status === 409 && err.response?.data?.code === 'existing_account') {
         setView('login')
         setLoginError(err.response.data.message)
+      } else if (err.response?.status === 409) {
+        setErrorMsg(err.response?.data?.message || 'Registration could not be completed.')
       } else if (err.response?.status === 422 && err.response?.data?.errors) {
         setErrors(err.response.data.errors)
       } else {
@@ -177,20 +180,19 @@ function SupervisorRegisterPage() {
           <div className="card-body">
             {validating || binding ? (
               <div className="text-center py-5">
-                <i className="fa fa-spinner fa-spin fa-2x text-success mb-3"></i>
+                <InternTrackLoader />
                 <p className="text-muted mb-0">{binding ? 'Linking invitation…' : 'Validating your invite link...'}</p>
               </div>
             ) : success ? (
               <div className="text-center py-4">
                 <i className="fa fa-check-circle fa-4x text-success mb-3"></i>
                 <h5 className="fw-bold">Registration Submitted!</h5>
-                <p className="text-muted mb-2">Your account has been created with ID:</p>
+                <p className="text-muted mb-2">{success.reapplied ? 'Your Supervisor ID is unchanged:' : 'Your account has been created with ID:'}</p>
                 <div className="alert alert-success d-inline-block px-4 py-2 fw-bold" style={{ fontSize: '1.2rem', letterSpacing: '1px' }}>
                   {success.username}
                 </div>
                 <p className="text-muted small mt-3 mb-0">
-                  Your account is pending approval by the Faculty Supervisor.
-                  You will be able to log in once it is approved.
+                  {success.message || 'Your account is pending approval by the Faculty Supervisor. You will be able to log in once it is approved.'}
                 </p>
               </div>
             ) : !valid ? (
@@ -214,7 +216,7 @@ function SupervisorRegisterPage() {
                       className="form-control"
                       value={loginId}
                       onChange={(e) => setLoginId(e.target.value)}
-                      placeholder="e.g. SUP-0001"
+                      placeholder="Supervisor ID"
                       required
                       autoFocus
                     />
@@ -227,6 +229,7 @@ function SupervisorRegisterPage() {
                         className="form-control"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="Password"
                         required
                       />
                       <button
@@ -274,7 +277,7 @@ function SupervisorRegisterPage() {
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Middle Name</label>
-                      <input type="text" name="middle_name" className={`form-control ${errors.middle_name ? 'is-invalid' : ''}`} value={form.middle_name} onChange={handleChange} placeholder="Optional" />
+                      <input type="text" name="middle_name" className={`form-control ${errors.middle_name ? 'is-invalid' : ''}`} value={form.middle_name} onChange={handleChange} placeholder="Middle Name" />
                       {errors.middle_name && <div className="invalid-feedback">{errors.middle_name[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
@@ -299,7 +302,7 @@ function SupervisorRegisterPage() {
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Contact Number <span className="text-danger">*</span></label>
-                      <input type="text" name="contact_number" className={`form-control ${errors.contact_number ? 'is-invalid' : ''}`} value={form.contact_number} onChange={handleChange} placeholder="09XX-XXX-XXXX" required />
+                      <input type="text" name="contact_number" className={`form-control ${errors.contact_number ? 'is-invalid' : ''}`} value={form.contact_number} onChange={handleChange} placeholder="Contact Number" required />
                       {errors.contact_number && <div className="invalid-feedback">{errors.contact_number[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
@@ -313,7 +316,7 @@ function SupervisorRegisterPage() {
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Position / Designation <span className="text-danger">*</span></label>
-                      <input type="text" name="position" className={`form-control ${errors.position ? 'is-invalid' : ''}`} value={form.position} onChange={handleChange} placeholder="e.g. IT Manager" required />
+                      <input type="text" name="position" className={`form-control ${errors.position ? 'is-invalid' : ''}`} value={form.position} onChange={handleChange} placeholder="Position" required />
                       {errors.position && <div className="invalid-feedback">{errors.position[0]}</div>}
                     </div>
                     <div className="col-md-6">
@@ -357,12 +360,12 @@ function SupervisorRegisterPage() {
                   <div className="row">
                     <div className="col-md-6">
                       <label className="form-label small fw-semibold">Password <span className="text-danger">*</span></label>
-                      <input type="password" name="password" className={`form-control ${errors.password ? 'is-invalid' : ''}`} value={form.password} onChange={handleChange} minLength={8} required />
+                      <input type="password" name="password" className={`form-control ${errors.password ? 'is-invalid' : ''}`} value={form.password} onChange={handleChange} placeholder="Password" minLength={8} required />
                       {errors.password && <div className="invalid-feedback">{errors.password[0]}</div>}
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small fw-semibold">Confirm Password <span className="text-danger">*</span></label>
-                      <input type="password" name="password_confirmation" className="form-control" value={form.password_confirmation} onChange={handleChange} minLength={8} required />
+                      <input type="password" name="password_confirmation" className="form-control" value={form.password_confirmation} onChange={handleChange} placeholder="Confirm Password" minLength={8} required />
                     </div>
                   </div>
 

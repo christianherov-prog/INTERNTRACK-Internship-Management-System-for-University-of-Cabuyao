@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import PageError from '../../../components/PageError'
 import api from '../../../services/api'
+import { cacheGet, cacheSet } from '../../../utils/pageCache'
 import { AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { displayLabel } from '../../../utils/displayLabel'
+import InternTrackLoader from '../../../components/InternTrackLoader'
 import {
   NUR_COURSE,
   NUR_ROTATIONS,
@@ -18,7 +20,7 @@ import {
 } from './nursingPortfolioStructure'
 
 function NursingPortfolioBuilder() {
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(() => cacheGet('student:portfolio') ?? null)
   const [loadError, setLoadError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
@@ -31,6 +33,7 @@ function NursingPortfolioBuilder() {
     api.get('/student/portfolio')
       .then((res) => {
         setLoadError(null)
+        cacheSet('student:portfolio', res.data)
         setData(res.data)
         const saved = res.data.internship?.portfolio?.custom_fields?.nursing || {}
         const empty = emptyNursingFields()
@@ -83,6 +86,12 @@ function NursingPortfolioBuilder() {
   const handleFileUpload = async (e, type) => {
     const file = e.target.files[0]
     if (!file) return
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)
+    if (!isImage) {
+      alert('Please upload a valid image file (JPG, PNG, or WEBP).')
+      e.target.value = ''
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', type)
@@ -91,7 +100,7 @@ function NursingPortfolioBuilder() {
       await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       fetchPortfolio()
     } catch (err) {
-      alert('Failed to upload file: ' + (err.response?.data?.message || err.message))
+      alert('File upload failed. Please try again.')
     } finally {
       e.target.value = ''
     }
@@ -159,10 +168,9 @@ function NursingPortfolioBuilder() {
             ) : (
               <p className="portfolio-upload-empty">No files yet</p>
             )}
-            {tip && <p className="portfolio-upload-hint">{tip}</p>}
           </div>
           <div className="portfolio-upload-btn-wrap">
-            <input type="file" id={`upload-${type}`} className="d-none" accept="image/*,.pdf,.png,.jpg,.jpeg,.webp,.gif" onChange={(e) => handleFileUpload(e, type)} />
+            <input type="file" id={`upload-${type}`} className="d-none" accept="image/jpeg,image/png,image/jpg,image/webp,.jpg,.jpeg,.png,.webp" onChange={(e) => handleFileUpload(e, type)} />
             <label htmlFor={`upload-${type}`} className="btn btn-outline-primary btn-sm w-100 portfolio-upload-btn mb-0">
               <i className="fa fa-upload me-1"></i>{items.length > 0 ? 'Upload More' : 'Upload'}
             </label>
@@ -221,7 +229,7 @@ function NursingPortfolioBuilder() {
               <div className="portfolio-hte-row mb-3">
                 <div>
                   <label className="portfolio-field-label">HTE / Cooperating Site</label>
-                  <input className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Site name for this rotation" />
+                  <input className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Host Establishment" />
                 </div>
                 <div>
                   <label className="portfolio-field-label">Address</label>
@@ -264,7 +272,7 @@ function NursingPortfolioBuilder() {
   if (!data) {
     return (
       <Layout title="My Portfolio" subtitle="BS Nursing · NCM 122" icon="fa-folder" bodyClass="student-page">
-        <div className="text-center py-5 mt-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5 mt-5"><InternTrackLoader /></div>
       </Layout>
     )
   }
@@ -316,11 +324,11 @@ function NursingPortfolioBuilder() {
                 <p className="mb-3">Cover uses your live student record. Write your own biographical sketch and acknowledgement — do not copy another intern’s text.</p>
                 <div className="mb-3">
                   <label className="portfolio-field-label">Biographical Sketch</label>
-                  <textarea className="form-control portfolio-field-input" rows={8} value={form.bio_sketch} onChange={(e) => setFrontField('bio_sketch', e.target.value)} placeholder="Your background, education, and clinical preparation." />
+                  <textarea className="form-control portfolio-field-input" rows={8} value={form.bio_sketch} onChange={(e) => setFrontField('bio_sketch', e.target.value)} placeholder="Bio Sketch" />
                 </div>
                 <div className="mb-0">
                   <label className="portfolio-field-label">Acknowledgement</label>
-                  <textarea className="form-control portfolio-field-input" rows={8} value={form.acknowledgement} onChange={(e) => setFrontField('acknowledgement', e.target.value)} placeholder="Thank your supervisors, faculty, family, and host sites." />
+                  <textarea className="form-control portfolio-field-input" rows={8} value={form.acknowledgement} onChange={(e) => setFrontField('acknowledgement', e.target.value)} placeholder="Acknowledgement" />
                 </div>
               </div>
             </div>
@@ -339,7 +347,7 @@ function NursingPortfolioBuilder() {
             <div className="content-card portfolio-chapter-card border-0 shadow-none mb-3">
               <div className="content-card-header bg-light"><h6 className="mb-0">Narrative &amp; Insights of Internship Learning Experiences</h6></div>
               <div className="p-3 p-lg-4">
-                <textarea className="form-control portfolio-field-input" rows={10} value={form.narrative} onChange={(e) => setFrontField('narrative', e.target.value)} placeholder="Write one narrative covering all five rotations from your own duty experiences." />
+                <textarea className="form-control portfolio-field-input" rows={10} value={form.narrative} onChange={(e) => setFrontField('narrative', e.target.value)} placeholder="Narrative" />
               </div>
             </div>
             <div className="content-card portfolio-chapter-card border-0 shadow-none mb-0">

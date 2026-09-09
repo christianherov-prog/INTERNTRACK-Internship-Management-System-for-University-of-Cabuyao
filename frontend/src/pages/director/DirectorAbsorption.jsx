@@ -2,22 +2,22 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function DirectorAbsorption() {
-  const [absorption, setAbsorption] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('director:absorption')
+  const [absorption, setAbsorption] = useState(seed ?? null)
   const [error, setError] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/director/dashboard')
-      .then((res) => setAbsorption(res.data.absorption ?? null))
+    run(() => api.get('/director/dashboard').then((res) => res.data.absorption ?? null))
+      .then((next) => { if (next !== undefined) setAbsorption(next) })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load absorption analytics.')
         setAbsorption(null)
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -30,7 +30,7 @@ function DirectorAbsorption() {
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : !error && (
         <>
           <div className="row g-3 mb-4">

@@ -29,6 +29,8 @@ final class InternshipStatuses
         'expelled',
         'terminated',
         'failed',
+        'cancelled',
+        'withdrawn',
     ];
 
     public static function normalize(?string $status): string
@@ -37,12 +39,14 @@ final class InternshipStatuses
         if ($status === 'ongoing') {
             return 'active';
         }
+
         return $status;
     }
 
     public static function label(?string $status): string
     {
         $status = self::normalize($status);
+
         return match ($status) {
             'pending_placement' => 'Pending Placement',
             'placed' => 'Placed',
@@ -54,6 +58,8 @@ final class InternshipStatuses
             'expelled' => 'Expelled',
             'terminated' => 'Terminated',
             'failed' => 'Failed',
+            'cancelled' => 'Cancelled',
+            'withdrawn' => 'Withdrawn',
             default => $status !== '' ? ucwords(str_replace('_', ' ', $status)) : 'Unknown',
         };
     }
@@ -81,5 +87,25 @@ final class InternshipStatuses
     public static function liveMonitoring(): array
     {
         return ['ongoing', 'active', 'placed', 'for_evaluation'];
+    }
+
+    /**
+     * Currently open internships that block creating another "current" row.
+     * Historical completed/cancelled records are excluded so sequential HTE
+     * deployments can start after a finished internship. Multi-HTE programs
+     * still use placement rows on a single open internship.
+     */
+    public static function openCurrent(): array
+    {
+        return [
+            'pending_placement',
+            'placed',
+            'ongoing',
+            'active',
+            'for_evaluation',
+            'suspended',
+            'deferred',
+            'expelled',
+        ];
     }
 }

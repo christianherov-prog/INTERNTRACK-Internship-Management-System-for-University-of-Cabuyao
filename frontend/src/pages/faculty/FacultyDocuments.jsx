@@ -6,13 +6,15 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { documentStatusLabel } from '../../utils/documentStatus'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 /**
  * Faculty stage of document routing: only pending_faculty / current_stage=faculty.
  */
 function FacultyDocuments() {
-  const [docs, setDocs] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('faculty:documents')
+  const [docs, setDocs] = useState(() => unwrapList(seed).items)
   const [loadError, setLoadError] = useState(null)
   const [processing, setProcessing] = useState(null)
   const [message, setMessage] = useState(null)
@@ -24,15 +26,12 @@ function FacultyDocuments() {
   const [downloading, setDownloading] = useState(false)
 
   const fetchDocs = () => {
-    setLoading(true)
     setLoadError(null)
-    api.get('/faculty/documents')
-      .then(res => setDocs(unwrapList(res.data).items))
+    run(() => api.get('/faculty/documents').then(res => res.data))
+      .then((next) => { if (next) setDocs(unwrapList(next).items) })
       .catch((err) => {
         setLoadError(err.response?.data?.message || 'Failed to load documents.')
-        setDocs([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchDocs() }, [])
@@ -128,7 +127,7 @@ function FacultyDocuments() {
                     rows={2}
                     value={remarks}
                     onChange={e => setRemarks(e.target.value)}
-                    placeholder="Add a note..."
+                    placeholder="Note"
                   ></textarea>
                 </div>
               </div>
@@ -158,7 +157,7 @@ function FacultyDocuments() {
               </div>
               <div className="modal-body">
                 <label className="form-label fw-semibold">Remarks <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Reason for rejection…" />
+                <textarea className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Reason" />
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
@@ -191,7 +190,7 @@ function FacultyDocuments() {
         )}
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : docs.length === 0 ? (
             <EmptyState
               icon="fa-file-circle-check"

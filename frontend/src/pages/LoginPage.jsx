@@ -222,7 +222,7 @@ function LoginPage() {
                         id="forgotIdentifier"
                         value={forgotIdentifier}
                         onChange={(e) => setForgotIdentifier(e.target.value)}
-                        placeholder="Student Number, Employee ID, or Email"
+                        placeholder="Student Number, Employee ID, Supervisor ID, or Email"
                         required
                         autoFocus
                       />

@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import api from '../../services/api'
 import PageError from '../../components/PageError'
 import { useToast } from '../../contexts/ToastContext'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function StudentSupervisorInvite({ embedded = false, initialStatusData = null, onStatusChange = () => { } }) {
   const toast = useToast()
@@ -15,8 +16,10 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
   const [copied, setCopied] = useState(false)
 
   const fetchStatus = () => {
-    setLoading(true)
-    setError(null)
+    const silent = !!(invite || initialStatusData)
+    if (!silent) {
+      setError(null)
+    }
     api.get('/student/supervisor-invite/status')
       .then(res => {
         setInvite(res.data.invite)
@@ -25,7 +28,9 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
         onStatusChange(res.data)
       })
       .catch((err) => {
-        setError(err.response?.data?.message || 'Failed to load supervisor invite status.')
+        if (!silent) {
+          setError(err.response?.data?.message || 'Failed to load supervisor invite status.')
+        }
       })
       .finally(() => setLoading(false))
   }
@@ -84,7 +89,7 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
   const registerUrl = invite?.register_url || (invite?.token ? `${window.location.origin}/register/supervisor?token=${invite.token}` : '')
 
   if (loading) {
-    return <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+    return <div className="text-center py-5"><InternTrackLoader /></div>
   }
 
 

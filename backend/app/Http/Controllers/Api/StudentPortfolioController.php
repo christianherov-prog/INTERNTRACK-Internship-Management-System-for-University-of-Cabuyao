@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Document;
 use App\Models\Internship;
 use App\Models\StudentPortfolio;
-use App\Models\Document;
-use App\Models\JournalEntry;
-use App\Models\AttendanceLog;
+use App\Services\PortfolioDataService;
+use App\Support\InternshipAccess;
+use App\Support\InternshipProvisioning;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class StudentPortfolioController extends Controller
 {
@@ -18,17 +22,40 @@ class StudentPortfolioController extends Controller
         $user = auth()->user();
         if ($request->filled('internship_id')) {
             $internship = Internship::findOrFail($request->internship_id);
-            if ($user->hasRole('student') && $internship->student_id !== $user->id) {
-                abort(403, 'Unauthorized access to this internship.');
+            if ($user->hasRole('student')) {
+                if ((int) $internship->student_id !== (int) $user->id) {
+                    abort(403, 'Unauthorized access to this internship.');
+                }
+            } else {
+                InternshipAccess::abortUnlessCanView($user, $internship);
             }
+
             return $internship;
         }
 
+        $requestedId = $request->header('X-Internship-Id');
+        if ($requestedId) {
+            $internship = Internship::find($requestedId);
+            if ($internship) {
+                if ($user->hasRole('student')) {
+                    if ((int) $internship->student_id !== (int) $user->id) {
+                        abort(403, 'Unauthorized access to this internship.');
+                    }
+                } else {
+                    InternshipAccess::abortUnlessCanView($user, $internship);
+                }
+
+                return $internship;
+            }
+        }
+
         if ($user->hasRole('student')) {
-            $internship = $user->activeInternship()->first() ?? $user->internshipsAsStudent()->latest()->first();
-            if (!$internship) {
+            $internship = InternshipProvisioning::openForStudent($user->id)
+                ?? $user->internshipsAsStudent()->latest('id')->first();
+            if (! $internship) {
                 abort(404, 'No active internship found for your account.');
             }
+
             return $internship;
         }
 
@@ -46,136 +73,8 @@ class StudentPortfolioController extends Controller
         ]);
 
         $internship = $this->getInternship($request);
-        $internship->load(['company', 'portfolio', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile', 'student.studentProfile.program', 'student.studentProfile.department']);
 
-        $portfolio = $internship->portfolio;
-        $companyName = $internship->company?->company_name ?? ($internship->company?->name ?? 'Host Establishment');
-
-        if (!$portfolio) {
-            $portfolio = new StudentPortfolio([
-                'internship_id' => $internship->id,
-                'user_id' => $internship->student_id,
-                'company_name' => $companyName,
-                'company_address' => $internship->company?->address ?? 'City of Cabuyao, Laguna',
-                'company_vision' => "To be an industry leader delivering exceptional IT, accounting, and professional technological services while nurturing future talent.",
-                'company_mission' => "To provide reliable client-focused solutions through innovation, integrity, and continuous technological advancement.",
-                'company_history' => $internship->company?->notes ?: "Established with a commitment to excellence, {$companyName} has continuously evolved to serve diverse client needs while maintaining strong industry standards and fostering internship training programs.",
-                'assessment_ethical' => "During my internship at {$companyName}, I learned that IT professionals must be responsible, trustworthy, and careful in handling systems, devices, and user information. Ensuring accuracy, respecting data privacy, and adhering to institutional protocols are vital to professional integrity.",
-                'assessment_learnings' => "I acquired hands-on technical skills in system maintenance, software testing, network setup, and project workflow management. Furthermore, I developed strong problem-solving abilities and communication skills essential for real-world operations.",
-                'assessment_experience' => "My interaction with supervisors, colleagues, and fellow interns was highly rewarding. Collaborating in a professional team environment improved my teamwork, interpersonal skills, and adaptability in workplace settings.",
-                'assessment_standards' => "I was exposed to industry-aligned best practices such as version control, systematic hardware diagnosis, structured agile workflows, and formal document formatting standards.",
-                'assessment_recommendations' => "I recommend continuing continuous rotation across technical departments to provide future interns with broader learning exposure across different domains of Information Technology.",
-                'assessment_advice' => "To future interns: always be proactive, ask questions when uncertain, maintain diligence in recording your daily achievements, and approach every technical challenge as a learning opportunity.",
-            ]);
-        }
-
-        $journals = JournalEntry::where('internship_id', $internship->id)
-            ->orderBy('date', 'asc')
-            ->get();
-
-        $typeMap = [
-            'Curriculum Vitae (PNC:AA-FO-27)' => 'student_cv',
-            'Medical Clearance' => 'medical_result',
-            'Psychological Assessment Certificate' => 'psychological_result',
-            'Application Letter' => 'application_letter',
-            'Recommendation Letter' => 'recommendation_request',
-            'Notarized Student Internship Consent Form (PNC:AA-FO-28)' => 'consent_form',
-            'Notarized Student Internship Consent Form (PNC: AA-FO-28)' => 'consent_form',
-            'Student Internship Acceptance Form (PNC:AA-FO-29)' => 'acceptance_form',
-            'Student Internship Acceptance Form (PNC: AA-FO-29)' => 'acceptance_form',
-            'Training Plan' => 'training_plan',
-            'MOA / LOA / TOR' => 'moa_document',
-            'Certificate of Completion' => 'completion_certificate',
-            'Midterm Evaluation' => 'performance_eval',
-            'Final Report' => 'performance_eval',
-        ];
-
-        $allDocs = Document::where('internship_id', $internship->id)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($doc) use ($typeMap) {
-                $rawType = $doc->document_type ?? 'portfolio_photo';
-                $mappedType = $typeMap[$rawType] ?? $rawType;
-                return [
-                    'id' => $doc->id,
-                    'internship_id' => $doc->internship_id,
-                    'file_path' => $doc->file_path,
-                    'file_name' => $doc->file_name,
-                    'type' => $mappedType,
-                    'document_type' => $rawType,
-                    'original_type' => $rawType,
-                    'label' => $doc->remarks ?? $doc->file_name,
-                    'remarks' => $doc->remarks,
-                    'week_number' => $doc->week_number,
-                    'created_at' => $doc->created_at,
-                ];
-            });
-
-        $logoDoc = Document::where('internship_id', $internship->id)
-            ->whereIn('document_type', ['company_logo', 'logo'])
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        $orgDoc = Document::where('internship_id', $internship->id)
-            ->whereIn('document_type', ['org_chart', 'chart'])
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        $vmDoc = Document::where('internship_id', $internship->id)
-            ->whereIn('document_type', ['vision_mission', 'company_vision_mission', 'vision_mission_photo'])
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        $portfolioData = $portfolio->toArray();
-        $portfolioData['company_background'] = $portfolio->company_history ?? ($portfolioData['company_history'] ?? '');
-        $portfolioData['company_history'] = $portfolio->company_history ?? ($portfolioData['company_background'] ?? '');
-        $portfolioData['company_vision'] = $portfolio->company_vision ?? '';
-        $portfolioData['company_mission'] = $portfolio->company_mission ?? '';
-        $portfolioData['prof_ethical_responsibilities'] = $portfolio->assessment_ethical ?? ($portfolioData['assessment_ethical'] ?? '');
-        $portfolioData['assessment_ethical'] = $portfolio->assessment_ethical ?? ($portfolioData['prof_ethical_responsibilities'] ?? '');
-        $portfolioData['things_learned'] = $portfolio->assessment_learnings ?? ($portfolioData['assessment_learnings'] ?? '');
-        $portfolioData['assessment_learnings'] = $portfolio->assessment_learnings ?? ($portfolioData['things_learned'] ?? '');
-        $portfolioData['experience_with_people'] = $portfolio->assessment_experience ?? ($portfolioData['assessment_experience'] ?? '');
-        $portfolioData['assessment_experience'] = $portfolio->assessment_experience ?? ($portfolioData['experience_with_people'] ?? '');
-        $portfolioData['industry_best_practices'] = $portfolio->assessment_standards ?? ($portfolioData['assessment_standards'] ?? '');
-        $portfolioData['assessment_standards'] = $portfolio->assessment_standards ?? ($portfolioData['industry_best_practices'] ?? '');
-        $portfolioData['recommendations'] = $portfolio->assessment_recommendations ?? ($portfolioData['assessment_recommendations'] ?? '');
-        $portfolioData['assessment_recommendations'] = $portfolio->assessment_recommendations ?? ($portfolioData['recommendations'] ?? '');
-        $portfolioData['advice'] = $portfolio->assessment_advice ?? ($portfolioData['assessment_advice'] ?? '');
-        $portfolioData['assessment_advice'] = $portfolio->assessment_advice ?? ($portfolioData['advice'] ?? '');
-        $portfolioData['company_logo_path'] = $logoDoc ? $logoDoc->file_path : null;
-        $portfolioData['org_chart_path'] = $orgDoc ? $orgDoc->file_path : null;
-        $portfolioData['vision_mission_path'] = $vmDoc ? $vmDoc->file_path : null;
-        $portfolioData['photos'] = $allDocs;
-        // Expose editable company name/address — fall back to HTE data if not customized
-        $portfolioData['company_name'] = $portfolio->company_name
-            ?? $internship->company?->company_name
-            ?? $internship->company?->name
-            ?? 'Host Training Establishment';
-        $portfolioData['company_address'] = $portfolio->company_address
-            ?? $internship->company?->address
-            ?? 'City of Cabuyao, Laguna';
-
-        $evaluations = \App\Models\Evaluation::where('internship_id', $internship->id)->get();
-
-        $internshipData = $internship->toArray();
-        $internshipData['portfolio'] = $portfolioData;
-        $internshipData['journals'] = $journals;
-        $internshipData['company'] = $internship->company;
-        $internshipData['evaluations'] = $evaluations;
-
-        return response()->json([
-            'portfolio' => $portfolioData,
-            'internship' => $internshipData,
-            'user' => ($request->user() ?? auth()->user())?->load(['studentProfile.program', 'studentProfile.department']),
-            'stats' => [
-                'journals_count' => $journals->count(),
-                'dtr_count' => AttendanceLog::where('internship_id', $internship->id)->count(),
-                'photos_count' => $allDocs->count(),
-                'total_docs_count' => $allDocs->count(),
-            ],
-            'photos' => $allDocs,
-        ]);
+        return response()->json(app(PortfolioDataService::class)->payload($internship, $request->user()));
     }
 
     /**
@@ -256,49 +155,92 @@ class StudentPortfolioController extends Controller
     /**
      * Upload photo or certificate for the portfolio
      * POST /v1/student/portfolio/photos
+     *
+     * Files are stored on the private local disk as document_attachments.
+     * The documents table no longer has file_path (dropped 2026-08-25).
      */
     public function uploadPhoto(Request $request)
     {
+        $docType = (string) $request->input('type', $request->input('document_type', 'portfolio_photo'));
+        $maxKb = max(1024, (int) config('interntrack.upload_max_mb', 10) * 1024);
+        $mimes = $this->allowedMimesForType($docType);
+
         $request->validate([
             'internship_id' => 'nullable|exists:internships,id',
-            'file' => 'required|file|mimes:jpeg,png,jpg,webp,pdf,docx|max:10240',
+            'file' => ['required', 'file', 'mimes:'.$mimes, 'max:'.$maxKb],
+            'type' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 _:-]+$/'],
+            'document_type' => ['nullable', 'string', 'max:80'],
             'caption' => 'nullable|string|max:255',
+            'label' => 'nullable|string|max:255',
+            'week_number' => [
+                Rule::requiredIf(fn () => $this->requiresWeek($docType)),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:60',
+            ],
+        ], [
+            'file.mimes' => $this->isImageOnlyType($docType)
+                ? 'Please upload a JPG, PNG, WEBP, or GIF image.'
+                : 'Please upload a PDF or image file (JPG, PNG, WEBP, GIF).',
+            'file.max' => 'The file must not be larger than '.(int) config('interntrack.upload_max_mb', 10).' MB.',
+            'week_number.required' => 'Please enter a week number for this photo.',
         ]);
 
         $internship = $this->getInternship($request);
-
         $file = $request->file('file');
-        $docType = $request->input('type', $request->input('document_type', 'portfolio_photo'));
-        $label = $request->input('label', $request->input('caption', $file->getClientOriginalName()));
-        $weekNumber = $request->input('week_number') ? (int) $request->input('week_number') : null;
+        $originalName = $file->getClientOriginalName();
+        $label = $request->input('label', $request->input('caption', $originalName));
+        $weekNumber = $request->filled('week_number') ? (int) $request->input('week_number') : null;
 
-        $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '_', $file->getClientOriginalName());
-        $filePath = $file->storeAs('documents/' . $internship->id, $fileName, 'public');
+        $document = DB::transaction(function () use ($internship, $file, $docType, $label, $weekNumber, $originalName) {
+            if (! $this->allowsMultiple($docType)) {
+                $internship->documents()
+                    ->where('document_type', $docType)
+                    ->get()
+                    ->each(fn (Document $old) => $this->purgePortfolioDocument($old));
+            }
 
-        $document = Document::create([
-            'internship_id' => $internship->id,
-            'document_type' => $docType,
-            'week_number'   => $weekNumber,
-            'file_path'     => $filePath,
-            'file_name'     => $file->getClientOriginalName(),
-            'file_size'     => $file->getSize(),
-            'mime_type'     => $file->getMimeType(),
-            'status'        => 'approved',
-            'current_stage' => 'completed',
-            'remarks'       => $label,
-            'submitted_at'  => now(),
-        ]);
+            $document = $internship->documents()->create([
+                'document_type' => $docType,
+                'week_number' => $weekNumber,
+                'status' => 'approved',
+                'current_stage' => 'completed',
+                'remarks' => $label,
+                'submitted_at' => now(),
+            ]);
+
+            $safeName = substr((string) preg_replace('/[^a-zA-Z0-9._-]+/', '_', $originalName), 0, 80) ?: 'upload';
+            $storedName = Str::uuid()->toString().'_'.$safeName;
+            $path = $file->storeAs("internships/{$internship->id}/portfolio", $storedName, 'local');
+
+            $document->attachments()->create([
+                'file_path' => $path,
+                'file_name' => $originalName,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+            ]);
+
+            return $document->load('attachments');
+        });
+
+        $attachment = $document->attachments->first();
 
         return response()->json([
             'message' => 'Photo uploaded successfully!',
             'document' => [
                 'id' => $document->id,
-                'file_path' => $document->file_path,
-                'file_name' => $document->file_name,
+                'file_path' => $attachment?->file_path,
+                'file_name' => $attachment?->file_name,
+                'file_size' => $attachment?->file_size,
+                'mime_type' => $attachment?->mime_type,
                 'type' => $document->document_type,
                 'document_type' => $document->document_type,
-                'label' => $document->remarks ?? $document->file_name,
+                'label' => $document->remarks ?? $attachment?->file_name,
                 'remarks' => $document->remarks,
+                'week_number' => $document->week_number,
+                'status' => $document->status,
+                'submitted_at' => $document->submitted_at,
             ],
         ], 201);
     }
@@ -310,19 +252,78 @@ class StudentPortfolioController extends Controller
     public function deletePhoto($id)
     {
         $user = auth()->user();
-        $document = Document::findOrFail($id);
+        $document = Document::with(['internship', 'attachments'])->findOrFail($id);
         $internship = $document->internship;
 
-        if ($user->hasRole('student') && $internship->student_id !== $user->id) {
-            abort(403, 'Unauthorized.');
+        if (! $internship) {
+            abort(404, 'Internship not found for this file.');
         }
 
-        if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
-            Storage::disk('public')->delete($document->file_path);
+        if ($user->hasRole('student')) {
+            if ((int) $internship->student_id !== (int) $user->id) {
+                abort(403, 'Unauthorized.');
+            }
+        } else {
+            InternshipAccess::abortUnlessCanView($user, $internship);
+        }
+
+        $this->purgePortfolioDocument($document);
+
+        return response()->json(['message' => 'Photo removed from portfolio successfully.']);
+    }
+
+    private function allowedMimesForType(string $type): string
+    {
+        return 'jpeg,jpg,png,webp,gif';
+    }
+
+    private function isImageOnlyType(string $type): bool
+    {
+        return true;
+    }
+
+    private function allowsMultiple(string $type): bool
+    {
+        return in_array($type, [
+            'ojt_photo', 'ojt_photos', 'training_documentation', 'exam_documentation',
+            'work_samples', 'experience_photos', 'lesson_plan',
+            'org_chart', 'registration_form', 'medical_result', 'psychological_result',
+            'application_letter', 'student_cv', 'recommendation_request',
+            'acceptance_form', 'consent_form', 'training_plan', 'moa_document',
+            'visitation_form', 'completion_certificate',
+            'training_certificate', 'training_test_result', 'exam_certificate', 'exam_test_result',
+        ], true);
+    }
+
+    private function requiresWeek(string $type): bool
+    {
+        return in_array($type, ['ojt_photo', 'ojt_photos'], true);
+    }
+
+    private function purgePortfolioDocument(Document $document): void
+    {
+        $document->loadMissing('attachments');
+
+        foreach ($document->attachments as $attachment) {
+            if ($attachment->file_path) {
+                foreach (['local', 'public'] as $disk) {
+                    if (Storage::disk($disk)->exists($attachment->file_path)) {
+                        Storage::disk($disk)->delete($attachment->file_path);
+                    }
+                }
+            }
+            $attachment->delete();
+        }
+
+        $legacyPath = $document->getAttributes()['file_path'] ?? null;
+        if (is_string($legacyPath) && $legacyPath !== '') {
+            foreach (['local', 'public'] as $disk) {
+                if (Storage::disk($disk)->exists($legacyPath)) {
+                    Storage::disk($disk)->delete($legacyPath);
+                }
+            }
         }
 
         $document->forceDelete();
-
-        return response()->json(['message' => 'Photo removed from portfolio successfully.']);
     }
 }

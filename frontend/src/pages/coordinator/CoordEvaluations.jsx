@@ -4,6 +4,8 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { formatStudentName } from '../../utils/formatName'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const FORM_LABELS = {
   'FO-24': { label: 'FO-24', color: 'btn-outline-primary',  desc: 'Performance Eval (Supervisor)' },
@@ -13,36 +15,43 @@ const FORM_LABELS = {
 }
 
 function CoordEvaluations() {
-  const [internships, setInternships] = useState([])
-  const [facultyOptions, setFacultyOptions] = useState([])
-  const [feedback, setFeedback] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('coordinator:evaluations')
+  const [internships, setInternships] = useState(() => seed?.internships ?? [])
+  const [facultyOptions, setFacultyOptions] = useState(() => seed?.facultyOptions ?? [])
+  const [feedback, setFeedback] = useState(() => seed?.feedback ?? [])
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)  // { eval, internship }
   const [filters, setFilters] = useState({ program: '', section: '', faculty_id: '', search: '' })
-  const [pagination, setPagination] = useState(null)
+  const [pagination, setPagination] = useState(() => seed?.pagination ?? null)
   const [currentPage, setCurrentPage] = useState(1)
 
   const loadPage = (page = 1) => {
-    setLoading(true)
     setError(null)
     const params = new URLSearchParams({ page, ...filters })
-    Promise.all([
+    run(() => Promise.all([
       api.get(`/coordinator/evaluations?${params.toString()}`),
       api.get('/coordinator/supervisor-feedback'),
-    ])
-      .then(([eRes, fRes]) => {
-        const data = eRes.data
-        setInternships(data.internships?.data || data.internships || [])
-        setPagination(data.internships)
-        setFacultyOptions(data.faculty_options || [])
-        setFeedback(fRes.data?.data || fRes.data?.items || [])
+    ]).then(([eRes, fRes]) => {
+      const data = eRes.data
+      return {
+        internships: data.internships?.data || data.internships || [],
+        pagination: data.internships,
+        facultyOptions: data.faculty_options || [],
+        feedback: fRes.data?.data || fRes.data?.items || [],
+      }
+    }))
+      .then((next) => {
+        if (next) {
+          setInternships(next.internships)
+          setPagination(next.pagination)
+          setFacultyOptions(next.facultyOptions)
+          setFeedback(next.feedback)
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load evaluations.')
         setInternships([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { loadPage(1) }, [filters])
@@ -57,13 +66,13 @@ function CoordEvaluations() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search student name…" value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} />
+          <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} />
         </div>
         <div className="input-group input-group-sm" style={{ width: 170 }}>
-          <input className="form-control" placeholder="Program (e.g. BS IT)" value={filters.program} onChange={e => setFilters({ ...filters, program: e.target.value })} />
+          <input className="form-control" placeholder="Program" value={filters.program} onChange={e => setFilters({ ...filters, program: e.target.value })} />
         </div>
         <div className="input-group input-group-sm" style={{ width: 150 }}>
-          <input className="form-control" placeholder="Section (e.g. 4A)" value={filters.section} onChange={e => setFilters({ ...filters, section: e.target.value })} />
+          <input className="form-control" placeholder="Section" value={filters.section} onChange={e => setFilters({ ...filters, section: e.target.value })} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 180 }} value={filters.faculty_id} onChange={e => setFilters({ ...filters, faculty_id: e.target.value })}>
           <option value="">All Faculty</option>
@@ -81,7 +90,7 @@ function CoordEvaluations() {
         </div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : (
             <>
               <div className="table-responsive">
@@ -190,9 +199,10 @@ function CoordEvaluations() {
                 ) : feedback.map((row) => (
                   <tr key={row.id}>
                     <td className="fw-semibold">{row?.internship?.student?.studentProfile?.first_name} {row?.internship?.student?.studentProfile?.last_name}</td>
-                    <td style={{ maxWidth: 420 }}>{row.supervisor_feedback}</td>
+                    <td style={{ maxWidth: 420 }}>{row.supervisor_feedback || row.feedback}</td>
                     <td style={{ fontSize: '0.85rem' }}>
-                      {row.supervisor_reviewed_at ? new Date(row.supervisor_reviewed_at).toLocaleDateString() : '—'}
+                      {row.supervisor_reviewed_at_manila
+                        || (row.supervisor_reviewed_at ? new Date(row.supervisor_reviewed_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) : '—')}
                     </td>
                   </tr>
                 ))}

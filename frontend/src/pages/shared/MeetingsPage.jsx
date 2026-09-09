@@ -4,6 +4,8 @@ import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const TYPES = [
   { value: 'orientation', label: 'Orientation' },
@@ -14,8 +16,8 @@ const TYPES = [
 
 function MeetingsPage({ bodyClass = '', canCreate = false }) {
   const { user } = useAuth()
-  const [meetings, setMeetings] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { pending, seed, run } = useCachedPage(`meetings:${user?.role || 'user'}`)
+  const [meetings, setMeetings] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
   const [form, setForm] = useState({
@@ -31,15 +33,12 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/meetings')
-      .then((res) => setMeetings(res.data.meetings ?? []))
+    run(() => api.get('/meetings').then((res) => res.data.meetings ?? []))
+      .then((next) => { if (next) setMeetings(next) })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load meetings.')
-        setMeetings([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -105,7 +104,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
               </div>
               <div className="col-md-3">
                 <label className="form-label">Internship ID (optional)</label>
-                <input className="form-control" value={form.internship_id} onChange={(e) => setForm({ ...form, internship_id: e.target.value })} placeholder="Auto-invite parties" />
+                <input className="form-control" value={form.internship_id} onChange={(e) => setForm({ ...form, internship_id: e.target.value })} placeholder="Internship" />
               </div>
               <div className="col-md-4">
                 <label className="form-label">Starts</label>
@@ -121,7 +120,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
               </div>
               <div className="col-md-6">
                 <label className="form-label">Meeting URL</label>
-                <input className="form-control" value={form.meeting_url} onChange={(e) => setForm({ ...form, meeting_url: e.target.value })} placeholder="https://…" />
+                <input className="form-control" value={form.meeting_url} onChange={(e) => setForm({ ...form, meeting_url: e.target.value })} placeholder="Meeting Link" />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Description</label>
@@ -137,8 +136,8 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
 
       <div className="content-card">
         <div className="content-card-header"><i className="fa fa-calendar-days"></i><h6>Upcoming</h6></div>
-        {loading ? (
-          <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        {pending && meetings.length === 0 ? (
+          <InternTrackLoader />
         ) : meetings.length === 0 ? (
           <EmptyState icon="fa-calendar" title="No meetings" message="Scheduled orientations and check-ins will appear here." />
         ) : (

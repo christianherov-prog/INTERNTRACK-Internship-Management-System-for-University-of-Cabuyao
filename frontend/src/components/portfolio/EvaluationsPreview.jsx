@@ -1,10 +1,41 @@
 import React from 'react';
 import '../../assets/css/portfolio-print.css';
 import { displayLabel } from '../../utils/displayLabel';
-import { identityValue, MISSING_IDENTITY, resolveFormIdentity } from '../../utils/formIdentity';
+import { identityValue, resolveFormIdentity } from '../../utils/formIdentity';
+import { AuthenticatedFileImage } from '../AuthenticatedFile';
+import PortfolioSignature from './PortfolioSignature';
 
 function identityText(identity, key) {
-  return identityValue(identity, key) || MISSING_IDENTITY;
+  return identityValue(identity, key);
+}
+
+function fo22Interpretation(avg) {
+  if (avg == null || avg === '') return '';
+  const n = Number(avg);
+  if (Number.isNaN(n)) return '';
+  if (n >= 4.5) return 'Outstanding';
+  if (n >= 3.5) return 'Very Satisfactory';
+  if (n >= 2.75) return 'Satisfactory';
+  if (n >= 2.0) return 'Unsatisfactory';
+  return 'Poor';
+}
+
+function submittedDateManila(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return String(iso);
+  return date.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+export function pickLatestEvaluation(evals, type) {
+  const matches = (evals || []).filter(e => e.form_type === type);
+  if (!matches.length) return null;
+  return [...matches].sort((a, b) => {
+    const aFinal = a.evaluation_period === 'final' ? 1 : 0;
+    const bFinal = b.evaluation_period === 'final' ? 1 : 0;
+    if (aFinal !== bFinal) return bFinal - aFinal;
+    return String(b.submitted_at || '').localeCompare(String(a.submitted_at || ''));
+  })[0];
 }
 
 // ---------------------------------------------------------
@@ -105,15 +136,20 @@ const MultilinePreview = ({ text, lines = 1 }) => (
 // PRINT FORM COMPONENTS
 // ---------------------------------------------------------
 
-export const PrintFO24 = ({ evalData, internship, tocId }) => {
+export const PrintFO24 = ({ evalData, internship, tocId, user, identity: identityProp }) => {
   const responses = evalData?.responses || {};
-  const identity = resolveFormIdentity(internship, { evalData });
+  const identity = resolveFormIdentity(internship, { evalData, user, identity: identityProp });
   const studentName = identityText(identity, 'studentName');
   const program = identityText(identity, 'program');
   const semStr = identityText(identity, 'semester');
   const ayStr = identityText(identity, 'academicYear');
-  const supervisorName = identityText(identity, 'supervisorName');
+  const signaturePath = evalData?.id ? (evalData.signature_path || identity.supervisorSignaturePath) : '';
+  const supervisorName = evalData?.id
+    ? (evalData.signer_name || evalData.evaluator_name || identityText(identity, 'supervisorName'))
+    : identityText(identity, 'supervisorName');
   const period = evalData?.evaluation_period || identity.evaluationPeriod;
+  const training = identityValue(identity, 'trainingPeriod');
+  const fo24Weights = [0.25, 0.125, 0.125, 0.10, 0.10, 0.10, 0.05, 0.05, 0.05, 0.05];
 
   return (
     <div data-toc-id={tocId} className="a4-page portfolio-document position-relative" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -153,7 +189,7 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
           <span style={{ fontWeight: 'bold', width: '125px' }}>PROGRAM</span>
           <div style={{ width: '45%', borderBottom: '1px solid #000', paddingLeft: '8px' }}>{displayLabel(program)}</div>
           <span style={{ fontWeight: 'bold', marginLeft: '12px', width: '125px' }}>TRAINING PERIOD:</span>
-          <div style={{ flex: 1, borderBottom: '1px solid #000' }}></div>
+          <div style={{ flex: 1, borderBottom: '1px solid #000', paddingLeft: '8px' }}>{training}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
           <span style={{ fontWeight: 'bold', width: '125px' }}>ACADEMIC YEAR:</span>
@@ -196,22 +232,25 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
             const splitIdx = crit.label.indexOf('(');
             const title = splitIdx !== -1 ? crit.label.substring(0, splitIdx).trim() : crit.label;
             const desc = splitIdx !== -1 ? crit.label.substring(splitIdx).trim() : '';
+            const rating = responses[`c${idx + 1}`];
+            const equivalent = responses[`eq${idx + 1}`]
+              ?? (rating != null && rating !== '' ? (Number(rating) * fo24Weights[idx]).toFixed(2) : '');
             return (
               <tr key={idx}>
                 <td style={{ border: '1px solid black', padding: '3px 5px', lineHeight: '1.1' }}>
                   <strong style={{ fontSize: '8.5pt' }}>{title}</strong>
                   {desc && <div style={{ fontSize: '8pt', marginTop: '1px', paddingLeft: '8px' }}>{desc}</div>}
                 </td>
-                <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{responses[`c${idx + 1}`] || ''}</td>
+                <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{rating || ''}</td>
                 <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', backgroundColor: '#e5e7eb' }}>{crit.weight}</td>
-                <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', backgroundColor: '#e5e7eb' }}>{responses[`eq${idx + 1}`] || ''}</td>
+                <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', backgroundColor: '#e5e7eb' }}>{equivalent}</td>
               </tr>
             )
           })}
           <tr>
             <td colSpan="2" style={{ border: '1px solid black', padding: '3px 15px', textAlign: 'right', fontWeight: 'bold' }}>TOTAL</td>
             <td style={{ border: '1px solid black', padding: '3px', textAlign: 'center', backgroundColor: '#e5e7eb' }}>100</td>
-            <td style={{ border: '1px solid black', padding: '3px', textAlign: 'center', backgroundColor: '#e5e7eb' }}>{evalData?.average_score || ''}</td>
+            <td style={{ border: '1px solid black', padding: '3px', textAlign: 'center', backgroundColor: '#e5e7eb' }}>{evalData?.average_score != null && evalData?.average_score !== '' ? evalData.average_score : ''}</td>
           </tr>
         </tbody>
       </table>
@@ -229,17 +268,17 @@ export const PrintFO24 = ({ evalData, internship, tocId }) => {
         <div style={{ width: '50%', borderRight: '1px solid black', padding: '4px 8px', display: 'flex', alignItems: 'flex-end', fontWeight: 'bold' }}>
           Name of Supervisor and Signature:
         </div>
-        <div style={{ width: '50%', padding: '4px 8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <span style={{ fontWeight: 'bold' }}>{supervisorName}</span>
+        <div style={{ width: '50%', padding: '4px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', background: 'transparent' }}>
+          <PortfolioSignature path={signaturePath || ''} printedName={supervisorName} maxHeight={36} maxWidth={160} />
         </div>
       </div>
     </div>
   );
 };
 
-export const PrintFO03 = ({ evalData, internship, tocId }) => {
+export const PrintFO03 = ({ evalData, internship, tocId, user, identity: identityProp }) => {
   const responses = evalData?.responses || {};
-  const identity = resolveFormIdentity(internship, { evalData });
+  const identity = resolveFormIdentity(internship, { evalData, user, identity: identityProp });
   const studentName = identityText(identity, 'studentName');
 
   return (
@@ -373,15 +412,15 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
           <span style={{ marginRight: '6px', width: '120px' }}>Signature:</span>
-          {evalData?.signature_url || evalData?.signature_path ? (
-            <div style={{ width: '220px', borderBottom: '1px solid #000', margin: '0 4px', paddingBottom: '2px' }}>
-              <img src={evalData.signature_url || `http://localhost:8000/storage/${evalData.signature_path}`} alt="Signature" style={{ height: '30px', display: 'block' }} />
+          {evalData?.signature_path ? (
+            <div style={{ width: '220px', borderBottom: '1px solid #000', margin: '0 4px', paddingBottom: '2px', background: 'transparent' }}>
+              <AuthenticatedFileImage path={evalData.signature_path} alt="" className="portfolio-signature-img" style={{ height: '30px', display: 'block', objectFit: 'contain', background: 'transparent' }} />
             </div>
           ) : <PrintLine text="" width="220px" />}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '10px' }}>
           <span style={{ marginRight: '6px', width: '120px' }}>Date:</span>
-          <PrintLine text={evalData?.signed_at ? new Date(evalData.signed_at).toLocaleDateString('en-PH') : ''} width="220px" />
+          <PrintLine text={evalData?.submitted_at ? submittedDateManila(evalData.submitted_at) : ''} width="220px" />
         </div>
         <div style={{ fontSize: '8pt', lineHeight: '1.2', textAlign: 'justify', paddingRight: '10px' }}>
           This report serves as valuable feedback for improving the collaboration between the school and the company, ensuring a more effective internship program for future students. Thank you.
@@ -395,9 +434,9 @@ export const PrintFO03 = ({ evalData, internship, tocId }) => {
   );
 };
 
-export const PrintFO22 = ({ evalData, internship, tocId }) => {
+export const PrintFO22 = ({ evalData, internship, tocId, user, identity: identityProp }) => {
   const responses = evalData?.responses || {};
-  const identity = resolveFormIdentity(internship, { evalData });
+  const identity = resolveFormIdentity(internship, { evalData, user, identity: identityProp });
   const studentName = identityText(identity, 'studentName');
   const program = identityText(identity, 'program');
   const semStr = identityText(identity, 'semester');
@@ -493,7 +532,7 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
             <td style={{ border: '1px solid black', padding: '3px 6px', width: '15%' }}>Rating:</td>
             <td style={{ border: '1px solid black', padding: '3px 6px', width: '35%', textAlign: 'center', fontWeight: 'bold' }}>{evalData?.average_score || ''}</td>
             <td style={{ border: '1px solid black', padding: '3px 6px', width: '15%' }}>Interpretation:</td>
-            <td style={{ border: '1px solid black', padding: '3px 6px', width: '35%', textAlign: 'center' }}></td>
+            <td style={{ border: '1px solid black', padding: '3px 6px', width: '35%', textAlign: 'center' }}>{responses.interpretation || fo22Interpretation(evalData?.average_score)}</td>
           </tr>
           <tr>
             <td colSpan="4" style={{ border: '1px solid black', padding: '3px 6px' }}>
@@ -557,9 +596,9 @@ export const PrintFO22 = ({ evalData, internship, tocId }) => {
   );
 };
 
-export const PrintFO23 = ({ evalData, internship, tocId }) => {
+export const PrintFO23 = ({ evalData, internship, tocId, user, identity: identityProp }) => {
   const responses = evalData?.responses || {};
-  const identity = resolveFormIdentity(internship, { evalData });
+  const identity = resolveFormIdentity(internship, { evalData, user, identity: identityProp });
   const studentName = identityText(identity, 'studentName');
   const program = identityText(identity, 'program');
   const semStr = identityText(identity, 'semester');
@@ -674,7 +713,10 @@ export const PrintFO23 = ({ evalData, internship, tocId }) => {
   );
 };
 
-export const PrintFacultyEval = ({ evalData, internship, tocId }) => {
+export const PrintFacultyEval = ({ evalData, internship, tocId, user, identity: identityProp }) => {
+  const identity = resolveFormIdentity(internship, { evalData, user, identity: identityProp });
+  const studentName = identityText(identity, 'studentName');
+  const signaturePath = evalData?.id ? (evalData.signature_path || identity.facultySignaturePath) : '';
   return (
     <div data-toc-id={tocId} className="a4-page portfolio-document position-relative" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ textAlign: 'center', marginBottom: '15px' }}>
@@ -682,7 +724,7 @@ export const PrintFacultyEval = ({ evalData, internship, tocId }) => {
         <p style={{ margin: 0, color: '#666', fontSize: '10.5pt' }}>Performance Evaluation</p>
       </div>
       <div style={{ marginBottom: '15px', fontSize: '10.5pt' }}>
-        <strong>Student:</strong> {(internship?.student?.student_profile || internship?.student?.studentProfile)?.first_name} {(internship?.student?.student_profile || internship?.student?.studentProfile)?.last_name}
+        <strong>Student:</strong> {studentName}
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', fontSize: '9.5pt' }}>
         <thead>
@@ -694,24 +736,26 @@ export const PrintFacultyEval = ({ evalData, internship, tocId }) => {
         <tbody>
           <tr>
             <td style={{ border: '1px solid #ccc', padding: '6px' }}>Overall Performance</td>
-            <td style={{ border: '1px solid #ccc', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{evalData?.average_score}</td>
+            <td style={{ border: '1px solid #ccc', padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{evalData?.average_score ?? ''}</td>
           </tr>
         </tbody>
       </table>
       <div style={{ marginBottom: '30px', fontSize: '9.5pt' }}>
         <strong>General Comments:</strong>
-        <p style={{ borderBottom: '1px solid #ccc', minHeight: '50px', marginTop: '6px' }}>{evalData?.general_comments || 'None'}</p>
+        <p style={{ borderBottom: '1px solid #ccc', minHeight: '50px', marginTop: '6px' }}>{evalData?.general_comments || ''}</p>
       </div>
-      {evalData?.signature_path && (
-        <div style={{ marginTop: 'auto', width: '220px', marginBottom: '15px' }}>
-          <div style={{ borderBottom: '1px solid #000', textAlign: 'center', paddingBottom: '4px' }}>
-            <img src={`http://localhost:8000/storage/${evalData.signature_path}`} alt="Signature" style={{ height: '45px' }} />
+      <div style={{ marginTop: 'auto', width: '220px', marginBottom: '15px' }}>
+        {signaturePath ? (
+          <div style={{ borderBottom: '1px solid #000', textAlign: 'center', paddingBottom: '4px', background: 'transparent' }}>
+            <PortfolioSignature path={signaturePath} printedName="" maxHeight={42} maxWidth={180} />
           </div>
-          <div style={{ textAlign: 'center', paddingTop: '4px', fontSize: '9pt' }}>
-            <strong>{evalData.signer_name}</strong><br />Evaluating Faculty
-          </div>
+        ) : (
+          <div style={{ borderBottom: '1px solid #000', minHeight: '40px' }} />
+        )}
+        <div style={{ textAlign: 'center', paddingTop: '4px', fontSize: '9pt' }}>
+          <strong>{evalData?.signer_name || identityValue(identity, 'facultyName')}</strong><br />Evaluating Faculty
         </div>
-      )}
+      </div>
     </div>
   );
 };

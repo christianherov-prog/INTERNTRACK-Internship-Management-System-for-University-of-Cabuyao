@@ -114,7 +114,7 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
               <input type="radio" className="form-check-input" name="recommend_host" value="no" onChange={(e) => handleRatingChange('recommend', e.target.value)} />
               <label className="form-check-label">No</label>
             </div>
-            <input type="text" className="form-control flex-grow-1" placeholder="Why?" value={responses['recommend_reason'] || ''} onChange={(e) => handleTextChange('recommend_reason', e.target.value)} />
+            <input type="text" className="form-control flex-grow-1" placeholder="Reason" value={responses['recommend_reason'] || ''} onChange={(e) => handleTextChange('recommend_reason', e.target.value)} />
           </div>
         </div>
 

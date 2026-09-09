@@ -4,6 +4,8 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useConfirm } from '../../contexts/ConfirmContext'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 /**
  * Shared staff roster for Directors and Coordinators.
@@ -19,8 +21,8 @@ function MisdStaffPage({ role }) {
     ? 'Assign and manage PALD Directors'
     : 'Assign and manage Practicum Coordinators'
 
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage(`admin:staff:${role}`)
+  const [rows, setRows] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -39,12 +41,10 @@ function MisdStaffPage({ role }) {
   })
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get(listPath)
-      .then((res) => setRows(unwrapList(res.data).items))
+    run(() => api.get(listPath).then((res) => unwrapList(res.data).items))
+      .then((next) => { if (next) setRows(next) })
       .catch((err) => setError(err.response?.data?.message || `Failed to load ${title.toLowerCase()}.`))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [listPath])
@@ -192,7 +192,7 @@ function MisdStaffPage({ role }) {
                     className="form-control rounded-start-3"
                     value={form.faculty_number}
                     onChange={(e) => setForm((p) => ({ ...p, faculty_number: e.target.value }))}
-                    placeholder={isDirector ? 'DIR-1002' : 'COR-1002'}
+                    placeholder="Employee ID"
                     required
                   />
                   <button type="button" className="btn btn-outline-success fw-semibold rounded-end-3" onClick={lookupMisd} disabled={previewLoading}>
@@ -265,7 +265,7 @@ function MisdStaffPage({ role }) {
         </div>
         <div className="table-responsive">
           {loading ? (
-            <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-5"><InternTrackLoader /></div>
           ) : (
             <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem' }}>
               <thead style={{ background: '#f8fafc', borderBottom: '1px solid #eef2f6' }}>

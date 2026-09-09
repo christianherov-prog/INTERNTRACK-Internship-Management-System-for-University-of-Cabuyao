@@ -9,25 +9,68 @@ import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import { resolveTargetHours } from '../../config/hours'
 import { formatYearSection } from '../../utils/formatSection'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import { unwrapList } from '../../utils/apiList'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function StudentDashboard() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('student:dashboard')
+  const [data, setData] = useState(seed ?? null)
   const [error, setError] = useState(null)
   const [certData, setCertData] = useState(null)
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/student/dashboard')
-      .then(res => setData(res.data))
+    run(() => api.get('/student/dashboard').then(res => res.data))
+      .then((next) => {
+        if (next) {
+          setData(next)
+          prefetchPage('student:companies', async () => {
+            const [compRes, appRes, hteRes] = await Promise.all([
+              api.get('/student/companies'),
+              api.get('/student/applications'),
+              api.get('/student/hte-requests'),
+            ])
+            return {
+              companies: compRes.data.companies || [],
+              applications: appRes.data.applications || [],
+              hteRequests: hteRes.data.requests || [],
+            }
+          })
+          prefetchPage('student:documents', async () => {
+            const res = await api.get('/student/documents')
+            return unwrapList(res.data).items
+          })
+          prefetchPage('student:attendance-hub', () =>
+            api.get('/student/supervisor-invite/status').then(res => res.data)
+          )
+          prefetchPage('student:attendance', async () => {
+            const status = await api.get('/student/supervisor-invite/status')
+              .then(res => res.data)
+              .catch(() => null)
+            if (!(status?.state === 'assigned' || status?.has_supervisor)) {
+              return null
+            }
+            const [attRes, corrRes] = await Promise.all([
+              api.get('/student/attendance'),
+              api.get('/student/attendance/corrections').catch(() => ({ data: { data: [] } })),
+            ])
+            return {
+              data: attRes.data,
+              corrections: unwrapList(corrRes.data).items,
+            }
+          })
+          prefetchPage('student:logbook', () =>
+            api.get('/student/logbook').then(res => unwrapList(res.data).items)
+          )
+        }
+      })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load dashboard.')
-        setData(null)
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -67,13 +110,13 @@ function StudentDashboard() {
     return () => chartInstance.current?.destroy()
   }, [data])
 
-  if (loading) return (
+  if (loading && !data) return (
     <Layout title="Dashboard" subtitle="Loading…" icon="fa-gauge-high" bodyClass="student-page">
-      <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+      <div className="text-center py-5"><InternTrackLoader /></div>
     </Layout>
   )
 
-  if (error) return (
+  if (error && !data) return (
     <Layout title="Dashboard" subtitle="Student" icon="fa-gauge-high" bodyClass="student-page">
       <PageError message={error} onRetry={load} />
     </Layout>

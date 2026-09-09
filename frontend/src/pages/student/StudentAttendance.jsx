@@ -6,6 +6,11 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useConfirm } from '../../contexts/ConfirmContext'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { cacheDelete, invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
+import ConfirmModal from '../../components/modals/ConfirmModal'
+import { formatManilaTime } from '../../utils/manilaTime'
 
 function fmtTime(t) {
   if (!t) return '—'
@@ -28,9 +33,9 @@ function overtimeLabel(status) {
 function StudentAttendance({ embedded = false }) {
   const currentTerm = useCurrentTerm()
   const confirm = useConfirm()
-  const [data, setData] = useState(null)
-  const [corrections, setCorrections] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('student:attendance')
+  const [data, setData] = useState(() => seed?.data ?? null)
+  const [corrections, setCorrections] = useState(() => seed?.corrections ?? [])
   const [error, setError] = useState(null)
   const [clocking, setClocking] = useState(false)
   const [message, setMessage] = useState(null)
@@ -40,23 +45,30 @@ function StudentAttendance({ embedded = false }) {
   const [correctionForm, setCorrectionForm] = useState(null)
   const [savingCorrection, setSavingCorrection] = useState(false)
   const [nowTick, setNowTick] = useState(Date.now())
+  const [clockOutOpen, setClockOutOpen] = useState(false)
+  const [clockOutError, setClockOutError] = useState(null)
 
   const fetchAttendance = () => {
-    setLoading(true)
     setError(null)
-    Promise.all([
-      api.get('/student/attendance'),
-      api.get('/student/attendance/corrections').catch(() => ({ data: { data: [] } })),
-    ])
-      .then(([attRes, corrRes]) => {
-        setData(attRes.data)
-        setCorrections(unwrapList(corrRes.data).items)
+    run(async () => {
+      const [attRes, corrRes] = await Promise.all([
+        api.get('/student/attendance'),
+        api.get('/student/attendance/corrections').catch(() => ({ data: { data: [] } })),
+      ])
+      return {
+        data: attRes.data,
+        corrections: unwrapList(corrRes.data).items,
+      }
+    })
+      .then((next) => {
+        if (next) {
+          setData(next.data)
+          setCorrections(next.corrections)
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load attendance.')
-        setData(null)
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchAttendance() }, [])
@@ -66,6 +78,12 @@ function StudentAttendance({ embedded = false }) {
     const id = window.setInterval(() => setNowTick(Date.now()), 15000)
     return () => window.clearInterval(id)
   }, [data?.can_undo_clock_out, data?.undo_expires_at])
+
+  useEffect(() => {
+    if (!clockOutOpen) return undefined
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [clockOutOpen])
 
   const submitOvertimeDecision = async (logId, accept) => {
     try {
@@ -79,6 +97,7 @@ function StudentAttendance({ embedded = false }) {
           ? 'Overtime submitted for supervisor approval.'
           : 'Excess time discarded. It was not added to your DTR.',
       })
+      invalidateStudentPortfolio()
       fetchAttendance()
     } catch (e) {
       setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Could not save overtime decision.' })
@@ -91,6 +110,7 @@ function StudentAttendance({ embedded = false }) {
     try {
       await api.post('/student/attendance/clock-in')
       setMessage({ type: 'success', text: 'Clocked in successfully!' })
+      invalidateStudentPortfolio()
       fetchAttendance()
     } catch (e) {
       setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Clock-in failed.' })
@@ -100,19 +120,26 @@ function StudentAttendance({ embedded = false }) {
   }
 
   const handleClockOut = async () => {
-    const ok = await confirm({
-      title: 'Clock out?',
-      message: 'Are you sure you want to clock out?',
-      confirmLabel: 'Clock Out',
-      cancelLabel: 'Cancel',
-      variant: 'danger',
-    })
-    if (!ok) return
+    if (clocking) return
+    setClockOutOpen(true)
+    setClockOutError(null)
+  }
 
+  const cancelClockOut = () => {
+    if (clocking) return
+    setClockOutOpen(false)
+    setClockOutError(null)
+  }
+
+  const confirmClockOut = async () => {
+    if (clocking) return
     setClocking(true)
+    setClockOutError(null)
     setMessage(null)
     try {
       const res = await api.post('/student/attendance/clock-out')
+      setClockOutOpen(false)
+      invalidateStudentPortfolio()
       setMessage({ type: 'success', text: 'Clocked out successfully!' })
       if (res.data?.overtime_detected) {
         const yes = await confirm({
@@ -135,6 +162,7 @@ function StudentAttendance({ embedded = false }) {
       }
       fetchAttendance()
     } catch (e) {
+      setClockOutError(e.response?.data?.message ?? 'Clock-out failed.')
       setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Clock-out failed.' })
     } finally {
       setClocking(false)
@@ -146,6 +174,7 @@ function StudentAttendance({ embedded = false }) {
     setMessage(null)
     try {
       await api.post('/student/attendance/undo-clock-out')
+      invalidateStudentPortfolio()
       setMessage({ type: 'success', text: 'Clock-out undone. You are clocked in again.' })
       fetchAttendance()
     } catch (e) {
@@ -157,14 +186,27 @@ function StudentAttendance({ embedded = false }) {
 
   const handleProposeSchedule = async (e) => {
     e.preventDefault()
+    if (savingSchedule || data?.pending_schedule) return
+    if (!startTime || !endTime) {
+      setMessage({ type: 'danger', text: 'Start and end times are required.' })
+      return
+    }
+    if (endTime <= startTime) {
+      setMessage({ type: 'danger', text: 'End time must be later than start time.' })
+      return
+    }
     setSavingSchedule(true)
     setMessage(null)
     try {
       await api.post('/student/attendance/schedules', { start_time: startTime, end_time: endTime })
       setMessage({ type: 'success', text: 'Schedule proposal submitted for supervisor approval.' })
+      cacheDelete('student:attendance')
       fetchAttendance()
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Could not submit schedule.' })
+      const field = err.response?.data?.errors?.end_time?.[0]
+        || err.response?.data?.errors?.start_time?.[0]
+        || err.response?.data?.errors?.schedule?.[0]
+      setMessage({ type: 'danger', text: field || err.response?.data?.message || 'Could not submit schedule.' })
     } finally {
       setSavingSchedule(false)
     }
@@ -246,18 +288,35 @@ function StudentAttendance({ embedded = false }) {
             </div>
           )}
           {!data?.pending_schedule && (
-            <form className="row g-2 align-items-end" onSubmit={handleProposeSchedule}>
-              <div className="col-auto">
-                <label className="form-label mb-1" style={{ fontSize: '0.8rem' }}>Start</label>
-                <input type="time" className="form-control form-control-sm" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+            <form className="wh-schedule-row" onSubmit={handleProposeSchedule}>
+              <div className="wh-schedule-field">
+                <label className="form-label mb-1" htmlFor="wh-start" style={{ fontSize: '0.8rem' }}>Start</label>
+                <input
+                  id="wh-start"
+                  type="time"
+                  className="form-control form-control-sm"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  required
+                  disabled={savingSchedule}
+                />
               </div>
-              <div className="col-auto">
-                <label className="form-label mb-1" style={{ fontSize: '0.8rem' }}>End</label>
-                <input type="time" className="form-control form-control-sm" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+              <div className="wh-schedule-field">
+                <label className="form-label mb-1" htmlFor="wh-end" style={{ fontSize: '0.8rem' }}>End</label>
+                <input
+                  id="wh-end"
+                  type="time"
+                  className="form-control form-control-sm"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  required
+                  disabled={savingSchedule}
+                />
               </div>
-              <div className="col-auto">
-                <button type="submit" className="btn btn-sm btn-primary" disabled={savingSchedule}>
-                  {savingSchedule ? 'Submitting…' : (data?.active_schedule ? 'Propose new schedule' : 'Submit proposal')}
+              <div className="wh-schedule-field wh-schedule-action">
+                <label className="form-label mb-1" style={{ fontSize: '0.8rem' }}>Action</label>
+                <button type="submit" className="btn btn-sm btn-primary wh-schedule-submit" disabled={savingSchedule}>
+                  {savingSchedule ? 'Submitting…' : (data?.active_schedule ? 'Propose new schedule' : 'Submit Proposal')}
                 </button>
               </div>
             </form>
@@ -281,7 +340,7 @@ function StudentAttendance({ embedded = false }) {
           <i className="fa fa-fingerprint"></i>
           <h6>Daily Time Record</h6>
           <span className="ms-auto" style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })}
           </span>
         </div>
         <div className="p-4 text-center">
@@ -294,7 +353,7 @@ function StudentAttendance({ embedded = false }) {
           )}
           {todayStatus === 'clocked_in' && (
             <button type="button" className="btn btn-danger px-5 py-2" onClick={handleClockOut} disabled={clocking}>
-              <i className="fa fa-stop-circle me-2"></i>{clocking ? 'Processing…' : 'Clock Out'}
+              <i className="fa fa-stop-circle me-2"></i>{clocking && clockOutOpen ? 'Clocking Out...' : 'Clock Out'}
             </button>
           )}
           {todayStatus === 'clocked_out' && (
@@ -333,8 +392,8 @@ function StudentAttendance({ embedded = false }) {
           </button>
         </div>
         <div className="table-card">
-          {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+          {loading && !data ? (
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : logs.length === 0 && !error ? (
             <EmptyState icon="fa-clock" title="No attendance yet" message="Use Clock In when you start your shift." />
           ) : logs.length === 0 ? null : (
@@ -355,7 +414,7 @@ function StudentAttendance({ embedded = false }) {
                 <tbody>
                   {logs.map((log) => (
                     <tr key={log.id}>
-                      <td>{new Date(log.date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                      <td>{new Date(`${log.date_display || String(log.date).slice(0, 10)}T00:00:00+08:00`).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })}</td>
                       {showPlacementColumn && (
                         <td>
                           <span className="badge bg-light text-dark border" style={{ fontSize: '0.75rem' }}>
@@ -363,8 +422,8 @@ function StudentAttendance({ embedded = false }) {
                           </span>
                         </td>
                       )}
-                      <td>{fmtTime(log.clock_in)}</td>
-                      <td>{log.clock_out ? fmtTime(log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
+                      <td>{fmtTime(log.clock_in_display || log.clock_in)}</td>
+                      <td>{(log.clock_out_display || log.clock_out) ? fmtTime(log.clock_out_display || log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
                       <td>{fmtHours(log.scheduled_hours)}</td>
                       <td>{fmtHours(log.actual_hours ?? log.hours_rendered)}</td>
                       <td>{overtimeLabel(log.overtime_status)}{log.correction_status_label ? <div className="text-muted" style={{ fontSize: '0.75rem' }}>{log.correction_status_label}</div> : null}</td>
@@ -444,6 +503,56 @@ function StudentAttendance({ embedded = false }) {
           </div>
         </div>
       )}
+      <style>{`
+        .wh-schedule-row {
+          display: grid;
+          grid-template-columns: minmax(8.5rem, 1fr) minmax(8.5rem, 1fr) auto;
+          gap: 0.75rem 1rem;
+          align-items: end;
+          max-width: 36rem;
+        }
+        .wh-schedule-field {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .wh-schedule-action {
+          min-width: 10.5rem;
+        }
+        .wh-schedule-submit {
+          white-space: nowrap;
+          height: calc(1.5em + 0.5rem + 2px);
+        }
+        @media (max-width: 576px) {
+          .wh-schedule-row {
+            grid-template-columns: 1fr;
+            max-width: none;
+          }
+          .wh-schedule-action,
+          .wh-schedule-submit {
+            width: 100%;
+          }
+        }
+      `}</style>
+      <ConfirmModal
+        open={clockOutOpen}
+        title="Clock Out?"
+        message="Are you sure you want to end your attendance session?"
+        confirmLabel="Clock Out"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={clocking}
+        loadingLabel="Clocking Out..."
+        error={clockOutError}
+        onCancel={cancelClockOut}
+        onConfirm={confirmClockOut}
+      >
+        <div className="text-center">
+          <div className="text-muted" style={{ fontSize: '0.82rem' }}>Current Time</div>
+          <div className="fw-semibold" style={{ fontSize: '1.15rem' }}>{formatManilaTime(nowTick)}</div>
+          <div className="text-muted" style={{ fontSize: '0.75rem' }}>Asia/Manila</div>
+        </div>
+      </ConfirmModal>
     </Wrapper>
   )
 }

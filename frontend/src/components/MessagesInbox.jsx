@@ -13,6 +13,8 @@ import ConfirmModal from './modals/ConfirmModal'
 import api from '../services/api'
 import { unwrapList } from '../utils/apiList'
 import { useAuth } from '../contexts/AuthContext'
+import { cacheGet, cacheSet } from '../utils/pageCache'
+import { getAvatarSrc } from '../utils/avatar'
 import '../styles/messages.css'
 
 function roleLabel(role) {
@@ -31,6 +33,9 @@ const ATTACH_MAX_BYTES = 10 * 1024 * 1024
 const ATTACH_EXT_OK = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx'])
 const POLL_MS = 12000
 const LAST_THREAD_KEY = (userId) => `interntrack_msg_last_${userId || 'anon'}`
+const listCacheKey = (archivedFlag) => `messages:threads:${archivedFlag ? 'archived' : 'active'}`
+const threadCacheKey = (internshipId, peerId) => `messages:thread:${internshipId}:${peerId}`
+const MANILA_TZ = 'Asia/Manila'
 
 function fileExt(name) {
   const parts = String(name || '').toLowerCase().split('.')
@@ -81,14 +86,31 @@ function conversationPreview(thread) {
   return 'No messages yet'
 }
 
+function formatManilaDateTime(iso) {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: MANILA_TZ,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date)
+}
+
 function timeAgo(iso) {
   if (!iso) return ''
-  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  const then = new Date(iso)
+  if (Number.isNaN(then.getTime())) return ''
+  const diff = Math.floor((Date.now() - then.getTime()) / 1000)
   if (diff < 0) return 'just now'
   if (diff < 60) return `${diff}s ago`
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
+  return formatManilaDateTime(iso)
 }
 
 function initials(name) {
@@ -112,7 +134,7 @@ function sameThread(a, b) {
 function PeerAvatar({ peer, className = 'msg-conv-avatar', size = 40 }) {
   const [broken, setBroken] = useState(false)
   const label = peer?.avatar || initials(peer?.name)
-  const src = peer?.avatarUrl && !broken ? peer.avatarUrl : null
+  const src = !broken ? getAvatarSrc(peer) : null
 
   useEffect(() => {
     setBroken(false)
@@ -565,7 +587,8 @@ const MessageComposer = memo(function MessageComposer({
           id="message-composer"
           className="msg-composer-input form-control"
           rows={1}
-          placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+          placeholder="Message"
+          title="Enter to send, Shift+Enter for new line"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onComposerKeyDown}
@@ -606,7 +629,7 @@ const ConversationList = memo(function ConversationList({
   onToggleArchive,
   onLoadMore,
 }) {
-  if (listLoading) return <ListSkeleton />
+  if (listLoading && threads.length === 0) return <ListSkeleton />
   if (threads.length === 0) {
     return (
       <div className="msg-empty">
@@ -690,10 +713,10 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [archived, setArchived] = useState(false)
-  const [threads, setThreads] = useState([])
-  const [listMeta, setListMeta] = useState(null)
-  const [listPage, setListPage] = useState(1)
-  const [listLoading, setListLoading] = useState(true)
+  const [threads, setThreads] = useState(() => cacheGet(listCacheKey(false))?.threads ?? [])
+  const [listMeta, setListMeta] = useState(() => cacheGet(listCacheKey(false))?.meta ?? null)
+  const [listPage, setListPage] = useState(() => cacheGet(listCacheKey(false))?.page ?? 1)
+  const [listLoading, setListLoading] = useState(() => !cacheGet(listCacheKey(false)))
   const [listRefreshing, setListRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [active, setActive] = useState(null)
@@ -792,11 +815,20 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     stickToBottomRef.current = isNearBottom()
   }
 
+  const persistThreadCache = useCallback((internshipId, peerId, nextMessages, meta) => {
+    cacheSet(threadCacheKey(internshipId, peerId), {
+      messages: nextMessages,
+      meta: meta
+        ? { ...meta, messages: undefined }
+        : undefined,
+    })
+  }, [])
+
   const loadThreads = useCallback((page = 1, { append = false, silent = false, tab = null } = {}) => {
     const forArchived = tab == null ? archivedRef.current : Boolean(tab)
     if (!silent && !append) setListLoading(true)
     if (silent) setListRefreshing(true)
-    setError(null)
+    if (!silent) setError(null)
 
     if (listAbortRef.current && !append && !silent) {
       listAbortRef.current.abort()
@@ -814,8 +846,11 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         setThreads((prev) => (append ? [...prev, ...items] : items))
         setListMeta(meta)
         setListPage(page)
+        setError(null)
         if (!append) {
-          listCacheRef.current[forArchived] = { threads: items, meta, page }
+          const packed = { threads: items, meta, page }
+          listCacheRef.current[forArchived] = packed
+          cacheSet(listCacheKey(forArchived), packed)
         }
         return { items, meta }
       })
@@ -823,7 +858,6 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return null
         if (forArchived !== archivedRef.current) return null
         setError(err.response?.data?.message || 'Failed to load conversations.')
-        if (!append) setThreads([])
         return null
       })
       .finally(() => {
@@ -836,7 +870,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
   // Initial load + tab changes (with cache for instant Active/Archived switch)
   useEffect(() => {
-    const cached = listCacheRef.current[archived]
+    const cached = listCacheRef.current[archived] || cacheGet(listCacheKey(archived))
     if (cached?.threads) {
       setThreads(cached.threads)
       setListMeta(cached.meta)
@@ -844,10 +878,9 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
       setListLoading(false)
       loadThreads(1, { silent: true, tab: archived })
     } else {
-      setThreads([])
       setListMeta(null)
       setListPage(1)
-      loadThreads(1, { silent: false, tab: archived })
+      loadThreads(1, { silent: threads.length > 0, tab: archived })
     }
     // Keep open thread visible across tab switches (no blank flash).
   }, [archived, loadThreads])
@@ -858,26 +891,39 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     if (!cur || cur.internship_id !== internshipId || cur.peer?.id !== peerId) return false
 
     const chunk = data.messages || []
-    setThreadMeta(data)
+    const nextMeta = { ...data, messages: undefined }
+    setThreadMeta(nextMeta)
     if (data.peer) {
       setActive((prev) => (
         prev
         && prev.internship_id === internshipId
         && prev.peer?.id === peerId
-          ? { ...prev, peer: { ...prev.peer, ...data.peer } }
+          ? {
+              ...prev,
+              peer: { ...prev.peer, ...data.peer },
+              student_name: data.internship?.student_name || prev.student_name,
+              internship_term: data.internship?.term || prev.internship_term,
+              internship_status: data.internship?.status || prev.internship_status,
+            }
           : prev
       ))
     }
     setThreadPage(page)
     setMessages((prev) => {
-      if (prepend) return [...chunk, ...prev]
-      const locals = prev.filter((m) => m._pending || m._failed)
-      const ids = new Set(chunk.map((m) => m.id))
-      const keepLocals = locals.filter((m) => !ids.has(m.id) && !ids.has(m._serverId))
-      return [...chunk, ...keepLocals]
+      let next
+      if (prepend) {
+        next = [...chunk, ...prev]
+      } else {
+        const locals = prev.filter((m) => m._pending || m._failed)
+        const ids = new Set(chunk.map((m) => m.id))
+        const keepLocals = locals.filter((m) => !ids.has(m.id) && !ids.has(m._serverId))
+        next = [...chunk, ...keepLocals]
+      }
+      persistThreadCache(internshipId, peerId, next, nextMeta)
+      return next
     })
     return true
-  }, [])
+  }, [persistThreadCache])
 
   const fetchThreadPage = useCallback(async (internshipId, peerId, page, {
     prepend = false,
@@ -907,10 +953,9 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           reqId,
         })
         if (stickToBottomRef.current) scrollToBottom('smooth')
-        loadThreads(1, { silent: true })
       } catch (err) {
         if (err?.code !== 'ERR_CANCELED' && err?.name !== 'CanceledError') {
-          /* soft refresh — ignore other errors */
+          /* soft refresh — keep visible thread */
         }
       }
       return
@@ -927,12 +972,25 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     }
     setActive(nextActive)
     activeRef.current = nextActive
-    setMessages([])
-    setThreadMeta(null)
-    setThreadPage(1)
-    setThreadLoading(true)
     setSendError(null)
-    stickToBottomRef.current = true
+
+    const key = threadKey(thread.internship_id, thread.peer.id)
+    const cached = cacheGet(threadCacheKey(thread.internship_id, thread.peer.id))
+    const hadCache = Array.isArray(cached?.messages)
+    if (hadCache) {
+      setMessages(cached.messages)
+      setThreadMeta(cached.meta ?? null)
+      setThreadPage(1)
+      setThreadLoading(false)
+      stickToBottomRef.current = true
+      restoreScroll(key, { preferBottom: !scrollPosRef.current.has(key) })
+    } else {
+      setMessages([])
+      setThreadMeta(null)
+      setThreadPage(1)
+      setThreadLoading(true)
+      stickToBottomRef.current = true
+    }
 
     const reqId = ++threadReqIdRef.current
     threadAbortRef.current?.abort()
@@ -946,7 +1004,6 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         reqId,
       })
       if (reqId !== threadReqIdRef.current) return
-      loadThreads(1, { silent: true })
       if (replaceUrl) {
         setSearchParams({
           internship_id: String(thread.internship_id),
@@ -954,13 +1011,12 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         }, { replace: true })
       }
       persistLastThread(thread, archivedRef.current)
-      const key = threadKey(thread.internship_id, thread.peer.id)
-      restoreScroll(key, { preferBottom: true })
+      restoreScroll(key, { preferBottom: stickToBottomRef.current || !scrollPosRef.current.has(key) })
     } catch (err) {
       if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return
       if (reqId !== threadReqIdRef.current) return
       setSendError(err.response?.data?.message || 'Failed to open conversation.')
-      setMessages([])
+      if (!hadCache) setMessages([])
     } finally {
       if (reqId === threadReqIdRef.current) {
         setThreadLoading(false)
@@ -968,7 +1024,6 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     }
   }, [
     fetchThreadPage,
-    loadThreads,
     persistLastThread,
     rememberScroll,
     restoreScroll,
@@ -1077,7 +1132,11 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
 
     setSendError(null)
     setSending(true)
-    setMessages((prev) => [...prev, optimistic])
+    setMessages((prev) => {
+      const next = [...prev, optimistic]
+      persistThreadCache(cur.internship_id, cur.peer.id, next)
+      return next
+    })
     stickToBottomRef.current = true
     scrollToBottom('smooth')
 
@@ -1101,7 +1160,11 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         return { ok: true }
       }
       const created = res.data.data
-      setMessages((prev) => prev.map((m) => (m.id === tempId ? created : m)))
+      setMessages((prev) => {
+        const next = prev.map((m) => (m.id === tempId ? created : m))
+        persistThreadCache(cur.internship_id, cur.peer.id, next)
+        return next
+      })
       loadThreads(1, { silent: true })
       if (stickToBottomRef.current) scrollToBottom('smooth')
       return { ok: true }
@@ -1112,9 +1175,13 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         || data?.errors?.body?.[0]
         || data?.message
       if (sameThread(activeRef.current, cur)) {
-        setMessages((prev) => prev.map((m) => (
-          m.id === tempId ? { ...m, _pending: false, _failed: true } : m
-        )))
+        setMessages((prev) => {
+          const next = prev.map((m) => (
+            m.id === tempId ? { ...m, _pending: false, _failed: true } : m
+          ))
+          persistThreadCache(cur.internship_id, cur.peer.id, next)
+          return next
+        })
       }
       let error = fieldMsg || 'Failed to send message.'
       if (status === 429) {
@@ -1127,7 +1194,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     } finally {
       setSending(false)
     }
-  }, [loadThreads, scrollToBottom, sending, user?.id])
+  }, [loadThreads, persistThreadCache, scrollToBottom, sending, user?.id])
 
   // Soft-poll active thread — never resets draft (composer is local) or scroll when reading history
   useEffect(() => {
@@ -1178,6 +1245,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
             return prev
           }
           changed = true
+          persistThreadCache(cur.internship_id, cur.peer.id, next, res.data)
           return next
         })
         setThreadMeta((prev) => (prev ? { ...prev, ...res.data, messages: undefined } : res.data))
@@ -1193,7 +1261,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
       cancelled = true
       window.clearInterval(id)
     }
-  }, [active?.internship_id, active?.peer?.id, loadThreads, scrollToBottom])
+  }, [active?.internship_id, active?.peer?.id, loadThreads, persistThreadCache, scrollToBottom])
 
   const toggleArchive = useCallback(async (thread, nextArchived) => {
     const key = threadKey(thread.internship_id, thread.peer.id)
@@ -1258,6 +1326,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     setClearError(null)
     try {
       await api.post(`/messages/conversations/${active.internship_id}/${active.peer.id}/clear`)
+      persistThreadCache(active.internship_id, active.peer.id, [])
       setMessages([])
       setThreadMeta((prev) => (prev ? { ...prev, messages: [] } : prev))
       setClearConfirmOpen(false)
@@ -1353,7 +1422,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
           >
             Archived
           </button>
-          {listRefreshing && (
+          {listRefreshing && threads.length === 0 && (
             <span className="msg-refresh-hint" aria-live="polite">
               <i className="fa fa-sync fa-spin" aria-hidden="true" /> Updating
             </span>
@@ -1447,7 +1516,9 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                 {(threadMeta?.internship || active?.student_name || active?.internship_term) && (
                   <div className="msg-thread-context">
                     {[
-                      active?.student_name ? `Re: ${active.student_name}` : null,
+                      (threadMeta?.internship?.student_name || active?.student_name)
+                        ? `Re: ${threadMeta?.internship?.student_name || active.student_name}`
+                        : null,
                       threadMeta?.internship?.term || active?.internship_term || null,
                       (threadMeta?.internship?.status || active?.internship_status)
                         ? String(threadMeta?.internship?.status || active.internship_status).replace(/_/g, ' ')
@@ -1456,7 +1527,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                   </div>
                 )}
 
-                {threadLoading ? (
+                {threadLoading && messages.length === 0 ? (
                   <ThreadSkeleton />
                 ) : (
                   <>

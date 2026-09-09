@@ -3,6 +3,9 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { AuthenticatedFileLink, AuthenticatedFilePreview } from '../../components/AuthenticatedFile'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { cacheDelete } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function studentLabel(inv) {
   const studentP = inv.student?.student_profile || inv.student?.studentProfile
@@ -15,9 +18,10 @@ function reviewerLabel(inv) {
 }
 
 function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-page' }) {
-  const [pending, setPending] = useState([])
-  const [history, setHistory] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `staff:supervisor-approvals:${apiBase}`
+  const { loading, seed, run } = useCachedPage(cacheKey)
+  const [pending, setPending] = useState(() => seed?.pending ?? [])
+  const [history, setHistory] = useState(() => seed?.history ?? [])
   const [loadError, setLoadError] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
   const [message, setMessage] = useState(null)
@@ -26,19 +30,22 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
   const [activeFormIndex, setActiveFormIndex] = useState(0)
 
   const fetchData = () => {
-    setLoading(true)
     setLoadError(null)
-    api.get(`${apiBase}/supervisor-approvals`)
-      .then(res => {
-        setPending(res.data.pending || [])
-        setHistory(res.data.history || [])
+    run(() => api.get(`${apiBase}/supervisor-approvals`).then(res => ({
+      pending: res.data.pending || [],
+      history: res.data.history || [],
+    })))
+      .then((next) => {
+        if (next) {
+          setPending(next.pending)
+          setHistory(next.history)
+        }
       })
       .catch((err) => {
         setLoadError(err.response?.data?.message || 'Failed to load supervisor approvals.')
         setPending([])
         setHistory([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [apiBase])
@@ -63,6 +70,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
       await api.patch(`${apiBase}/supervisor-approvals/${reviewTarget.id}/approve`, { remarks: remarks.trim() })
       setReviewTarget(null)
       setRemarks('')
+      cacheDelete(cacheKey)
       fetchData()
     } catch (err) {
       setMessage(err.response?.data?.message || 'Failed to approve.')
@@ -83,6 +91,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
       setReviewTarget(null)
       setRemarks('')
       setMessage(null)
+      cacheDelete(cacheKey)
       fetchData()
     } catch (err) {
       setMessage(err.response?.data?.message || 'Failed to reject.')
@@ -94,10 +103,10 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
   const forms = reviewTarget?.acceptance_forms || []
   const activeForm = forms[activeFormIndex] || null
 
-  if (loading) {
+  if (loading && !seed) {
     return (
       <Layout title="Supervisor Approvals" subtitle="Review Pending Registrations" icon="fa-user-check" bodyClass={bodyClass}>
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       </Layout>
     )
   }
@@ -248,7 +257,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                   rows={3}
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
-                  placeholder="Optional for approval. Required if you reject the registration."
+                  placeholder="Remarks"
                 />
               </div>
               <div className="modal-footer">

@@ -3,22 +3,30 @@ import { useAuth } from '../../contexts/AuthContext'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../InternTrackLoader'
 
 export default function FacultyStudentProgressPanel({ userId }) {
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const { loading, seed, run } = useCachedPage(`faculty:student-progress:${userId || 'none'}`)
+  const [data, setData]       = useState(() => seed ?? null)
   const [error, setError]     = useState(null)
   const [generating, setGenerating] = useState(null)
   const [previewModal, setPreviewModal] = useState(null)
 
-  const { user } = useAuth()
+  const load = () => {
+    if (!userId || !user) return
+    setError(null)
+    run(() => api.get(`/${user.role}/students/${userId}/progress`).then(res => res.data))
+      .then((next) => { if (next) setData(next) })
+      .catch((err) => {
+        setError(err.response?.data?.message || 'Failed to load student progress.')
+      })
+  }
 
   useEffect(() => {
-    if (!userId || !user) return
-    api.get(`/${user.role}/students/${userId}/progress`)
-      .then(res => setData(res.data))
-      .catch(err => setError(err.response?.data?.message || 'Failed to load student progress.'))
-      .finally(() => setLoading(false))
+    setData(seed ?? null)
+    load()
   }, [userId, user])
 
   const generateJournalPdf = async (weekNumber) => {
@@ -51,8 +59,9 @@ export default function FacultyStudentProgressPanel({ userId }) {
     return <span className={`badge-status ${map[status] ?? 'badge-pending'}`}>{(status || '—').replace(/_/g, ' ')}</span>
   }
 
-  if (loading) return <div className="p-4 text-center"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
-  if (error) return <div className="p-4"><PageError message={error} /></div>
+  if (error && !data) return <div className="p-4"><PageError message={error} /></div>
+  if (loading && !data) return <div className="p-4 text-center"><InternTrackLoader /></div>
+  if (!data) return null
 
   const { documents, journals } = data
 
@@ -81,6 +90,24 @@ export default function FacultyStudentProgressPanel({ userId }) {
         </div>
 
       </div>
+
+      {data.supervisor_feedback?.feedback && (
+        <div className="col-md-12">
+          <div className="content-card h-100 mb-0">
+            <div className="content-card-header">
+              <i className="fa fa-comment-dots"></i>
+              <h6 className="mb-0">Industry Supervisor Feedback</h6>
+            </div>
+            <div className="p-3">
+              <p className="mb-1" style={{ fontSize: '0.9rem' }}>{data.supervisor_feedback.feedback}</p>
+              <div className="small text-muted">
+                {data.supervisor_feedback.supervisor_reviewed_at_manila
+                  || data.supervisor_feedback.supervisor_reviewed_at}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FormPreviewModal
         isOpen={!!previewModal}

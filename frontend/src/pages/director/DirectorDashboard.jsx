@@ -7,6 +7,9 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { displayLabel } from '../../utils/displayLabel'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const MOA_COLORS = {
   active:      { bg: '#dcfce7', color: '#166534', label: 'Active' },
@@ -103,20 +106,25 @@ function CompetencyBars({ evalBreakdown }) {
 function DirectorDashboard() {
   const navigate = useNavigate()
   const currentTerm = useCurrentTerm()
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('director:dashboard')
+  const [data, setData]       = useState(seed ?? null)
   const [error, setError]     = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/director/dashboard')
-      .then(res => setData(res.data))
+    run(() => api.get('/director/dashboard').then(res => res.data))
+      .then((next) => {
+        if (next) {
+          setData(next)
+          prefetchPage('director:companies', () =>
+            api.get('/director/companies').then(res => res.data)
+          )
+        }
+      })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load dashboard analytics.')
         setData(null)
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -133,7 +141,7 @@ function DirectorDashboard() {
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : !error && (
         <>
           <div className="row g-3 mb-4">

@@ -1,6 +1,7 @@
 import React from 'react';
 import '../../assets/css/portfolio-print.css';
 import { AuthenticatedFileImage } from '../AuthenticatedFile';
+import PortfolioSignature from './PortfolioSignature';
 import { displayLabel } from '../../utils/displayLabel';
 
 export function PageHeader({ companyLogoPath }) {
@@ -144,14 +145,25 @@ const WeeklyInternshipJournal = ({
   insights = '',
   entries = [],
   nextPg = null,
-  companyLogoPath = '' 
+  companyLogoPath = '',
+  studentSignaturePath = '',
 }) => {
   const formatDate = (d) => {
     if (!d) return '';
     try {
+      const raw = String(d);
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+        const [y, m, day] = raw.slice(0, 10).split('-').map(Number);
+        return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'UTC',
+        });
+      }
       const parsed = new Date(d);
-      if (isNaN(parsed.getTime())) return d; // fallback if invalid date string
-      return parsed.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' });
+      if (isNaN(parsed.getTime())) return d;
+      return parsed.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' });
     } catch {
       return d;
     }
@@ -179,7 +191,7 @@ const WeeklyInternshipJournal = ({
   };
 
   return (
-    <div className="portfolio-document">
+    <div className="a4-page page-break portfolio-document" data-toc-id={weekNumber ? `week-${weekNumber}` : 'week-1'}>
       <div className="a4-page page-break position-relative" style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
         
         <div style={{ width: '100%' }}>
@@ -204,7 +216,7 @@ const WeeklyInternshipJournal = ({
               </div>
               <div style={styles.infoCellRight}>
                 <span style={styles.label}>PROGRAM:</span>
-                <span style={styles.infoValue}>{displayLabel(program, 'Not available')}</span>
+                <span style={styles.infoValue}>{displayLabel(program)}</span>
               </div>
             </div>
             <div style={{ ...styles.infoRowTop, borderBottom: 'none' }}>
@@ -243,7 +255,7 @@ const WeeklyInternshipJournal = ({
           <div style={styles.signatureBox}>
             <div style={styles.sigTop}>STUDENT-TRAINEE</div>
             <div style={styles.sigMiddle}>
-              {studentName}
+              <PortfolioSignature path={studentSignaturePath} printedName={studentName} maxHeight={40} maxWidth={180} />
             </div>
             <div style={styles.sigBottom}>(signature over printed name)</div>
           </div>
@@ -394,15 +406,17 @@ const styles = {
     fontSize: '10pt'
   },
   sigMiddle: {
-    height: '45px', 
+    minHeight: '58px',
     borderBottom: '1px solid #000',
     display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingBottom: '2px',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    padding: '4px 6px 2px',
     fontWeight: 'bold',
     fontSize: '10pt',
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
+    background: 'transparent'
   },
   sigBottom: {
     padding: '3px 0',

@@ -10,6 +10,8 @@ use App\Models\Notification;
 use App\Models\OvertimeEntry;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Support\DepartmentScope;
+use App\Support\ManilaTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +19,8 @@ use Illuminate\Validation\ValidationException;
 
 class DtrWorkflowService
 {
-    public const GRACE_MINUTES = 5;
+    public const GRACE_MINUTES = 5; // self-service undo window after clock-out; not a clock-in/out schedule gate
+
     public const CORRECTION_MAX_DAYS = 3;
 
     public function activeScheduleFor(Internship $internship, Carbon|string $date): ?WorkSchedule
@@ -64,9 +67,9 @@ class DtrWorkflowService
 
         $start = $this->normalizeTime($startTime);
         $end = $this->normalizeTime($endTime);
-        if ($start === $end) {
+        if ($end <= $start) {
             throw ValidationException::withMessages([
-                'end_time' => 'End time must be different from start time.',
+                'end_time' => 'End time must be later than start time.',
             ]);
         }
 
@@ -676,7 +679,7 @@ class DtrWorkflowService
     public function reviewCorrectionAsFaculty(AttendanceCorrectionRequest $request, User $faculty, string $action, ?string $remarks = null): AttendanceCorrectionRequest
     {
         $internship = $request->internship;
-        \App\Support\DepartmentScope::abortUnlessInternshipInDepartment($faculty, $internship);
+        DepartmentScope::abortUnlessInternshipInDepartment($faculty, $internship);
 
         if ((int) $internship->faculty_id !== (int) $faculty->id) {
             abort(403, 'You may only review corrections for your assigned students.');
@@ -864,6 +867,15 @@ class DtrWorkflowService
                 'start_time' => $this->timeString($schedule->start_time),
                 'end_time' => $this->timeString($schedule->end_time),
             ] : null);
+
+            $inAt = ManilaTime::fromStoredDateAndTime($log->date, $log->clock_in ?: $log->am_time_in);
+            $outAt = ManilaTime::fromStoredDateAndTime($log->date, $log->clock_out ?: $log->am_time_out);
+            $log->setAttribute('timezone', ManilaTime::TZ);
+            $log->setAttribute('date_display', $inAt?->toDateString()
+                ?: ManilaTime::manilaDateString($log->date)
+                ?: $date);
+            $log->setAttribute('clock_in_display', ManilaTime::clockHm($inAt));
+            $log->setAttribute('clock_out_display', ManilaTime::clockHm($outAt));
 
             return $log;
         });

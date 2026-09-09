@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import InternTrackLoader from './InternTrackLoader'
 
 const SETTINGS_PATH = {
   student: '/student/settings',
@@ -17,7 +18,7 @@ function ProtectedRoute({ children, role, allowedRoles }) {
   if (loading) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 text-muted">
-        <i className="fa fa-spinner fa-spin fa-2x mb-3" aria-hidden="true" />
+        <InternTrackLoader />
         <div className="small">Checking your session…</div>
       </div>
     )

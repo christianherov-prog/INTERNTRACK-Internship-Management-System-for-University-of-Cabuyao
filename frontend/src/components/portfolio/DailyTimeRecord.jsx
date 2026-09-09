@@ -2,6 +2,7 @@ import React from 'react';
 import '../../assets/css/portfolio-print.css';
 import { PageHeader as DefaultPageHeader } from './WeeklyInternshipJournal';
 import { AuthenticatedFileImage } from '../AuthenticatedFile';
+import PortfolioSignature from './PortfolioSignature';
 import { displayLabel } from '../../utils/displayLabel';
 
 export function PageHeader({ companyLogoPath }) {
@@ -142,78 +143,106 @@ const DailyTimeRecord = ({
   companyName = '',
   companyLogoPath = '',
   supervisorName = '',
+  studentSignaturePath = '',
+  supervisorSignaturePath = '',
   logs = [],
   month = '',
   nextPg = null
 }) => {
-  // Map logs by YYYY-MM-DD
   const logMap = {};
   (logs || []).forEach(log => {
     if (log.date) {
-      const dateStr = log.date.split('T')[0];
+      const dateStr = String(log.date).split('T')[0];
       logMap[dateStr] = log;
     }
   });
 
   const datesKeys = Object.keys(logMap).sort();
-  let minDate = new Date();
-  let maxDate = new Date();
+  const daysInRange = [];
+
+  const ymdFromUtc = (ms) => {
+    const x = new Date(ms);
+    return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}-${String(x.getUTCDate()).padStart(2, '0')}`;
+  };
+
+  const parseYmdUtc = (ymd) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
 
   if (datesKeys.length > 0) {
-    minDate = new Date(datesKeys[0]);
-    maxDate = new Date(datesKeys[datesKeys.length - 1]);
+    let cursor = parseYmdUtc(datesKeys[0]);
+    const end = parseYmdUtc(datesKeys[datesKeys.length - 1]);
+    while (cursor <= end) {
+      daysInRange.push(ymdFromUtc(cursor));
+      cursor += 24 * 60 * 60 * 1000;
+    }
   } else if (month) {
-    minDate = new Date(`${month}-01T00:00:00`);
-    maxDate = new Date(minDate.getFullYear(), minDate.getMonth() + 1, 0);
+    const [y, m] = month.split('-').map(Number);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    for (let d = 1; d <= last; d++) {
+      daysInRange.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+    }
   }
-
-  const daysInRange = [];
-  let currDate = new Date(minDate);
-  while (currDate <= maxDate) {
-    daysInRange.push(new Date(currDate));
-    currDate.setDate(currDate.getDate() + 1);
-  }
-
-  if (daysInRange.length === 0) {
-    daysInRange.push(new Date());
-  }
-
-
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
-    const [h, m] = timeStr.split(':');
+    const [h, m] = String(timeStr).split(':');
     let hr = parseInt(h, 10);
+    if (Number.isNaN(hr)) return '';
     const ampm = hr >= 12 ? 'PM' : 'AM';
     hr = hr % 12 || 12;
-    return `${hr}:${m} ${ampm}`;
+    return `${hr}:${(m || '00').slice(0, 2)} ${ampm}`;
   };
 
+  const formatDateLabel = (ymd) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const monthName = dt.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+    const weekday = dt.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC' });
+    return `${monthName} ${String(d).padStart(2, '0')}, ${weekday}`;
+  };
+
+  const weekdayUtc = (ymd) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  };
+
+  const anyValidated = (logs || []).some(log => log.validated || log.status === 'validated');
+  const verifiedSignaturePath = anyValidated ? supervisorSignaturePath : '';
+
+  const SignatureMark = ({ path, printedName }) => (
+    <PortfolioSignature path={path} printedName={printedName} maxHeight={40} maxWidth={160} />
+  );
+
   const MAX_ROWS = 16;
-  const numPages = Math.ceil(daysInRange.length / MAX_ROWS);
+  const numPages = Math.max(1, Math.ceil(daysInRange.length / MAX_ROWS));
   const pages = [];
 
   for (let p = 0; p < numPages; p++) {
     const pageRows = [];
     const pageDays = daysInRange.slice(p * MAX_ROWS, (p + 1) * MAX_ROWS);
 
-    pageDays.forEach(dateObj => {
-      const year = dateObj.getFullYear();
-      const monthIndex = dateObj.getMonth();
-      const d = dateObj.getDate();
-      const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    pageDays.forEach(dateStr => {
       const log = logMap[dateStr];
-      const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+      const isWeekend = weekdayUtc(dateStr) === 0 || weekdayUtc(dateStr) === 6;
+      const rowSig = (log?.validated && (log.hte_signature_path || supervisorSignaturePath))
+        ? (log.hte_signature_path || supervisorSignaturePath)
+        : '';
 
       pageRows.push(
         <tr key={dateStr} style={isWeekend ? { backgroundColor: '#f9f9f9' } : {}}>
-          <td style={styles.tdDTR}>{dateObj.toLocaleString('default', { month: 'short', day: '2-digit' })}, {dateObj.toLocaleString('default', { weekday: 'short' })}</td>
+          <td style={styles.tdDTR}>{formatDateLabel(dateStr)}</td>
           <td style={styles.tdDTR}>{log?.am_time_in ? formatTime(log.am_time_in) : (isWeekend ? '—' : '')}</td>
           <td style={styles.tdDTR}>{log?.am_time_out ? formatTime(log.am_time_out) : (isWeekend ? '—' : '')}</td>
           <td style={styles.tdDTR}>{log?.pm_time_in ? formatTime(log.pm_time_in) : (isWeekend ? '—' : '')}</td>
           <td style={styles.tdDTR}>{log?.pm_time_out ? formatTime(log.pm_time_out) : (isWeekend ? '—' : '')}</td>
-          <td style={styles.tdDTR}>{log?.hours_rendered ? parseFloat(log.hours_rendered).toFixed(2) : ''}</td>
-          <td style={styles.tdDTR}></td>
+          <td style={styles.tdDTR}>{log?.hours_rendered != null && log?.hours_rendered !== '' ? parseFloat(log.hours_rendered).toFixed(2) : ''}</td>
+          <td style={styles.tdDTR}>
+            {rowSig ? (
+              <AuthenticatedFileImage path={rowSig} alt="" className="portfolio-signature-img" style={{ height: '18px', maxWidth: '70px', objectFit: 'contain', background: 'transparent' }} />
+            ) : ''}
+          </td>
         </tr>
       );
     });
@@ -273,13 +302,17 @@ const DailyTimeRecord = ({
           <div style={styles.signatureContainer}>
             <div style={styles.signatureBox}>
               <div style={styles.sigHeader}>Prepared by:</div>
-              <div style={styles.sigMiddle}>{studentName}</div>
+              <div style={styles.sigMiddle}>
+                <SignatureMark path={studentSignaturePath} printedName={studentName} />
+              </div>
               <div style={styles.sigBottom}>Signature over printed name of Student Intern</div>
             </div>
 
             <div style={styles.signatureBox}>
               <div style={styles.sigHeader}>Verified by:</div>
-              <div style={styles.sigMiddle}>{supervisorName}</div>
+              <div style={styles.sigMiddle}>
+                <SignatureMark path={verifiedSignaturePath} printedName={supervisorName} />
+              </div>
               <div style={styles.sigBottom}>Signature over printed name</div>
               <div style={styles.sigRole}>HTE IN-CHARGE/HEAD/SUPERVISOR</div>
             </div>
@@ -435,11 +468,12 @@ const styles = {
   },
   sigMiddle: {
     borderBottom: '1px solid #000',
-    paddingBottom: '2px',
+    padding: '4px 6px 2px',
     fontWeight: 'bold',
     fontSize: '10pt',
     textTransform: 'uppercase',
-    minHeight: '20px'
+    minHeight: '58px',
+    background: 'transparent'
   },
   sigBottom: {
     fontSize: '9pt',

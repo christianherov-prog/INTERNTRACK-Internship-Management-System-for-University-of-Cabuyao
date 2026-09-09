@@ -499,7 +499,7 @@ class ConcurrencyIntegrityTest extends TestCase
         $this->assertTrue($hours === null || (float) $hours >= 0);
     }
 
-    public function test_ten_supervisors_review_assigned_journals_only(): void
+    public function test_ten_supervisors_cannot_review_journals_faculty_can(): void
     {
         $party = $this->party();
         foreach ($party as $i => $row) {
@@ -509,33 +509,34 @@ class ConcurrencyIntegrityTest extends TestCase
                 'entry_number' => 8,
                 'date' => '2026-09-01',
                 'end_date' => '2026-09-05',
-                'activities_summary' => 'Supervisor review '.$i,
+                'activities_summary' => 'Faculty review '.$i,
                 'status' => 'submitted',
             ]);
         }
 
-        $results = $this->parallelRequests(array_map(fn ($row) => [
+        $blocked = $this->parallelRequests(array_map(fn ($row) => [
             'method' => 'PATCH',
             'uri' => '/api/v1/supervisor/journals/'.JournalEntry::where('internship_id', $row['internship']->id)->where('week_number', 8)->value('id').'/review',
             'token' => $row['supervisor_token'],
             'json' => ['action' => 'approved', 'feedback' => 'Validated'],
         ], $party));
 
+        foreach ($blocked as $result) {
+            $this->assertTrue(in_array($result['json']['status'] ?? 0, [404, 405], true), $result['stdout']);
+        }
+        $this->assertSame(0, JournalEntry::query()->where('week_number', 8)->whereNotNull('faculty_reviewed_at')->count());
+
+        $results = $this->parallelRequests(array_map(fn ($row) => [
+            'method' => 'PATCH',
+            'uri' => '/api/v1/faculty/journals/'.JournalEntry::where('internship_id', $row['internship']->id)->where('week_number', 8)->value('id').'/review',
+            'token' => $row['faculty_token'],
+            'json' => ['action' => 'approved', 'score' => 90, 'feedback' => 'Approved'],
+        ], $party));
+
         foreach ($results as $result) {
             $this->assertSame(200, $result['json']['status'] ?? 0, $result['stdout']);
         }
-        $this->assertSame(10, JournalEntry::query()->where('week_number', 8)->whereNotNull('supervisor_reviewed_at')->count());
-
-        $foreign = JournalEntry::where('internship_id', $party[1]['internship']->id)->where('week_number', 8)->first();
-        $denied = $this->parallelRequests([
-            [
-                'method' => 'PATCH',
-                'uri' => '/api/v1/supervisor/journals/'.$foreign->id.'/review',
-                'token' => $party[0]['supervisor_token'],
-                'json' => ['action' => 'needs_revision', 'feedback' => 'Not yours'],
-            ],
-        ]);
-        $this->assertSame(403, $denied[0]['json']['status'] ?? 0, $denied[0]['stdout']);
+        $this->assertSame(10, JournalEntry::query()->where('week_number', 8)->whereNotNull('faculty_reviewed_at')->count());
     }
 
     public function test_ten_faculty_evaluations_do_not_duplicate(): void

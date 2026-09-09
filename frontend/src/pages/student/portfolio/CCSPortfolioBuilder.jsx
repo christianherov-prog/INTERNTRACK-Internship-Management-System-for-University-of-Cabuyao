@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import api from '../../../services/api'
+import { cacheGet, cacheSet } from '../../../utils/pageCache'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
+import { useToast } from '../../../contexts/ToastContext'
+import { safeUploadError } from '../../../utils/safeApiError'
 
 /** Per-field limit for Chapter III (now dynamically paginated across A4 sheets without clipping). */
 const CHAPTER3_MAX = 5000
@@ -44,8 +47,10 @@ const SAMPLE_CONTENT = {
 
 function PortfolioBuilder() {
   const confirm = useConfirm()
-  const [data, setData] = useState(null)
+  const toast = useToast()
+  const [data, setData] = useState(() => cacheGet('student:portfolio') ?? null)
   const [saving, setSaving] = useState(false)
+  const [uploadingType, setUploadingType] = useState(null)
   const [message, setMessage] = useState(null)
   const [activeTab, setActiveTab] = useState('chapter1')
 
@@ -66,6 +71,7 @@ function PortfolioBuilder() {
   const fetchPortfolio = () => {
     api.get('/student/portfolio')
       .then(res => {
+        cacheSet('student:portfolio', res.data)
         setData(res.data)
         const p = res.data.internship?.portfolio
         if (p) {
@@ -115,34 +121,22 @@ function PortfolioBuilder() {
     }
   }
 
-  const handleLogoUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
-      alert("Please upload an image file only (PNG, JPG, JPEG, WEBP, etc.).")
-      e.target.value = ''
-      return
-    }
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('type', 'company_logo')
-    try {
-      await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-      fetchPortfolio()
-    } catch (err) {
-      alert("Failed to upload logo: " + (err.response?.data?.message || err.message))
-    } finally {
-      e.target.value = ''
-    }
-  }
+  const IMAGE_ONLY_TYPES = ['company_logo', 'logo', 'org_chart', 'vision_mission', 'company_vision_mission', 'ojt_photo', 'training_documentation', 'exam_documentation', 'training_certificate', 'training_test_result', 'exam_certificate', 'exam_test_result']
+  const MULTI_UPLOAD_TYPES = ['ojt_photo', 'training_documentation', 'exam_documentation', 'org_chart', 'training_certificate', 'training_test_result', 'exam_certificate', 'exam_test_result']
+  const DOC_ACCEPT = 'image/jpeg,image/png,image/jpg,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif'
 
   const handleFileUpload = async (e, type, requiresWeek = false, requiresLabel = false) => {
     const file = e.target.files[0]
     if (!file) return
     const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)
-    
+
+    if (IMAGE_ONLY_TYPES.includes(type) && !isImage) {
+      toast.error('Please upload a valid image file (JPG, PNG, WEBP, or GIF).')
+      e.target.value = ''
+      return
+    }
     if (!isImage) {
-      alert("Please upload a valid image file.")
+      toast.error('Please upload a valid image file (JPG, PNG, or WEBP).')
       e.target.value = ''
       return
     }
@@ -152,23 +146,33 @@ function PortfolioBuilder() {
     formData.append('type', type)
 
     if (requiresWeek) {
-      const week = window.prompt("Enter the Week Number for this photo (e.g. 1, 2, 3...):")
-      if (!week || isNaN(parseInt(week))) { alert("Please enter a valid number."); return }
-      formData.append('week_number', parseInt(week))
+      const week = window.prompt('Enter the Week Number:')
+      if (!week || isNaN(parseInt(week, 10))) {
+        toast.error('Please enter a valid week number.')
+        e.target.value = ''
+        return
+      }
+      formData.append('week_number', parseInt(week, 10))
     }
 
     if (requiresLabel) {
-      const label = window.prompt("Enter a label/caption for this item:")
-      if (label === null) return
+      const label = window.prompt('Enter a label/caption for this item:')
+      if (label === null) {
+        e.target.value = ''
+        return
+      }
       formData.append('label', label)
     }
 
+    setUploadingType(type)
     try {
-      await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post('/student/portfolio/photos', formData)
+      toast.success('File uploaded.')
       fetchPortfolio()
     } catch (err) {
-      alert("Failed to upload file: " + (err.response?.data?.message || err.message))
+      toast.error(safeUploadError(err))
     } finally {
+      setUploadingType(null)
       e.target.value = ''
     }
   }
@@ -188,7 +192,7 @@ function PortfolioBuilder() {
       fetchPortfolio()
       setDeletingItem(null)
     } catch (err) {
-      alert("Failed to delete file.")
+      toast.error('Failed to delete file.')
     } finally {
       setIsDeleting(false)
     }
@@ -225,7 +229,6 @@ function PortfolioBuilder() {
     { type: 'visitation_form', label: 'Visitation Form' },
     { type: 'hte_evaluation', label: 'HTE Evaluation' },
     { type: 'program_evaluation', label: 'Program Evaluation' },
-    { type: 'dtr_form', label: 'PNC:AA-FO-30 DTR (manual form upload)' },
   ]
 
   const textDone = textChecks.filter(c => (form[c.key] || '').trim().length > 0).length
@@ -240,14 +243,19 @@ function PortfolioBuilder() {
     ...uploadChecks.filter(c => !photos.some(ph => ph.type === c.type)),
   ]
 
-  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif", tip = "") => {
+  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif") => {
     const items = p?.photos?.filter(photo => photo.type === type) || []
+    const busy = uploadingType === type
+    const buttonLabel = busy
+      ? 'Uploading...'
+      : items.length > 0
+        ? (MULTI_UPLOAD_TYPES.includes(type) ? 'Upload More' : 'Replace')
+        : 'Upload'
 
     return (
       <div className="content-card portfolio-upload-tile">
         <div className="portfolio-upload-tile-head">
           <h6 className="mb-0">{title}</h6>
-          {tip && <span className="portfolio-upload-tip" title={tip}><i className="fa fa-circle-info"></i></span>}
         </div>
         <div className="portfolio-upload-tile-body">
           <div className="portfolio-upload-tile-content">
@@ -256,17 +264,17 @@ function PortfolioBuilder() {
                 {items.map(item => (
                   <div key={item.id} className="portfolio-upload-file-row">
                     <div className="text-truncate flex-grow-1 me-2 small">
-                      {requiresWeek && <span className="badge bg-primary me-1">W{item.week_number}</span>}
-                      {item.file_path && item.file_path.endsWith('.pdf')
+                      {requiresWeek && item.week_number != null && <span className="badge bg-primary me-1">W{item.week_number}</span>}
+                      {item.file_path && String(item.file_path).toLowerCase().endsWith('.pdf')
                         ? <i className="fa fa-file-pdf text-danger me-1"></i>
                         : <i className="fa fa-image text-primary me-1"></i>}
-                      {item.label || 'Uploaded'}
+                      {item.file_name || item.label || 'Uploaded'}
                     </div>
                     <div className="d-flex gap-1 flex-shrink-0">
-                      <AuthenticatedFileLink path={item.file_path} className="btn btn-outline-secondary btn-sm" style={{ padding: '0.1rem 0.35rem' }}>
+                      <AuthenticatedFileLink path={item.file_path} className="btn btn-outline-secondary btn-sm" style={{ padding: '0.1rem 0.35rem' }} title="View">
                         <i className="fa fa-eye"></i>
                       </AuthenticatedFileLink>
-                      <button type="button" className="btn btn-outline-danger btn-sm" style={{ padding: '0.1rem 0.35rem' }} onClick={() => handleDeleteFileClick(item)}>
+                      <button type="button" className="btn btn-outline-danger btn-sm" style={{ padding: '0.1rem 0.35rem' }} title="Remove" onClick={() => handleDeleteFileClick(item)}>
                         <i className="fa fa-trash"></i>
                       </button>
                     </div>
@@ -276,12 +284,13 @@ function PortfolioBuilder() {
             ) : (
               <p className="portfolio-upload-empty">No files yet</p>
             )}
-            {tip && <p className="portfolio-upload-hint">{tip}</p>}
           </div>
           <div className="portfolio-upload-btn-wrap">
-            <input type="file" id={`upload-${type}`} className="d-none" accept={accept} onChange={(e) => handleFileUpload(e, type, requiresWeek, requiresLabel)} />
-            <label htmlFor={`upload-${type}`} className="btn btn-outline-primary btn-sm w-100 portfolio-upload-btn mb-0">
-              <i className="fa fa-upload me-1"></i>{items.length > 0 ? 'Upload More' : 'Upload'}
+            <input type="file" id={`upload-${type}`} className="d-none" accept={accept} disabled={busy} onChange={(e) => handleFileUpload(e, type, requiresWeek, requiresLabel)} />
+            <label htmlFor={`upload-${type}`} className={`btn btn-outline-primary btn-sm w-100 portfolio-upload-btn mb-0${busy ? ' disabled' : ''}`}>
+              {busy
+                ? <><i className="fa fa-spinner fa-spin me-1"></i>Uploading...</>
+                : <><i className="fa fa-upload me-1"></i>{buttonLabel}</>}
             </label>
           </div>
         </div>
@@ -290,11 +299,13 @@ function PortfolioBuilder() {
   }
 
   const renderEvaluationRow = (formType, formTitle) => {
-    const ev = data?.internship?.evaluations?.find(e => e.form_type === formType)
+    const ev = (data?.internship?.evaluations || []).find(e => e.form_type === formType)
     let statusBadge = <span className="badge bg-secondary">Not Yet Started</span>
     if (ev) {
-      if (ev.status === 'completed') statusBadge = <span className="badge bg-success">Completed</span>
-      else if (ev.status === 'pending') statusBadge = <span className="badge bg-warning text-dark">In Progress</span>
+      const completed = ev.status === 'completed' || !!ev.submitted_at
+      const pending = ev.status === 'pending' || ev.status === 'in_progress'
+      if (completed) statusBadge = <span className="badge bg-success">Completed</span>
+      else if (pending) statusBadge = <span className="badge bg-warning text-dark">In Progress</span>
     }
     return (
       <tr key={formType}>
@@ -414,7 +425,7 @@ function PortfolioBuilder() {
                       <input
                         type="text"
                         className="form-control portfolio-field-input"
-                        placeholder="e.g. ACME Technologies Inc."
+                        placeholder="Company Name"
                         value={form.company_name}
                         onChange={e => setForm({ ...form, company_name: e.target.value })}
                       />
@@ -425,7 +436,7 @@ function PortfolioBuilder() {
                       <input
                         type="text"
                         className="form-control portfolio-field-input"
-                        placeholder="e.g. Biñan City, Laguna"
+                        placeholder="Company Address"
                         value={form.company_address}
                         onChange={e => setForm({ ...form, company_address: e.target.value })}
                       />
@@ -437,7 +448,7 @@ function PortfolioBuilder() {
                     <textarea
                       className="form-control portfolio-field-input"
                       rows={3}
-                      placeholder="Describe the company's background, establishment, core industry, and achievements."
+                      placeholder="Company Profile"
                       value={form.company_background}
                       onChange={e => setForm({ ...form, company_background: e.target.value })}
                     ></textarea>
@@ -457,12 +468,15 @@ function PortfolioBuilder() {
                   <div className="portfolio-fields-2">
                     <div>
                       <label className="portfolio-field-label">Company Vision (Text)</label>
-                      <textarea className="form-control portfolio-field-input" rows={3} placeholder="Leave empty if uploading an image above" value={form.company_vision} onChange={e => setForm({ ...form, company_vision: e.target.value })}></textarea>
+                      <textarea className="form-control portfolio-field-input" rows={3} placeholder="Company Vision" value={form.company_vision} onChange={e => setForm({ ...form, company_vision: e.target.value })}></textarea>
                     </div>
                     <div>
                       <label className="portfolio-field-label">Company Mission (Text)</label>
-                      <textarea className="form-control portfolio-field-input" rows={3} placeholder="Leave empty if uploading an image above" value={form.company_mission} onChange={e => setForm({ ...form, company_mission: e.target.value })}></textarea>
+                      <textarea className="form-control portfolio-field-input" rows={3} placeholder="Company Mission" value={form.company_mission} onChange={e => setForm({ ...form, company_mission: e.target.value })}></textarea>
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    {renderFileList('org_chart', 'Organizational Chart', false, false, 'image/*')}
                   </div>
                 </div>
               </div>
@@ -607,63 +621,35 @@ function PortfolioBuilder() {
           <section className="portfolio-appendix-section bg-white p-4 border rounded shadow-sm mb-4">
             <div className="portfolio-appendix-section-head">
               <h5 className="mb-0 text-primary"><i className="fa fa-folder-open me-2"></i>Appendices &amp; Uploads</h5>
-              <span className="text-muted small">Upload scanned/completed manual forms for your portfolio PDF. FO-31 journals come from Logbook; FO-30 DTR is uploaded below.</span>
+              <span className="text-muted small">Official evaluations, journals, DTR, MOA, and approved requirements are pulled automatically from InternTrack records. Upload only extra scanned appendices here.</span>
             </div>
 
             {/* Company & OJT: Standard 4-card grid including unified Company Logo card */}
             <div className="portfolio-appendix-group">
               <h6 className="portfolio-appendix-group-title">Company &amp; OJT</h6>
               <div className="portfolio-upload-grid">
-                {renderFileList('company_logo', 'Company Logo (HTE)', false, false, 'image/*', 'Appears on the PDF header and cover page. Clear PNG or JPG recommended.')}
-                {renderFileList('org_chart', 'Organizational Chart', false, false, 'image/*', 'Upload your host company organizational structure chart.')}
-                {renderFileList('vision_mission', 'Company Vision & Mission Image (Optional)', false, false, 'image/*', 'Upload an image of Vision & Mission if you prefer pictures instead of typing text in Chapter I.')}
-                {renderFileList('ojt_photo', 'Photos During OJT', true, true, 'image/*', 'You will be prompted for week number and caption.')}
+                {renderFileList('company_logo', 'Company Logo (HTE)', false, false, 'image/*')}
+                {renderFileList('org_chart', 'Organizational Chart', false, false, 'image/*')}
+                {renderFileList('vision_mission', 'Company Vision & Mission Image (Optional)', false, false, 'image/*')}
+                {renderFileList('ojt_photo', 'Photos During OJT', true, true, 'image/*')}
               </div>
             </div>
 
             <div className="portfolio-appendix-group">
               <h6 className="portfolio-appendix-group-title">F2F/Online Training (Wadhwani)</h6>
               <div className="portfolio-upload-grid">
-                {renderFileList('training_certificate', 'Certificate of Training')}
-                {renderFileList('training_test_result', 'Pre and Post Test Result')}
-                {renderFileList('training_documentation', 'Documentation of Training Proper', false, true, 'image/*', 'Required — upload pictures with explanations.')}
+                {renderFileList('training_certificate', 'Certificate of Training', false, false, DOC_ACCEPT)}
+                {renderFileList('training_test_result', 'Pre and Post Test Result', false, false, DOC_ACCEPT)}
+                {renderFileList('training_documentation', 'Documentation of Training Proper', false, true, 'image/*')}
               </div>
             </div>
 
             <div className="portfolio-appendix-group">
               <h6 className="portfolio-appendix-group-title">Certification Exam (Online / F2F)</h6>
               <div className="portfolio-upload-grid">
-                {renderFileList('exam_certificate', 'Certification')}
-                {renderFileList('exam_test_result', 'Pre and Post Test Result')}
-                {renderFileList('exam_documentation', 'Documentation of Preparation', false, true, 'image/*', 'Upload pictures of exam preparation with explanations.')}
-              </div>
-            </div>
-
-            {/* Other Required Appendices: Balanced 2-column row eliminating empty grid space */}
-            <div className="portfolio-appendix-group">
-              <h6 className="portfolio-appendix-group-title">Other Required Appendices</h6>
-              <div className="row g-3">
-                <div className="col-12 col-md-6 col-lg-5">
-                  {renderFileList(
-                    'dtr_form',
-                    'PNC:AA-FO-30 DTR (Manual Form Upload)',
-                    false,
-                    false,
-                    'image/*',
-                    'Fill the official FO-30 Daily Time Record offline, then upload the completed form.'
-                  )}
-                </div>
-                <div className="col-12 col-md-6 col-lg-7">
-                  <div className="content-card h-100 p-3 bg-light border-0 d-flex flex-column justify-content-center">
-                    <div className="d-flex gap-2">
-                      <i className="fa fa-circle-info text-primary mt-1 flex-shrink-0"></i>
-                      <div className="small text-muted">
-                        <strong className="text-dark d-block mb-1">Official PNC:AA-FO-30 Daily Time Record:</strong>
-                        Complete and sign the official PNC:AA-FO-30 Daily Time Record with your supervisor offline, then upload the scanned copy on the left. Weekly FO-31 journal entries are pulled automatically from your Logbook into the generated portfolio PDF.
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {renderFileList('exam_certificate', 'Certification', false, false, DOC_ACCEPT)}
+                {renderFileList('exam_test_result', 'Pre and Post Test Result', false, false, DOC_ACCEPT)}
+                {renderFileList('exam_documentation', 'Documentation of Preparation', false, true, 'image/*')}
               </div>
             </div>
 

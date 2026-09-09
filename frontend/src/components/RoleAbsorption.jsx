@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import Layout from './Layout'
 import PageError from './PageError'
 import api from '../services/api'
+import { useCachedPage } from '../hooks/useCachedPage'
+import InternTrackLoader from './InternTrackLoader'
 
 function profileOf(student) {
   return student?.student_profile || student?.studentProfile || null
@@ -66,7 +68,7 @@ function AbsorptionModal({ internship, apiBase, onClose, onSaved, declaredHiredE
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Job title (optional)</label>
-                    <input className="form-control" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Junior Developer" />
+                    <input className="form-control" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job Title" />
                   </div>
                 </>
               )}
@@ -104,21 +106,19 @@ function RoleAbsorption({
   emptyMessage = 'No completed internships yet.',
   declaredHiredExtra = '',
 }) {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage(`${apiBase}:absorption`)
+  const [items, setItems] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [modal, setModal] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get(`/${apiBase}/absorption`)
-      .then((res) => setItems(res.data.internships ?? []))
+    run(() => api.get(`/${apiBase}/absorption`).then((res) => res.data.internships ?? []))
+      .then((next) => { if (next) setItems(next) })
       .catch((err) => {
         setItems([])
         setError(err.response?.data?.message || 'Failed to load absorption records.')
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [apiBase])
@@ -142,7 +142,7 @@ function RoleAbsorption({
           <h6>Completed Interns — Hire Confirmation</h6>
         </div>
         {loading ? (
-          <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+          <div className="text-center py-5"><InternTrackLoader /></div>
         ) : error ? null : items.length === 0 ? (
           <div className="text-center py-5 text-muted">{emptyMessage}</div>
         ) : (

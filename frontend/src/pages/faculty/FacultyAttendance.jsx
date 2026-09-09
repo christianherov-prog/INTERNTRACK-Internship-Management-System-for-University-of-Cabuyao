@@ -5,6 +5,8 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
 import { formatStudentName } from '../../utils/formatName'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function studentName(log) {
   if (log?.internship?.student) return formatStudentName(log.internship.student)
@@ -23,26 +25,23 @@ function statusBadge(status) {
 }
 
 function FacultyAttendance() {
-  const [rows, setRows] = useState([])
+  const { loading, seed, run } = useCachedPage('faculty:attendance')
+  const [rows, setRows] = useState(() => seed ?? [])
   const [students, setStudents] = useState([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [internshipId, setInternshipId] = useState('')
 
   const fetchAttendance = () => {
-    setLoading(true)
     setError(null)
     const params = {}
     if (statusFilter && statusFilter !== 'all') params.status = statusFilter
     if (internshipId) params.internship_id = internshipId
-    api.get('/faculty/attendance', { params })
-      .then((res) => setRows(unwrapList(res.data).items))
+    run(() => api.get('/faculty/attendance', { params }).then((res) => unwrapList(res.data).items || []))
+      .then((next) => { if (next) setRows(next) })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load attendance.')
-        setRows([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => {
@@ -83,7 +82,7 @@ function FacultyAttendance() {
         </div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : rows.length === 0 ? (
             <div className="text-center py-4 text-muted">No attendance records for the selected filters.</div>
           ) : (

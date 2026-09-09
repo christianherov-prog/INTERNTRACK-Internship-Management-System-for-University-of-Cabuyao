@@ -5,37 +5,42 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useConfirm } from '../../contexts/ConfirmContext'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const ROLES = ['', 'student', 'faculty', 'coordinator', 'director', 'supervisor', 'admin']
 
 function MisdUsers() {
   const confirm = useConfirm()
   const [params, setParams] = useSearchParams()
-  const [rows, setRows] = useState([])
-  const [meta, setMeta] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [message, setMessage] = useState(null)
   const [search, setSearch] = useState(params.get('search') || '')
   const [role, setRole] = useState(params.get('role') || '')
   const [active, setActive] = useState(params.get('active') || '')
+  const cacheKey = `admin:users:${role || 'all'}:${active === '' ? 'all' : active}:q:${search.trim()}`
+  const { loading, seed, run } = useCachedPage(cacheKey)
+  const [rows, setRows] = useState(() => seed?.rows ?? [])
+  const [meta, setMeta] = useState(() => seed?.meta ?? null)
+  const [error, setError] = useState(null)
+  const [message, setMessage] = useState(null)
 
   const load = (page = 1) => {
-    setLoading(true)
     setError(null)
     const query = { page, per_page: 25 }
     if (role) query.role = role
     if (active !== '') query.active = active
     if (search.trim()) query.search = search.trim()
 
-    api.get('/admin/users', { params: query })
-      .then((res) => {
-        const { items, meta: m } = unwrapList(res.data)
-        setRows(items)
-        setMeta(m)
+    run(() => api.get('/admin/users', { params: query }).then((res) => {
+      const { items, meta: m } = unwrapList(res.data)
+      return { rows: items, meta: m }
+    }))
+      .then((next) => {
+        if (next) {
+          setRows(next.rows)
+          setMeta(next.meta)
+        }
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load users.'))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => {
@@ -99,7 +104,7 @@ function MisdUsers() {
                     className="form-control border-start-0 rounded-end-3"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Username, full name, email…"
+                    placeholder="Search Users"
                   />
                 </div>
               </div>
@@ -139,7 +144,7 @@ function MisdUsers() {
         <div className="card-body px-4 pt-2 pb-4">
           <div className="table-responsive border rounded-3 overflow-hidden">
             {loading ? (
-              <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+              <div className="text-center py-5"><InternTrackLoader /></div>
             ) : (
               <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.86rem', minWidth: 780 }}>
                 <thead style={{ background: '#f8fafc', borderBottom: '1px solid #eef2f6' }}>

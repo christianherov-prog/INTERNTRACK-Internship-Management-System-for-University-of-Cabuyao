@@ -117,7 +117,7 @@ function ChangePasswordConfirmPage() {
                       className={`form-control ${errors.new_password ? 'is-invalid' : ''}`}
                       value={form.new_password}
                       onChange={handleChange}
-                      placeholder="At least 8 characters"
+                      placeholder="New Password"
                       required
                     />
                     {errors.new_password && <div className="invalid-feedback">{errors.new_password[0]}</div>}
@@ -131,7 +131,7 @@ function ChangePasswordConfirmPage() {
                       className={`form-control ${errors.new_password_confirmation ? 'is-invalid' : ''}`}
                       value={form.new_password_confirmation}
                       onChange={handleChange}
-                      placeholder="Re-type new password"
+                      placeholder="Confirm Password"
                       required
                     />
                     {errors.new_password_confirmation && <div className="invalid-feedback">{errors.new_password_confirmation[0]}</div>}

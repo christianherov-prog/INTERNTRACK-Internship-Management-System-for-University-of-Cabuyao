@@ -7,6 +7,9 @@ import { StudentInternPerformanceForm } from '../../components/evaluations/Stude
 
 import { HTEToUniversityEvaluationForm } from '../../components/evaluations/HTEToUniversityEvaluationForm'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function profileOf(entity) {
   return entity?.student?.student_profile || entity?.student?.studentProfile || null
@@ -53,24 +56,22 @@ function EvalModal({ internship, activeForm, onClose, onSubmit, processing }) {
 }
 
 export default function SupervisorPerformanceEvaluation() {
+  const { loading, seed, run } = useCachedPage('supervisor:evaluations')
   const [modal, setModal] = useState(null)
   const [previewEval, setPreviewEval] = useState(null)
-  const [groups, setGroups] = useState({ pending: [], completed: [] })
-  const [loading, setLoading] = useState(true)
+  const [groups, setGroups] = useState(() => seed ?? { pending: [], completed: [] })
   const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [message, setMessage] = useState(null)
 
   const fetchData = () => {
-    setLoading(true)
     setError(null)
-    api.get('/supervisor/evaluations')
-      .then((res) => setGroups(unwrapGroups(res.data)))
+    run(() => api.get('/supervisor/evaluations').then((res) => unwrapGroups(res.data)))
+      .then((next) => { if (next) setGroups(next) })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load evaluations.')
         setGroups({ pending: [], completed: [] })
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [])
@@ -81,6 +82,7 @@ export default function SupervisorPerformanceEvaluation() {
     try {
       // Send as JSON
       await api.post(`/supervisor/evaluations/${internshipId}`, data)
+      invalidateStudentPortfolio()
       setMessage({
         type: 'success',
         text: `Evaluation submitted successfully.`,
@@ -97,10 +99,10 @@ export default function SupervisorPerformanceEvaluation() {
     }
   }
 
-  if (loading) {
+  if (loading && !seed) {
     return (
       <Layout role="supervisor">
-        <div className="d-flex justify-content-center py-5"><div className="spinner-border text-primary"></div></div>
+        <div className="d-flex justify-content-center py-5"><InternTrackLoader /></div>
       </Layout>
     )
   }

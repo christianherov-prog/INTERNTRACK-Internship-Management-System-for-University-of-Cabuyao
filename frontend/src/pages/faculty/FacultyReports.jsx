@@ -6,6 +6,8 @@ import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import ReportExportModal from '../../components/modals/ReportExportModal'
 import { displayLabel } from '../../utils/displayLabel'
+import { reportPrintOptions } from '../../utils/reportPrint'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REPORT_TYPES = [
   {
@@ -267,10 +269,7 @@ function FacultyReports() {
   }
 
   const printRef = useRef(null)
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: 'Faculty_Report'
-  })
+  const handlePrint = useReactToPrint(reportPrintOptions(printRef, 'Faculty_Report'))
 
   return (
     <Layout title="Reports" subtitle="Assigned students only" icon="fa-chart-bar" bodyClass="faculty-page reports-page">
@@ -306,7 +305,7 @@ function FacultyReports() {
       </div>
 
       {activeReport && (
-        <div className="content-card" id="report-output" ref={printRef}>
+        <div className="content-card interntrack-report-print" id="report-output" ref={printRef}>
           <div className="content-card-header d-print-none">
             <i className={`fa ${REPORT_TYPES.find((r) => r.key === activeReport)?.icon}`}></i>
             <h6>{REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h6>
@@ -327,7 +326,7 @@ function FacultyReports() {
 
           <div className="p-3">
             {loading ? (
-              <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+              <div className="text-center py-4"><InternTrackLoader /></div>
             ) : reportData ? (
               <>
                 {activeReport === 'student-summary' && <StudentSummaryTable data={reportData} />}

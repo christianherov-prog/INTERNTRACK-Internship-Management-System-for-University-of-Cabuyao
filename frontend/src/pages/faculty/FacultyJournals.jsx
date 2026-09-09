@@ -5,7 +5,9 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { useCachedPage } from '../../hooks/useCachedPage'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import InternTrackLoader from '../../components/InternTrackLoader'
 function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
   const [action, setAction]     = useState('approved')
   const [feedback, setFeedback] = useState('')
@@ -93,7 +95,7 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
                 rows={3}
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
-                placeholder="Write feedback for the student…"
+                placeholder="Feedback"
               ></textarea>
             </div>
           </div>
@@ -115,8 +117,8 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
 
 function FacultyJournals() {
   const currentTerm = useCurrentTerm()
-  const [journals, setJournals]     = useState([])
-  const [loading, setLoading]       = useState(true)
+  const { loading, seed, run } = useCachedPage('faculty:journals')
+  const [journals, setJournals]     = useState(() => seed ?? [])
   const [error, setError]           = useState(null)
   const [processing, setProcessing] = useState(false)
   const [message, setMessage]       = useState(null)
@@ -127,15 +129,12 @@ function FacultyJournals() {
   const [loadingHistory, setLoadingHistory] = useState(false)
 
   const fetchJournals = () => {
-    setLoading(true)
     setError(null)
-    api.get('/faculty/journals')
-      .then(res => setJournals(unwrapList(res.data).items))
-      .catch(err => {
+    run(() => api.get('/faculty/journals').then(res => unwrapList(res.data).items || []))
+      .then((next) => { if (next) setJournals(next) })
+      .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load journals.')
-        setJournals([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchJournals() }, [])
@@ -216,7 +215,7 @@ function FacultyJournals() {
               </div>
               <div className="modal-body p-0">
                 {loadingHistory ? (
-                  <div className="p-5 text-center"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+                  <div className="p-5 text-center"><InternTrackLoader /></div>
                 ) : historyData.length === 0 ? (
                   <div className="p-4 text-center text-muted">No past journals found.</div>
                 ) : (
@@ -257,7 +256,7 @@ function FacultyJournals() {
         </div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : journals.length === 0 && !error ? (
             <div className="text-center py-4 text-muted">
               <i className="fa fa-check-circle fa-2x mb-2 d-block text-success"></i>
@@ -277,14 +276,12 @@ function FacultyJournals() {
                   <span className={`badge mt-1 ${j.status === 'approved' ? 'bg-success' : j.status === 'needs_revision' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
                     {j.status}
                   </span>
-                  {j.awaiting_supervisor && <span className="badge bg-warning text-dark mt-1 ms-1">Awaiting supervisor</span>}
-                  {j.supervisor_validated && <span className="badge bg-info text-dark mt-1 ms-1">Supervisor validated</span>}
                 </div>
                 <div className="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
                   <button className="btn btn-sm btn-outline-secondary" onClick={() => openHistory(j.internship?.student_id, name)}>
                     <i className="fa fa-history me-1"></i>History
                   </button>
-                  <button className="btn btn-sm btn-primary" onClick={() => setModal(j)} disabled={j.faculty_can_review === false}>
+                  <button className="btn btn-sm btn-primary" onClick={() => setModal(j)}>
                     <i className="fa fa-pen me-1"></i>Review
                   </button>
                 </div>

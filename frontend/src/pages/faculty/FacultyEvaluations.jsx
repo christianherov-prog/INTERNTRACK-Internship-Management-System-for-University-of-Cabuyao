@@ -4,7 +4,10 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { useCachedPage } from '../../hooks/useCachedPage'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
   const [period, setPeriod] = useState(existing?.evaluation_period || 'midterm')
@@ -22,6 +25,7 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
         overall_score: Number(score),
         general_comments: comments || undefined,
       })
+      invalidateStudentPortfolio()
       onSaved()
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit faculty evaluation.')
@@ -53,7 +57,7 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
             </div>
             <div>
               <label className="form-label fw-semibold">Comments</label>
-              <textarea className="form-control" rows={3} value={comments} onChange={e => setComments(e.target.value)} placeholder="Optional remarks for the student record…" />
+              <textarea className="form-control" rows={3} value={comments} onChange={e => setComments(e.target.value)} placeholder="Remarks" />
             </div>
           </div>
           <div className="modal-footer">
@@ -70,9 +74,9 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
 
 function FacultyEvaluations() {
   const currentTerm = useCurrentTerm()
-  const [internships, setInternships] = useState([])
-  const [availableSections, setAvailableSections] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('faculty:evaluations')
+  const [internships, setInternships] = useState(() => seed?.internships ?? [])
+  const [availableSections, setAvailableSections] = useState(() => seed?.available_sections ?? [])
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)  // { eval, internship }
   const [submitModal, setSubmitModal] = useState(null)
@@ -89,22 +93,21 @@ function FacultyEvaluations() {
   }, [filters.search])
 
   const fetchData = () => {
-    setLoading(true)
     setError(null)
     const params = new URLSearchParams()
     if (debouncedSearch) params.append('search', debouncedSearch)
     if (filters.section) params.append('section', filters.section)
 
-    api.get(`/faculty/evaluations?${params.toString()}`)
-      .then(res => {
-        setInternships(res.data.internships || [])
-        setAvailableSections(res.data.available_sections || [])
+    run(() => api.get(`/faculty/evaluations?${params.toString()}`).then(res => res.data))
+      .then((next) => {
+        if (next) {
+          setInternships(next.internships || [])
+          setAvailableSections(next.available_sections || [])
+        }
       })
-      .catch(err => {
+      .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load evaluations.')
-        setInternships([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchData() }, [debouncedSearch, filters.section])
@@ -120,7 +123,7 @@ function FacultyEvaluations() {
       )}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : (
         <div className="content-card">
           <div className="content-card-header">
@@ -140,7 +143,7 @@ function FacultyEvaluations() {
               <input
                 type="text"
                 className="form-control form-control-sm"
-                placeholder="Search by student name..."
+                placeholder="Search Students"
                 value={filters.search}
                 onChange={e => setFilters({ ...filters, search: e.target.value })}
               />

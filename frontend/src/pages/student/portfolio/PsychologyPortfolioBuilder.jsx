@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import PageError from '../../../components/PageError'
 import api from '../../../services/api'
+import { cacheGet, cacheSet } from '../../../utils/pageCache'
 import { AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { displayLabel } from '../../../utils/displayLabel'
+import InternTrackLoader from '../../../components/InternTrackLoader'
 import {
   PSY_COURSE,
   PSY_ROTATIONS,
@@ -19,7 +21,7 @@ import {
 } from './psychologyPortfolioStructure'
 
 function PsychologyPortfolioBuilder() {
-  const [data, setData] = useState(null)
+  const [data, setData] = useState(() => cacheGet('student:portfolio') ?? null)
   const [loadError, setLoadError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
@@ -32,6 +34,7 @@ function PsychologyPortfolioBuilder() {
     api.get('/student/portfolio')
       .then((res) => {
         setLoadError(null)
+        cacheSet('student:portfolio', res.data)
         setData(res.data)
         const saved = res.data.internship?.portfolio?.custom_fields?.psychology?.rotations
         setForm({
@@ -76,6 +79,12 @@ function PsychologyPortfolioBuilder() {
   const handleFileUpload = async (e, type) => {
     const file = e.target.files[0]
     if (!file) return
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)
+    if (!isImage) {
+      alert('Please upload a valid image file (JPG, PNG, or WEBP).')
+      e.target.value = ''
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', type)
@@ -84,7 +93,7 @@ function PsychologyPortfolioBuilder() {
       await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       fetchPortfolio()
     } catch (err) {
-      alert('Failed to upload file: ' + (err.response?.data?.message || err.message))
+      alert('File upload failed. Please try again.')
     } finally {
       e.target.value = ''
     }
@@ -152,14 +161,13 @@ function PsychologyPortfolioBuilder() {
             ) : (
               <p className="portfolio-upload-empty">No files yet</p>
             )}
-            {tip && <p className="portfolio-upload-hint">{tip}</p>}
           </div>
           <div className="portfolio-upload-btn-wrap">
             <input
               type="file"
               id={`upload-${type}`}
               className="d-none"
-              accept="image/*,.pdf,.png,.jpg,.jpeg,.webp,.gif"
+              accept="image/jpeg,image/png,image/jpg,image/webp,.jpg,.jpeg,.png,.webp"
               onChange={(e) => handleFileUpload(e, type)}
             />
             <label htmlFor={`upload-${type}`} className="btn btn-outline-primary btn-sm w-100 portfolio-upload-btn mb-0">
@@ -178,11 +186,13 @@ function PsychologyPortfolioBuilder() {
   )
 
   const renderEvaluationRow = (formType, formTitle) => {
-    const ev = data?.internship?.evaluations?.find((e) => e.form_type === formType)
+    const ev = (data?.internship?.evaluations || []).find((e) => e.form_type === formType)
     let statusBadge = <span className="badge bg-secondary">Not Yet Started</span>
     if (ev) {
-      if (ev.status === 'completed') statusBadge = <span className="badge bg-success">Completed</span>
-      else if (ev.status === 'pending') statusBadge = <span className="badge bg-warning text-dark">In Progress</span>
+      const completed = ev.status === 'completed' || !!ev.submitted_at
+      const pending = ev.status === 'pending' || ev.status === 'in_progress'
+      if (completed) statusBadge = <span className="badge bg-success">Completed</span>
+      else if (pending) statusBadge = <span className="badge bg-warning text-dark">In Progress</span>
     }
     return (
       <tr key={formType}>
@@ -232,7 +242,7 @@ function PsychologyPortfolioBuilder() {
               <div className="portfolio-hte-row mb-3">
                 <div>
                   <label className="portfolio-field-label">Host Training Establishment</label>
-                  <input className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="HTE / cooperating site name" />
+                  <input className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Host Establishment" />
                 </div>
                 <div>
                   <label className="portfolio-field-label">HTE Address</label>
@@ -241,7 +251,7 @@ function PsychologyPortfolioBuilder() {
               </div>
               <div className="mb-3">
                 <label className="portfolio-field-label">Host Training Establishment Profile</label>
-                <textarea className="form-control portfolio-field-input" rows={4} value={fields.hte_profile} onChange={(e) => setRotationField(rotationId, 'hte_profile', e.target.value)} placeholder="Describe this rotation's host establishment. Do not paste another student's write-up." />
+                <textarea className="form-control portfolio-field-input" rows={4} value={fields.hte_profile} onChange={(e) => setRotationField(rotationId, 'hte_profile', e.target.value)} placeholder="Host Profile" />
               </div>
               {renderUploadGroup(rotationId, PRE_INTERNSHIP_UPLOADS)}
             </div>
@@ -262,7 +272,7 @@ function PsychologyPortfolioBuilder() {
             <div className="p-3 p-lg-4">
               <div className="mb-3">
                 <label className="portfolio-field-label">Narrative and Insights of Internship Learning Experiences</label>
-                <textarea className="form-control portfolio-field-input" rows={6} value={fields.narrative} onChange={(e) => setRotationField(rotationId, 'narrative', e.target.value)} placeholder="Write your own narrative and insights for this rotation." />
+                <textarea className="form-control portfolio-field-input" rows={6} value={fields.narrative} onChange={(e) => setRotationField(rotationId, 'narrative', e.target.value)} placeholder="Narrative" />
               </div>
               {renderUploadGroup(rotationId, INTERNSHIP_UPLOADS)}
             </div>
@@ -360,7 +370,7 @@ function PsychologyPortfolioBuilder() {
   if (!data) {
     return (
       <Layout title="My Portfolio" subtitle="BS Psychology · PSE 106" icon="fa-folder" bodyClass="student-page">
-        <div className="text-center py-5 mt-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5 mt-5"><InternTrackLoader /></div>
       </Layout>
     )
   }

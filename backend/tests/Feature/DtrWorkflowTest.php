@@ -15,8 +15,8 @@ use Tests\TestCase;
 
 class DtrWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesInternshipFixtures;
+    use RefreshDatabase;
 
     private function setupParty(): array
     {
@@ -106,6 +106,24 @@ class DtrWorkflowTest extends TestCase
 
         $this->assertSame('07:00:00', $active['start_time']);
         $this->assertSame('pending', $this->getJson('/api/v1/student/attendance/schedules')->json('pending_schedule.status'));
+    }
+
+    public function test_schedule_end_must_be_later_than_start(): void
+    {
+        $party = $this->setupParty();
+        Sanctum::actingAs($party['student']);
+
+        $this->postJson('/api/v1/student/attendance/schedules', [
+            'start_time' => '17:00',
+            'end_time' => '07:00',
+        ])->assertStatus(422);
+
+        $this->postJson('/api/v1/student/attendance/schedules', [
+            'start_time' => '07:00',
+            'end_time' => '07:00',
+        ])->assertStatus(422);
+
+        $this->assertSame(0, WorkSchedule::count());
     }
 
     public function test_clock_out_confirm_path_supports_grace_undo(): void

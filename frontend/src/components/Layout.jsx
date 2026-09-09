@@ -3,20 +3,24 @@ import { useAuth } from '../contexts/AuthContext'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import { useCurrentTerm } from '../hooks/useCurrentTerm'
+import { useStaffWorkspace } from '../hooks/useStaffWorkspace'
 
 function Layout({ children, title, subtitle, icon, bodyClass = '' }) {
   const { user } = useAuth()
   const currentTerm = useCurrentTerm()
+  const { workspace } = useStaffWorkspace()
 
   useEffect(() => {
     if (user) {
-      document.body.className = `page-body ${user.role}-page ${bodyClass}`.trim()
+      // Body class follows the active workspace (coordinators can use the
+      // Faculty Supervisor workspace) so existing per-role CSS keeps working.
+      document.body.className = `page-body ${workspace || user.role}-page ${bodyClass}`.trim()
     }
 
     return () => {
       document.body.classList.remove('sidebar-open')
     }
-  }, [user, bodyClass])
+  }, [user, workspace, bodyClass])
 
   return (
     <>

@@ -28,13 +28,13 @@ class AuthService
 {
     /** Eager-loads needed to build a complete UserResource payload. */
     public const USER_RELATIONS = [
-        'studentProfile.program',
+        'studentProfile.program.department',
         'studentProfile.department',
         'facultyProfile.department',
         'supervisorProfile.company',
         'activeInternship.company',
-        'activeInternship.coordinator.facultyProfile',
-        'activeInternship.faculty.facultyProfile',
+        'activeInternship.coordinator.facultyProfile.department',
+        'activeInternship.faculty.facultyProfile.department',
     ];
 
     public function __construct(
@@ -472,17 +472,28 @@ class AuthService
         }
 
         $internship = $user->activeInternship;
-        if (!$internship || $internship->coordinator_id) {
+        if (! $internship) {
             return;
         }
 
-        $defaultCoordId = User::where('role', 'coordinator')
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->value('id');
+        $deptCoordId = \App\Support\DepartmentScope::coordinatorIdForStudent(
+            $user,
+            $internship->coordinator_id ? (int) $internship->coordinator_id : null
+        );
 
-        if ($defaultCoordId) {
-            $internship->forceFill(['coordinator_id' => $defaultCoordId])->saveQuietly();
+        if ($internship->coordinator_id) {
+            $current = User::query()->find($internship->coordinator_id);
+            if ($current && \App\Support\DepartmentScope::facultyMatchesStudent($current, $user)) {
+                return;
+            }
+
+            $internship->forceFill(['coordinator_id' => $deptCoordId])->saveQuietly();
+
+            return;
+        }
+
+        if ($deptCoordId) {
+            $internship->forceFill(['coordinator_id' => $deptCoordId])->saveQuietly();
         }
     }
 

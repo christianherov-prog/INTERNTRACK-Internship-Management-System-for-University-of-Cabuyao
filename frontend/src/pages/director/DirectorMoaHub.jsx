@@ -34,11 +34,8 @@ function DirectorMoaHub() {
       </div>
 
       <div>
-        {activeTab === 'monitoring' ? (
-          <div className="tab-embedded"><DirectorMOAMonitoring embedded={true} /></div>
-        ) : (
-          <div className="tab-embedded"><DirectorMOAManagement embedded={true} /></div>
-        )}
+        <div className="tab-embedded" hidden={activeTab !== 'monitoring'}><DirectorMOAMonitoring embedded={true} /></div>
+        <div className="tab-embedded" hidden={activeTab !== 'management'}><DirectorMOAManagement embedded={true} /></div>
       </div>
     </Layout>
   )

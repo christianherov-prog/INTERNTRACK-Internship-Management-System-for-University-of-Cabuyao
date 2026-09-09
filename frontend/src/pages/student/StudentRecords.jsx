@@ -4,6 +4,8 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { resolveTargetHours } from '../../config/hours'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function absorptionBadge(status) {
   if (status === 'absorbed') return 'badge bg-success'
@@ -12,27 +14,30 @@ function absorptionBadge(status) {
 }
 
 function StudentRecords() {
-  const [profile, setProfile] = useState(null)
-  const [history, setHistory] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('student:records')
+  const [profile, setProfile] = useState(() => seed?.profile ?? null)
+  const [history, setHistory] = useState(() => seed?.history ?? [])
   const [error, setError] = useState(null)
   const [declareMsg, setDeclareMsg] = useState(null)
   const [declaringId, setDeclaringId] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/student/records')
-      .then((res) => {
-        setProfile(res.data.profile ?? null)
-        setHistory(unwrapList(res.data).items)
+    run(() => api.get('/student/records').then((res) => ({
+      profile: res.data.profile ?? null,
+      history: unwrapList(res.data).items,
+    })))
+      .then((next) => {
+        if (next) {
+          setProfile(next.profile)
+          setHistory(next.history)
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load your internship records.')
         setProfile(null)
         setHistory([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -72,7 +77,7 @@ function StudentRecords() {
       )}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : !error && (
         <>
           <div className="row g-3 mb-4">
@@ -128,6 +133,16 @@ function StudentRecords() {
                   {(active.status || '').replace(/_/g, ' ')} · {active.term || '—'} ·{' '}
                   {active.total_hours_rendered || 0}/{resolveTargetHours(active.target_hours)} hrs
                 </div>
+                {active.supervisor_feedback?.feedback && (
+                  <div className="mt-3 p-2 rounded" style={{ background: '#f0fdf4', fontSize: '0.88rem' }}>
+                    <strong>Industry Supervisor feedback:</strong>
+                    <p className="mb-1 mt-1">{active.supervisor_feedback.feedback}</p>
+                    <div className="small text-muted">
+                      {active.supervisor_feedback.supervisor_reviewed_at_manila
+                        || active.supervisor_feedback.supervisor_reviewed_at}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

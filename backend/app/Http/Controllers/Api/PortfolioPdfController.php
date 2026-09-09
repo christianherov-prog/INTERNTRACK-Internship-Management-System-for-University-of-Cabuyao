@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Internship;
-use App\Models\JournalEntry;
 use App\Models\AttendanceLog;
 use App\Models\Document;
+use App\Models\Internship;
+use App\Models\JournalEntry;
+use App\Services\PortfolioDataService;
+use App\Support\InternshipAccess;
+use App\Support\InternshipProvisioning;
+use App\Support\ManilaTime;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpWord\TemplateProcessor;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\Settings;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 class PortfolioPdfController extends Controller
 {
@@ -24,7 +28,7 @@ class PortfolioPdfController extends Controller
     {
         $request->validate([
             'internship_id' => 'nullable|exists:internships,id',
-            'format'        => 'nullable|string|in:docx,pdf',
+            'format' => 'nullable|string|in:docx,pdf',
         ]);
 
         $user = Auth::user();
@@ -38,53 +42,51 @@ class PortfolioPdfController extends Controller
             ])->findOrFail($request->internship_id);
             $this->authorizeInternshipAccess($user, $internship);
         } elseif ($user->hasRole('student')) {
-            $internship = $user->activeInternship()->with([
-                'student.studentProfile',
-                'company',
-                'supervisor.supervisorProfile',
-                'faculty.facultyProfile',
-                'portfolio',
-            ])->first() ?? $user->internshipsAsStudent()->with([
-                'student.studentProfile',
-                'company',
-                'supervisor.supervisorProfile',
-                'faculty.facultyProfile',
-                'portfolio',
-            ])->latest()->first();
-            if (!$internship) {
+            $internship = InternshipProvisioning::openForStudent($user->id)
+                ?? $user->internshipsAsStudent()->latest('id')->first();
+            if ($internship) {
+                $internship->load([
+                    'student.studentProfile',
+                    'company',
+                    'supervisor.supervisorProfile',
+                    'faculty.facultyProfile',
+                    'portfolio',
+                ]);
+            }
+            if (! $internship) {
                 return response()->json(['error' => 'No active internship found.'], 404);
             }
         } else {
             return response()->json(['error' => 'internship_id is required.'], 400);
         }
 
-
-        $student        = $internship->student;
+        $student = $internship->student;
         $studentProfile = $student->studentProfile;
         $facultyProfile = $internship->faculty?->facultyProfile;
-        $portfolio      = $internship->portfolio;
+        $portfolio = $internship->portfolio;
 
         $templatePath = storage_path('app/templates/PORTFOLIO.docx');
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             return response()->json(['error' => 'Portfolio master template not found on server.'], 404);
         }
 
         $tp = new TemplateProcessor($templatePath);
+        $service = app(PortfolioDataService::class);
 
         // 1. Cover & Header Metadata
-        $companyName    = $portfolio?->company_name ?: ($internship->company?->company_name ?? ($internship->company?->name ?? 'Host Establishment'));
-        $companyAddress = $portfolio?->company_address ?: ($internship->company?->address ?? 'City of Cabuyao, Laguna');
-        $course         = $studentProfile?->program?->name ?? ($internship->program ?? '');
+        $companyName = $portfolio?->company_name ?: ($internship->company?->company_name ?? ($internship->company?->name ?? ''));
+        $companyAddress = $portfolio?->company_address ?: ($internship->company?->address ?? '');
+        $course = $studentProfile?->program?->name ?? ($internship->program ?? '');
 
-        $middleInitial = $studentProfile?->middle_name ? substr($studentProfile->middle_name, 0, 1) . '.' : null;
-        $studentName   = trim(implode(' ', array_filter([$studentProfile?->first_name, $middleInitial, $studentProfile?->last_name]))) ?: ($student->name ?? 'Student Name');
+        $middleInitial = $studentProfile?->middle_name ? substr($studentProfile->middle_name, 0, 1).'.' : null;
+        $studentName = trim(implode(' ', array_filter([$studentProfile?->first_name, $middleInitial, $studentProfile?->last_name]))) ?: ($student->name ?? 'Student Name');
 
-        $section       = $studentProfile?->section ?? '4ITD';
+        $section = $studentProfile?->section ?? '4ITD';
 
-        $instructorMid = $facultyProfile?->middle_name ? substr($facultyProfile->middle_name, 0, 1) . '.' : null;
-        $instructor    = trim(implode(' ', array_filter([$facultyProfile?->first_name, $instructorMid, $facultyProfile?->last_name]))) ?: ($internship->faculty?->name ?? 'Asst. Prof. Arcelito Quiatchon');
+        $instructorMid = $facultyProfile?->middle_name ? substr($facultyProfile->middle_name, 0, 1).'.' : null;
+        $instructor = trim(implode(' ', array_filter([$facultyProfile?->first_name, $instructorMid, $facultyProfile?->last_name]))) ?: ($internship->faculty?->name ?? '');
 
-        $monthYear     = now()->format('F Y');
+        $monthYear = now()->timezone(ManilaTime::TZ)->format('F Y');
 
         $tp->setValue('company_name', $this->escXml($companyName));
         $tp->setValue('company_address', $this->escXml($companyAddress));
@@ -95,15 +97,15 @@ class PortfolioPdfController extends Controller
         $tp->setValue('submission_month_year', $this->escXml($monthYear));
 
         // 2. Chapter I: Introduction & Company Profile
-        $tp->setValue('uc_vision', $this->escXml("A premier institution of higher learning in the region, recognized for excellence in academic programs, research, and community service that contribute to sustainable development."));
-        $tp->setValue('uc_mission', $this->escXml("To provide quality, relevant, and accessible education that nurtures competent, ethical, and socially responsible professionals prepared for global competitiveness."));
-        
-        $cVision  = $portfolio?->company_vision ?: "To be an industry leader delivering exceptional IT, accounting, and professional technological services while nurturing future talent.";
-        $cMission = $portfolio?->company_mission ?: "To provide reliable client-focused solutions through innovation, integrity, and continuous technological advancement.";
+        $tp->setValue('uc_vision', $this->escXml('A premier institution of higher learning in the region, recognized for excellence in academic programs, research, and community service that contribute to sustainable development.'));
+        $tp->setValue('uc_mission', $this->escXml('To provide quality, relevant, and accessible education that nurtures competent, ethical, and socially responsible professionals prepared for global competitiveness.'));
+
+        $cVision = $portfolio?->company_vision ?: '';
+        $cMission = $portfolio?->company_mission ?: '';
         $tp->setValue('company_vision', $this->escXml($cVision));
         $tp->setValue('company_mission', $this->escXml($cMission));
-        
-        $history = $portfolio?->company_history ?: ($internship->company?->notes ?: "Established with a commitment to excellence, {$companyName} has continuously evolved to serve diverse client needs while maintaining strong industry standards and fostering internship training programs.");
+
+        $history = $portfolio?->company_history ?: ($internship->company?->notes ?: '');
         $tp->setValue('company_history', $this->escXml($history));
 
         // 3. Chapter II: Weekly Progress Reports (Block Cloning)
@@ -117,9 +119,9 @@ class PortfolioPdfController extends Controller
                 $pos = $index + 1;
                 $tp->setValue("week_num#{$pos}", $this->escXml($j->week_number ?? $pos));
                 $tp->setValue("week_date#{$pos}", $this->escXml($j->date ? $j->date->format('M d, Y') : "Week {$pos}"));
-                $tp->setValue("activities_summary#{$pos}", $this->escXml($j->activities_summary ?: 'Completed assigned technical and departmental tasks.'));
-                $tp->setValue("learnings#{$pos}", $this->escXml($j->learnings ?: 'Acquired practical exposure in IT operations and professional workflow.'));
-                $tp->setValue("challenges#{$pos}", $this->escXml($j->challenges ?: 'Overcame technical challenges through self-paced research and supervisor guidance.'));
+                $tp->setValue("activities_summary#{$pos}", $this->escXml($j->activities_summary ?: ''));
+                $tp->setValue("learnings#{$pos}", $this->escXml($j->learnings ?: ''));
+                $tp->setValue("challenges#{$pos}", $this->escXml($j->challenges ?: ''));
             }
         } else {
             $tp->cloneBlock('week_block', 1, true, true);
@@ -131,12 +133,12 @@ class PortfolioPdfController extends Controller
         }
 
         // 4. Chapter III: Assessment of the Program
-        $ethical  = $portfolio?->assessment_ethical ?: "During my internship at {$companyName}, I learned that IT professionals must be responsible, trustworthy, and careful in handling systems, devices, and user information. Ensuring accuracy, respecting data privacy, and adhering to institutional protocols are vital to professional integrity.";
-        $learn    = $portfolio?->assessment_learnings ?: "I acquired hands-on technical skills in system maintenance, software testing, network setup, and project workflow management. Furthermore, I developed strong problem-solving abilities and communication skills essential for real-world operations.";
-        $exp      = $portfolio?->assessment_experience ?: "My interaction with supervisors, colleagues, and fellow interns was highly rewarding. Collaborating in a professional team environment improved my teamwork, interpersonal skills, and adaptability in workplace settings.";
-        $std      = $portfolio?->assessment_standards ?: "I was exposed to industry-aligned best practices such as version control, systematic hardware diagnosis, structured agile workflows, and formal document formatting standards.";
-        $rec      = $portfolio?->assessment_recommendations ?: "I recommend continuing continuous rotation across technical departments to provide future interns with broader learning exposure across different domains of Information Technology.";
-        $adv      = $portfolio?->assessment_advice ?: "To future interns: always be proactive, ask questions when uncertain, maintain diligence in recording your daily achievements, and approach every technical challenge as a learning opportunity.";
+        $ethical = $portfolio?->assessment_ethical ?: '';
+        $learn = $portfolio?->assessment_learnings ?: '';
+        $exp = $portfolio?->assessment_experience ?: '';
+        $std = $portfolio?->assessment_standards ?: '';
+        $rec = $portfolio?->assessment_recommendations ?: '';
+        $adv = $portfolio?->assessment_advice ?: '';
 
         $tp->setValue('assessment_ethical', $this->escXml($ethical));
         $tp->setValue('assessment_learnings', $this->escXml($learn));
@@ -150,9 +152,10 @@ class PortfolioPdfController extends Controller
         $studentNumber = $studentProfile?->student_number ?? $student->id;
         $tp->setValue('student_number', $this->escXml($studentNumber));
         $tp->setValue('student_email', $this->escXml($student->email ?? 'student@uc.edu.ph'));
-        $tp->setValue('student_phone', $this->escXml($studentProfile?->contact_number ?? 'N/A'));
+        $tp->setValue('student_phone', $this->escXml($studentProfile?->contact_number ?? ''));
 
         // 6. Appendices: DTR Table (Row Cloning)
+        $identity = $service->identity($internship);
         $logs = AttendanceLog::where('internship_id', $internship->id)
             ->orderBy('date')
             ->get();
@@ -161,25 +164,27 @@ class PortfolioPdfController extends Controller
             $tp->cloneRow('dtr_date', $logs->count());
             foreach ($logs as $index => $log) {
                 $pos = $index + 1;
-                $tp->setValue("dtr_date#{$pos}", $this->escXml($log->date ? $log->date->format('Y-m-d') : 'N/A'));
-                $tp->setValue("dtr_day#{$pos}", $this->escXml($log->date ? $log->date->format('D') : ''));
-                $tp->setValue("am_in#{$pos}", $this->escXml($log->am_in ? substr($log->am_in, 0, 5) : '--'));
-                $tp->setValue("am_out#{$pos}", $this->escXml($log->am_out ? substr($log->am_out, 0, 5) : '--'));
-                $tp->setValue("pm_in#{$pos}", $this->escXml($log->pm_in ? substr($log->pm_in, 0, 5) : '--'));
-                $tp->setValue("pm_out#{$pos}", $this->escXml($log->pm_out ? substr($log->pm_out, 0, 5) : '--'));
-                $tp->setValue("dtr_hours#{$pos}", $this->escXml($log->rendered_hours ?? '--'));
-                $tp->setValue("dtr_status#{$pos}", $this->escXml(ucfirst($log->status ?? 'present')));
+                $row = $service->serializeAttendance($log, $identity);
+                $tp->setValue("dtr_date#{$pos}", $this->escXml($row['date'] ?: ''));
+                $day = $row['date'] ? Carbon::parse($row['date'], ManilaTime::TZ)->format('D') : '';
+                $tp->setValue("dtr_day#{$pos}", $this->escXml($day));
+                $tp->setValue("am_in#{$pos}", $this->escXml($row['am_time_in'] ?: ''));
+                $tp->setValue("am_out#{$pos}", $this->escXml($row['am_time_out'] ?: ''));
+                $tp->setValue("pm_in#{$pos}", $this->escXml($row['pm_time_in'] ?: ''));
+                $tp->setValue("pm_out#{$pos}", $this->escXml($row['pm_time_out'] ?: ''));
+                $tp->setValue("dtr_hours#{$pos}", $this->escXml($row['hours_rendered'] !== null ? $row['hours_rendered'] : ''));
+                $tp->setValue("dtr_status#{$pos}", $this->escXml(ucfirst($row['status'] ?? '')));
             }
         } else {
             $tp->cloneRow('dtr_date', 1);
-            $tp->setValue('dtr_date#1', $this->escXml(now()->format('Y-m-d')));
-            $tp->setValue('dtr_day#1', $this->escXml(now()->format('D')));
-            $tp->setValue('am_in#1', '--');
-            $tp->setValue('am_out#1', '--');
-            $tp->setValue('pm_in#1', '--');
-            $tp->setValue('pm_out#1', '--');
-            $tp->setValue('dtr_hours#1', '0');
-            $tp->setValue('dtr_status#1', 'No records');
+            $tp->setValue('dtr_date#1', '');
+            $tp->setValue('dtr_day#1', '');
+            $tp->setValue('am_in#1', '');
+            $tp->setValue('am_out#1', '');
+            $tp->setValue('pm_in#1', '');
+            $tp->setValue('pm_out#1', '');
+            $tp->setValue('dtr_hours#1', '');
+            $tp->setValue('dtr_status#1', '');
         }
 
         // 7. Appendices: OJT Documentation & Photos (Block Cloning)
@@ -199,9 +204,9 @@ class PortfolioPdfController extends Controller
         }
 
         // Save populated docx
-        $baseFilename  = "Portfolio_{$studentNumber}_" . now()->format('Y-m-d');
-        $tempDir       = storage_path('app/temp');
-        if (!file_exists($tempDir)) {
+        $baseFilename = "Portfolio_{$studentNumber}_".now()->format('Y-m-d');
+        $tempDir = storage_path('app/temp');
+        if (! file_exists($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
 
@@ -231,14 +236,14 @@ class PortfolioPdfController extends Controller
         }
 
         // Method 2: Try LibreOffice Headless (Standard for Ubuntu/Linux production servers)
-        if (!$pdfConverted) {
+        if (! $pdfConverted) {
             try {
                 $out2 = [];
-                exec("soffice --headless --convert-to pdf --outdir " . escapeshellarg($tempDir) . " " . escapeshellarg($tempDocx) . " 2>&1", $out2, $ret2);
+                exec('soffice --headless --convert-to pdf --outdir '.escapeshellarg($tempDir).' '.escapeshellarg($tempDocx).' 2>&1', $out2, $ret2);
                 if ($ret2 === 0 && file_exists($tempPdf) && filesize($tempPdf) > 0) {
                     $pdfConverted = true;
                 } else {
-                    exec("libreoffice --headless --convert-to pdf --outdir " . escapeshellarg($tempDir) . " " . escapeshellarg($tempDocx) . " 2>&1", $out2, $ret3);
+                    exec('libreoffice --headless --convert-to pdf --outdir '.escapeshellarg($tempDir).' '.escapeshellarg($tempDocx).' 2>&1', $out2, $ret3);
                     if ($ret3 === 0 && file_exists($tempPdf) && filesize($tempPdf) > 0) {
                         $pdfConverted = true;
                     }
@@ -249,11 +254,11 @@ class PortfolioPdfController extends Controller
         }
 
         // Method 3: Fallback to PHPWord + DomPDF (Basic HTML-based rendering if no native engine is available)
-        if (!$pdfConverted) {
+        if (! $pdfConverted) {
             try {
                 Settings::setPdfRendererName(Settings::PDF_RENDERER_DOMPDF);
                 Settings::setPdfRendererPath(base_path('vendor/dompdf/dompdf'));
-                $phpWord   = IOFactory::load($tempDocx, 'Word2007');
+                $phpWord = IOFactory::load($tempDocx, 'Word2007');
                 $xmlWriter = IOFactory::createWriter($phpWord, 'PDF');
                 $xmlWriter->save($tempPdf);
                 if (file_exists($tempPdf) && filesize($tempPdf) > 0) {
@@ -266,9 +271,9 @@ class PortfolioPdfController extends Controller
 
         @unlink($tempDocx);
 
-        if (!$pdfConverted || !file_exists($tempPdf)) {
+        if (! $pdfConverted || ! file_exists($tempPdf)) {
             return response()->json([
-                'error'   => 'PDF conversion failed. Please download as DOCX format.',
+                'error' => 'PDF conversion failed. Please download as DOCX format.',
                 'details' => $conversionError ?: 'No PDF converter (MS Word, LibreOffice, or DomPDF) succeeded.',
             ], 500);
         }
@@ -281,6 +286,7 @@ class PortfolioPdfController extends Controller
         if (is_null($str)) {
             return '';
         }
+
         return htmlspecialchars((string) $str, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
@@ -288,6 +294,6 @@ class PortfolioPdfController extends Controller
 
     protected function authorizeInternshipAccess($user, Internship $internship): void
     {
-        \App\Support\InternshipAccess::abortUnlessCanView($user, $internship);
+        InternshipAccess::abortUnlessCanView($user, $internship);
     }
 }

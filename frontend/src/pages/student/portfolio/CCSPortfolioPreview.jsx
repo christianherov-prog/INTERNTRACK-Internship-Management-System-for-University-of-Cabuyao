@@ -8,8 +8,10 @@ import '../../../assets/css/portfolio-print.css';
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow';
 import WeeklyInternshipJournal from '../../../components/portfolio/WeeklyInternshipJournal';
 import DailyTimeRecord from '../../../components/portfolio/DailyTimeRecord';
-import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/portfolio/EvaluationsPreview';
+import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, pickLatestEvaluation } from '../../../components/portfolio/EvaluationsPreview';
 import { displayLabel } from '../../../utils/displayLabel';
+import { useCachedPage } from '../../../hooks/useCachedPage';
+import InternTrackLoader from '../../../components/InternTrackLoader'
 
 // --- Reusable Header Component ---
 function PageHeader({ companyLogoPath }) {
@@ -79,8 +81,8 @@ const TocRow = ({ label, page, level = 0, bold = false, style }) => (
 );
 
 function PortfolioPreview() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, seed, run } = useCachedPage('student:portfolio');
+  const [data, setData] = useState(seed ?? null);
   const [error, setError] = useState(null);
   const [toc, setToc] = useState({});
 
@@ -91,15 +93,13 @@ function PortfolioPreview() {
   });
 
   const load = () => {
-    setLoading(true);
     setError(null);
-    api.get('/student/portfolio')
-      .then(res => setData(res.data))
+    run(() => api.get('/student/portfolio').then(res => res.data))
+      .then(next => { if (next) setData(next); })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load portfolio.');
-        setData(null);
-      })
-      .finally(() => setLoading(false));
+        if (!seed) setData(null);
+      });
   }
 
   useEffect(() => { load() }, []);
@@ -184,7 +184,7 @@ function PortfolioPreview() {
           const weekMatch = textLower.match(/week\s+(\d+)/);
           if (weekMatch) {
             const weekNum = weekMatch[1];
-            if (!newToc[`week- ${weekNum}`]) newToc[`week - ${weekNum}`] = pageNum;
+            if (!newToc[`week-${weekNum}`]) newToc[`week-${weekNum}`] = pageNum;
           }
         });
 
@@ -198,11 +198,11 @@ function PortfolioPreview() {
     return () => clearInterval(checkDomInterval);
   }, [data]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 text-muted">
-        <i className="fa fa-spinner fa-spin fa-2x mb-3" aria-hidden="true" />
-        <div className="small">Checking your session…</div>
+        <InternTrackLoader />
+        <div className="small">Loading preview…</div>
       </div>
     );
   }
@@ -221,25 +221,45 @@ function PortfolioPreview() {
   const p = data?.internship?.portfolio;
   const i = data?.internship;
   const u = data?.user;
-  const sp = u?.student_profile;
+  const sp = u?.student_profile || u?.studentProfile;
+  const idn = data?.identity || {};
 
-  const studentName = sp
-    ? `${sp.last_name?.toUpperCase()}, ${sp.first_name?.toUpperCase()}${sp.middle_name ? ' ' + sp.middle_name[0].toUpperCase() + '.' : ''}`
-    : '________________________';
+  const studentName = idn.student_name
+    || (sp ? `${sp.last_name?.toUpperCase()}, ${sp.first_name?.toUpperCase()}${sp.middle_name ? ' ' + sp.middle_name[0].toUpperCase() + '.' : ''}` : '');
 
-  const section = sp?.section ?? '_________';
+  const section = idn.section || sp?.section || '';
 
-  const rawProgram = displayLabel(sp?.course_name || sp?.program || i?.program, 'Bachelor of Science in Information Technology');
+  const rawProgram = displayLabel(idn.program || sp?.course_name || sp?.program || i?.program);
   const isCs = rawProgram.toLowerCase().includes('computer science');
   const programTitle = isCs
-    ? 'Bachelor of Science in Computer Science'
-    : (rawProgram.toLowerCase().includes('information technology') ? 'Bachelor of Science in Information Technology' : rawProgram);
+    ? rawProgram
+    : (rawProgram.toLowerCase().includes('information technology') ? rawProgram : rawProgram);
 
-  const practicumCode = programTitle.includes('Computer Science')
-    ? 'CSP115 - CS Practicum (300 hours)'
-    : 'ITP113 - IT Practicum (500 hours)';
+  const hoursLabel = idn.target_hours ? `${idn.target_hours} hours` : '';
+  const practicumCode = programTitle.toLowerCase().includes('computer science')
+    ? `CSP115 - CS Practicum${hoursLabel ? ` (${hoursLabel})` : ''}`
+    : (programTitle.toLowerCase().includes('information technology')
+      ? `ITP113 - IT Practicum${hoursLabel ? ` (${hoursLabel})` : ''}`
+      : (hoursLabel ? `${programTitle} (${hoursLabel})` : programTitle));
 
-  const ayLabel = sp?.academic_year ? `A.Y.${sp.academic_year} / ${sp.semester === 2 ? '2nd' : '1st'} SEMESTER` : 'A.Y. 2025–2026 / 2nd SEMESTER';
+  const semesterBit = idn.semester
+    ? (idn.semester === '2nd' ? '2nd SEMESTER' : (idn.semester === '1st' ? '1st SEMESTER' : `${idn.semester} SEMESTER`))
+    : '';
+  const ayLabel = idn.academic_year
+    ? `A.Y. ${idn.academic_year}${semesterBit ? ` / ${semesterBit}` : ''}`
+    : (sp?.school_year ? `A.Y. ${sp.school_year}` : '');
+
+  const facultyName = idn.faculty_name
+    || (i?.faculty?.faculty_profile || i?.faculty?.facultyProfile
+      ? `${(i.faculty.faculty_profile || i.faculty.facultyProfile).last_name}, ${(i.faculty.faculty_profile || i.faculty.facultyProfile).first_name}`
+      : '');
+  const coordinatorName = idn.coordinator_name || '';
+  const companyName = idn.company_name || p?.company_name || i?.company?.company_name || '';
+  const companyAddress = idn.company_address || p?.company_address || i?.company?.address || '';
+  const supervisorName = idn.supervisor_name || '';
+  const attendanceLogs = i?.attendance || i?.attendance_logs || [];
+  const studentSignaturePath = idn.student_signature_path || '';
+  const supervisorSignaturePath = idn.supervisor_signature_path || '';
 
   const journals = i?.journals ?? [];
   const photos = p?.photos || [];
@@ -247,7 +267,8 @@ function PortfolioPreview() {
   let currentPage = 1;
   const nextPg = () => currentPage++;
 
-  const ojtWeeks = [...new Set(photos.filter(x => x.type === 'ojt_photo').map(x => x.week_number))].sort((a, b) => a - b);
+  const ojtPhotos = photos.filter(x => x.type === 'ojt_photo')
+  const ojtWeeks = [...new Set(ojtPhotos.map(x => Number(x.week_number) || 0))].sort((a, b) => a - b)
 
   const visionMissionList = photos.filter(x => ['vision_mission', 'company_vision_mission'].includes(x.type));
   if (visionMissionList.length === 0 && p?.vision_mission_path) {
@@ -329,8 +350,8 @@ function PortfolioPreview() {
         <div style={{ flex: 1, width: "93%", textAlign: "center", paddingTop: "0px", paddingBottom: "40px" }}>
           <div style={{ marginBottom: "42px" }}>
             <p style={{ textAlign: "center" }}>A Narrative Report on the On-The-Job</p>
-            <p style={{ margin: 0, textAlign: "center" }}>undertaken at <strong style={{ fontStyle: "italic" }}>{p?.company_name || i?.company?.company_name || "(Name of HTE)"}</strong></p>
-            <p style={{ margin: 0, textAlign: "center" }}>located at <strong style={{ fontStyle: "italic" }}>{p?.company_address || i?.company?.address || "(Address of HTE)"}</strong></p>
+            <p style={{ margin: 0, textAlign: "center" }}>undertaken at <strong style={{ fontStyle: "italic" }}>{companyName || "(Name of HTE)"}</strong></p>
+            <p style={{ margin: 0, textAlign: "center" }}>located at <strong style={{ fontStyle: "italic" }}>{companyAddress || "(Address of HTE)"}</strong></p>
           </div>
           <div style={{ marginBottom: "42px" }}>
             <p style={{ textAlign: "center" }}>In partial fulfillment of the requirements for the course</p>
@@ -353,12 +374,16 @@ function PortfolioPreview() {
           <div>
             <p style={{ textAlign: "center" }}>Submitted to:</p>
             <p style={{ fontWeight: "bold", fontStyle: "italic", marginTop: "16px", textAlign: "center" }}>
-              {i?.faculty?.facultyProfile ? `Dr.${i.faculty.facultyProfile.last_name}, ${i.faculty.facultyProfile.first_name}` : "____________________________"}
+              {facultyName || "____________________________"}
             </p>
             <p style={{ textAlign: "center" }}>Internship Instructor</p><br />
-            <p style={{ fontWeight: "bold", textAlign: "center" }}>ASST. PROF. ARCELITO QUIATCHON</p>
-            <p style={{ textAlign: "center" }}>CCS Internship Coordinator</p><br />
-            <p style={{ fontWeight: "bold", textAlign: "center" }}>{new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+            {coordinatorName ? (
+              <>
+                <p style={{ fontWeight: "bold", textAlign: "center" }}>{coordinatorName}</p>
+                <p style={{ textAlign: "center" }}>Internship Coordinator</p><br />
+              </>
+            ) : null}
+            <p style={{ fontWeight: "bold", textAlign: "center" }}>{new Date().toLocaleDateString("en-PH", { month: "long", year: "numeric", timeZone: "Asia/Manila" })}</p>
           </div>
         </div>
         <div className="page-number">{nextPg()}</div>
@@ -383,14 +408,10 @@ function PortfolioPreview() {
           <TocRow label="CHAPTER II: WEEKLY PROGRESS REPORT" page={toc['chap2']} bold style={{ marginTop: '8px' }} />
           {journals.length > 0 ? (
             journals.map(j => (
-              <TocRow key={j.id} label={`Week ${j.week_number || j.week}`} page={toc[`week - ${j.week_number || j.week}`]} level={0} />
+              <TocRow key={j.id} label={`Week ${j.week_number || j.week}`} page={toc[`week-${j.week_number || j.week}`]} level={0} />
             ))
           ) : (
-            <>
-              <TocRow label="Week 1" page={toc['week-1']} level={0} />
-              <TocRow label="Week 2" page={toc['week-2']} level={0} />
-              <TocRow label="Week 3" page={toc['week-3']} level={0} />
-            </>
+            <TocRow label="Week 1" page={toc['week-1']} level={0} />
           )}
 
           <TocRow label="CHAPTER III: ASSESSMENT OF THE PROGRAM" page={toc['chap3']} bold style={{ marginTop: '8px' }} />
@@ -420,7 +441,6 @@ function PortfolioPreview() {
           <TocRow label="Internship Host Training Establishment Evaluation Form PNC AA-FO-22" page={toc['fo22']} level={0} />
           <TocRow label="Internship Program Evaluation Form PNC AA-FO-23" page={toc['fo23']} level={0} />
           <TocRow label="Student Internship Performance Evaluation Form PNC: AA-FO-24" page={toc['fo24']} level={0} />
-          <TocRow label="Faculty Evaluation" page={toc['faculty_eval']} level={0} />
           <TocRow label={<span>Photos During OJT (<span style={{ fontStyle: 'italic' }}>Kindly add label and explanation</span>)</span>} page={toc['app-photos']} level={0} />
 
           <TocRow label={<span>ONLINE / F2F TRAINING (<span style={{ fontStyle: 'italic' }}>WADWHANI</span>)</span>} page={toc['train-wadhwani']} level={0} />
@@ -480,8 +500,8 @@ function PortfolioPreview() {
             { title: 'Mission of UC', body: 'An institution of higher learning committed to equip individuals with knowledge, skills and values that will enable them to achieve professional goals & provide leadership and service for national development.', heading: 'h4' },
             { title: 'Host Company Profile ', body: null, placeholder: ' ', heading: 'h2', style: { marginTop: '20px', marginBottom: '10px' } },
             { title: 'Vision & Mission', body: null, heading: 'h4', style: { marginTop: '20px', marginBottom: '10px' } },
-            { title: 'Vision', body: p?.company_vision ?? 'N/A', heading: 'strong', inlineTitle: true, indent: true },
-            { title: 'Mission', body: p?.company_mission ?? 'N/A', heading: 'strong', inlineTitle: true, indent: true },
+            { title: 'Vision', body: p?.company_vision || '', heading: 'strong', inlineTitle: true, indent: true },
+            { title: 'Mission', body: p?.company_mission || '', heading: 'strong', inlineTitle: true, indent: true },
           ]}
         />
       )}
@@ -518,11 +538,32 @@ function PortfolioPreview() {
         <div className="page-number">{nextPg()}</div>
       </div>
 
-      {journals.length === 0 && <WeeklyInternshipJournal studentName={studentName} program={programTitle} nextPg={nextPg} />}
+      {journals.length === 0 && (
+        <WeeklyInternshipJournal
+          studentName={studentName}
+          program={programTitle}
+          studentSignaturePath={studentSignaturePath}
+          companyLogoPath={p?.company_logo_path}
+          nextPg={nextPg}
+        />
+      )}
 
       {journals.map((j) => (
         (!j.file_path || j.file_path.endsWith(".pdf")) ? (
-          <WeeklyInternshipJournal key={j.id} studentName={studentName} program={programTitle} weekNumber={j.week_number || j.week} date={j.date} accomplishment={j.activities_summary || j.accomplishment} difficulties={j.challenges || j.difficulties} insights={j.learnings || j.insights} nextPg={nextPg} />
+          <WeeklyInternshipJournal
+            key={j.id}
+            studentName={studentName}
+            program={programTitle}
+            weekNumber={j.week_number || j.week}
+            date={j.date}
+            endDate={j.end_date}
+            accomplishment={j.activities_summary || j.accomplishment}
+            difficulties={j.challenges || j.difficulties}
+            insights={j.learnings || j.insights}
+            studentSignaturePath={studentSignaturePath}
+            companyLogoPath={p?.company_logo_path}
+            nextPg={nextPg}
+          />
         ) : (
           <div key={j.id} className="a4-page page-break portfolio-document position-relative text-center">
             <PageHeader companyLogoPath={p?.company_logo_path} />
@@ -573,15 +614,17 @@ function PortfolioPreview() {
       {renderPhotos(['consent_form', 'Notarized Student Internship Consent Form (PNC:AA-FO-28)', 'Notarized Student Internship Consent Form (PNC: AA-FO-28)'], 'Student Internship Consent Form PNC: AA-FO-28')}
       {renderPhotos(['training_plan', 'Training Plan', 'Internship Training Plan'], 'Internship Training Plan PNC: AA-FO-25.3')}
 
-      {(() => {
-        const dtrTypes = ['dtr_form', 'PNC:AA-FO-30 DTR (manual form upload)', 'Daily Time Record'];
-        const dtrPhotos = photos.filter(x => dtrTypes.includes(x.type) || dtrTypes.includes(x.document_type) || dtrTypes.includes(x.original_type));
-        const imageDtrs = dtrPhotos.filter(x => x.file_path && !x.file_path.endsWith('.pdf'));
-        if (imageDtrs.length === 0) {
-          return <DailyTimeRecord studentName={studentName} program={programTitle} companyName={p?.company_name} supervisorName={p?.supervisor_name} companyLogoPath={p?.company_logo_path} pageHeaderComponent={PageHeader} nextPg={nextPg} />;
-        }
-        return renderPhotos(dtrTypes, 'PNC:AA-FO-30 DTR (manual form upload) — Student Internship Daily Time Record');
-      })()}
+      <DailyTimeRecord
+        studentName={studentName}
+        program={programTitle}
+        companyName={companyName}
+        supervisorName={supervisorName}
+        companyLogoPath={p?.company_logo_path}
+        studentSignaturePath={studentSignaturePath}
+        supervisorSignaturePath={supervisorSignaturePath}
+        logs={attendanceLogs}
+        nextPg={nextPg}
+      />
 
 
       {renderPhotos(['moa_document', 'MOA / LOA / TOR', 'Memorandum of Agreement'], 'Memorandum of Agreement')}
@@ -590,17 +633,18 @@ function PortfolioPreview() {
       {/* EVALUATIONS */}
       {(() => {
         const evals = data?.internship?.evaluations || [];
-        const fo03 = evals.find(e => e.form_type === 'FO-03');
-        const fo22 = evals.find(e => e.form_type === 'FO-22');
-        const fo23 = evals.find(e => e.form_type === 'FO-23');
-        const fo24 = evals.find(e => e.form_type === 'FO-24');
+        const fo03 = pickLatestEvaluation(evals, 'FO-03');
+        const fo22 = pickLatestEvaluation(evals, 'FO-22');
+        const fo23 = pickLatestEvaluation(evals, 'FO-23');
+        const fo24 = pickLatestEvaluation(evals, 'FO-24');
+        const evalProps = { internship: i, user: u, identity: idn };
 
         return (
           <>
-            <PrintFO03 evalData={fo03 || null} internship={data?.internship} tocId="fo03" />
-            <PrintFO22 evalData={fo22 || null} internship={data?.internship} tocId="fo22" />
-            <PrintFO23 evalData={fo23 || null} internship={data?.internship} tocId="fo23" />
-            <PrintFO24 evalData={fo24 || null} internship={data?.internship} tocId="fo24" />
+            <PrintFO03 evalData={fo03 || null} tocId="fo03" {...evalProps} />
+            <PrintFO22 evalData={fo22 || null} tocId="fo22" {...evalProps} />
+            <PrintFO23 evalData={fo23 || null} tocId="fo23" {...evalProps} />
+            <PrintFO24 evalData={fo24 || null} tocId="fo24" {...evalProps} />
           </>
         );
       })()}
@@ -610,8 +654,9 @@ function PortfolioPreview() {
         <PaginatedImageCollection list={[]} title="Photos During OJT" companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} emptyMessage="[ Draft Preview Mode: Upload your weekly OJT pictures with captions in the Portfolio Builder to populate this section. ]" />
       ) : (
         ojtWeeks.map(w => {
-          const list = photos.filter(x => x.type === 'ojt_photo' && x.week_number === w);
-          return <PaginatedImageCollection key={`ojt - week - ${w}`} list={list} title={`Week ${w}`} companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} />
+          const list = ojtPhotos.filter(x => (Number(x.week_number) || 0) === w);
+          const title = w > 0 ? `Week ${w}` : 'Photos During OJT';
+          return <PaginatedImageCollection key={`ojt-week-${w}`} list={list} title={title} companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} />
         })
       )}
 

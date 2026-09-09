@@ -5,6 +5,10 @@ import api from '../../../services/api'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
+import { useToast } from '../../../contexts/ToastContext'
+import { safeUploadError } from '../../../utils/safeApiError'
+import { useCachedPage } from '../../../hooks/useCachedPage'
+import InternTrackLoader from '../../../components/InternTrackLoader'
 
 /** Per-field limit for Chapter III text areas. */
 const CHAPTER3_MAX = 5000
@@ -35,8 +39,9 @@ const SAMPLE_CONTENT = {
 
 function COEPortfolioBuilder() {
   const confirm = useConfirm()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const toast = useToast()
+  const { loading, seed, run } = useCachedPage('student:portfolio')
+  const [data, setData] = useState(seed ?? null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [activeTab, setActiveTab] = useState('acknowledgement')
@@ -57,12 +62,12 @@ function COEPortfolioBuilder() {
   })
 
   const fetchPortfolio = () => {
-    setLoading(true)
-    api.get('/student/portfolio')
-      .then(res => {
-        setData(res.data)
-        const p = res.data.internship?.portfolio
-        const i = res.data.internship
+    run(() => api.get('/student/portfolio').then(res => res.data))
+      .then(resData => {
+        if (!resData) return
+        setData(resData)
+        const p = resData.internship?.portfolio
+        const i = resData.internship
         if (p) {
           const custom = p.custom_fields || {};
           setForm({
@@ -81,8 +86,6 @@ function COEPortfolioBuilder() {
           })
         }
       })
-      .catch(console.error)
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchPortfolio() }, [])
@@ -122,7 +125,7 @@ function COEPortfolioBuilder() {
     const file = e.target.files[0]
     if (!file) return
     if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
-      alert("Please upload an image file only (PNG, JPG, JPEG, WEBP, etc.).")
+      toast.error('Please upload an image file only (PNG, JPG, JPEG, WEBP, etc.).')
       e.target.value = ''
       return
     }
@@ -133,7 +136,7 @@ function COEPortfolioBuilder() {
       await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       fetchPortfolio()
     } catch (err) {
-      alert("Failed to upload logo: " + (err.response?.data?.message || err.message))
+      toast.error(safeUploadError(err))
     } finally {
       e.target.value = ''
     }
@@ -142,8 +145,9 @@ function COEPortfolioBuilder() {
   const handleFileUpload = async (e, type) => {
     const file = e.target.files[0]
     if (!file) return
-    if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
-      alert("Please upload a valid image file.")
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)
+    if (!isImage) {
+      toast.error('Please upload a valid image file (JPG, PNG, or WEBP).')
       e.target.value = ''
       return
     }
@@ -153,10 +157,11 @@ function COEPortfolioBuilder() {
     formData.append('type', type)
 
     try {
-      await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post('/student/portfolio/photos', formData)
+      toast.success('File uploaded.')
       fetchPortfolio()
     } catch (err) {
-      alert("Failed to upload file: " + (err.response?.data?.message || err.message))
+      toast.error(safeUploadError(err))
     } finally {
       e.target.value = ''
     }
@@ -177,7 +182,7 @@ function COEPortfolioBuilder() {
       fetchPortfolio()
       setDeletingItem(null)
     } catch (err) {
-      alert("Failed to delete file.")
+      toast.error('Failed to delete file.')
     } finally {
       setIsDeleting(false)
     }
@@ -224,13 +229,12 @@ function COEPortfolioBuilder() {
   const journalCount = journals.length
   const overallPct = Math.round(((textDone + uploadsDone) / (textChecks.length + uploadsTotal)) * 100)
 
-  const renderFileList = (type, title, accept = "image/*", tip = "") => {
+  const renderFileList = (type, title, accept = "image/jpeg,image/png,image/jpg,image/webp,.jpg,.jpeg,.png,.webp") => {
     const items = photos.filter(photo => photo.type === type) || []
     return (
       <div className="content-card portfolio-upload-tile">
         <div className="portfolio-upload-tile-head">
           <h6 className="mb-0">{title}</h6>
-          {tip && <span className="portfolio-upload-tip" title={tip}><i className="fa fa-circle-info"></i></span>}
         </div>
         <div className="portfolio-upload-tile-body">
           <div className="portfolio-upload-tile-content">
@@ -239,14 +243,14 @@ function COEPortfolioBuilder() {
                 {items.map(item => (
                   <div key={item.id} className="portfolio-upload-file-row">
                     <div className="text-truncate flex-grow-1 me-2 small">
-                      {item.file_path && item.file_path.endsWith('.pdf')
+                      {item.file_path && String(item.file_path).toLowerCase().endsWith('.pdf')
                         ? <i className="fa fa-file-pdf text-danger me-1"></i>
                         : <i className="fa fa-image text-primary me-1"></i>}
-                      {item.label || 'Uploaded File'}
+                      {item.file_name || item.label || 'Uploaded File'}
                     </div>
                     <div className="d-flex gap-1 flex-shrink-0">
-                      <AuthenticatedFileLink path={item.file_path} className="btn btn-outline-secondary btn-sm" style={{ padding: '0.1rem 0.35rem' }}><i className="fa fa-eye"></i></AuthenticatedFileLink>
-                      <button type="button" className="btn btn-outline-danger btn-sm" style={{ padding: '0.1rem 0.35rem' }} onClick={() => handleDeleteFileClick(item)}><i className="fa fa-trash"></i></button>
+                      <AuthenticatedFileLink path={item.file_path} className="btn btn-outline-secondary btn-sm" style={{ padding: '0.1rem 0.35rem' }} title="View"><i className="fa fa-eye"></i></AuthenticatedFileLink>
+                      <button type="button" className="btn btn-outline-danger btn-sm" style={{ padding: '0.1rem 0.35rem' }} title="Remove" onClick={() => handleDeleteFileClick(item)}><i className="fa fa-trash"></i></button>
                     </div>
                   </div>
                 ))}
@@ -254,7 +258,6 @@ function COEPortfolioBuilder() {
             ) : (
               <p className="portfolio-upload-empty">No files yet</p>
             )}
-            {tip && <p className="portfolio-upload-hint">{tip}</p>}
           </div>
           <div className="portfolio-upload-btn-wrap">
             <input type="file" id={`upload-${type}`} className="d-none" accept={accept} multiple onChange={(e) => handleFileUpload(e, type)} />
@@ -268,11 +271,13 @@ function COEPortfolioBuilder() {
   }
 
   const renderEvaluationRow = (formType, formTitle) => {
-    const ev = data?.internship?.evaluations?.find(e => e.form_type === formType)
+    const ev = (data?.internship?.evaluations || []).find(e => e.form_type === formType)
     let statusBadge = <span className="badge bg-secondary">Not Yet Started</span>
     if (ev) {
-      if (ev.status === 'completed') statusBadge = <span className="badge bg-success">Completed</span>
-      else if (ev.status === 'pending') statusBadge = <span className="badge bg-warning text-dark">In Progress</span>
+      const completed = ev.status === 'completed' || !!ev.submitted_at
+      const pending = ev.status === 'pending' || ev.status === 'in_progress'
+      if (completed) statusBadge = <span className="badge bg-success">Completed</span>
+      else if (pending) statusBadge = <span className="badge bg-warning text-dark">In Progress</span>
     }
     return (
       <tr key={formType}>
@@ -282,7 +287,7 @@ function COEPortfolioBuilder() {
     )
   }
 
-  if (loading || !data) return <Layout title="My Portfolio" subtitle="Student" icon="fa-folder-plus" bodyClass="student-page"><div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div></Layout>
+  if ((loading && !data) || !data) return <Layout title="My Portfolio" subtitle="Student" icon="fa-folder-plus" bodyClass="student-page"><div className="text-center py-5"><InternTrackLoader /></div></Layout>
 
   return (
     <Layout title="My Portfolio" subtitle="Student" icon="fa-folder-plus" bodyClass="student-page">
@@ -380,7 +385,7 @@ function COEPortfolioBuilder() {
                 <div className="content-card-header bg-light"><h6 className="mb-0"><i className="fa fa-handshake me-2 text-primary"></i>Acknowledgement</h6></div>
                 <div className="p-3 p-lg-4">
                   <label className="portfolio-field-label">Acknowledgement Statement</label>
-                  <textarea className="form-control portfolio-field-input" rows={6} placeholder="Express your gratitude to your mentors, supervisors, and department..." value={form.acknowledgement} onChange={e => setForm({ ...form, acknowledgement: e.target.value })}></textarea>
+                  <textarea className="form-control portfolio-field-input" rows={6} placeholder="Acknowledgement" value={form.acknowledgement} onChange={e => setForm({ ...form, acknowledgement: e.target.value })}></textarea>
                 </div>
               </div>
             </div>
@@ -401,11 +406,11 @@ function COEPortfolioBuilder() {
                   <div className="portfolio-hte-row mb-3">
                     <div>
                       <label className="portfolio-field-label">Host Company Name <span className="text-danger">*</span></label>
-                      <input type="text" className="form-control portfolio-field-input" placeholder="e.g. NIDEC CORPORATION" value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} />
+                      <input type="text" className="form-control portfolio-field-input" placeholder="Company Name" value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} />
                     </div>
                     <div>
                       <label className="portfolio-field-label">Host Company Address <span className="text-danger">*</span></label>
-                      <input type="text" className="form-control portfolio-field-input" placeholder="e.g. Biñan City, Laguna" value={form.company_address} onChange={e => setForm({ ...form, company_address: e.target.value })} />
+                      <input type="text" className="form-control portfolio-field-input" placeholder="Company Address" value={form.company_address} onChange={e => setForm({ ...form, company_address: e.target.value })} />
                     </div>
                   </div>
                   <div className="mb-3">
@@ -542,9 +547,9 @@ function COEPortfolioBuilder() {
             <div className="portfolio-appendix-group">
               <h6 className="portfolio-appendix-group-title">Company &amp; Preliminary Documents</h6>
               <div className="portfolio-upload-grid">
-                {renderFileList('company_logo', 'Company Logo (HTE)', 'image/*', 'Appears on the Cover Page & Header.')}
-                {renderFileList('approval_sheet', 'Approval Sheet', "image/*", "Upload your signed Approval Sheet here.")}
-                {renderFileList('org_chart', '1.2. Organizational Chart', "image/*", "Upload your host company organizational chart.")}
+                {renderFileList('company_logo', 'Company Logo (HTE)', 'image/*')}
+                {renderFileList('approval_sheet', 'Approval Sheet', 'image/*')}
+                {renderFileList('org_chart', '1.2. Organizational Chart', 'image/*')}
               </div>
             </div>
             <div className="portfolio-appendix-group">
@@ -558,8 +563,8 @@ function COEPortfolioBuilder() {
                 {renderFileList('consent_form', '4.6. Internship Consent Form')}
                 {renderFileList('medical_certificate', '4.7. Medical Certificate')}
                 {renderFileList('psychological_certificate', '4.8. Psychological Certificate')}
-                {renderFileList('work_samples', '4.9. Work Samples/Outcomes', "image/*", "Upload screenshots or images of your outcomes")}
-                {renderFileList('ojt_photos', '4.10. Photos', "image/*", "Upload your general OJT pictures")}
+                {renderFileList('work_samples', '4.9. Work Samples/Outcomes', 'image/*')}
+                {renderFileList('ojt_photos', '4.10. Photos', 'image/*')}
                 {renderFileList('supervisor_evaluation', '4.11. Supervisor\'s Evaluation')}
                 {renderFileList('curriculum_vitae', '4.12. Curriculum Vitae')}
               </div>

@@ -34,11 +34,8 @@ function CoordPlacementHub() {
       </div>
 
       <div>
-        {activeTab === 'placements' ? (
-          <div className="tab-embedded"><CoordPlacements embedded={true} /></div>
-        ) : (
-          <div className="tab-embedded"><CoordHteRequests embedded={true} /></div>
-        )}
+        <div className="tab-embedded" hidden={activeTab !== 'placements'}><CoordPlacements embedded={true} /></div>
+        <div className="tab-embedded" hidden={activeTab !== 'hte'}><CoordHteRequests embedded={true} /></div>
       </div>
     </Layout>
   )

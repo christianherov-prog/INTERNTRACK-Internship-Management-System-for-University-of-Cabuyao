@@ -8,6 +8,9 @@ import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { HostTrainingEstEvaluationForm } from '../../components/evaluations/HostTrainingEstEvaluationForm'
 import { InternshipProgramEvaluationForm } from '../../components/evaluations/InternshipProgramEvaluationForm'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const COMPETENCIES = [
   { key: 'technical_skills', label: 'Technical Skills' },
@@ -205,39 +208,48 @@ function SubmitEvalModal({ internship, activeForm, onClose, onSubmit, processing
 
 function StudentEvaluations() {
   const currentTerm = useCurrentTerm()
-  const [evaluations, setEvaluations] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('student:evaluations')
+  const [evaluations, setEvaluations] = useState(() => seed?.evaluations ?? [])
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [showSubmitModal, setShowSubmitModal] = useState(null)
   const [processing, setProcessing] = useState(false)
-  const [internship, setInternship] = useState(null)
+  const [internship, setInternship] = useState(() => seed?.internship ?? null)
   const [previewEval, setPreviewEval] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-
-    api.get('/student/records')
-      .then(res => {
+    run(async () => {
+      let nextInternship = null
+      try {
+        const res = await api.get('/student/records')
         const items = unwrapList(res.data).items
         const profile = res.data?.profile
         if (items.length > 0) {
-          setInternship({
+          nextInternship = {
             ...items[0],
             student: items[0].student || { student_profile: profile },
-          })
+          }
+        }
+      } catch {
+        // evaluations can still load without records
+      }
+      const evalRes = await api.get('/student/evaluations')
+      return {
+        internship: nextInternship,
+        evaluations: unwrapList(evalRes.data).items,
+      }
+    })
+      .then((next) => {
+        if (next) {
+          if (next.internship) setInternship(next.internship)
+          setEvaluations(next.evaluations)
         }
       })
-      .catch(() => { })
-
-    api.get('/student/evaluations')
-      .then(res => setEvaluations(unwrapList(res.data).items))
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load evaluations.')
         setEvaluations([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -255,6 +267,7 @@ function StudentEvaluations() {
     setError(null)
     try {
       await api.post(`/student/evaluations`, data)
+      invalidateStudentPortfolio()
       setShowSubmitModal(null)
       load()
     } catch (err) {
@@ -333,8 +346,8 @@ function StudentEvaluations() {
         data={{ evalData: previewEval, internship: internship }}
       />
 
-      {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+      {loading && evaluations.length === 0 && !internship ? (
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : (
         <>
           {/* 4-Form Evaluation Status Cards */}

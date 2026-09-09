@@ -1,5 +1,6 @@
 <?php
 namespace App\Models;
+use App\Services\SupervisorFeedbackService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 class JournalEntry extends Model {
@@ -23,37 +24,43 @@ class JournalEntry extends Model {
     public function supervisorReviewer() { return $this->belongsTo(User::class,'supervisor_reviewed_by'); }
     public function facultyReviewer() { return $this->belongsTo(User::class,'faculty_reviewed_by'); }
 
+    public function isSupervisorNote(): bool
+    {
+        return $this->status === SupervisorFeedbackService::NOTE_STATUS
+            || (int) $this->week_number === 0;
+    }
+
+    public function scopeAcademic($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('status')->orWhere('status', '!=', SupervisorFeedbackService::NOTE_STATUS);
+        })->where(function ($q) {
+            $q->whereNull('week_number')->orWhere('week_number', '>=', 1);
+        });
+    }
+
     public function scopePendingSupervisorReview($query)
     {
-        return $query->where('status', 'submitted')->whereNull('supervisor_reviewed_at');
+        // Industry supervisors no longer review journals. Kept for historical queries.
+        return $query->whereRaw('1 = 0');
     }
 
     public function scopePendingFacultyReview($query)
     {
-        return $query->where('status', 'submitted')
-            ->where(function ($q) {
-                $q->whereNotNull('supervisor_reviewed_at')
-                    ->orWhereHas('internship', fn ($internship) => $internship->whereNull('supervisor_id'));
-            });
+        return $query->academic()->where('status', 'submitted');
     }
 
     public function isAwaitingSupervisorValidation(): bool
     {
-        return (bool) $this->internship?->supervisor_id
-            && $this->supervisor_reviewed_at === null
-            && $this->status === 'submitted';
+        return false;
     }
 
     public function facultyCanReview(): bool
     {
-        if ($this->faculty_reviewed_at) {
-            return true;
+        if ($this->isSupervisorNote()) {
+            return false;
         }
 
-        if (! $this->internship?->supervisor_id) {
-            return true;
-        }
-
-        return $this->supervisor_reviewed_at !== null;
+        return in_array($this->status, ['submitted', 'needs_revision', 'approved'], true);
     }
 }

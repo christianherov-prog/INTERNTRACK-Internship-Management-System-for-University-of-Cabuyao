@@ -5,11 +5,13 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function CoordLogbookReview() {
   const currentTerm = useCurrentTerm()
-  const [journals, setJournals]   = useState([])
-  const [loading, setLoading]     = useState(true)
+  const { loading, seed, run } = useCachedPage('coordinator:logbook')
+  const [journals, setJournals]   = useState(() => seed ?? [])
   const [error, setError]         = useState(null)
   const [processing, setProcessing] = useState(null)
   const [message, setMessage]     = useState(null)
@@ -18,15 +20,13 @@ function CoordLogbookReview() {
   const [action, setAction]       = useState('approved')
 
   const fetchJournals = () => {
-    setLoading(true)
     setError(null)
-    api.get('/coordinator/logbook')
-      .then(res => setJournals(unwrapList(res.data).items))
+    run(() => api.get('/coordinator/logbook').then(res => unwrapList(res.data).items))
+      .then((next) => { if (next) setJournals(next) })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load journals.')
         setJournals([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchJournals() }, [])
@@ -75,7 +75,7 @@ function CoordLogbookReview() {
                 </div>
                 <div>
                   <label className="form-label fw-semibold">Remarks / Feedback</label>
-                  <textarea className="form-control" rows={3} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Optional feedback for the student…"></textarea>
+                  <textarea className="form-control" rows={3} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Feedback"></textarea>
                 </div>
               </div>
               <div className="modal-footer">
@@ -96,7 +96,7 @@ function CoordLogbookReview() {
         </div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : journals.length === 0 && !error ? (
             <EmptyState icon="fa-check-circle" title="No pending journals" message="All submitted journal entries have been reviewed." />
           ) : journals.length === 0 ? null : journals.map(j => {

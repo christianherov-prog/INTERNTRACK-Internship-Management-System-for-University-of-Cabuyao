@@ -17,6 +17,8 @@ function ConfirmModal({
   variant = 'primary',
   loading = false,
   error = null,
+  children = null,
+  loadingLabel = 'Working…',
   onCancel,
   onConfirm,
 }) {
@@ -76,13 +78,13 @@ function ConfirmModal({
   }
 
   const confirmClass =
-    variant === 'danger' ? 'it-confirm-btn it-confirm-btn-danger' : 'it-confirm-btn it-confirm-btn-danger'
+    variant === 'danger' ? 'it-confirm-btn it-confirm-btn-danger' : 'it-confirm-btn it-confirm-btn-primary'
 
   return (
     <div className="it-confirm-overlay" role="presentation" onClick={handleBackdropClick}>
       <div
         ref={dialogRef}
-        className="it-confirm-modal"
+        className={`it-confirm-modal${children ? ' it-confirm-modal-form' : ''}`}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -94,6 +96,11 @@ function ConfirmModal({
         <h3 id={titleId} className="it-confirm-title">{title}</h3>
         {message && (
           <p id={descId} className="it-confirm-sub">{message}</p>
+        )}
+        {children && (
+          <div className="it-confirm-body text-start w-100 mb-2" style={{ fontSize: '0.88rem' }}>
+            {children}
+          </div>
         )}
 
         {error && (
@@ -122,7 +129,7 @@ function ConfirmModal({
             {loading ? (
               <>
                 <i className="fa fa-spinner fa-spin" aria-hidden="true" />
-                Working…
+                {loadingLabel}
               </>
             ) : (
               confirmLabel

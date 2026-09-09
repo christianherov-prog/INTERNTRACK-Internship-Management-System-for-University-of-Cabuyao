@@ -10,13 +10,12 @@ use App\Models\OvertimeEntry;
 use App\Models\WorkSchedule;
 use App\Services\DtrWorkflowService;
 use App\Support\ApiResponse;
+use App\Support\InternshipProvisioning;
 use Illuminate\Http\Request;
 
 class DtrWorkflowController extends Controller
 {
-    public function __construct(private DtrWorkflowService $dtr)
-    {
-    }
+    public function __construct(private DtrWorkflowService $dtr) {}
 
     public function undoClockOut(Request $request)
     {
@@ -383,15 +382,13 @@ class DtrWorkflowController extends Controller
     {
         $user = $request->user();
         $requestedId = $request->header('X-Internship-Id') ?: $request->input('internship_id');
-        $query = $user->internshipsAsStudent();
-        $internship = $requestedId
-            ? $query->where('id', $requestedId)->first()
-            : ($user->activeInternship()->first() ?: $query->latest('id')->first());
+        $internship = InternshipProvisioning::resolveForStudent($user, $requestedId);
 
         if (! $internship) {
             abort(404, 'No internship found.');
         }
-        if (! $internship->supervisor_id) {
+        $internship->loadMissing('currentPlacement');
+        if (! $internship->hasApprovedHteSupervisor()) {
             abort(403, 'Attendance tracking is locked until your HTE Supervisor is approved.');
         }
 

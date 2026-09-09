@@ -7,7 +7,8 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
 import { formatStudentName } from '../../utils/formatName'
-import ClassListUploadModal from '../../components/ClassListUploadModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 
 function ChangeSectionModal({ student, onClose, onUpdated }) {
@@ -50,7 +51,7 @@ function ChangeSectionModal({ student, onClose, onUpdated }) {
             <div className="modal-body">
               {error && <div className="alert alert-danger">{error}</div>}
               {loading ? (
-                <div className="text-center py-3"><i className="fa fa-spinner fa-spin text-muted fa-2x"></i></div>
+                <div className="text-center py-3"><InternTrackLoader /></div>
               ) : (
                 <div className="mb-3">
                   <label className="form-label">Section</label>
@@ -120,7 +121,7 @@ function BulkChangeSectionModal({ studentIds, onClose, onUpdated }) {
             <div className="modal-body">
               {error && <div className="alert alert-danger">{error}</div>}
               {loading ? (
-                <div className="text-center py-3"><i className="fa fa-spinner fa-spin text-muted fa-2x"></i></div>
+                <div className="text-center py-3"><InternTrackLoader /></div>
               ) : (
                 <div className="mb-3">
                   <label className="form-label">New Section for all selected</label>
@@ -175,8 +176,10 @@ function statusLabel(status) {
 }
 
 function CoordRecords() {
-  const [students, setStudents] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [archived, setArchived] = useState(false)
+  const cacheKey = `coordinator:records:${archived ? 1 : 0}`
+  const { pending, seed, run } = useCachedPage(cacheKey)
+  const [students, setStudents] = useState(() => seed ?? [])
   const [assigning, setAssigning] = useState(null)
   const [changingSection, setChangingSection] = useState(null)
   const [bulkChangingSection, setBulkChangingSection] = useState(false)
@@ -185,9 +188,7 @@ function CoordRecords() {
   const [historyTarget, setHistoryTarget] = useState(null)
   const [message, setMessage] = useState(null)
   const [certLoading, setCertLoading] = useState(null)
-  const [archived, setArchived] = useState(false)
   const [archiveBusy, setArchiveBusy] = useState(null)
-  const [showClassListUpload, setShowClassListUpload] = useState(false)
 
   const [search, setSearch] = useState("")
   const [programFilter, setProgramFilter] = useState("all")
@@ -195,14 +196,13 @@ function CoordRecords() {
   const [statusFilter, setStatusFilter] = useState("all")
 
   const fetchRecords = () => {
-    setLoading(true)
-    api.get('/coordinator/records', { params: { archived: archived ? 1 : 0 } })
-      .then(res => setStudents(unwrapList(res.data).items))
+    run(() => api.get('/coordinator/records', { params: { archived: archived ? 1 : 0 } }).then(res => unwrapList(res.data).items))
+      .then((next) => { if (next) setStudents(next) })
       .catch(console.error)
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => {
+    if (seed) setStudents(seed)
     fetchRecords()
   }, [archived])
 
@@ -290,17 +290,6 @@ function CoordRecords() {
         </div>
       )}
 
-      {showClassListUpload && (
-        <ClassListUploadModal
-          onClose={() => setShowClassListUpload(false)}
-          onSuccess={(text) => {
-            setShowClassListUpload(false)
-            setMessage({ type: 'success', text })
-            fetchRecords()
-          }}
-        />
-      )}
-
       {assigning && (
         <AssignPlacementModal
           student={assigning}
@@ -366,7 +355,7 @@ function CoordRecords() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           {programs.map(p => <option key={p} value={p}>{p === "all" ? "All Departments" : p}</option>)}
@@ -385,9 +374,6 @@ function CoordRecords() {
         </select>
 
         <div className="ms-auto btn-group">
-          <button type="button" className="btn btn-sm btn-outline-success" onClick={() => setShowClassListUpload(true)}>
-            <i className="fa fa-file-excel me-1"></i> Upload class list
-          </button>
           <button className={`btn btn-sm ${!archived ? "btn-primary" : "btn-outline-secondary"}`} onClick={() => setArchived(false)}>Active</button>
           <button className={`btn btn-sm ${archived ? "btn-secondary" : "btn-outline-secondary"}`} onClick={() => setArchived(true)}>Archived</button>
         </div>
@@ -406,8 +392,8 @@ function CoordRecords() {
         </div>
         <div className="table-card">
           <div className="table-responsive">
-            {loading ? (
-              <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            {pending && students.length === 0 ? (
+              <InternTrackLoader />
             ) : filtered.length === 0 ? (
               <div className="text-center py-5 text-muted">No students found matching your criteria.</div>
             ) : (

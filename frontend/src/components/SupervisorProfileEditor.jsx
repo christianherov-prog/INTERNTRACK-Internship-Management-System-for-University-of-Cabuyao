@@ -96,7 +96,7 @@ function SupervisorProfileEditor() {
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Position / Title</label>
-            <input name="position" className="form-control" value={form.position} onChange={handleChange} placeholder="e.g. IT Manager" />
+            <input name="position" className="form-control" value={form.position} onChange={handleChange} placeholder="Position" />
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Host Company</label>

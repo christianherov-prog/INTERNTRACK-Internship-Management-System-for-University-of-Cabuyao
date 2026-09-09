@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Internship;
 use App\Support\InternshipStatuses;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Canonical internship progress numbers shared by student, faculty,
@@ -26,17 +27,24 @@ class InternshipProgressService
      */
     public static function snapshot(Internship $internship): array
     {
-        self::synchronize($internship);
-        $internship->refresh();
-        $internship->loadMissing(['company', 'placements.company', 'placements.supervisor', 'student.studentProfile.program']);
+        $relations = ['company', 'student.studentProfile.program'];
+        $hasPlacements = Schema::hasTable('internship_placements');
+        if ($hasPlacements) {
+            $relations[] = 'placements.company';
+            $relations[] = 'placements.supervisor';
+        }
 
-        $hours = (float) $internship->total_hours_rendered;
-        $target = (float) $internship->target_hours;
-        $hteCount = $internship->placements->count();
+        $internship->loadMissing($relations);
+
+        $hours = $internship->computeTotalHours();
+        $programHours = ProgramRequirementService::targetHoursFor($internship->student?->studentProfile?->program);
+        $target = $programHours > 0 ? $programHours : (float) $internship->target_hours;
+        $placements = $hasPlacements ? $internship->placements : collect();
+        $hteCount = $placements->count();
         if ($hteCount === 0) {
             $hteCount = ProgramRequirementService::hteCountFor($internship->student?->studentProfile?->program);
         }
-        $hteCompleted = $internship->placements
+        $hteCompleted = $placements
             ->filter(fn ($p) => in_array($p->status, ['completed', 'done'], true) || $p->isComplete())
             ->count();
 
@@ -70,8 +78,11 @@ class InternshipProgressService
     public static function targetHoursForInternship(?Internship $internship, $fallbackProfile = null): float
     {
         if ($internship) {
-            self::synchronize($internship);
-            $internship->refresh();
+            $internship->loadMissing('student.studentProfile.program');
+            $programHours = ProgramRequirementService::targetHoursFor($internship->student?->studentProfile?->program);
+            if ($programHours > 0) {
+                return $programHours;
+            }
 
             return (float) $internship->target_hours;
         }

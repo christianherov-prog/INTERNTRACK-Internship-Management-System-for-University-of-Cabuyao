@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import api from '../../../services/api'
+import { cacheGet, cacheSet } from '../../../utils/pageCache'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
+import { useToast } from '../../../contexts/ToastContext'
+import { safeUploadError } from '../../../utils/safeApiError'
+import InternTrackLoader from '../../../components/InternTrackLoader'
 
 function COEDPortfolioBuilder() {
   const confirm = useConfirm()
-  const [data, setData] = useState(null)
+  const toast = useToast()
+  const [data, setData] = useState(() => cacheGet('student:portfolio') ?? null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [activeTab, setActiveTab] = useState('chapter1')
@@ -43,6 +48,7 @@ function COEDPortfolioBuilder() {
   const fetchPortfolio = () => {
     api.get('/student/portfolio')
       .then(res => {
+        cacheSet('student:portfolio', res.data)
         setData(res.data)
         const p = res.data.internship?.portfolio
         if (p) {
@@ -106,12 +112,18 @@ function COEDPortfolioBuilder() {
   const handleFileUpload = async (e, type, requiresWeek = false, requiresLabel = false) => {
     const file = e.target.files[0]
     if (!file) return
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)
+    if (!isImage) {
+      toast.error('Please upload a valid image file (JPG, PNG, or WEBP).')
+      e.target.value = ''
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', type)
 
     if (requiresWeek) {
-      const week = window.prompt("Enter the Week Number for this file (e.g., 1, 2, 3...):")
+      const week = window.prompt("Enter the Week Number:")
       if (!week || isNaN(parseInt(week))) { alert("Please enter a valid week number."); e.target.value = ''; return }
       formData.append('week_number', parseInt(week))
     }
@@ -123,10 +135,11 @@ function COEDPortfolioBuilder() {
     }
 
     try {
-      await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post('/student/portfolio/photos', formData)
+      toast.success('File uploaded.')
       fetchPortfolio()
     } catch (err) {
-      alert("Failed to upload: " + (err.response?.data?.message || err.message))
+      toast.error(safeUploadError(err))
     } finally {
       e.target.value = ''
     }
@@ -138,29 +151,28 @@ function COEDPortfolioBuilder() {
         await api.delete(`/student/portfolio/photos/${id}`)
         fetchPortfolio()
       } catch (err) {
-        alert("Failed to delete.")
+        toast.error('Failed to delete.')
       }
     }
   }
 
   if (!data) return (
     <Layout title="COED Portfolio Builder" subtitle="Loading..." icon="fa-folder" bodyClass="student-page">
-      <div className="text-center py-5 mt-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+      <div className="text-center py-5 mt-5"><InternTrackLoader /></div>
     </Layout>
   )
 
-  const photos = data.photos || []
+  const photos = data?.internship?.portfolio?.photos || data?.photos || []
 
   const getFiles = (type) => photos.filter(p => p.type === type)
 
-  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/*,.png,.jpg,.jpeg,.webp,.gif", tip = "") => {
+  const renderFileList = (type, title, requiresWeek = false, requiresLabel = false, accept = "image/jpeg,image/png,image/jpg,image/webp,.jpg,.jpeg,.png,.webp") => {
     const items = getFiles(type);
 
     return (
       <div className="content-card portfolio-upload-tile">
         <div className="portfolio-upload-tile-head">
           <h6 className="mb-0">{title}</h6>
-          {tip && <span className="portfolio-upload-tip" title={tip}><i className="fa fa-circle-info"></i></span>}
         </div>
         <div className="portfolio-upload-tile-body">
           <div className="portfolio-upload-tile-content">
@@ -170,10 +182,10 @@ function COEDPortfolioBuilder() {
                   <div key={item.id} className="portfolio-upload-file-row">
                     <div className="text-truncate flex-grow-1 me-2 small">
                       {requiresWeek && item.week_number && <span className="badge bg-primary me-2">Week {item.week_number}</span>}
-                      {item.file_path && item.file_path.endsWith('.pdf')
+                      {item.file_path && String(item.file_path).toLowerCase().endsWith('.pdf')
                         ? <i className="fa fa-file-pdf text-danger me-1"></i>
                         : <i className="fa fa-image text-primary me-1"></i>}
-                      {item.label || item.file_name}
+                      {item.file_name || item.label || 'Uploaded'}
                     </div>
                     <div className="d-flex gap-1 flex-shrink-0">
                       <AuthenticatedFileLink path={item.file_path} className="btn btn-outline-secondary btn-sm" style={{ padding: '0.1rem 0.35rem' }}>
@@ -189,12 +201,11 @@ function COEDPortfolioBuilder() {
             ) : (
               <p className="portfolio-upload-empty">No files yet</p>
             )}
-            {tip && <p className="portfolio-upload-hint">{tip}</p>}
           </div>
           <div className="portfolio-upload-btn-wrap">
             <input type="file" id={`upload-${type}`} className="d-none" accept={accept} onChange={(e) => handleFileUpload(e, type, requiresWeek, requiresLabel)} />
             <label htmlFor={`upload-${type}`} className="btn btn-outline-primary btn-sm w-100 portfolio-upload-btn mb-0">
-              <i className="fa fa-cloud-arrow-up me-1"></i> Upload File
+              <i className="fa fa-upload me-1"></i>{items.length > 0 ? 'Replace' : 'Upload'}
             </label>
           </div>
         </div>
@@ -345,7 +356,7 @@ function COEDPortfolioBuilder() {
                     <div className="col-12 col-md-6">
                       <div className="mb-3">
                         <label className="portfolio-field-label">Teacher's Creed / Personal Teaching Commitment (4 Pillars)</label>
-                        <textarea className="form-control portfolio-field-input" rows="12" value={form.teachers_creed || ""} onChange={e => setFormField('teachers_creed', e.target.value)} placeholder="I Commit to My Students...&#10;&#10;I Commit to Excellence in Teaching...&#10;&#10;I Commit to Partnership...&#10;&#10;I Commit to Myself as an Educator..."></textarea>
+                        <textarea className="form-control portfolio-field-input" rows="12" value={form.teachers_creed || ""} onChange={e => setFormField('teachers_creed', e.target.value)} placeholder="Teacher's Creed"></textarea>
                       </div>
                     </div>
                   </div>
@@ -388,8 +399,8 @@ function COEDPortfolioBuilder() {
                       <div className="mb-3"><label className="portfolio-field-label">A. Brief History of the Cooperating School</label><textarea className="form-control portfolio-field-input" rows="4" value={form.cooperating_school_history || ""} onChange={e => setFormField('cooperating_school_history', e.target.value)}></textarea></div>
                       <div className="mb-3"><label className="portfolio-field-label">B. DepEd Vision & Mission</label><textarea className="form-control portfolio-field-input" rows="4" value={form.deped_vision_mission || ""} onChange={e => setFormField('deped_vision_mission', e.target.value)}></textarea></div>
                       <div className="mb-3"><label className="portfolio-field-label">C. School Vision and Mission (Optional)</label><textarea className="form-control portfolio-field-input" rows="3" value={form.school_vision_mission || ""} onChange={e => setFormField('school_vision_mission', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">D. School Programs and Initiatives</label><textarea className="form-control portfolio-field-input" rows="4" value={form.school_programs || ""} onChange={e => setFormField('school_programs', e.target.value)} placeholder="e.g., Remedial reading Aral Program, drop-out prevention"></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">E. Description of Learner Population</label><textarea className="form-control portfolio-field-input" rows="4" value={form.learner_population || ""} onChange={e => setFormField('learner_population', e.target.value)} placeholder="Enrollment summary by Grade/Gender"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">D. School Programs and Initiatives</label><textarea className="form-control portfolio-field-input" rows="4" value={form.school_programs || ""} onChange={e => setFormField('school_programs', e.target.value)} placeholder="School Programs"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">E. Description of Learner Population</label><textarea className="form-control portfolio-field-input" rows="4" value={form.learner_population || ""} onChange={e => setFormField('learner_population', e.target.value)} placeholder="Learner Population"></textarea></div>
                     </div>
                   </div>
                 </div>
@@ -423,8 +434,8 @@ function COEDPortfolioBuilder() {
                           <p className="mb-0 small"><i className="fa fa-info-circle me-2"></i>Your Weekly Internship Journals (FO-31) from the Logbook will be automatically inserted here in the final PDF.</p>
                         </div>
                       </div>
-                      <div className="mb-3"><label className="portfolio-field-label">Classroom Management Practices</label><textarea className="form-control portfolio-field-input" rows="4" value={form.classroom_management || ""} onChange={e => setFormField('classroom_management', e.target.value)} placeholder="e.g., Hand signals, positive reinforcement, themed claps"></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">Teaching Environment</label><textarea className="form-control portfolio-field-input" rows="4" value={form.teaching_environment || ""} onChange={e => setFormField('teaching_environment', e.target.value)} placeholder="Layout, lighting, ventilation..."></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Classroom Management Practices</label><textarea className="form-control portfolio-field-input" rows="4" value={form.classroom_management || ""} onChange={e => setFormField('classroom_management', e.target.value)} placeholder="Classroom Management"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Teaching Environment</label><textarea className="form-control portfolio-field-input" rows="4" value={form.teaching_environment || ""} onChange={e => setFormField('teaching_environment', e.target.value)} placeholder="Teaching Environment"></textarea></div>
                     </div>
                   </div>
                 </div>
@@ -433,7 +444,7 @@ function COEDPortfolioBuilder() {
               <div className="portfolio-appendix-group">
                 <h6 className="portfolio-appendix-group-title">Lesson Plans</h6>
                 <div className="row g-3">
-                  <div className="col-12">{renderFileList('lesson_plan', 'Upload 5-10 Best Lesson Plans (English, Math, Science, AP, Filipino, MAPEH)', false, false, 'image/*', 'Include Objectives, Materials, Procedure, Assessment, Reflection')}</div>
+                  <div className="col-12">{renderFileList('lesson_plan', 'Upload 5-10 Best Lesson Plans (English, Math, Science, AP, Filipino, MAPEH)')}</div>
                 </div>
               </div>
             </div>

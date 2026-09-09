@@ -9,11 +9,14 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import ReportExportModal from '../../components/modals/ReportExportModal'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function CoordMonitoring() {
   const currentTerm = useCurrentTerm()
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { pending, seed, run } = useCachedPage('coordinator:monitoring')
+  const [data, setData]       = useState(seed ?? null)
   const [error, setError]     = useState(null)
   const [search, setSearch]   = useState('')
   const [exportPreview, setExportPreview] = useState(null)
@@ -21,15 +24,22 @@ function CoordMonitoring() {
   const [sexFilter, setSexFilter] = useState('all')
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/coordinator/monitoring')
-      .then(res => setData(res.data))
+    run(() => api.get('/coordinator/monitoring').then(res => res.data))
+      .then((next) => {
+        if (next) {
+          setData(next)
+          prefetchPage('coordinator:records:0', () =>
+            api.get('/coordinator/records', { params: { archived: 0 } }).then(res => unwrapList(res.data).items)
+          )
+          prefetchPage('coordinator:applications', () =>
+            api.get('/coordinator/applications').then(res => res.data.applications || [])
+          )
+        }
+      })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load monitoring data.')
-        setData(null)
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -137,7 +147,7 @@ function CoordMonitoring() {
           <i className="fa fa-table"></i>
           <h6>Intern Overview</h6>
           <div className="ms-auto d-flex gap-2 flex-wrap">
-            <input className="form-control form-control-sm" style={{width:'180px'}} placeholder="Search student/faculty…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="form-control form-control-sm" style={{width:'180px'}} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
             <select className="form-select form-select-sm" style={{width:'140px'}} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
               {sections.map(s => <option key={s} value={s}>{s === 'all' ? 'All Sections' : s}</option>)}
             </select>
@@ -152,8 +162,8 @@ function CoordMonitoring() {
           </div>
         </div>
         <div className="table-card">
-          {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+          {pending && rows.length === 0 ? (
+            <InternTrackLoader />
           ) : rows.length === 0 ? (
             <EmptyState icon="fa-eye" title="No interns found" message="Active and pending-placement internships will appear here." />
           ) : (

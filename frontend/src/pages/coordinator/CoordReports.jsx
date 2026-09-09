@@ -5,6 +5,8 @@ import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import ReportExportModal from '../../components/modals/ReportExportModal'
 import { displayLabel } from '../../utils/displayLabel'
+import { reportPrintOptions } from '../../utils/reportPrint'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REPORT_TYPES = [
   {
@@ -215,10 +217,7 @@ function CoordReports() {
   }, [])
 
   const printRef = useRef(null)
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: 'Coord_Report'
-  })
+  const handlePrint = useReactToPrint(reportPrintOptions(printRef, 'Coord_Report'))
 
   const handleExportCsv = () => {
     if (!reportData) return
@@ -334,7 +333,7 @@ function CoordReports() {
 
       {/* Report Output */}
       {activeReport && (
-        <div className="content-card" id="report-output" ref={printRef}>
+        <div className="content-card interntrack-report-print" id="report-output" ref={printRef}>
           <div className="content-card-header d-print-none">
             <i className={`fa ${REPORT_TYPES.find(r => r.key === activeReport)?.icon}`}></i>
             <h6>{REPORT_TYPES.find(r => r.key === activeReport)?.title}</h6>
@@ -356,7 +355,7 @@ function CoordReports() {
 
           <div className="p-3">
             {loading ? (
-              <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+              <div className="text-center py-4"><InternTrackLoader /></div>
             ) : reportData ? (
               <>
                 {activeReport === 'student-summary' && <StudentSummaryTable data={reportData} />}

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AttendanceLog;
 use App\Models\Company;
 use App\Models\Document;
 use App\Models\Evaluation;
 use App\Models\Internship;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Services\FacultySectionAssignmentService;
 use Illuminate\Http\Request;
 
 /**
@@ -23,23 +25,30 @@ class DashboardController extends Controller
         $user = $request->user();
 
         $base = [
-            'role'            => $user->role,
-            'name'            => $user->profile_name,
-            'username'        => $user->username,
-            'role_label'      => $this->roleLabel($user->role),
-            'current_term'    => config('interntrack.current_term', 'AY 2025-2026, Sem 2'),
+            'role' => $user->role,
+            'name' => $user->profile_name,
+            'username' => $user->username,
+            'role_label' => $this->roleLabel($user->role),
+            'current_term' => config('interntrack.current_term', 'AY 2025-2026, Sem 2'),
             'security_status' => 'Standard',
-            'last_login_at'   => optional($user->last_login_at)?->toIso8601String(),
+            'last_login_at' => optional($user->last_login_at)?->toIso8601String(),
         ];
 
+        // Coordinators may work in the Faculty Supervisor workspace with the same
+        // login; their faculty-workspace summary is advisee-scoped, not department-wide.
+        $facultyWorkspace = $user->role === 'coordinator'
+            && $request->query('workspace') === 'faculty';
+
         $payload = match ($user->role) {
-            'director'    => $this->directorSummary($base),
-            'coordinator' => $this->coordinatorSummary($user, $base),
-            'faculty'     => $this->facultySummary($user, $base),
-            'supervisor'  => $this->supervisorSummary($user, $base),
-            'student'     => $this->studentSummary($user, $base),
-            'admin'       => $this->adminSummary($user, $base),
-            default       => null,
+            'director' => $this->directorSummary($base),
+            'coordinator' => $facultyWorkspace
+                ? array_merge($this->facultySummary($user, $base), ['workspace' => 'faculty'])
+                : $this->coordinatorSummary($user, $base),
+            'faculty' => $this->facultySummary($user, $base),
+            'supervisor' => $this->supervisorSummary($user, $base),
+            'student' => $this->studentSummary($user, $base),
+            'admin' => $this->adminSummary($user, $base),
+            default => null,
         };
 
         if ($payload === null) {
@@ -57,11 +66,11 @@ class DashboardController extends Controller
             ->count();
 
         return array_merge($base, [
-            'label'                => 'DIRECTOR DASHBOARD',
-            'total_coordinators'   => User::where('role', 'coordinator')->where('is_active', true)->count(),
-            'total_companies'      => Company::where('is_active', true)->count(),
+            'label' => 'DIRECTOR DASHBOARD',
+            'total_coordinators' => User::where('role', 'coordinator')->where('is_active', true)->count(),
+            'total_companies' => Company::where('is_active', true)->count(),
             'total_active_interns' => Internship::whereIn('status', ['ongoing', 'active'])->count(),
-            'pending_approvals'    => $pendingApprovals,
+            'pending_approvals' => $pendingApprovals,
         ]);
     }
 
@@ -104,25 +113,25 @@ class DashboardController extends Controller
             ->count();
 
         return array_merge($base, [
-            'label'                         => 'COORDINATOR DASHBOARD',
-            'assigned_students_count'       => $assignedStudents,
-            'assigned_companies_count'      => $assignedCompanies,
-            'pending_evaluations_count'     => $pendingEvaluations,
-            'pending_documents_count'       => $pendingDocuments,
+            'label' => 'COORDINATOR DASHBOARD',
+            'assigned_students_count' => $assignedStudents,
+            'assigned_companies_count' => $assignedCompanies,
+            'pending_evaluations_count' => $pendingEvaluations,
+            'pending_documents_count' => $pendingDocuments,
             // Faculty-inherited stats
-            'faculty_assigned_count'        => $advisedIds->count(),
-            'faculty_pending_journals'      => $pendingJournals,
-            'faculty_pending_evaluations'   => $advisedIds->diff($evaluatedIds)->count(),
+            'faculty_assigned_count' => $advisedIds->count(),
+            'faculty_pending_journals' => $pendingJournals,
+            'faculty_pending_evaluations' => $advisedIds->diff($evaluatedIds)->count(),
         ]);
     }
 
     private function facultySummary(User $user, array $base): array
     {
-        $assignedCount = \App\Services\FacultySectionAssignmentService::assignedStudentsQuery($user)->count();
+        $assignedCount = FacultySectionAssignmentService::assignedStudentsQuery($user)->count();
         $internshipIds = Internship::inDepartment()
             ->where(function ($q) use ($user) {
                 $q->where('faculty_id', $user->id)
-                    ->orWhereIn('student_id', \App\Services\FacultySectionAssignmentService::assignedStudentsQuery($user)->select('id'));
+                    ->orWhereIn('student_id', FacultySectionAssignmentService::assignedStudentsQuery($user)->select('id'));
             })
             ->pluck('id');
 
@@ -138,10 +147,10 @@ class DashboardController extends Controller
             ->count();
 
         return array_merge($base, [
-            'label'                     => 'FACULTY DASHBOARD',
-            'assigned_students_count'   => $assignedCount,
+            'label' => 'FACULTY DASHBOARD',
+            'assigned_students_count' => $assignedCount,
             'pending_evaluations_count' => $internshipIds->diff($evaluatedIds)->count(),
-            'pending_journals_count'    => $pendingJournals,
+            'pending_journals_count' => $pendingJournals,
         ]);
     }
 
@@ -157,12 +166,13 @@ class DashboardController extends Controller
 
         $pendingAttendance = $internshipIds->isEmpty()
             ? 0
-            : \App\Models\AttendanceLog::whereIn('internship_id', $internshipIds)
+            : AttendanceLog::whereIn('internship_id', $internshipIds)
                 ->where('status', 'pending')
                 ->count();
 
         $pendingEvaluations = $internships->filter(function (Internship $internship) {
             $evals = $internship->evaluations;
+
             return ! $evals->contains('form_type', 'FO-24') || ! $evals->contains('form_type', 'FO-03');
         })->count();
 
@@ -170,9 +180,9 @@ class DashboardController extends Controller
             ?: $user->supervisorProfile?->company?->company_name;
 
         return array_merge($base, [
-            'label'                     => 'SUPERVISOR DASHBOARD',
-            'assigned_students_count'   => $internships->count(),
-            'company_name'              => $companyName ?: '—',
+            'label' => 'SUPERVISOR DASHBOARD',
+            'assigned_students_count' => $internships->count(),
+            'company_name' => $companyName ?: '—',
             'pending_validations_count' => $pendingAttendance,
             'pending_evaluations_count' => $pendingEvaluations,
         ]);
@@ -183,11 +193,11 @@ class DashboardController extends Controller
         $profile = $user->facultyProfile;
 
         return array_merge($base, [
-            'label'            => 'MISD DASHBOARD',
-            'faculty_number'   => $profile?->faculty_number ?: $user->username,
-            'position'         => $profile?->position ?: 'MISD Administrator',
-            'office'           => $profile?->department?->name ?: 'MISD',
-            'security_status'  => $user->must_change_password ? 'Password change required' : 'Standard',
+            'label' => 'MISD DASHBOARD',
+            'faculty_number' => $profile?->faculty_number ?: $user->username,
+            'position' => $profile?->position ?: 'MISD Administrator',
+            'office' => $profile?->department?->name ?: 'MISD',
+            'security_status' => $user->must_change_password ? 'Password change required' : 'Standard',
         ]);
     }
 
@@ -197,11 +207,11 @@ class DashboardController extends Controller
         $profile = $user->studentProfile;
 
         return array_merge($base, [
-            'label'           => 'INTERNSHIP DASHBOARD',
-            'section'         => $profile?->section,
-            'year_level'      => $profile?->year_level,
-            'student_number'  => $user->username,
-            'company_name'    => $internship?->company?->company_name,
+            'label' => 'INTERNSHIP DASHBOARD',
+            'section' => $profile?->section,
+            'year_level' => $profile?->year_level,
+            'student_number' => $user->username,
+            'company_name' => $internship?->company?->company_name,
             'internship_status' => $internship?->status,
         ]);
     }
@@ -209,13 +219,13 @@ class DashboardController extends Controller
     private function roleLabel(string $role): string
     {
         return match ($role) {
-            'student'     => 'Student Account',
-            'supervisor'  => 'Supervisor Account',
-            'faculty'     => 'Faculty Account',
+            'student' => 'Student Account',
+            'supervisor' => 'Supervisor Account',
+            'faculty' => 'Faculty Account',
             'coordinator' => 'Coordinator Account',
-            'director'    => 'Director Account',
-            'admin'       => 'MISD Admin Account',
-            default       => ucfirst($role).' Account',
+            'director' => 'Director Account',
+            'admin' => 'MISD Admin Account',
+            default => ucfirst($role).' Account',
         };
     }
 }

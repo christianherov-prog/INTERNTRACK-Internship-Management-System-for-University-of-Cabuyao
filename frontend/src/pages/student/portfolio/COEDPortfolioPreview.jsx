@@ -6,8 +6,10 @@ import api from '../../../services/api';
 import '../../../assets/css/portfolio-print.css';
 import WeeklyInternshipJournal from '../../../components/portfolio/WeeklyInternshipJournal';
 import DailyTimeRecord from '../../../components/portfolio/DailyTimeRecord';
-import { PrintFO24, PrintFO03, PrintFO22, PrintFO23 } from '../../../components/portfolio/EvaluationsPreview';
+import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, pickLatestEvaluation } from '../../../components/portfolio/EvaluationsPreview';
 import { displayLabel } from '../../../utils/displayLabel';
+import { useCachedPage } from '../../../hooks/useCachedPage';
+import InternTrackLoader from '../../../components/InternTrackLoader'
 
 const TocRow = ({ label, page = '', bold = false, indent = 0 }) => (
   <div style={{
@@ -20,8 +22,8 @@ const TocRow = ({ label, page = '', bold = false, indent = 0 }) => (
 );
 
 function COEDPortfolioPreview() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, seed, run } = useCachedPage('student:portfolio');
+  const [data, setData] = useState(seed ?? null);
   const [error, setError] = useState(null);
 
   const printRef = useRef(null);
@@ -31,37 +33,36 @@ function COEDPortfolioPreview() {
   });
 
   useEffect(() => {
-    setLoading(true);
-    api.get('/student/portfolio')
-      .then(res => setData(res.data))
-      .catch(err => setError(err.response?.data?.message || 'Failed to load portfolio.'))
-      .finally(() => setLoading(false));
-  }, []);
+    run(() => api.get('/student/portfolio').then(res => res.data))
+      .then(next => { if (next) setData(next); })
+      .catch(err => setError(err.response?.data?.message || 'Failed to load portfolio.'));
+  }, [run]);
 
-  if (loading) return <div className="text-center p-5"><i className="fa fa-spinner fa-spin fa-3x text-muted"></i></div>;
+  if (loading && !data) return <div className="text-center p-5"><InternTrackLoader /></div>;
   if (error) return <PageError message={error} />;
   if (!data || !data.internship) return <PageError message="No internship record found." />;
 
-  const p = data.portfolio || {};
+  const p = data.portfolio || data.internship?.portfolio || {};
   const custom = p.custom_fields || {};
   const user = data.user || {};
-  const profile = user.student_profile || {};
+  const profile = user.student_profile || user.studentProfile || {};
+  const idn = data.identity || {};
 
-  // --- Extracted Information for the Cover Page ---
-  const fullName = `${profile.first_name || ''} ${profile.middle_name ? profile.middle_name[0] + '.' : ''} ${profile.last_name || ''}`.trim();
-  const program = displayLabel(profile.program, 'Bachelor of Elementary Education');
-  const section = profile.section || '';
-  const schoolYear = data.internship.school_year || '2025 - 2026';
+  const fullName = idn.student_name_natural || idn.student_name || `${profile.first_name || ''} ${profile.middle_name ? profile.middle_name[0] + '.' : ''} ${profile.last_name || ''}`.trim();
+  const program = displayLabel(idn.program || profile.program);
+  const section = idn.section || profile.section || '';
+  const schoolYear = idn.academic_year || data.internship.school_year || '';
 
-  // Pictures and Organization Data
   const studentPicture = profile.profile_picture || user.avatar_url;
-  const deploymentSchool = data.internship.company?.company_name || custom.cooperating_school || 'BIGAA ELEMENTARY SCHOOL';
+  const deploymentSchool = idn.company_name || data.internship.company?.company_name || custom.cooperating_school || '';
 
-  // Supervisors
-  const supervisor = data.internship.supervisor?.supervisor_profile;
-  const faculty = data.internship.faculty?.faculty_profile;
-  const cooperatingTeacher = supervisor ? `${supervisor.last_name}, ${supervisor.first_name}` : '';
-  const facultySupervisor = faculty ? `${faculty.last_name}, ${faculty.first_name}` : '';
+  const supervisor = data.internship.supervisor?.supervisor_profile || data.internship.supervisor?.supervisorProfile;
+  const faculty = data.internship.faculty?.faculty_profile || data.internship.faculty?.facultyProfile;
+  const cooperatingTeacher = idn.supervisor_name || (supervisor ? `${supervisor.last_name}, ${supervisor.first_name}` : '');
+  const facultySupervisor = idn.faculty_name || (faculty ? `${faculty.last_name}, ${faculty.first_name}` : '');
+  const attendanceLogs = data.internship.attendance || data.internship.attendance_logs || [];
+  const studentSignaturePath = idn.student_signature_path || '';
+  const supervisorSignaturePath = idn.supervisor_signature_path || '';
 
   const PageWrap = ({ children, title = '' }) => (
     <div className="a4-page page-break portfolio-document position-relative">
@@ -366,7 +367,7 @@ function COEDPortfolioPreview() {
                     transform: 'scale(0.57)',
                     transformOrigin: 'top center'
                   }}>
-                    <WeeklyInternshipJournal studentName={fullName} program={program} />
+                    <WeeklyInternshipJournal studentName={fullName} program={program} studentSignaturePath={studentSignaturePath} />
                   </div>
                 </div>
               </PageWrap>
@@ -411,9 +412,11 @@ function COEDPortfolioPreview() {
                   program={program}
                   weekNumber={j.week_number || j.week || index + 1}
                   date={j.date}
+                  endDate={j.end_date}
                   accomplishment={j.activities_summary || j.accomplishment}
                   difficulties={j.challenges || j.difficulties}
                   insights={j.learnings || j.insights}
+                  studentSignaturePath={studentSignaturePath}
                 />
               </div>
             </PageWrap>
@@ -501,6 +504,9 @@ function COEDPortfolioPreview() {
               companyName={deploymentSchool}
               supervisorName={cooperatingTeacher}
               companyLogoPath={p?.company_logo_path}
+              studentSignaturePath={studentSignaturePath}
+              supervisorSignaturePath={supervisorSignaturePath}
+              logs={attendanceLogs}
             />
           </div>
         </PageWrap>
@@ -508,31 +514,28 @@ function COEDPortfolioPreview() {
         {/* EVALUATIONS (Scaled down to fit inside the wrapper) */}
         {(() => {
           const evals = data?.internship?.evaluations || [];
-          const fo03 = evals.find(e => e.form_type === 'FO-03');
-          const fo22 = evals.find(e => e.form_type === 'FO-22');
-          const fo23 = evals.find(e => e.form_type === 'FO-23');
-          const fo24 = evals.find(e => e.form_type === 'FO-24');
+          const evalProps = { internship: data.internship, user: data.user, identity: data.identity };
 
           return (
             <>
               <PageWrap>
                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%', transform: 'scale(0.57)', transformOrigin: 'top center' }}>
-                  <PrintFO03 evalData={fo03 || null} internship={data?.internship} />
+                  <PrintFO03 evalData={pickLatestEvaluation(evals, 'FO-03')} {...evalProps} />
                 </div>
               </PageWrap>
               <PageWrap>
                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%', transform: 'scale(0.57)', transformOrigin: 'top center' }}>
-                  <PrintFO22 evalData={fo22 || null} internship={data?.internship} />
+                  <PrintFO22 evalData={pickLatestEvaluation(evals, 'FO-22')} {...evalProps} />
                 </div>
               </PageWrap>
               <PageWrap>
                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%', transform: 'scale(0.57)', transformOrigin: 'top center' }}>
-                  <PrintFO23 evalData={fo23 || null} internship={data?.internship} />
+                  <PrintFO23 evalData={pickLatestEvaluation(evals, 'FO-23')} {...evalProps} />
                 </div>
               </PageWrap>
               <PageWrap>
                 <div style={{ display: 'flex', justifyContent: 'center', width: '100%', transform: 'scale(0.57)', transformOrigin: 'top center' }}>
-                  <PrintFO24 evalData={fo24 || null} internship={data?.internship} />
+                  <PrintFO24 evalData={pickLatestEvaluation(evals, 'FO-24')} {...evalProps} />
                 </div>
               </PageWrap>
             </>

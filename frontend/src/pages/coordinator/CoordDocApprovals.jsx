@@ -6,10 +6,12 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { formatStudentName } from '../../utils/formatName'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function CoordDocApprovals() {
-  const [docs, setDocs]       = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('coordinator:doc-approvals')
+  const [docs, setDocs]       = useState(() => seed ?? [])
   const [loadError, setLoadError] = useState(null)
   const [processing, setProcessing] = useState(null) // single-row id, or 'bulk'
   const [message, setMessage] = useState(null)
@@ -25,15 +27,13 @@ function CoordDocApprovals() {
   const [docTypeFilter, setDocTypeFilter] = useState('all')
 
   const fetchDocs = () => {
-    setLoading(true)
     setLoadError(null)
-    api.get('/coordinator/documents')
-      .then(res => setDocs(unwrapList(res.data).items))
+    run(() => api.get('/coordinator/documents').then(res => unwrapList(res.data).items))
+      .then((next) => { if (next) setDocs(next) })
       .catch((err) => {
         setLoadError(err.response?.data?.message || 'Failed to load documents.')
         setDocs([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchDocs() }, [])
@@ -166,7 +166,7 @@ function CoordDocApprovals() {
                     rows={2}
                     value={remarks}
                     onChange={e => setRemarks(e.target.value)}
-                    placeholder="Add a note for the faculty or student..."
+                    placeholder="Note"
                   ></textarea>
                 </div>
               </div>
@@ -197,7 +197,7 @@ function CoordDocApprovals() {
               </div>
               <div className="modal-body">
                 <label className="form-label fw-semibold">Remarks / Reason for Rejection <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Provide feedback to the student…"></textarea>
+                <textarea className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Feedback"></textarea>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
@@ -214,7 +214,7 @@ function CoordDocApprovals() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search by student name…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           {["all", ...new Set(docs.map(d => (typeof d.internship?.student?.studentProfile?.program === 'string' ? d.internship?.student?.studentProfile?.program : d.internship?.student?.studentProfile?.program?.name || d.internship?.student?.studentProfile?.program?.code) || "—").filter(x => x !== "—"))].map(p => (
@@ -253,7 +253,7 @@ function CoordDocApprovals() {
 
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : docs.length === 0 ? (
             <div className="text-center py-4 text-muted"><i className="fa fa-inbox fa-2x mb-2 d-block"></i>No pending documents.</div>
           ) : (() => {

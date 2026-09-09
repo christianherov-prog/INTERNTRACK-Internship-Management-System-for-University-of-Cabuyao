@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
+import InternTrackLoader from './InternTrackLoader'
 
 const urlCache = new Map()
 const pendingRequests = new Map()
@@ -141,7 +142,7 @@ export function AuthenticatedFilePreview({ path, mime, name, height = 480 }) {
     )
   }
   if (!src) {
-    return <div className="text-center text-muted py-4"><i className="fa fa-spinner fa-spin me-2"></i>Loading {label}…</div>
+    return <div className="text-center text-muted py-4"><InternTrackLoader label={`Loading ${label}`} /></div>
   }
   if (isImage) {
     return <img src={src} alt={label} style={{ maxWidth: '100%', maxHeight: height, objectFit: 'contain' }} />

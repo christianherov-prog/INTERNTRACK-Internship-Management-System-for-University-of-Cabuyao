@@ -5,37 +5,47 @@ import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function SupervisorDashboard() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('supervisor:dashboard')
+  const [data, setData] = useState(() => seed?.data ?? null)
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)
-  const [pendingInvites, setPendingInvites] = useState([])
+  const [pendingInvites, setPendingInvites] = useState(() => seed?.pendingInvites ?? [])
   const [inviteBusy, setInviteBusy] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    Promise.all([
-      api.get('/supervisor/dashboard'),
-      api.get('/supervisor/invites/pending').catch(() => ({ data: { invites: [] } })),
-    ])
-      .then(([dash, invitesRes]) => {
-        setData(dash.data)
-        setPendingInvites(invitesRes.data?.invites || [])
+    run(async () => {
+      const [dash, invitesRes] = await Promise.all([
+        api.get('/supervisor/dashboard'),
+        api.get('/supervisor/invites/pending').catch(() => ({ data: { invites: [] } })),
+      ])
+      return {
+        data: dash.data,
+        pendingInvites: invitesRes.data?.invites || [],
+      }
+    })
+      .then((next) => {
+        if (next) {
+          setData(next.data)
+          setPendingInvites(next.pendingInvites)
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load supervisor dashboard.')
-        setData(null)
       })
-      .finally(() => setLoading(false))
   }
 
   const respondInvite = async (id, action) => {
     setInviteBusy(`${action}-${id}`)
     try {
       await api.post(`/supervisor/invites/${id}/${action}`)
+      if (action === 'accept') {
+        alert('Invitation accepted. Faculty Supervisor still needs to approve before the intern is linked.')
+      }
       load()
     } catch (err) {
       alert(err.response?.data?.message || `Failed to ${action} invitation.`)
@@ -58,7 +68,7 @@ function SupervisorDashboard() {
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : !error && (
         <>
           {pendingInvites.length > 0 && (
@@ -69,7 +79,7 @@ function SupervisorDashboard() {
               </div>
               <div className="p-3">
                 <p className="text-muted small mb-3">
-                  Accept to link the intern to this account, or decline if you are not their supervisor. Nothing is attached until you confirm.
+                  Accept to send this intern to Faculty Supervisor review, or decline if you are not their supervisor. The intern is not linked until faculty approves.
                 </p>
                 {pendingInvites.map((inv) => (
                   <div key={inv.id} className="d-flex flex-wrap align-items-center justify-content-between gap-3 border rounded p-3 mb-2">

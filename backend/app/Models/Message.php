@@ -33,9 +33,9 @@ class Message extends Model
     ];
 
     protected $casts = [
-        'read_at'          => 'datetime',
-        'unsent_at'        => 'datetime',
-        'attachment_size'  => 'integer',
+        'read_at' => 'datetime',
+        'unsent_at' => 'datetime',
+        'attachment_size' => 'integer',
     ];
 
     protected $appends = [
@@ -88,7 +88,7 @@ class Message extends Model
     /** Delete stored file (private local disk, then legacy public). */
     public function deleteStoredAttachment(): void
     {
-        if (!$this->attachment_path) {
+        if (! $this->attachment_path) {
             return;
         }
 
@@ -103,36 +103,36 @@ class Message extends Model
     public function toClientArray(): array
     {
         $attachment = null;
-        if (!$this->is_unsent && $this->hasAttachment()) {
+        if (! $this->is_unsent && $this->hasAttachment()) {
             $attachment = [
-                'path'     => $this->attachment_path,
+                'path' => $this->attachment_path,
                 'filename' => $this->attachment_original_name,
-                'mime'     => $this->attachment_mime,
-                'size'     => $this->attachment_size,
+                'mime' => $this->attachment_mime,
+                'size' => $this->attachment_size,
                 'is_image' => $this->isImageAttachment(),
             ];
         }
 
         $body = $this->display_body;
         // Attachment-only messages: empty body string for clients (not the unsent placeholder).
-        if (!$this->is_unsent && $body === '' && $attachment) {
+        if (! $this->is_unsent && $body === '' && $attachment) {
             $body = '';
         }
 
         return [
-            'id'             => $this->id,
-            'internship_id'  => $this->internship_id,
-            'sender_id'      => $this->sender_id,
-            'sender_role'    => $this->sender_role,
-            'recipient_id'   => $this->recipient_id,
+            'id' => $this->id,
+            'internship_id' => $this->internship_id,
+            'sender_id' => $this->sender_id,
+            'sender_role' => $this->sender_role,
+            'recipient_id' => $this->recipient_id,
             'recipient_role' => $this->recipient_role,
-            'body'           => $body,
-            'attachment'     => $attachment,
-            'is_unsent'      => $this->is_unsent,
-            'read_at'        => $this->read_at,
-            'unsent_at'      => $this->unsent_at,
-            'created_at'     => $this->created_at,
-            'updated_at'     => $this->updated_at,
+            'body' => $body,
+            'attachment' => $attachment,
+            'is_unsent' => $this->is_unsent,
+            'read_at' => $this->read_at,
+            'unsent_at' => $this->unsent_at,
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

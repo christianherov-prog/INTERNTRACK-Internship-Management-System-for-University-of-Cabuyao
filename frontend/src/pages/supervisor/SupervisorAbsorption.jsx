@@ -4,6 +4,8 @@ import EmptyState from '../../components/EmptyState'
 import PageError from '../../components/PageError'
 import HireProgressTracker from '../../components/HireProgressTracker'
 import api from '../../services/api'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function profileOf(student) {
   return student?.student_profile || student?.studentProfile || null
@@ -16,20 +18,18 @@ function badge(status) {
 }
 
 function SupervisorAbsorption() {
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('supervisor:absorption')
+  const [items, setItems] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/supervisor/absorption')
-      .then((res) => setItems(res.data.internships ?? []))
+    run(() => api.get('/supervisor/absorption').then((res) => res.data.internships ?? []))
+      .then((next) => { if (next) setItems(next) })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load absorption list.')
         setItems([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -66,7 +66,7 @@ function SupervisorAbsorption() {
           <h6>Completed Interns — Hire Status</h6>
         </div>
         {loading ? (
-          <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+          <div className="text-center py-5"><InternTrackLoader /></div>
         ) : items.length === 0 && !error ? (
           <EmptyState
             icon="fa-user-check"

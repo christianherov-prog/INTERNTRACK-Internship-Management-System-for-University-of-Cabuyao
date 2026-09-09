@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../services/api'
 import { withAvatarCacheBust } from '../utils/avatar'
 import { disconnectEcho } from '../services/echo'
+import { cacheClear } from '../utils/pageCache'
 
 const AuthContext = createContext()
 
@@ -30,6 +31,7 @@ export function AuthProvider({ children }) {
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser))
+        setLoading(false)
       } catch {
         sessionStorage.removeItem('interntrack_session')
       }
@@ -64,7 +66,10 @@ export function AuthProvider({ children }) {
       // Persist token and user in session storage
       sessionStorage.setItem('interntrack_token', data.token)
       sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
+      // Fresh login always starts in the account's own workspace.
+      sessionStorage.removeItem('interntrack_staff_workspace')
 
+      cacheClear()
       setUser(data.user)
       return { success: true, user: data.user }
     } catch (err) {
@@ -84,9 +89,11 @@ export function AuthProvider({ children }) {
 
   const clearSession = () => {
     disconnectEcho()
+    cacheClear()
     setUser(null)
     sessionStorage.removeItem('interntrack_token')
     sessionStorage.removeItem('interntrack_session')
+    sessionStorage.removeItem('interntrack_staff_workspace')
   }
 
   // ── Logout: revoke Sanctum token, then clear local session ──────────────────

@@ -6,22 +6,33 @@ import PageError from '../../components/PageError'
 import { AnnouncementAttachmentView } from '../../components/AnnouncementAttachment'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import { unwrapList } from '../../utils/apiList'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function FacultyDashboard() {
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('faculty:dashboard')
+  const [data, setData]       = useState(seed ?? null)
   const [error, setError]     = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/faculty/dashboard')
-      .then(res => setData(res.data))
+    run(() => api.get('/faculty/dashboard').then(res => res.data))
+      .then((next) => {
+        if (next) {
+          setData(next)
+          prefetchPage('faculty:assigned-students:0', () =>
+            api.get('/faculty/assigned-students', { params: { archived: 0 } }).then(res => unwrapList(res.data).items || [])
+          )
+          prefetchPage('faculty:documents', () =>
+            api.get('/faculty/documents').then(res => res.data)
+          )
+        }
+      })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load faculty dashboard.')
-        setData(null)
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -44,7 +55,7 @@ function FacultyDashboard() {
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : !error && (
         <>
           <div className="row">
@@ -86,17 +97,6 @@ function FacultyDashboard() {
                       <div>
                         <h6 className="mb-1 fw-bold">Submit Evaluations</h6>
                         <small className="text-muted">Midterm and final performance evaluations</small>
-                      </div>
-                      <i className="fa fa-chevron-right ms-auto text-muted"></i>
-                    </Link>
-
-                    <Link to="/faculty/feedback" className="btn btn-outline-secondary text-start p-3 d-flex align-items-center">
-                      <div className="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '40px', height: '40px' }}>
-                        <i className="fa fa-comment-dots"></i>
-                      </div>
-                      <div>
-                        <h6 className="mb-1 fw-bold">Give Feedback</h6>
-                        <small className="text-muted">Send remarks and guidance to students</small>
                       </div>
                       <i className="fa fa-chevron-right ms-auto text-muted"></i>
                     </Link>

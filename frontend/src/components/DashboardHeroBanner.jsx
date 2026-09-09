@@ -1,3 +1,5 @@
+import InternTrackLoader from './InternTrackLoader'
+
 /**
  * Shared green welcome banner used on role dashboards
  * (extracted from the Student dashboard hero).
@@ -25,7 +27,7 @@ function DashboardHeroBanner({
           <div className="hero-banner-label">{label}</div>
           <h1 className="hero-banner-title">Loading summary…</h1>
           <div className="hero-banner-meta">
-            <span><i className="fa fa-spinner fa-spin" aria-hidden="true" /> Fetching live data</span>
+            <span><InternTrackLoader size={32} centered={false} /> Fetching live data</span>
           </div>
         </div>
       </div>

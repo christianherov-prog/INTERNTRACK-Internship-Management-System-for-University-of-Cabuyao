@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import Layout from "../../components/Layout"
 import api from "../../services/api"
+import { useCachedPage } from "../../hooks/useCachedPage"
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const MOA_STATUS_OPTIONS = ["active", "pending", "for_renewal", "expired", "on-process"]
 
@@ -18,8 +20,8 @@ const daysUntilExpiry = dateStr => {
 }
 
 function DirectorMOAManagement({ embedded = false }) {
-  const [companies, setCompanies]   = useState([])
-  const [loading, setLoading]       = useState(true)
+  const { loading, seed, run } = useCachedPage("director:moa-management")
+  const [companies, setCompanies]   = useState(() => seed ?? [])
   const [error, setError]           = useState(null)
   const [search, setSearch]         = useState("")
   const [statusFilter, setStatusFilter] = useState("")
@@ -30,10 +32,10 @@ function DirectorMOAManagement({ embedded = false }) {
   const [saveMsg, setSaveMsg]       = useState(null)
 
   const load = () => {
-    setLoading(true)
-    api.get("/director/companies").then(res => {
-      setCompanies(res.data.data ?? res.data)
-    }).catch(() => setError("Failed to load companies.")).finally(() => setLoading(false))
+    setError(null)
+    run(() => api.get("/director/companies").then(res => res.data.data ?? res.data))
+      .then((next) => { if (next) setCompanies(next) })
+      .catch(() => setError("Failed to load companies."))
   }
   useEffect(() => { load() }, [])
 
@@ -84,7 +86,7 @@ function DirectorMOAManagement({ embedded = false }) {
         <div className="p-4">
           <div className="row g-3">
             <div className="col-md-6">
-              <input className="form-control" placeholder="Search company name or industry..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input className="form-control" placeholder="Search Companies" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <div className="col-md-4">
               <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
@@ -111,7 +113,7 @@ function DirectorMOAManagement({ embedded = false }) {
         </div>
         <div className="table-responsive">
           {loading
-            ? <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            ? <div className="text-center py-5"><InternTrackLoader /></div>
             : (
               <table className="table table-hover table-sm mb-0">
                 <thead className="table-light">

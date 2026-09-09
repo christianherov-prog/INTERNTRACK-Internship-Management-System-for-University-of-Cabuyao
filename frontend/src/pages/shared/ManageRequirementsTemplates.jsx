@@ -7,16 +7,18 @@ import Layout from '../../components/Layout'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { documentStatusConfig } from '../../utils/documentStatus'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REVIEWABLE_STATUSES = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
 
 export default function ManageRequirementsTemplates({ embedded = false }) {
   const confirm = useConfirm()
   const { user } = useAuth()
-  const [requirements, setRequirements] = useState([])
+  const { loading, seed, run } = useCachedPage(`requirements:${user?.role || 'staff'}`)
+  const [requirements, setRequirements] = useState(() => seed ?? [])
   const [options, setOptions] = useState({ students: [], sections: [], programs: [] })
   const isCoordinator = user?.role === 'coordinator'
-  const [isLoading, setIsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
   // Submissions Modal State
@@ -91,16 +93,21 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
     }
   }
 
-  const fetchRequirements = async () => {
-    try {
-      setIsLoading(true)
-      const { data } = await api.get(`/${rolePath}/requirements`)
-      setRequirements(data.data || [])
-    } catch (err) {
-      toast.error('Failed to load requirements')
-    } finally {
-      setIsLoading(false)
-    }
+  const fetchRequirements = () => {
+    if (!rolePath) return
+    run(() => api.get(`/${rolePath}/requirements`).then(({ data }) => data.data || []))
+      .then((next) => {
+        if (next) {
+          setRequirements(next)
+          setActiveReqSubmissions((current) => {
+            if (!current) return current
+            return next.find((r) => r.id === current.id) || current
+          })
+        }
+      })
+      .catch(() => {
+        toast.error('Failed to load requirements')
+      })
   }
 
   const handleOpenModal = (req = null) => {
@@ -193,13 +200,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
       toast.success(`Document ${action === 'approve' ? 'approved' : 'rejected'}. The student has been notified.`)
       setReviewingDoc(null)
       setReviewRemarks('')
-      const { data } = await api.get(`/${rolePath}/requirements`)
-      const list = data.data || []
-      setRequirements(list)
-      if (activeReqSubmissions) {
-        const updated = list.find((r) => r.id === activeReqSubmissions.id)
-        if (updated) setActiveReqSubmissions(updated)
-      }
+      fetchRequirements()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to review document')
     } finally {
@@ -235,9 +236,9 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
           <h6>Active Requirements</h6>
         </div>
 
-        {isLoading ? (
+        {loading ? (
           <div className="text-center py-5">
-            <i className="fa fa-spinner fa-spin fa-2x text-muted"></i>
+            <InternTrackLoader />
           </div>
         ) : requirements.length === 0 ? (
           <div className="text-center py-5">
@@ -389,7 +390,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                         className="form-control"
                         value={formData.name}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. Application Letter"
+                        placeholder="Requirement Name"
                       />
                     </div>
 
@@ -410,7 +411,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                         value={formData.description}
                         onChange={e => setFormData({ ...formData, description: e.target.value })}
                         rows="2"
-                        placeholder="Provide instructions for students..."
+                        placeholder="Instructions"
                       ></textarea>
                     </div>
 
@@ -435,7 +436,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                         <input
                           type="search"
                           className="form-control form-control-sm mb-2"
-                          placeholder="Search targets…"
+                          placeholder="Search"
                           value={targetSearch}
                           onChange={e => setTargetSearch(e.target.value)}
                         />
@@ -716,7 +717,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                       <textarea
                         className="form-control"
                         rows="3"
-                        placeholder="Add any feedback for the student..."
+                        placeholder="Feedback"
                         value={reviewRemarks}
                         onChange={e => setReviewRemarks(e.target.value)}
                       ></textarea>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
+import InternTrackLoader from './InternTrackLoader'
 
 /**
  * Simple timeline of internship status changes.
@@ -36,7 +37,7 @@ function StatusHistoryModal({ internshipId, studentName, apiBase = 'coordinator'
           <div className="modal-body">
             {loading && (
               <div className="text-center py-4">
-                <i className="fa fa-spinner fa-spin fa-2x text-muted"></i>
+                <InternTrackLoader />
               </div>
             )}
             {error && <div className="alert alert-danger">{error}</div>}

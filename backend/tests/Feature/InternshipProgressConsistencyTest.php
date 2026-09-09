@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 class InternshipProgressConsistencyTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesInternshipFixtures;
+    use RefreshDatabase;
 
     public function test_program_requirements_are_looked_up_from_hte_configuration(): void
     {
@@ -94,10 +94,51 @@ class InternshipProgressConsistencyTest extends TestCase
         $this->assertSame(1, $snapshot['hte_count']);
     }
 
+    public function test_progress_gets_do_not_persist_computed_hours_or_targets(): void
+    {
+        $faculty = $this->makeUser('faculty');
+        $coordinator = $this->makeUser('coordinator');
+        $this->mapFacultyForSection($faculty);
+        $student = $this->makeStudentWithSection();
+        $this->seedProgramHours($student->studentProfile->program_id, 1, 500);
+        $company = $this->makeEligibleCompany(['company_name' => 'TechCorp PH']);
+        $supervisor = $this->makeUser('supervisor');
+        $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
+        $internship->update(['target_hours' => 180, 'total_hours_rendered' => 999]);
+        $storedUpdatedAt = $internship->fresh()->updated_at?->toDateTimeString();
+
+        AttendanceLog::create([
+            'internship_id' => $internship->id,
+            'date' => now()->subDays(2)->toDateString(),
+            'clock_in' => '08:00:00',
+            'clock_out' => '16:00:00',
+            'hours_rendered' => 80,
+            'status' => 'validated',
+            'validated_at' => now(),
+        ]);
+
+        Sanctum::actingAs($student);
+        $this->getJson('/api/v1/student/dashboard')->assertOk()
+            ->assertJsonPath('stats.hours_rendered', 80)
+            ->assertJsonPath('stats.target_hours', 500);
+
+        Sanctum::actingAs($coordinator);
+        $this->getJson('/api/v1/coordinator/students/'.$student->id.'/progress')->assertOk();
+
+        Sanctum::actingAs($faculty);
+        $this->getJson('/api/v1/faculty/students/'.$student->id.'/progress')->assertOk();
+
+        $fresh = $internship->fresh();
+        $this->assertEquals(999.0, (float) $fresh->total_hours_rendered);
+        $this->assertEquals(180.0, (float) $fresh->target_hours);
+        $this->assertSame($storedUpdatedAt, $fresh->updated_at?->toDateTimeString());
+    }
+
     public function test_nursing_internship_uses_2703_hours_and_five_htes(): void
     {
         $student = $this->makeStudentInCollege('CHAS', 'Bachelor of Science in Nursing', 'BSN', '4BSN-A');
         $this->seedProgramHours($student->studentProfile->program_id, 5, 540.60);
+        InternshipProgressService::synchronize($student->activeInternship()->first());
 
         Sanctum::actingAs($student);
         $dashboard = $this->getJson('/api/v1/student/dashboard')->assertOk();

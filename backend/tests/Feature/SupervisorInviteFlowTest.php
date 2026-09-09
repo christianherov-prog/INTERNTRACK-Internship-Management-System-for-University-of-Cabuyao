@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Company;
 use App\Models\Internship;
+use App\Models\InternshipPlacement;
+use App\Models\ProgramHteRequirement;
 use App\Models\SupervisorInviteToken;
 use App\Models\SupervisorProfile;
 use App\Models\User;
@@ -16,8 +17,8 @@ use Tests\TestCase;
 
 class SupervisorInviteFlowTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesInternshipFixtures;
+    use RefreshDatabase;
 
     private function makeSupervisorAccount(string $facultyNumber = 'SUP-9001'): User
     {
@@ -157,6 +158,116 @@ class SupervisorInviteFlowTest extends TestCase
         $this->assertNull($party['internship']->fresh()->supervisor_id);
     }
 
+    public function test_rejected_supervisor_can_reregister_and_new_invite_is_recorded(): void
+    {
+        Storage::fake('local');
+        $party = $this->studentReadyForInvite();
+        $token = $this->generateInviteToken($party['student']);
+        $form = UploadedFile::fake()->create('acceptance.pdf', 80, 'application/pdf');
+        $payload = [
+            'first_name' => 'Clarence',
+            'last_name' => 'Magtibay',
+            'email' => 'pogi@gmail.com',
+            'contact_number' => '0909123123',
+            'position' => 'IT Manager',
+            'sex' => 'Male',
+            'company_id' => $party['company']->id,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ];
+
+        $this->post('/api/v1/supervisor-register', array_merge($payload, [
+            'token' => $token,
+            'acceptance_forms' => [$form],
+        ]), ['Accept' => 'application/json'])->assertCreated();
+
+        $firstInvite = SupervisorInviteToken::where('token', $token)->first();
+        $supervisorId = $firstInvite->supervisor_user_id;
+        $this->assertFalse((bool) User::find($supervisorId)->is_active);
+
+        Sanctum::actingAs($party['faculty']);
+        $this->patchJson("/api/v1/faculty/supervisor-approvals/{$firstInvite->id}/reject", [
+            'remarks' => 'Acceptance form is incomplete.',
+        ])->assertOk();
+        $this->assertSame('rejected', $firstInvite->fresh()->status);
+
+        $newToken = $this->generateInviteToken($party['student']);
+        $resubmit = UploadedFile::fake()->create('acceptance-v2.pdf', 90, 'application/pdf');
+        $created = $this->post('/api/v1/supervisor-register', array_merge($payload, [
+            'token' => $newToken,
+            'acceptance_forms' => [$resubmit],
+        ]), ['Accept' => 'application/json'])->assertCreated();
+
+        $this->assertTrue($created->json('reapplied'));
+        $this->assertSame(1, User::where('email', 'pogi@gmail.com')->count());
+
+        $newInvite = SupervisorInviteToken::where('token', $newToken)->first();
+        $this->assertSame('registered', $newInvite->status);
+        $this->assertSame($supervisorId, (int) $newInvite->supervisor_user_id);
+        $this->assertSame('rejected', $firstInvite->fresh()->status);
+        $this->assertNotEmpty($newInvite->acceptance_forms);
+        $this->assertFalse((bool) User::find($supervisorId)->fresh()->is_active);
+        $this->assertNull($party['internship']->fresh()->supervisor_id);
+
+        Sanctum::actingAs($party['faculty']);
+        $pending = $this->getJson('/api/v1/faculty/supervisor-approvals')->assertOk();
+        $pendingIds = collect($pending->json('pending'))->pluck('id');
+        $this->assertTrue($pendingIds->contains($newInvite->id));
+        $this->assertFalse($pendingIds->contains($firstInvite->id));
+        $historyIds = collect($pending->json('history'))->pluck('id');
+        $this->assertTrue($historyIds->contains($firstInvite->id));
+    }
+
+    public function test_email_with_pending_faculty_review_cannot_register_again(): void
+    {
+        Storage::fake('local');
+        $party = $this->studentReadyForInvite();
+        $token = $this->generateInviteToken($party['student']);
+        $form = UploadedFile::fake()->create('acceptance.pdf', 80, 'application/pdf');
+
+        $this->post('/api/v1/supervisor-register', [
+            'token' => $token,
+            'first_name' => 'Maria',
+            'last_name' => 'Reyes',
+            'email' => 'maria.pending@hte.example',
+            'contact_number' => '09170001111',
+            'position' => 'HR Supervisor',
+            'sex' => 'Female',
+            'company_id' => $party['company']->id,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'acceptance_forms' => [$form],
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $otherStudent = $this->makeStudentWithSection('4ITA');
+        $otherCompany = $this->makeEligibleCompany();
+        $otherInternship = Internship::where('student_id', $otherStudent->id)->first()
+            ?? $this->makePendingInternship($otherStudent);
+        $otherInternship->update([
+            'company_id' => $otherCompany->id,
+            'faculty_id' => $party['faculty']->id,
+            'supervisor_id' => null,
+            'status' => 'active',
+        ]);
+        $otherToken = $this->generateInviteToken($otherStudent);
+        $this->post('/api/v1/supervisor-register', [
+            'token' => $otherToken,
+            'first_name' => 'Maria',
+            'last_name' => 'Reyes',
+            'email' => 'maria.pending@hte.example',
+            'contact_number' => '09170001111',
+            'position' => 'HR Supervisor',
+            'sex' => 'Female',
+            'company_id' => $otherCompany->id,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'acceptance_forms' => [UploadedFile::fake()->create('other.pdf', 40, 'application/pdf')],
+        ], ['Accept' => 'application/json'])->assertStatus(409)
+            ->assertJsonPath('code', 'pending_approval');
+
+        $this->assertSame('pending', SupervisorInviteToken::where('token', $otherToken)->value('status'));
+    }
+
     public function test_existing_supervisor_login_binds_invite_without_auto_attaching(): void
     {
         $party = $this->studentReadyForInvite();
@@ -198,9 +309,15 @@ class SupervisorInviteFlowTest extends TestCase
 
         $this->postJson("/api/v1/supervisor/invites/{$inviteId}/accept")->assertOk();
 
+        $this->assertNull($party['internship']->fresh()->supervisor_id);
+        $this->assertSame('registered', SupervisorInviteToken::find($inviteId)->status);
+        $this->assertCount(0, $this->getJson('/api/v1/supervisor/invites/pending')->json('invites'));
+
+        Sanctum::actingAs($party['faculty']);
+        $this->patchJson("/api/v1/faculty/supervisor-approvals/{$inviteId}/approve")->assertOk();
+
         $this->assertSame($supervisor->id, (int) $party['internship']->fresh()->supervisor_id);
         $this->assertSame('approved', SupervisorInviteToken::find($inviteId)->status);
-        $this->assertCount(0, $this->getJson('/api/v1/supervisor/invites/pending')->json('invites'));
     }
 
     public function test_existing_supervisor_declines_new_student_invite(): void
@@ -324,7 +441,7 @@ class SupervisorInviteFlowTest extends TestCase
 
         $this->postJson("/api/v1/supervisor/feedback/{$internship->id}", [
             'feedback' => 'Should not be allowed.',
-        ])->assertNotFound();
+        ])->assertForbidden();
 
         $party = $this->studentReadyForInvite();
         $token = $this->generateInviteToken($party['student']);
@@ -344,5 +461,53 @@ class SupervisorInviteFlowTest extends TestCase
             'name' => 'Should Fail',
             'position' => 'Hacker',
         ])->assertForbidden();
+    }
+
+    public function test_faculty_approval_assigns_current_placement_supervisor(): void
+    {
+        Storage::fake('local');
+        $party = $this->studentReadyForInvite();
+        $requirement = ProgramHteRequirement::create([
+            'program_id' => $party['student']->studentProfile->program_id,
+            'sequence_order' => 1,
+            'label' => 'Primary HTE',
+            'required_hours' => 500,
+        ]);
+        $placement = InternshipPlacement::create([
+            'internship_id' => $party['internship']->id,
+            'program_hte_requirement_id' => $requirement->id,
+            'company_id' => $party['company']->id,
+            'supervisor_id' => null,
+            'sequence_order' => 1,
+            'label' => 'Primary HTE',
+            'required_hours' => 500,
+            'accumulated_hours' => 0,
+            'status' => 'active',
+        ]);
+        $party['internship']->update(['current_placement_id' => $placement->id]);
+
+        $token = $this->generateInviteToken($party['student']);
+        $form = UploadedFile::fake()->create('acceptance.pdf', 40, 'application/pdf');
+        $this->post('/api/v1/supervisor-register', [
+            'token' => $token,
+            'first_name' => 'Adrian',
+            'last_name' => 'Reyes',
+            'email' => 'adrian.reyes@hte.example',
+            'contact_number' => '09170003333',
+            'position' => 'Industry Supervisor',
+            'sex' => 'Male',
+            'company_id' => $party['company']->id,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'acceptance_forms' => [$form],
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $invite = SupervisorInviteToken::where('token', $token)->first();
+        Sanctum::actingAs($party['faculty']);
+        $this->patchJson("/api/v1/faculty/supervisor-approvals/{$invite->id}/approve")->assertOk();
+
+        $supervisorId = (int) $invite->fresh()->supervisor_user_id;
+        $this->assertSame($supervisorId, (int) $party['internship']->fresh()->supervisor_id);
+        $this->assertSame($supervisorId, (int) $placement->fresh()->supervisor_id);
     }
 }

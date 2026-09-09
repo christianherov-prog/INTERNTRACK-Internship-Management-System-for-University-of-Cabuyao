@@ -6,8 +6,9 @@ use App\Models\FacultySectionAssignment;
 use App\Models\Internship;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Support\DepartmentScope;
+use App\Support\InternshipProvisioning;
 use App\Support\ProgramCatalog;
-use App\Services\ProgramRequirementService;
 use Illuminate\Database\Eloquent\Builder;
 
 class FacultySectionAssignmentService
@@ -83,20 +84,22 @@ class FacultySectionAssignmentService
      */
     public function resolveFacultyForProfile(?StudentProfile $profile): ?User
     {
-        if (!$profile) {
+        if (! $profile) {
             return null;
         }
 
-        $programName = is_object($profile->program) ? ($profile->program->name) : $profile->program;
+        $profile->loadMissing('program');
+        $programName = $profile->getRelation('program')?->name;
 
         $faculty = $this->suggestFacultyForSection(
             $profile->section,
             $programName,
             $profile->school_year,
-            $profile->semester
+            $profile->semester,
+            DepartmentScope::studentDepartmentId($profile)
         );
 
-        if ($faculty && !\App\Support\DepartmentScope::facultyMatchesStudent($faculty, $profile)) {
+        if ($faculty && ! DepartmentScope::facultyMatchesStudent($faculty, $profile)) {
             return null;
         }
 
@@ -110,10 +113,11 @@ class FacultySectionAssignmentService
         ?string $section,
         ?string $program = null,
         ?string $schoolYear = null,
-        ?string $semester = null
+        ?string $semester = null,
+        ?int $departmentId = null
     ): ?User {
         $normalized = self::normalizeSection($section);
-        if (!$normalized) {
+        if (! $normalized) {
             return null;
         }
 
@@ -123,7 +127,10 @@ class FacultySectionAssignmentService
 
         $query = FacultySectionAssignment::query()
             ->where('is_active', true)
-            ->whereIn('section', $sectionVariants);
+            ->whereIn('section', $sectionVariants)
+            ->when($departmentId, function ($q) use ($departmentId) {
+                $q->whereHas('faculty.facultyProfile', fn ($fp) => $fp->where('department_id', $departmentId));
+            });
 
         if ($schoolYear) {
             $query->where('school_year', $schoolYear);
@@ -147,7 +154,7 @@ class FacultySectionAssignmentService
             ->with('faculty.facultyProfile')
             ->first();
 
-        if (!$assignment && $program) {
+        if (! $assignment && $program) {
             $assignment = (clone $query)
                 ->where(function ($sub) {
                     $sub->whereNull('program')->orWhere('program', '');
@@ -156,16 +163,19 @@ class FacultySectionAssignmentService
                 ->first();
         }
 
-        if (!$assignment) {
+        if (! $assignment) {
             $assignment = (clone $query)
                 ->with('faculty.facultyProfile')
                 ->first();
         }
 
-        if (!$assignment) {
+        if (! $assignment) {
             $assignment = FacultySectionAssignment::query()
                 ->where('is_active', true)
                 ->whereIn('section', $sectionVariants)
+                ->when($departmentId, function ($q) use ($departmentId) {
+                    $q->whereHas('faculty.facultyProfile', fn ($fp) => $fp->where('department_id', $departmentId));
+                })
                 ->with('faculty.facultyProfile')
                 ->first();
         }
@@ -198,7 +208,7 @@ class FacultySectionAssignmentService
 
     public function formatFaculty(?User $faculty): ?array
     {
-        if (!$faculty) {
+        if (! $faculty) {
             return null;
         }
 
@@ -208,10 +218,10 @@ class FacultySectionAssignmentService
             : $faculty->username;
 
         return [
-            'id'              => $faculty->id,
-            'username'        => $faculty->username,
-            'name'            => $name !== '' ? $name : $faculty->username,
-            'faculty_number'  => $fp?->faculty_number ?? $faculty->username,
+            'id' => $faculty->id,
+            'username' => $faculty->username,
+            'name' => $name !== '' ? $name : $faculty->username,
+            'faculty_number' => $fp?->faculty_number ?? $faculty->username,
         ];
     }
 
@@ -225,14 +235,14 @@ class FacultySectionAssignmentService
         $faculty = $this->resolveFacultyForProfile($profile);
 
         return [
-            'section'                   => $profile?->section,
-            'section_normalized'        => self::normalizeSection($profile?->section),
-            'program'                   => $profile?->program?->name,
-            'school_year'             => $profile?->school_year,
-            'semester'                  => $profile?->semester,
-            'resolved_faculty'          => $this->formatFaculty($faculty),
+            'section' => $profile?->section,
+            'section_normalized' => self::normalizeSection($profile?->section),
+            'program' => $profile?->getRelation('program')?->name,
+            'school_year' => $profile?->school_year,
+            'semester' => $profile?->semester,
+            'resolved_faculty' => $this->formatFaculty($faculty),
             'faculty_resolution_status' => $faculty ? 'resolved' : 'missing_mapping',
-            'allowed_sections'          => self::SECTIONS,
+            'allowed_sections' => self::SECTIONS,
         ];
     }
 
@@ -246,40 +256,37 @@ class FacultySectionAssignmentService
         ?string $semester = null
     ): void {
         $normalized = self::normalizeSection($section);
-        if (!$normalized) {
+        if (! $normalized) {
             return;
         }
-
-        $faculty = $this->suggestFacultyForSection($normalized, $program, $schoolYear, $semester);
-        $facultyId = $faculty?->id;
 
         $profiles = StudentProfile::all()->filter(function ($p) use ($normalized) {
             return self::normalizeSection($p->section) === $normalized;
         });
 
         foreach ($profiles as $profile) {
-            if (!$profile->user_id) {
+            if (! $profile->user_id) {
                 continue;
             }
 
-            $assignableFacultyId = $facultyId;
-            if ($faculty && !\App\Support\DepartmentScope::facultyMatchesStudent($faculty, $profile)) {
-                $assignableFacultyId = null;
-            }
+            $faculty = $this->resolveFacultyForProfile($profile);
+            $assignableFacultyId = $faculty?->id;
 
-            $internship = Internship::where('student_id', $profile->user_id)->first();
-            if (!$internship) {
+            $internship = InternshipProvisioning::openForStudent($profile->user_id)
+                ?? Internship::where('student_id', $profile->user_id)->latest('id')->first();
+            if (! $internship) {
                 $user = User::find($profile->user_id);
                 if ($user && $user->role === 'student') {
-                    $prog = $profile->program?->name
+                    $profile->loadMissing('program');
+                    $prog = $profile->getRelation('program')?->name
                         ?: ProgramCatalog::displayName($program)
                         ?: $program;
 
-                    $user->internshipsAsStudent()->create([
+                    InternshipProvisioning::createPendingIfNone($user, [
                         'status' => 'pending_placement',
                         'school_year' => $profile->school_year ?: ($schoolYear ?: '2025-2026'),
                         'semester' => $profile->semester ?: ($semester ?: '2nd Semester'),
-                        'term' => "AY " . ($profile->school_year ?: ($schoolYear ?: '2025-2026')) . ", " . ($profile->semester ?: ($semester ?: '2nd Semester')),
+                        'term' => 'AY '.($profile->school_year ?: ($schoolYear ?: '2025-2026')).', '.($profile->semester ?: ($semester ?: '2nd Semester')),
                         'program' => $prog,
                         'faculty_id' => $assignableFacultyId,
                         'target_hours' => ProgramRequirementService::targetHoursForProfile($profile),

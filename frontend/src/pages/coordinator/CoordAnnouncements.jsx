@@ -13,10 +13,12 @@ import {
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator-page' }) {
-  const [announcements, setAnnouncements] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const { loading, seed, run } = useCachedPage(`announcements:${apiBase}`)
+  const [announcements, setAnnouncements] = useState(() => seed ?? [])
   const [loadError, setLoadError] = useState(null)
   const [saving, setSaving]     = useState(false)
   const [deleting, setDeleting] = useState(null)
@@ -41,15 +43,13 @@ function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator
   }
 
   const fetchAnnouncements = () => {
-    setLoading(true)
     setLoadError(null)
-    api.get(`${apiBase}/announcements`)
-      .then(res => setAnnouncements(unwrapList(res.data).items))
+    run(() => api.get(`${apiBase}/announcements`).then(res => unwrapList(res.data).items))
+      .then((next) => { if (next) setAnnouncements(next) })
       .catch((err) => {
         setLoadError(err.response?.data?.message || 'Failed to load announcements.')
         setAnnouncements([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchAnnouncements() }, [apiBase])
@@ -292,7 +292,7 @@ function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator
         <div className="content-card-header"><i className="fa fa-list"></i><h6>All Announcements</h6></div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : announcements.length === 0 ? (
             <EmptyState
               icon="fa-bullhorn"

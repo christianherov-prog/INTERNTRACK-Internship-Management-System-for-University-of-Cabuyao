@@ -4,6 +4,10 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import api from '../../services/api'
+import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const ROLE_META = [
   { key: 'student', label: 'Students', to: '/admin/users?role=student', color: '#0f766e' },
@@ -14,17 +18,25 @@ const ROLE_META = [
 ]
 
 function MisdDashboard() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('admin:dashboard')
+  const [data, setData] = useState(seed ?? null)
   const [error, setError] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/admin/dashboard')
-      .then((res) => setData(res.data))
+    run(() => api.get('/admin/dashboard').then((res) => res.data))
+      .then((next) => {
+        if (next) {
+          setData(next)
+          prefetchPage('admin:users:all:all:q:', () =>
+            api.get('/admin/users', { params: { page: 1, per_page: 25 } }).then((res) => {
+              const { items, meta } = unwrapList(res.data)
+              return { rows: items, meta }
+            })
+          )
+        }
+      })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load MISD dashboard.'))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -38,7 +50,7 @@ function MisdDashboard() {
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : data && (
         <>
           <div className="row g-3 mb-4">

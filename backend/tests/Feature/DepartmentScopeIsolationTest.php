@@ -203,7 +203,7 @@ class DepartmentScopeIsolationTest extends TestCase
         $this->assertNull($resolved);
     }
 
-    public function test_director_cannot_place_student_with_faculty_from_another_department(): void
+    public function test_director_can_place_student_with_faculty_from_another_department(): void
     {
         $director = $this->makeUser('director', 'DIR-DEPT');
         $ccsFaculty = $this->makeUser('faculty', 'FAC-CCS-PLACE');
@@ -232,6 +232,12 @@ class DepartmentScopeIsolationTest extends TestCase
             'company_id' => $company->id,
             'faculty_id' => $ccsFaculty->id,
             'supervisor_id' => $supervisor->id,
-        ])->assertForbidden()->assertJson(['message' => \App\Support\DepartmentScope::DENIED_MESSAGE]);
+        ])->assertOk();
+
+        $this->assertDatabaseHas('internships', [
+            'id' => $internship->id,
+            'faculty_id' => $ccsFaculty->id,
+            'company_id' => $company->id,
+        ]);
     }
 }

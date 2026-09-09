@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\Internship;
+use App\Models\OjtRequirementTemplate;
+use App\Models\RequirementTemplateAttachment;
 use App\Support\InternshipAccess;
+use App\Support\PlacementMoa;
 use App\Support\RequirementAudience;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -46,9 +49,9 @@ class SecureFileController extends Controller
 
         // Fallback: check physical storage and public directories directly
         $fallbacks = [
-            storage_path('app/public/' . $cleanPath),
-            storage_path('app/' . $cleanPath),
-            public_path('storage/' . $cleanPath),
+            storage_path('app/public/'.$cleanPath),
+            storage_path('app/'.$cleanPath),
+            public_path('storage/'.$cleanPath),
             public_path($cleanPath),
             storage_path($cleanPath),
         ];
@@ -57,6 +60,7 @@ class SecureFileController extends Controller
             if (file_exists($fp) && is_file($fp)) {
                 $name = basename($fp);
                 $mime = @mime_content_type($fp) ?: 'application/octet-stream';
+
                 return response()->file($fp, [
                     'Content-Type' => $mime,
                     'Content-Disposition' => 'inline; filename="'.$name.'"',
@@ -77,7 +81,7 @@ class SecureFileController extends Controller
 
         if ($internshipId) {
             $internship = Internship::find($internshipId);
-            if (!$internship) {
+            if (! $internship) {
                 abort(403, 'You do not have access to this file.');
             }
             InternshipAccess::abortUnlessCanView($user, $internship);
@@ -88,7 +92,7 @@ class SecureFileController extends Controller
         // signatures/document-reviews/{documentId}/...
         if (preg_match('#^signatures/document-reviews/(\d+)/#', $path, $m)) {
             $doc = Document::with('internship')->find((int) $m[1]);
-            if (!$doc?->internship) {
+            if (! $doc?->internship) {
                 abort(403, 'You do not have access to this file.');
             }
             InternshipAccess::abortUnlessCanView($user, $doc->internship);
@@ -108,6 +112,34 @@ class SecureFileController extends Controller
             abort(403, 'You do not have access to this file.');
         }
 
+        if (PlacementMoa::authorize($user, $path)) {
+            return;
+        }
+
+        if (preg_match('#^signatures/(\d+)_processed\.png$#', $path, $m)) {
+            $ownerId = (int) $m[1];
+            if ((int) $user->id === $ownerId) {
+                return;
+            }
+
+            $internships = Internship::query()
+                ->where(function ($q) use ($ownerId) {
+                    $q->where('student_id', $ownerId)
+                        ->orWhere('supervisor_id', $ownerId)
+                        ->orWhere('faculty_id', $ownerId)
+                        ->orWhere('coordinator_id', $ownerId);
+                })
+                ->get();
+
+            foreach ($internships as $internship) {
+                if (InternshipAccess::canView($user, $internship)) {
+                    return;
+                }
+            }
+
+            abort(403, 'You do not have access to this file.');
+        }
+
         abort(403, 'You do not have access to this file.');
     }
 
@@ -117,14 +149,14 @@ class SecureFileController extends Controller
             return false;
         }
 
-        $attachment = \App\Models\RequirementTemplateAttachment::with('requirementTemplate.targets')
+        $attachment = RequirementTemplateAttachment::with('requirementTemplate.targets')
             ->where('file_path', $path)
             ->first();
 
         $template = $attachment?->requirementTemplate
-            ?? \App\Models\OjtRequirementTemplate::with('targets')->where('template_file_path', $path)->first();
+            ?? OjtRequirementTemplate::with('targets')->where('template_file_path', $path)->first();
 
-        if (!$template || !$template->is_active) {
+        if (! $template || ! $template->is_active) {
             return false;
         }
 
@@ -141,12 +173,12 @@ class SecureFileController extends Controller
             return false;
         }
 
-        $attachment = \App\Models\RequirementTemplateAttachment::with('requirementTemplate')
+        $attachment = RequirementTemplateAttachment::with('requirementTemplate')
             ->where('file_path', $path)
             ->first();
 
         $template = $attachment?->requirementTemplate
-            ?? \App\Models\OjtRequirementTemplate::where('template_file_path', $path)->first();
+            ?? OjtRequirementTemplate::where('template_file_path', $path)->first();
 
         if (! $template) {
             return false;

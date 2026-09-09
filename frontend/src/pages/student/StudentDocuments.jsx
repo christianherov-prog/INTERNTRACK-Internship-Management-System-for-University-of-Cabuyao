@@ -7,6 +7,9 @@ import { unwrapList } from '../../utils/apiList'
 import { documentStatusConfig } from '../../utils/documentStatus'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REVIEWABLE = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
 const NEEDS_UPLOAD = ['not_submitted', 'no_submission', 'rejected']
@@ -20,8 +23,8 @@ function fileIcon(name = '') {
 
 function StudentDocuments() {
   const currentTerm = useCurrentTerm()
-  const [documents, setDocuments] = useState([])
-  const [loading, setLoading]     = useState(true)
+  const { loading, seed, run } = useCachedPage('student:documents')
+  const [documents, setDocuments]     = useState(() => seed ?? [])
   const [error, setError]         = useState(null)
   const [uploading, setUploading]     = useState(null) // type being uploaded
   const [message, setMessage]         = useState(null)
@@ -32,26 +35,19 @@ function StudentDocuments() {
   const [driveLink, setDriveLink]     = useState('')
 
   const fetchDocuments = useCallback((opts = {}) => {
-    const silent = opts.silent === true
-    if (!silent) {
-      setLoading(true)
-      setError(null)
-    }
-    api.get('/student/documents')
-      .then(res => {
-        setDocuments(unwrapList(res.data).items)
-        setError(null)
-      })
-      .catch(err => {
-        if (!silent) {
-          setError(err.response?.data?.message || 'Failed to load documents.')
-          setDocuments([])
+    if (!opts.silent) setError(null)
+    run(() => api.get('/student/documents').then(res => unwrapList(res.data).items))
+      .then((items) => {
+        if (items) {
+          setDocuments(items)
+          setError(null)
         }
       })
-      .finally(() => {
-        if (!silent) setLoading(false)
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load documents.')
+        setDocuments([])
       })
-  }, [])
+  }, [run])
 
   useEffect(() => { fetchDocuments() }, [fetchDocuments])
 
@@ -100,6 +96,7 @@ function StudentDocuments() {
     handleCloseModal()
     try {
       await api.post('/student/documents/upload', formData)
+      invalidateStudentPortfolio()
       setMessage({ type: 'success', text: `"${activeType}" submitted successfully!` })
       fetchDocuments()
     } catch (err) {
@@ -141,7 +138,7 @@ function StudentDocuments() {
                     <input 
                       type="url" 
                       className="form-control" 
-                      placeholder="https://drive.google.com/..." 
+                      placeholder="File Link" 
                       value={driveLink} 
                       onChange={e => setDriveLink(e.target.value)} 
                     />
@@ -195,7 +192,7 @@ function StudentDocuments() {
 
       {loading && documents.length === 0 && !error && (
         <div className="text-center py-5">
-          <i className="fa fa-spinner fa-spin fa-2x text-muted"></i>
+          <InternTrackLoader />
         </div>
       )}
 

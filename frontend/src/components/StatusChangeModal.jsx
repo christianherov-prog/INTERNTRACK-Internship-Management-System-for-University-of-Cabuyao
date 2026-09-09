@@ -138,7 +138,7 @@ function StatusChangeModal({ internshipId, studentName, currentStatus, apiBase =
                   rows={3}
                   value={reason}
                   onChange={e => setReason(e.target.value)}
-                  placeholder="Required — explain why this status is being applied…"
+                  placeholder="Reason"
                   required
                   minLength={5}
                 />

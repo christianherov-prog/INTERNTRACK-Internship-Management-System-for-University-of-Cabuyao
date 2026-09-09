@@ -4,23 +4,23 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import ReportExportModal from '../../components/modals/ReportExportModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function DirectorMOAMonitoring({ embedded = false }) {
-  const [companies, setCompanies] = useState([])
-  const [loading, setLoading]     = useState(true)
+  const { loading, seed, run } = useCachedPage('director:moa-monitoring')
+  const [companies, setCompanies] = useState(() => seed ?? [])
   const [error, setError]         = useState(null)
   const [exportPreview, setExportPreview] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/director/moa-monitoring')
-      .then(res => setCompanies(unwrapList(res.data).items))
+    run(() => api.get('/director/moa-monitoring').then(res => unwrapList(res.data).items))
+      .then((next) => { if (next) setCompanies(next) })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load MOA monitoring.')
         setCompanies([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -87,7 +87,7 @@ function DirectorMOAMonitoring({ embedded = false }) {
         </div>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">

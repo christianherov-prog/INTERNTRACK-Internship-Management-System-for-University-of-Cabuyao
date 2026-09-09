@@ -9,6 +9,8 @@ import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { formatStudentName } from '../../utils/formatName'
 import { displayLabel } from '../../utils/displayLabel'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function statusBadge(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -21,8 +23,8 @@ function statusBadge(status) {
 
 function SupervisorAssignedInterns() {
   const { user } = useAuth()
-  const [interns, setInterns] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('supervisor:assigned-interns')
+  const [interns, setInterns] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [previewModal, setPreviewModal] = useState(null)
   const [downloading, setDownloading] = useState(false)
@@ -54,15 +56,13 @@ function SupervisorAssignedInterns() {
   };
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/supervisor/assigned-students')
-      .then(res => setInterns(unwrapList(res.data).items))
+    run(() => api.get('/supervisor/assigned-students').then(res => unwrapList(res.data).items))
+      .then((next) => { if (next) setInterns(next) })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load assigned students.')
         setInterns([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -74,7 +74,7 @@ function SupervisorAssignedInterns() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All Status</option>
@@ -97,7 +97,7 @@ function SupervisorAssignedInterns() {
         </p>
         <div className="table-card">
           {loading ? (
-            <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-5"><InternTrackLoader /></div>
           ) : interns.length === 0 ? (
             <EmptyState
               icon="fa-user-slash"

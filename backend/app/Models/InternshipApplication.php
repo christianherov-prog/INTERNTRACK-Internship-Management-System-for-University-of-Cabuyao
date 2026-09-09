@@ -11,6 +11,8 @@ class InternshipApplication extends Model
         'company_id',
         'status',
         'coordinator_remarks',
+        'moa_path',
+        'moa_original_name',
     ];
 
     public function student()

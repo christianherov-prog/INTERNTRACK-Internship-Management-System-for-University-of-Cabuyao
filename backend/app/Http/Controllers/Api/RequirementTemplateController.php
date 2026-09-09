@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Support\ApiResponse;
+use App\Support\DepartmentScope;
 use App\Models\AuditLog;
 
 class RequirementTemplateController extends Controller
@@ -187,9 +188,11 @@ class RequirementTemplateController extends Controller
 
         $programsQuery = \App\Models\Program::where('is_active', true)->orderBy('name');
         if ($user->hasRole('faculty') || $user->hasRole('coordinator')) {
-            $deptId = $user->facultyProfile?->department_id;
+            $deptId = DepartmentScope::departmentIdFor($user);
             if ($deptId) {
                 $programsQuery->where('department_id', $deptId);
+            } else {
+                $programsQuery->whereRaw('1 = 0');
             }
         }
         $programs = $programsQuery->get()->map(fn ($p) => [
@@ -386,11 +389,11 @@ class RequirementTemplateController extends Controller
     private function applyStudentTargetScope($query, User $user): void
     {
         $user->loadMissing('facultyProfile');
-        $deptId = $user->facultyProfile?->department_id;
+        $deptId = DepartmentScope::departmentIdFor($user);
 
         if ($user->isCoordinator()) {
             if ($deptId) {
-                $query->whereHas('studentProfile', fn ($q) => $q->where('department_id', $deptId));
+                $query->whereHas('studentProfile', fn ($q) => DepartmentScope::constrainStudentProfiles($q, $deptId));
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -424,7 +427,7 @@ class RequirementTemplateController extends Controller
         $query = \App\Models\FacultySectionAssignment::query()->where('is_active', true);
 
         if ($user->isCoordinator()) {
-            $deptId = $user->facultyProfile?->department_id;
+            $deptId = DepartmentScope::departmentIdFor($user);
             if (!$deptId) {
                 return collect();
             }

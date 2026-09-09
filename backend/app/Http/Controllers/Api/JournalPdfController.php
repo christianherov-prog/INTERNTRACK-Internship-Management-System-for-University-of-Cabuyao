@@ -34,6 +34,7 @@ class JournalPdfController extends Controller
         $this->authorizeInternshipAccess($user, $internship);
 
         $query = JournalEntry::where('internship_id', $internship->id)
+            ->academic()
             ->orderBy('week_number');
 
         if ($request->week_number) {

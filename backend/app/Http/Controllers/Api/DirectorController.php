@@ -3,26 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Internship;
 use App\Models\Company;
+use App\Models\Document;
 use App\Models\Evaluation;
+use App\Models\Internship;
 use App\Models\User;
 use App\Services\AbsorptionService;
+use App\Services\InternshipProgressService;
 use App\Support\ApiResponse;
+use App\Support\DepartmentScope;
+use App\Support\InternshipStatuses;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DirectorController extends Controller
 {
-    public function dashboard(Request $request) { return $this->analytics($request); }
+    public function dashboard(Request $request)
+    {
+        return $this->analytics($request);
+    }
 
     public function analytics(Request $request)
     {
-        $activeInterns    = Internship::whereIn('status', ['ongoing', 'active'])->count();
+        $activeInterns = Internship::whereIn('status', ['ongoing', 'active'])->count();
         $partnerCompanies = Company::where('is_active', true)->count();
-        $completed        = Internship::where('status', 'completed')->count();
-        $totalPlacements  = Internship::count();
-        $placementRate    = $totalPlacements > 0 ? round(($activeInterns + $completed) / $totalPlacements * 100) : 0;
+        $completed = Internship::where('status', 'completed')->count();
+        $totalPlacements = Internship::count();
+        $placementRate = $totalPlacements > 0 ? round(($activeInterns + $completed) / $totalPlacements * 100) : 0;
 
         // Prefer internship.program, then student profile program/course (seed often leaves internship.program null).
         $byProgram = $this->internsByProgram();
@@ -44,66 +52,69 @@ class DirectorController extends Controller
 
         return response()->json([
             'stats' => [
-                'active_interns'    => $activeInterns,
+                'active_interns' => $activeInterns,
                 'partner_companies' => $partnerCompanies,
-                'completed'         => $completed,
-                'placement_rate'    => $placementRate,
+                'completed' => $completed,
+                'placement_rate' => $placementRate,
             ],
-            'by_program'     => $byProgram,
-            'moa_by_status'  => $moaByStatus,
-            'top_companies'  => $topCompanies,
-            'most_used_hte'  => $hteUsage['most_used_hte'],
+            'by_program' => $byProgram,
+            'moa_by_status' => $moaByStatus,
+            'top_companies' => $topCompanies,
+            'most_used_hte' => $hteUsage['most_used_hte'],
             'least_used_hte' => $hteUsage['least_used_hte'],
             'eval_breakdown' => $evalBreakdown,
-            'absorption'     => AbsorptionService::analytics(),
+            'absorption' => AbsorptionService::analytics(),
         ]);
     }
 
     public function companies(Request $request)
     {
         $companies = Company::withCount('internships')->orderBy('company_name')->paginate(20);
+
         return ApiResponse::list($companies);
     }
 
     public function storeCompany(Request $request)
     {
         $validated = $request->validate([
-            'company_name'   => 'required|string|max:255',
-            'address'        => 'nullable|string|max:500',
-            'industry'       => 'nullable|string|max:255',
+            'company_name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'industry' => 'nullable|string|max:255',
             'contact_person' => 'nullable|string|max:255',
-            'contact_email'  => 'nullable|email|max:255',
+            'contact_email' => 'nullable|email|max:255',
             'contact_number' => 'nullable|string|max:30',
-            'moa_status'     => 'required|in:active,pending,expired,for_renewal,on-process',
+            'moa_status' => 'required|in:active,pending,expired,for_renewal,on-process',
             'moa_start_date' => 'nullable|date',
-            'moa_expiry_date'=> 'nullable|date|after_or_equal:moa_start_date',
-            'slots_available'=> 'nullable|integer|min:0',
-            'notes'          => 'nullable|string',
+            'moa_expiry_date' => 'nullable|date|after_or_equal:moa_start_date',
+            'slots_available' => 'nullable|integer|min:0',
+            'notes' => 'nullable|string',
         ]);
         $company = Company::create($validated);
         audit_log($request->user()->id, 'create_company', ['company_name' => $request->company_name]);
+
         return response()->json(['message' => 'Company added.', 'company' => $company], 201);
     }
 
     public function updateCompany(Request $request, int $id)
     {
         $validated = $request->validate([
-            'company_name'   => 'sometimes|required|string|max:255',
-            'address'        => 'nullable|string|max:500',
-            'industry'       => 'nullable|string|max:255',
+            'company_name' => 'sometimes|required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'industry' => 'nullable|string|max:255',
             'contact_person' => 'nullable|string|max:255',
-            'contact_email'  => 'nullable|email|max:255',
+            'contact_email' => 'nullable|email|max:255',
             'contact_number' => 'nullable|string|max:30',
-            'moa_status'     => 'sometimes|required|in:active,pending,expired,for_renewal,on-process',
+            'moa_status' => 'sometimes|required|in:active,pending,expired,for_renewal,on-process',
             'moa_start_date' => 'nullable|date',
-            'moa_expiry_date'=> 'nullable|date',
-            'slots_available'=> 'nullable|integer|min:0',
-            'is_active'      => 'boolean',
-            'notes'          => 'nullable|string',
+            'moa_expiry_date' => 'nullable|date',
+            'slots_available' => 'nullable|integer|min:0',
+            'is_active' => 'boolean',
+            'notes' => 'nullable|string',
         ]);
         $company = Company::findOrFail($id);
         $company->update($validated);
         audit_log($request->user()->id, 'update_company', ['company_id' => $id]);
+
         return response()->json(['message' => 'Company updated.', 'company' => $company]);
     }
 
@@ -112,23 +123,25 @@ class DirectorController extends Controller
         $company = Company::findOrFail($id);
         $company->delete();
         audit_log($request->user()->id, 'delete_company', ['company_id' => $id]);
+
         return response()->json(['message' => 'Company removed.']);
     }
 
     public function moaMonitoring(Request $request)
     {
-        $companies = Company::orderBy('moa_expiry_date')->get()->map(fn($c) => [
-            'id'              => $c->id,
-            'company_name'    => $c->company_name,
-            'industry'        => $c->industry,
-            'moa_status'      => $c->moa_status,
-            'moa_start_date'  => $c->moa_start_date?->toDateString(),
+        $companies = Company::orderBy('moa_expiry_date')->get()->map(fn ($c) => [
+            'id' => $c->id,
+            'company_name' => $c->company_name,
+            'industry' => $c->industry,
+            'moa_status' => $c->moa_status,
+            'moa_start_date' => $c->moa_start_date?->toDateString(),
             'moa_expiry_date' => $c->moa_expiry_date?->toDateString(),
             'expires_in_days' => $c->moa_expires_in_days,
-            'contact_person'  => $c->contact_person,
+            'contact_person' => $c->contact_person,
             'slots_available' => $c->slots_available,
-            'is_active'       => $c->is_active,
+            'is_active' => $c->is_active,
         ]);
+
         return ApiResponse::list($companies);
     }
 
@@ -157,7 +170,7 @@ class DirectorController extends Controller
     /**
      * Internship counts per HTE from existing placement records.
      *
-     * @return array{most_used_hte: \Illuminate\Support\Collection, least_used_hte: \Illuminate\Support\Collection}
+     * @return array{most_used_hte: Collection, least_used_hte: Collection}
      */
     private function hteUsage(): array
     {
@@ -234,10 +247,11 @@ class DirectorController extends Controller
 
         $mapped = $rows->getCollection()->map(function ($i) {
             $p = $i->student?->studentProfile;
+
             return [
                 'id' => $i->id,
-                'status' => \App\Support\InternshipStatuses::normalize($i->status),
-                'status_label' => \App\Support\InternshipStatuses::label($i->status),
+                'status' => InternshipStatuses::normalize($i->status),
+                'status_label' => InternshipStatuses::label($i->status),
                 'status_reason' => $i->status_reason,
                 'term' => $i->term,
                 'company_name' => $i->company?->company_name,
@@ -266,7 +280,7 @@ class DirectorController extends Controller
             ]);
 
         if ($request->filled('program')) {
-            $query->whereHas('studentProfile', fn($q) => $q->where('program', $request->program));
+            $query->whereHas('studentProfile', fn ($q) => $q->where('program', $request->program));
         }
 
         if ($request->boolean('archived')) {
@@ -283,10 +297,10 @@ class DirectorController extends Controller
         $request->validate(['archived' => 'required|boolean']);
 
         $student = User::where('role', 'student')->findOrFail($userId);
-        if (!User::inDepartment()->where('id', $userId)->exists()) {
-            \App\Support\DepartmentScope::abortDifferentDepartment();
+        if (! User::inDepartment()->where('id', $userId)->exists()) {
+            DepartmentScope::abortDifferentDepartment();
         }
-        $student->is_active = !$request->boolean('archived');
+        $student->is_active = ! $request->boolean('archived');
         $student->save();
 
         audit_log($request->user()->id, $request->boolean('archived') ? 'archive_student' : 'unarchive_student', [
@@ -296,8 +310,8 @@ class DirectorController extends Controller
         return response()->json([
             'message' => $request->boolean('archived') ? 'Student archived.' : 'Student restored to active.',
             'student' => [
-                'id'        => $student->id,
-                'username'  => $student->username,
+                'id' => $student->id,
+                'username' => $student->username,
                 'is_active' => $student->is_active,
             ],
         ]);
@@ -325,8 +339,8 @@ class DirectorController extends Controller
         ]);
 
         $internship = Internship::with('student.studentProfile.program')->findOrFail($id);
-        if (!Internship::inDepartment()->where('id', $id)->exists()) {
-            \App\Support\DepartmentScope::abortDifferentDepartment();
+        if (! Internship::inDepartment()->where('id', $id)->exists()) {
+            DepartmentScope::abortDifferentDepartment();
         }
 
         if ($internship->status !== 'pending_placement') {
@@ -341,8 +355,6 @@ class DirectorController extends Controller
             ], 422);
         }
 
-        \App\Support\DepartmentScope::abortUnlessFacultyMatchesStudent($faculty, $internship->student);
-
         $supervisor = User::findOrFail((int) $request->supervisor_id);
         if ($supervisor->role !== 'supervisor') {
             return response()->json([
@@ -352,7 +364,7 @@ class DirectorController extends Controller
         }
 
         $company = Company::findOrFail((int) $request->company_id);
-        if (!$company->isEligibleForPlacement()) {
+        if (! $company->isEligibleForPlacement()) {
             return response()->json([
                 'message' => $company->ineligibilityReason(),
                 'errors' => ['company_id' => [$company->ineligibilityReason()]],
@@ -370,6 +382,8 @@ class DirectorController extends Controller
             'status' => 'ongoing',
             'program' => $program,
         ]);
+
+        InternshipProgressService::synchronize($internship->fresh());
 
         // Auto-approve Form 1 if present
         $form1 = $internship->documents()->where('document_type', 'Form 1')->where('status', '!=', 'approved')->first();
@@ -391,7 +405,7 @@ class DirectorController extends Controller
 
         return response()->json([
             'message' => 'Placement successfully assigned and internship started.',
-            'internship' => $internship->fresh(['company', 'faculty.facultyProfile', 'supervisor.supervisorProfile'])
+            'internship' => $internship->fresh(['company', 'faculty.facultyProfile', 'supervisor.supervisorProfile']),
         ]);
     }
 
@@ -431,13 +445,13 @@ class DirectorController extends Controller
         $byCompany = [];
         foreach ($rows as $row) {
             $id = (int) $row->company_id;
-            if (!isset($byCompany[$id])) {
+            if (! isset($byCompany[$id])) {
                 $byCompany[$id] = [
-                    'company_id'   => $id,
+                    'company_id' => $id,
                     'company_name' => $row->company_name,
-                    'industry'     => $row->industry,
-                    'years'        => array_fill_keys($years, 0),
-                    'total'        => 0,
+                    'industry' => $row->industry,
+                    'years' => array_fill_keys($years, 0),
+                    'total' => 0,
                 ];
             }
             $byCompany[$id]['years'][$row->school_year] = (int) $row->placement_count;
@@ -451,9 +465,9 @@ class DirectorController extends Controller
 
         return [
             'school_years' => $years,
-            'rows'           => $rows,
-            'by_company'     => $companies,
-            'generated_at'   => now()->toDateTimeString(),
+            'rows' => $rows,
+            'by_company' => $companies,
+            'generated_at' => now()->toDateTimeString(),
         ];
     }
 
@@ -491,14 +505,14 @@ class DirectorController extends Controller
     {
         $request->validate([
             'absorption_status' => 'required|in:absorbed,not_hired',
-            'absorbed_at'       => 'nullable|date',
-            'job_title'         => 'nullable|string|max:255',
-            'absorption_notes'  => 'nullable|string|max:2000',
+            'absorbed_at' => 'nullable|date',
+            'job_title' => 'nullable|string|max:255',
+            'absorption_notes' => 'nullable|string|max:2000',
         ]);
 
         $internship = Internship::findOrFail($id);
-        if (!Internship::inDepartment()->where('id', $id)->exists()) {
-            \App\Support\DepartmentScope::abortDifferentDepartment();
+        if (! Internship::inDepartment()->where('id', $id)->exists()) {
+            DepartmentScope::abortDifferentDepartment();
         }
         $updated = AbsorptionService::recordOutcome(
             $internship,
@@ -512,8 +526,8 @@ class DirectorController extends Controller
 
         audit_log($request->user()->id, 'record_absorption', [
             'internship_id' => $id,
-            'status'        => $request->absorption_status,
-            'role'          => 'director',
+            'status' => $request->absorption_status,
+            'role' => 'director',
         ]);
 
         return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
@@ -522,7 +536,7 @@ class DirectorController extends Controller
     /** GET /api/v1/director/documents — oversight (all stages) */
     public function documents(Request $request)
     {
-        $docs = \App\Models\Document::with(['internship.student.studentProfile.program', 'reviews'])
+        $docs = Document::with(['internship.student.studentProfile.program', 'reviews'])
             ->whereNotIn('status', ['not_submitted'])
             ->orderByDesc('submitted_at')
             ->paginate(40);
@@ -547,9 +561,9 @@ class DirectorController extends Controller
                 $q->whereIn('form_type', $formTypes);
             },
         ])
-        ->whereHas('evaluations', function ($q) use ($formTypes) {
-            $q->whereIn('form_type', $formTypes);
-        });
+            ->whereHas('evaluations', function ($q) use ($formTypes) {
+                $q->whereIn('form_type', $formTypes);
+            });
 
         // Apply filters
         if ($request->filled('department_id') || $request->filled('program_id') || $request->filled('section')) {
@@ -599,10 +613,10 @@ class DirectorController extends Controller
         $internships = $query->orderByDesc('created_at')->paginate(20);
 
         return response()->json([
-            'stats'        => $stats,
-            'rating_counts'=> $ratingCounts,
-            'form_counts'  => $formCounts,
-            'internships'  => $internships,
+            'stats' => $stats,
+            'rating_counts' => $ratingCounts,
+            'form_counts' => $formCounts,
+            'internships' => $internships,
         ]);
     }
 
@@ -613,60 +627,68 @@ class DirectorController extends Controller
      */
     public function chedReportData(Request $request)
     {
-        $year     = $request->input('school_year');
+        $year = $request->input('school_year');
         $semester = $request->input('semester');
-        $program  = $request->input('program');
-        $section  = $request->input('section');
+        $program = $request->input('program');
+        $section = $request->input('section');
 
         $query = Internship::with(['student.studentProfile.program', 'company'])
             ->whereNotNull('company_id');
 
-        if ($program)  { $query->where('program', $program); }
-        if ($section)  { $query->whereHas('student.studentProfile', fn($q) => $q->where('section', $section)); }
-        if ($year)     { $query->where('school_year', $year); }
-        if ($semester) { $query->where('semester', $semester); }
+        if ($program) {
+            $query->where('program', $program);
+        }
+        if ($section) {
+            $query->whereHas('student.studentProfile', fn ($q) => $q->where('section', $section));
+        }
+        if ($year) {
+            $query->where('school_year', $year);
+        }
+        if ($semester) {
+            $query->where('semester', $semester);
+        }
 
         $internships = $query->get();
 
         // Group by company
         $byCompany = $internships->groupBy('company_id')->map(function ($group) {
             $company = $group->first()->company;
-            $byProgram = $group->groupBy(fn($i) => $i->program ?? $i->student?->studentProfile?->program?->name ?? 'Unknown')
+            $byProgram = $group->groupBy(fn ($i) => $i->program ?? $i->student?->studentProfile?->program?->name ?? 'Unknown')
                 ->map->count()
                 ->sortKeys();
 
             return [
-                'company_id'      => $company?->id,
-                'company_name'    => $company?->company_name ?? '—',
-                'address'         => $company?->address ?? '—',
-                'industry'        => $company?->industry ?? '—',
-                'moa_status'      => $company?->moa_status ?? '—',
-                'total_interns'   => $group->count(),
-                'completed'       => $group->where('status', 'completed')->count(),
-                'ongoing'         => $group->whereIn('status', ['ongoing', 'active'])->count(),
-                'by_program'      => $byProgram,
+                'company_id' => $company?->id,
+                'company_name' => $company?->company_name ?? '—',
+                'address' => $company?->address ?? '—',
+                'industry' => $company?->industry ?? '—',
+                'moa_status' => $company?->moa_status ?? '—',
+                'total_interns' => $group->count(),
+                'completed' => $group->where('status', 'completed')->count(),
+                'ongoing' => $group->whereIn('status', ['ongoing', 'active'])->count(),
+                'by_program' => $byProgram,
             ];
         })->values()->sortBy('company_name')->values();
 
         // Summary totals
         $totals = [
             'total_companies' => $byCompany->count(),
-            'total_interns'   => $internships->count(),
-            'completed'       => $internships->where('status', 'completed')->count(),
-            'ongoing'         => $internships->whereIn('status', ['ongoing', 'active'])->count(),
+            'total_interns' => $internships->count(),
+            'completed' => $internships->where('status', 'completed')->count(),
+            'ongoing' => $internships->whereIn('status', ['ongoing', 'active'])->count(),
         ];
 
         $schoolYears = Internship::distinct()->pluck('school_year')->sort()->values();
         $semesters = Internship::distinct()->pluck('semester')->sort()->values();
 
         return response()->json([
-            'internships'    => $query->paginate(20),
+            'internships' => $query->paginate(20),
             'school_years' => $schoolYears,
-            'semesters'      => $semesters,
-            'rows'           => $byCompany,
-            'totals'         => $totals,
-            'filters'        => ['school_year' => $year, 'semester' => $semester],
-            'generated_at'   => now()->toDateTimeString(),
+            'semesters' => $semesters,
+            'rows' => $byCompany,
+            'totals' => $totals,
+            'filters' => ['school_year' => $year, 'semester' => $semester],
+            'generated_at' => now()->toDateTimeString(),
         ]);
     }
 }

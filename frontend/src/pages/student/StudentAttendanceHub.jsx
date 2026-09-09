@@ -6,38 +6,54 @@ import StudentAttendance from './StudentAttendance'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import api from '../../services/api'
 import PageError from '../../components/PageError'
+import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function StudentAttendanceHub() {
   const currentTerm = useCurrentTerm()
+  const { loading, seed, run } = useCachedPage('student:attendance-hub')
   const [activeTab, setActiveTab] = useState('attendance')
-  const [statusData, setStatusData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [statusData, setStatusData] = useState(seed ?? null)
   const [error, setError] = useState(null)
 
   const fetchStatus = () => {
-    setLoading(true)
     setError(null)
-    api.get('/student/supervisor-invite/status')
-      .then(res => {
-        setStatusData(res.data)
+    run(() => api.get('/student/supervisor-invite/status').then(res => res.data))
+      .then((next) => {
+        if (next) {
+          setStatusData(next)
+          if (next.state === 'assigned' || next.has_supervisor) {
+            prefetchPage('student:attendance', async () => {
+              const [attRes, corrRes] = await Promise.all([
+                api.get('/student/attendance'),
+                api.get('/student/attendance/corrections').catch(() => ({ data: { data: [] } })),
+              ])
+              return {
+                data: attRes.data,
+                corrections: unwrapList(corrRes.data).items,
+              }
+            })
+          }
+        }
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Failed to load supervisor status.')
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchStatus() }, [])
 
-  if (loading) {
+  if (loading && !statusData) {
     return (
       <Layout title="Attendance & Supervisor" subtitle={currentTerm} icon="fa-user-clock" bodyClass="student-page">
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       </Layout>
     )
   }
 
-  if (error) {
+  if (error && !statusData) {
     return (
       <Layout title="Attendance & Supervisor" subtitle={currentTerm} icon="fa-user-clock" bodyClass="student-page">
         <PageError message={error} onRetry={fetchStatus} />
@@ -73,7 +89,7 @@ function StudentAttendanceHub() {
 
       <div>
         {(!isApproved || activeTab === 'supervisor') && (
-          <div className="tab-embedded">
+          <div className="tab-embedded" hidden={isApproved && activeTab !== 'supervisor'}>
             <StudentSupervisorInvite
               embedded={true}
               initialStatusData={statusData}
@@ -81,8 +97,8 @@ function StudentAttendanceHub() {
             />
           </div>
         )}
-        {isApproved && activeTab === 'attendance' && (
-          <div className="tab-embedded">
+        {isApproved && (
+          <div className="tab-embedded" hidden={activeTab !== 'attendance'}>
             <StudentAttendance embedded={true} />
           </div>
         )}

@@ -6,6 +6,7 @@ use App\Models\Internship;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 /**
  * College/department visibility for faculty and coordinators.
@@ -57,18 +58,72 @@ final class DepartmentScope
 
     public static function studentDepartmentId(User|StudentProfile|null $student): ?int
     {
-        if ($student instanceof StudentProfile) {
-            return $student->department_id ? (int) $student->department_id : null;
+        $profile = $student instanceof StudentProfile
+            ? $student
+            : ($student instanceof User ? $student->loadMissing('studentProfile.program')->studentProfile : null);
+
+        if (! $profile) {
+            return null;
         }
 
-        if ($student instanceof User) {
-            $student->loadMissing('studentProfile');
-            $id = $student->studentProfile?->department_id;
+        $profile->loadMissing('program');
 
-            return $id ? (int) $id : null;
+        if ($profile->getRelation('program')?->department_id) {
+            return (int) $profile->getRelation('program')->department_id;
         }
 
-        return null;
+        return $profile->department_id ? (int) $profile->department_id : null;
+    }
+
+    /**
+     * Match student_profiles whose Program (authoritative) or stored
+     * department_id belongs to the given college.
+     */
+    public static function constrainStudentProfiles(Builder $query, int $deptId): Builder
+    {
+        return $query->where(function ($inner) use ($deptId) {
+            $inner->whereHas('program', fn ($p) => $p->where('department_id', $deptId))
+                ->orWhere(function ($fallback) use ($deptId) {
+                    $fallback->whereNull('program_id')->where('department_id', $deptId);
+                });
+        });
+    }
+
+    /**
+     * Coordinators who belong to the student's college. Never falls back
+     * to an unrelated department or the first coordinator in the database.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public static function coordinatorIdsForStudent(User|StudentProfile|null $student)
+    {
+        $deptId = self::studentDepartmentId($student);
+        if (! $deptId) {
+            return collect();
+        }
+
+        return User::query()
+            ->where('role', 'coordinator')
+            ->where('is_active', true)
+            ->whereHas('facultyProfile', fn ($q) => $q->where('department_id', $deptId))
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+    }
+
+    public static function coordinatorIdForStudent(User|StudentProfile|null $student, ?int $preferredId = null): ?int
+    {
+        $ids = self::coordinatorIdsForStudent($student);
+        if ($ids->isEmpty()) {
+            return null;
+        }
+
+        if ($preferredId && $ids->contains((int) $preferredId)) {
+            return (int) $preferredId;
+        }
+
+        return (int) $ids->first();
     }
 
     public static function abortDifferentDepartment(): void
@@ -97,7 +152,7 @@ final class DepartmentScope
         }
 
         return $query->whereHas('studentProfile', function ($q) use ($deptId) {
-            $q->where('department_id', $deptId);
+            self::constrainStudentProfiles($q, $deptId);
         });
     }
 
@@ -148,7 +203,7 @@ final class DepartmentScope
         }
 
         return $query->whereHas('student.studentProfile', function ($q) use ($deptId) {
-            $q->where('department_id', $deptId);
+            self::constrainStudentProfiles($q, $deptId);
         });
     }
 
@@ -167,9 +222,9 @@ final class DepartmentScope
             return false;
         }
 
-        $student->loadMissing('studentProfile');
+        $student->loadMissing('studentProfile.program');
 
-        return (int) $student->studentProfile?->department_id === $deptId;
+        return self::studentDepartmentId($student) === $deptId;
     }
 
     public static function facultyBelongsToActor(User $actor, User $faculty): bool
@@ -206,9 +261,9 @@ final class DepartmentScope
             return false;
         }
 
-        $internship->loadMissing('student.studentProfile');
+        $internship->loadMissing('student.studentProfile.program');
 
-        return (int) $internship->student?->studentProfile?->department_id === $deptId;
+        return self::studentDepartmentId($internship->student) === $deptId;
     }
 
     /**
@@ -238,6 +293,28 @@ final class DepartmentScope
 
         if (! self::facultyMatchesStudent($faculty, $student)) {
             self::abortDifferentDepartment();
+        }
+    }
+
+    /**
+     * Assignment-time validation: reject a confirmed cross-department faculty.
+     */
+    public static function assertFacultySameDepartment(?User $faculty, User|StudentProfile|null $student): void
+    {
+        if (! $faculty || ! $student) {
+            return;
+        }
+
+        $facultyDept = self::departmentIdFor($faculty);
+        $studentDept = self::studentDepartmentId($student);
+        if (! $facultyDept || ! $studentDept) {
+            return;
+        }
+
+        if ($facultyDept !== $studentDept) {
+            throw ValidationException::withMessages([
+                'faculty_id' => ['Faculty must belong to the student\'s department.'],
+            ]);
         }
     }
 

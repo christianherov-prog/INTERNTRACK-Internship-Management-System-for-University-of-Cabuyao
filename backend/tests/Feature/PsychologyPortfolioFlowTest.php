@@ -13,6 +13,8 @@ class PsychologyPortfolioFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected bool $seed = true;
+
     public function test_psychology_student_auth_payload_exposes_program_and_code(): void
     {
         $student = User::where('student_number', '2300604')->first();

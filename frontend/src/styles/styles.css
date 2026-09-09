@@ -1782,6 +1782,147 @@ textarea.form-control { min-height: auto; }
 .upload-dropzone strong { font-family: 'Raleway', sans-serif; font-size: .88rem; color: var(--green-dark); }
 .upload-dropzone span   { font-size: .78rem; color: var(--text-light); }
 
+.it-loader {
+  gap: 0.45rem;
+}
+.it-loader-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 1.35rem 0;
+}
+.it-loader-inline {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+.it-loader-logo {
+  object-fit: contain;
+  flex-shrink: 0;
+  animation: it-loader-pulse 1.4s ease-in-out infinite;
+}
+.it-loader-fallback {
+  display: inline-block;
+  border: 2px solid #d5eadc;
+  border-top-color: #157938;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: it-loader-spin 1.2s linear infinite;
+}
+.it-loader-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+@keyframes it-loader-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.62; transform: scale(0.94); }
+}
+@keyframes it-loader-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .it-loader-logo {
+    animation: none;
+    opacity: 0.9;
+  }
+  .it-loader-fallback {
+    animation: none;
+  }
+}
+
+.upload-dropzone.moa-dropzone {
+  min-height: 148px;
+  padding: 1rem 0.85rem;
+}
+.upload-dropzone.moa-dropzone.is-disabled {
+  pointer-events: none;
+  opacity: 0.65;
+}
+.moa-select-chip {
+  display: inline-block;
+  margin-top: 0.15rem;
+  padding: 0.28rem 0.85rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #c4dece;
+  color: #157938;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.moa-selected-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid #c4dece;
+  border-radius: 12px;
+  background: #f8fdf9;
+  min-width: 0;
+}
+.moa-selected-icon {
+  color: #c0392b;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.moa-selected-meta {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.moa-selected-name {
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.moa-selected-size {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+.moa-selected-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.hte-form-section {
+  margin-bottom: 1.35rem;
+}
+.hte-form-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.hte-info-banner {
+  background: #f0f7f3;
+  border: 1px solid #d5eadc;
+  color: #1f4d34;
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
+}
+@media (max-width: 576px) {
+  .moa-selected-file {
+    flex-wrap: wrap;
+  }
+  .moa-selected-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* Table helpers */
 .table-main { font-weight: 800; color: var(--green-dark); font-size: .92rem; line-height: 1.35; }
 .table-sub  { margin-top: .15rem; color: var(--text-light); font-size: .80rem; line-height: 1.35; }
@@ -13255,6 +13396,17 @@ body.page-body{min-height:100vh;margin:0;overflow-x:hidden;background:var(--layo
   box-sizing: border-box;
 }
 
+.it-confirm-modal-form {
+  max-width: 480px;
+}
+
+@media (max-width: 420px) {
+  .it-confirm-modal {
+    max-width: calc(100vw - 24px);
+    padding: 1.5rem 1.1rem 1.25rem;
+  }
+}
+
 @keyframes itConfirmPop {
   from { opacity: 0; transform: scale(0.92) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
@@ -13774,6 +13926,18 @@ body.page-body{min-height:100vh;margin:0;overflow-x:hidden;background:var(--layo
   height: 28px;
   width: auto;
   margin-bottom: 8px;
+}
+
+@media print {
+  .interntrack-report-print {
+    page: interntrack-report;
+    box-shadow: none !important;
+  }
+}
+
+@page interntrack-report {
+  size: A4 landscape;
+  margin: 12mm;
 }
 
 @media (max-width: 768px) {

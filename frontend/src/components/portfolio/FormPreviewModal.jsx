@@ -193,24 +193,30 @@ const FormPreviewModal = ({
                   program={(typeof data.program === 'string' ? data.program : data.program?.name || data.program?.code) || ''}
                   companyName={data.companyName || ''}
                   companyLogoPath={data.companyLogoPath || ''}
+                  supervisorName={data.supervisorName || ''}
+                  studentSignaturePath={data.studentSignaturePath || ''}
+                  supervisorSignaturePath={data.supervisorSignaturePath || ''}
+                  logs={data.logs || data.attendance || []}
                 />
               ) : type === 'FO-24' ? (
-                <PrintFO24 evalData={data.evalData} internship={data.internship} />
+                <PrintFO24 evalData={data.evalData} internship={data.internship} user={data.user} identity={data.identity} />
               ) : type === 'FO-03' ? (
-                <PrintFO03 evalData={data.evalData} internship={data.internship} />
+                <PrintFO03 evalData={data.evalData} internship={data.internship} user={data.user} identity={data.identity} />
               ) : type === 'FO-22' ? (
-                <PrintFO22 evalData={data.evalData} internship={data.internship} />
+                <PrintFO22 evalData={data.evalData} internship={data.internship} user={data.user} identity={data.identity} />
               ) : type === 'FO-23' ? (
-                <PrintFO23 evalData={data.evalData} internship={data.internship} />
+                <PrintFO23 evalData={data.evalData} internship={data.internship} user={data.user} identity={data.identity} />
               ) : type === 'faculty_eval' ? (
-                <PrintFacultyEval evalData={data.evalData} internship={data.internship} />
+                <PrintFacultyEval evalData={data.evalData} internship={data.internship} user={data.user} identity={data.identity} />
               ) : (
                 <WeeklyInternshipJournal
                   studentName={data.studentName || data.name || ''}
                   program={(typeof data.program === 'string' ? data.program : data.program?.name || data.program?.code) || ''}
                   companyLogoPath={data.companyLogoPath || ''}
+                  studentSignaturePath={data.studentSignaturePath || ''}
                   weekNumber={data.weekNumber || ''}
                   date={data.date || ''}
+                  endDate={data.endDate || ''}
                   accomplishment={data.accomplishment || ''}
                   difficulties={data.difficulties || ''}
                   insights={data.insights || ''}

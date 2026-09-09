@@ -256,6 +256,8 @@ class DatabaseSeeder extends Seeder
         // ─── 5. Student accounts (2300600, 2300590, 2300592) ──────────────────
         $this->call(StudentAccountsSeeder::class);
         $this->call(AcademicCollegeAccountsSeeder::class);
+        // Re-assert 4IT sections on FAC-1001 (Marvin Bicua) after college dummy accounts seed.
+        $this->call(FacultySectionAssignmentSeeder::class);
 
         // ─── 6. Announcements ─────────────────────────────────────────────────
         Announcement::firstOrCreate(

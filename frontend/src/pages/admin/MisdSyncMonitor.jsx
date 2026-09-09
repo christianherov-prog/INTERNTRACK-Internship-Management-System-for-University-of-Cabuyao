@@ -3,13 +3,15 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function MisdSyncMonitor() {
-  const [status, setStatus] = useState(null)
-  const [audit, setAudit] = useState([])
-  const [provisionLog, setProvisionLog] = useState([])
+  const { loading, seed, run } = useCachedPage('admin:sync')
+  const [status, setStatus] = useState(() => seed?.status ?? null)
+  const [audit, setAudit] = useState(() => seed?.audit ?? [])
+  const [provisionLog, setProvisionLog] = useState(() => seed?.provisionLog ?? [])
   const [directory, setDirectory] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
   const [studentNumber, setStudentNumber] = useState('')
@@ -17,20 +19,27 @@ function MisdSyncMonitor() {
   const [busy, setBusy] = useState(false)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    Promise.all([
-      api.get('/admin/misd/status'),
-      api.get('/admin/audit-log', { params: { per_page: 20 } }),
-      api.get('/admin/provisioning-log'),
-    ])
-      .then(([s, a, p]) => {
-        setStatus(s.data)
-        setAudit(unwrapList(a.data).items)
-        setProvisionLog(p.data?.data || [])
+    run(async () => {
+      const [s, a, p] = await Promise.all([
+        api.get('/admin/misd/status'),
+        api.get('/admin/audit-log', { params: { per_page: 20 } }),
+        api.get('/admin/provisioning-log'),
+      ])
+      return {
+        status: s.data,
+        audit: unwrapList(a.data).items,
+        provisionLog: p.data?.data || [],
+      }
+    })
+      .then((next) => {
+        if (next) {
+          setStatus(next.status)
+          setAudit(next.audit)
+          setProvisionLog(next.provisionLog)
+        }
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load sync monitor.'))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -97,7 +106,7 @@ function MisdSyncMonitor() {
       )}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : (
         <>
           <div className="row g-3 mb-4">
@@ -123,7 +132,7 @@ function MisdSyncMonitor() {
                   <div className="input-group">
                     <input
                       className="form-control"
-                      placeholder="Student number e.g. 2021-00123 or 2300600"
+                      placeholder="Student Number"
                       value={studentNumber}
                       onChange={(e) => setStudentNumber(e.target.value)}
                     />

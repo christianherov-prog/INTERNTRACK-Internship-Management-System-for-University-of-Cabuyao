@@ -9,7 +9,9 @@ use App\Models\MessageThreadState;
 use App\Models\Notification;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\AvatarUrl;
 use App\Support\InternshipStatuses;
+use App\Support\NameParts;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -68,36 +70,39 @@ class MessageController extends Controller
     private function userPayload(User $user): array
     {
         $user->loadMissing(['studentProfile', 'facultyProfile', 'supervisorProfile']);
+        $profile = $user->studentProfile ?? $user->facultyProfile ?? $user->supervisorProfile;
+        $name = NameParts::fromProfile($profile);
+        if ($name === '') {
+            $name = $user->username ?: 'Unknown';
+        }
+
+        $first = trim((string) ($profile?->first_name ?? ''));
+        $last = trim((string) ($profile?->last_name ?? ''));
 
         return [
-            'id'        => $user->id,
-            'username'  => $user->username,
-            'role'      => $user->role,
-            'name'      => $user->profile_name,
-            'avatar'    => $this->initialsFromName($user->profile_name),
-            'avatarUrl' => $this->resolveAvatarUrl($user->avatar_path),
+            'id' => $user->id,
+            'username' => $user->username,
+            'role' => $user->role,
+            'name' => $name,
+            'avatar' => $this->initialsFromParts($first, $last, $name),
+            'avatarUrl' => AvatarUrl::fromPath($user->avatar_path),
         ];
     }
 
-    /** Same host-aware URL construction as AuthController (request host + /storage/…). */
-    private function resolveAvatarUrl(?string $path): ?string
+    private function initialsFromParts(string $first, string $last, string $name): string
     {
-        if (!$path) {
-            return null;
+        if ($first !== '' || $last !== '') {
+            $a = $first !== '' ? $first : $name;
+            $b = $last !== '' ? $last : $name;
+
+            return strtoupper(substr($a, 0, 1).substr($b, 0, 1));
         }
 
-        $base = rtrim(request()->getSchemeAndHttpHost(), '/');
+        $parts = preg_split('/\s+/', trim($name)) ?: [];
+        $head = $parts[0] ?? 'U';
+        $tail = count($parts) > 1 ? (string) end($parts) : $head;
 
-        return $base.'/storage/'.ltrim($path, '/');
-    }
-
-    private function initialsFromName(?string $name): string
-    {
-        $parts = preg_split('/\s+/', trim((string) $name)) ?: [];
-        $first = $parts[0] ?? 'U';
-        $last = end($parts) ?: '';
-
-        return strtoupper(substr($first, 0, 1).substr($last, 0, 1));
+        return strtoupper(substr($head, 0, 1).substr($tail, 0, 1));
     }
 
     /** Messages belonging to a role-pair thread on an internship (either direction). */
@@ -146,8 +151,23 @@ class MessageController extends Controller
 
         $allMessages = $internshipIds === []
             ? collect()
-            : Message::whereIn('internship_id', $internshipIds)
-                ->orderByDesc('created_at')
+            : Message::query()
+                ->whereIn('internship_id', $internshipIds)
+                ->select([
+                    'id',
+                    'internship_id',
+                    'sender_id',
+                    'recipient_id',
+                    'sender_role',
+                    'recipient_role',
+                    'body',
+                    'created_at',
+                    'read_at',
+                    'unsent_at',
+                    'attachment_path',
+                    'attachment_original_name',
+                ])
+                ->orderByDesc('id')
                 ->get();
 
         $byInternship = $allMessages->groupBy('internship_id');
@@ -156,6 +176,40 @@ class MessageController extends Controller
             ->whereIn('internship_id', $internshipIds ?: [0])
             ->get()
             ->keyBy(fn (MessageThreadState $s) => $s->internship_id.'-'.$s->peer_id);
+
+        $peerUsers = $internships
+            ->flatMap(fn (Internship $i) => collect([
+                $i->student,
+                $i->supervisor,
+                $i->faculty,
+                $i->coordinator,
+            ]))
+            ->filter()
+            ->keyBy('id');
+
+        $neededPeerIds = [];
+        foreach ($internships as $internship) {
+            foreach ($internship->participantUserIds() as $pid) {
+                $neededPeerIds[] = (int) $pid;
+            }
+            foreach ($byInternship->get($internship->id, collect()) as $m) {
+                if ((int) $m->sender_id === (int) $user->id) {
+                    $neededPeerIds[] = (int) $m->recipient_id;
+                } elseif ((int) $m->recipient_id === (int) $user->id) {
+                    $neededPeerIds[] = (int) $m->sender_id;
+                }
+            }
+        }
+        $neededPeerIds = array_values(array_unique(array_filter($neededPeerIds)));
+        $missingPeerIds = array_values(array_diff($neededPeerIds, $peerUsers->keys()->all()));
+        if ($missingPeerIds !== []) {
+            User::with(['studentProfile', 'facultyProfile', 'supervisorProfile'])
+                ->whereIn('id', $missingPeerIds)
+                ->get()
+                ->each(function (User $extra) use ($peerUsers) {
+                    $peerUsers->put($extra->id, $extra);
+                });
+        }
 
         $threads = [];
 
@@ -182,17 +236,8 @@ class MessageController extends Controller
                     continue;
                 }
 
-                $peer = collect([
-                    $internship->student,
-                    $internship->supervisor,
-                    $internship->faculty,
-                    $internship->coordinator,
-                ])->first(fn ($u) => $u && (int) $u->id === $peerId);
-
-                if (!$peer) {
-                    $peer = User::with(['studentProfile', 'facultyProfile', 'supervisorProfile'])->find($peerId);
-                }
-                if (!$peer) {
+                $peer = $peerUsers->get($peerId);
+                if (! $peer) {
                     continue;
                 }
 
@@ -201,12 +246,12 @@ class MessageController extends Controller
                 $userArchived = $state && $state->archived_at !== null;
 
                 $inArchivedTab = $userArchived || $isEnded;
-                $inActiveTab = $isLive && !$userArchived;
+                $inActiveTab = $isLive && ! $userArchived;
 
-                if ($wantArchived && !$inArchivedTab) {
+                if ($wantArchived && ! $inArchivedTab) {
                     continue;
                 }
-                if (!$wantArchived && !$inActiveTab) {
+                if (! $wantArchived && ! $inActiveTab) {
                     continue;
                 }
 
@@ -252,20 +297,21 @@ class MessageController extends Controller
                         || (string) $m->recipient_role === (string) $myRole;
                 })->count();
 
-                $studentName = optional($internship->student)->profile_name
-                    ?? optional($internship->student)->username
-                    ?? 'Student';
+                $studentName = NameParts::fromProfile($internship->student?->studentProfile);
+                if ($studentName === '') {
+                    $studentName = $internship->student?->username ?: 'Student';
+                }
 
                 $threads[] = [
-                    'internship_id'     => $internship->id,
-                    'internship_term'   => $internship->term,
+                    'internship_id' => $internship->id,
+                    'internship_term' => $internship->term,
                     'internship_status' => $statusNorm,
-                    'archived'          => $inArchivedTab,
-                    'user_archived'     => (bool) $userArchived,
-                    'student_name'      => $studentName,
-                    'peer'              => $this->userPayload($peer),
-                    'last_message'      => $last ? $this->lastMessagePreview($last) : null,
-                    'unread_count'      => $unread,
+                    'archived' => $inArchivedTab,
+                    'user_archived' => (bool) $userArchived,
+                    'student_name' => $studentName,
+                    'peer' => $this->userPayload($peer),
+                    'last_message' => $last ? $this->lastMessagePreview($last) : null,
+                    'unread_count' => $unread,
                 ];
             }
         }
@@ -306,7 +352,7 @@ class MessageController extends Controller
     public function thread(Request $request, int $internshipId, int $peerId)
     {
         $user = $request->user();
-        $internship = Internship::findOrFail($internshipId);
+        $internship = Internship::with(['student.studentProfile'])->findOrFail($internshipId);
 
         $this->assertParticipant($internship, (int) $user->id);
         $this->assertParticipant($internship, $peerId);
@@ -325,7 +371,7 @@ class MessageController extends Controller
         $base = $this->rolePairQuery($internship->id, $myRole, $peerRole);
 
         // Legacy fallback if no role-tagged messages yet
-        if (!(clone $base)->exists()) {
+        if (! (clone $base)->exists()) {
             $base = Message::where('internship_id', $internship->id)
                 ->where(function ($q) use ($user, $peerId) {
                     $q->where(function ($q2) use ($user, $peerId) {
@@ -364,21 +410,27 @@ class MessageController extends Controller
             ->values()
             ->map(fn (Message $m) => $m->toClientArray());
 
+        $studentName = NameParts::fromProfile($internship->student?->studentProfile);
+        if ($studentName === '') {
+            $studentName = $internship->student?->username ?: 'Student';
+        }
+
         return response()->json([
             'internship' => [
-                'id'     => $internship->id,
-                'term'   => $internship->term,
+                'id' => $internship->id,
+                'term' => $internship->term,
                 'status' => InternshipStatuses::normalize($internship->status),
+                'student_name' => $studentName,
             ],
-            'peer'          => $this->userPayload($peer),
+            'peer' => $this->userPayload($peer),
             'user_archived' => (bool) ($state?->archived_at),
-            'cleared_before'=> $state?->cleared_before,
-            'messages'      => $messages,
-            'meta'          => [
+            'cleared_before' => $state?->cleared_before,
+            'messages' => $messages,
+            'meta' => [
                 'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
             ],
         ]);
     }
@@ -388,16 +440,16 @@ class MessageController extends Controller
     {
         $request->validate([
             'internship_id' => 'required|integer|exists:internships,id',
-            'recipient_id'  => 'required|integer|exists:users,id',
-            'body'          => 'nullable|string|max:5000',
-            'attachment'    => [
+            'recipient_id' => 'required|integer|exists:users,id',
+            'body' => 'nullable|string|max:5000',
+            'attachment' => [
                 'nullable',
                 'file',
                 'max:'.Message::ATTACHMENT_MAX_KB,
                 'mimes:'.implode(',', Message::ATTACHMENT_MIMES),
             ],
         ], [
-            'attachment.max'   => 'The attachment must not be larger than 10 MB.',
+            'attachment.max' => 'The attachment must not be larger than 10 MB.',
             'attachment.mimes' => 'The attachment must be an image (jpg, jpeg, png, gif, webp) or document (pdf, doc, docx, xls, xlsx).',
         ]);
 
@@ -415,7 +467,7 @@ class MessageController extends Controller
         $body = trim((string) $request->input('body', ''));
         $hasFile = $request->hasFile('attachment');
 
-        if ($body === '' && !$hasFile) {
+        if ($body === '' && ! $hasFile) {
             throw ValidationException::withMessages([
                 'body' => ['Enter a message or attach a file.'],
             ]);
@@ -443,16 +495,16 @@ class MessageController extends Controller
         }
 
         $message = Message::create([
-            'internship_id'             => $internship->id,
-            'sender_id'                 => $user->id,
-            'sender_role'               => $user->role,
-            'recipient_id'              => $recipientId,
-            'recipient_role'            => $recipient->role,
-            'body'                      => $body,
-            'attachment_path'           => $attachmentPath,
-            'attachment_original_name'  => $attachmentName,
-            'attachment_mime'           => $attachmentMime,
-            'attachment_size'           => $attachmentSize,
+            'internship_id' => $internship->id,
+            'sender_id' => $user->id,
+            'sender_role' => $user->role,
+            'recipient_id' => $recipientId,
+            'recipient_role' => $recipient->role,
+            'body' => $body,
+            'attachment_path' => $attachmentPath,
+            'attachment_original_name' => $attachmentName,
+            'attachment_mime' => $attachmentMime,
+            'attachment_size' => $attachmentSize,
         ]);
 
         $senderName = $user->profile_name ?: $user->username;
@@ -471,22 +523,22 @@ class MessageController extends Controller
             $deepLink,
             [
                 'internship_id' => $internship->id,
-                'peer_id'       => $user->id,
-                'message_id'    => $message->id,
-                'has_attachment'=> (bool) $attachmentPath,
+                'peer_id' => $user->id,
+                'message_id' => $message->id,
+                'has_attachment' => (bool) $attachmentPath,
             ]
         );
 
         audit_log($user->id, 'send_message', [
-            'message_id'     => $message->id,
-            'internship_id'  => $internship->id,
-            'recipient_id'   => $recipientId,
+            'message_id' => $message->id,
+            'internship_id' => $internship->id,
+            'recipient_id' => $recipientId,
             'has_attachment' => (bool) $attachmentPath,
         ]);
 
         return response()->json([
             'message' => 'Message sent.',
-            'data'    => $message->fresh()->toClientArray(),
+            'data' => $message->fresh()->toClientArray(),
         ], 201);
     }
 
@@ -494,23 +546,23 @@ class MessageController extends Controller
     private function lastMessagePreview(Message $last): array
     {
         $body = $last->display_body;
-        $hasAttachment = !$last->is_unsent && $last->hasAttachment();
+        $hasAttachment = ! $last->is_unsent && $last->hasAttachment();
 
-        if (!$last->is_unsent && $body === '' && $hasAttachment) {
+        if (! $last->is_unsent && $body === '' && $hasAttachment) {
             $name = $last->attachment_original_name;
             $body = $name ? ('📎 '.$name) : '📎 Attachment';
-        } elseif (!$last->is_unsent && $hasAttachment && $body !== '') {
+        } elseif (! $last->is_unsent && $hasAttachment && $body !== '') {
             // Keep text preview; client can still show paperclip via has_attachment.
         }
 
         return [
-            'id'             => $last->id,
-            'body'           => $body,
-            'is_unsent'      => $last->is_unsent,
+            'id' => $last->id,
+            'body' => $body,
+            'is_unsent' => $last->is_unsent,
             'has_attachment' => $hasAttachment,
-            'sender_id'      => $last->sender_id,
-            'created_at'     => $last->created_at,
-            'read_at'        => $last->read_at,
+            'sender_id' => $last->sender_id,
+            'created_at' => $last->created_at?->toIso8601String(),
+            'read_at' => $last->read_at,
         ];
     }
 
@@ -550,13 +602,13 @@ class MessageController extends Controller
 
         audit_log($user->id, $request->boolean('archived') ? 'archive_message_thread' : 'unarchive_message_thread', [
             'internship_id' => $internshipId,
-            'peer_id'       => $peerId,
+            'peer_id' => $peerId,
         ]);
 
         return response()->json([
-            'message'       => $request->boolean('archived') ? 'Conversation archived.' : 'Conversation moved to Active.',
+            'message' => $request->boolean('archived') ? 'Conversation archived.' : 'Conversation moved to Active.',
             'user_archived' => $state->archived_at !== null,
-            'archived_at'   => $state->archived_at,
+            'archived_at' => $state->archived_at,
         ]);
     }
 
@@ -593,16 +645,16 @@ class MessageController extends Controller
         $state->save();
 
         audit_log($user->id, 'clear_message_thread', [
-            'internship_id'              => $internshipId,
-            'peer_id'                    => $peerId,
-            'cleared_before'             => $state->cleared_before?->toIso8601String(),
-            'cleared_before_message_id'  => $state->cleared_before_message_id,
+            'internship_id' => $internshipId,
+            'peer_id' => $peerId,
+            'cleared_before' => $state->cleared_before?->toIso8601String(),
+            'cleared_before_message_id' => $state->cleared_before_message_id,
         ]);
 
         return response()->json([
-            'message'                    => 'Conversation cleared for your view.',
-            'cleared_before'             => $state->cleared_before,
-            'cleared_before_message_id'  => $state->cleared_before_message_id,
+            'message' => 'Conversation cleared for your view.',
+            'cleared_before' => $state->cleared_before,
+            'cleared_before_message_id' => $state->cleared_before_message_id,
         ]);
     }
 
@@ -622,7 +674,7 @@ class MessageController extends Controller
         if ($message->unsent_at) {
             return response()->json([
                 'message' => 'Message already unsent.',
-                'data'    => $message->toClientArray(),
+                'data' => $message->toClientArray(),
             ]);
         }
 
@@ -639,25 +691,25 @@ class MessageController extends Controller
         $message->save();
 
         audit_log($user->id, 'unsend_message', [
-            'message_id'    => $message->id,
+            'message_id' => $message->id,
             'internship_id' => $message->internship_id,
         ]);
 
         return response()->json([
             'message' => 'Message unsent.',
-            'data'    => $message->fresh()->toClientArray(),
+            'data' => $message->fresh()->toClientArray(),
         ]);
     }
 
     private function messagesPathForRole(?string $role): string
     {
         return match ($role) {
-            'student'     => '/student/messages',
-            'supervisor'  => '/supervisor/messages',
-            'faculty'     => '/faculty/messages',
+            'student' => '/student/messages',
+            'supervisor' => '/supervisor/messages',
+            'faculty' => '/faculty/messages',
             'coordinator' => '/coordinator/messages',
-            'director'    => '/director/messages',
-            default       => '/',
+            'director' => '/director/messages',
+            default => '/',
         };
     }
 }

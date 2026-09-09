@@ -7,6 +7,9 @@ import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import { displayLabel } from '../../utils/displayLabel'
 import ReportExportModal from '../../components/modals/ReportExportModal'
+import { reportPrintOptions } from '../../utils/reportPrint'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REPORT_TYPES = [
   {
@@ -162,8 +165,8 @@ function ChedAnnualTable({ data }) {
 }
 
 function DirectorReports({ embedded = false }) {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('director:reports-overview')
+  const [data, setData] = useState(seed ?? null)
   const [error, setError] = useState(null)
 
   const [activeReport, setActiveReport] = useState(null)
@@ -172,12 +175,10 @@ function DirectorReports({ embedded = false }) {
   const [exportPreview, setExportPreview] = useState(null)
 
   const load = () => {
-    setLoading(true)
     setError(null)
-    api.get('/director/dashboard')
-      .then((dash) => setData(dash.data))
+    run(() => api.get('/director/dashboard').then((dash) => dash.data))
+      .then((next) => { if (next) setData(next) })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load reports overview.'))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -249,20 +250,17 @@ function DirectorReports({ embedded = false }) {
   }
 
   const printRef = useRef(null)
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: 'Director_Report'
-  })
+  const handlePrint = useReactToPrint(reportPrintOptions(printRef, 'Director_Report'))
 
   const Wrapper = embedded ? 'div' : Layout
-  const wrapperProps = embedded ? { className: "embedded-view" } : { title: "Reports", subtitle: CURRENT_TERM, icon: "fa-chart-bar", bodyClass: "director-page" }
+  const wrapperProps = embedded ? { className: "embedded-view" } : { title: "Reports", subtitle: CURRENT_TERM, icon: "fa-chart-bar", bodyClass: "director-page reports-page" }
 
   return (
     <Wrapper {...wrapperProps}>
       {error && <PageError message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+        <div className="text-center py-5"><InternTrackLoader /></div>
       ) : !error && (
         <>
           <div className="row g-3 mb-4">
@@ -311,7 +309,7 @@ function DirectorReports({ embedded = false }) {
           </div>
 
           {activeReport && (
-            <div className="content-card" id="report-output" ref={printRef}>
+            <div className="content-card interntrack-report-print" id="report-output" ref={printRef}>
               <div className="content-card-header d-print-none">
                 <i className={`fa ${REPORT_TYPES.find((r) => r.key === activeReport)?.icon}`}></i>
                 <h6>{REPORT_TYPES.find((r) => r.key === activeReport)?.title}</h6>
@@ -333,7 +331,7 @@ function DirectorReports({ embedded = false }) {
 
               <div className="p-3">
                 {generating && activeReport === 'ched-annual' ? (
-                  <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+                  <div className="text-center py-5"><InternTrackLoader /></div>
                 ) : activeReport === 'internship-summary' ? (
                   <InternshipSummaryTable data={byProgram} />
                 ) : activeReport === 'company-partnerships' ? (

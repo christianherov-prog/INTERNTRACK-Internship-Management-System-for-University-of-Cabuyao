@@ -4,6 +4,8 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const emptyForm = {
   program: 'BS Information Technology',
@@ -15,10 +17,10 @@ const emptyForm = {
 }
 
 function MisdSectionMappings() {
-  const [rows, setRows] = useState([])
-  const [faculty, setFaculty] = useState([])
-  const [unmapped, setUnmapped] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('admin:section-mappings')
+  const [rows, setRows] = useState(() => seed?.rows ?? [])
+  const [faculty, setFaculty] = useState(() => seed?.faculty ?? [])
+  const [unmapped, setUnmapped] = useState(() => seed?.unmapped ?? [])
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -28,25 +30,32 @@ function MisdSectionMappings() {
   const [filters, setFilters] = useState({ academic_year: '', semester: '', section: '' })
 
   const load = () => {
-    setLoading(true)
     setError(null)
     const params = {}
     if (filters.academic_year) params.academic_year = filters.academic_year
     if (filters.semester) params.semester = filters.semester
     if (filters.section) params.section = filters.section
 
-    Promise.all([
-      api.get('/admin/section-assignments', { params }),
-      api.get('/admin/faculty-options'),
-      api.get('/admin/misd/unmapped-sections'),
-    ])
-      .then(([a, f, u]) => {
-        setRows(unwrapList(a.data).items)
-        setFaculty(unwrapList(f.data).items)
-        setUnmapped(u.data?.data || [])
+    run(async () => {
+      const [a, f, u] = await Promise.all([
+        api.get('/admin/section-assignments', { params }),
+        api.get('/admin/faculty-options'),
+        api.get('/admin/misd/unmapped-sections'),
+      ])
+      return {
+        rows: unwrapList(a.data).items,
+        faculty: unwrapList(f.data).items,
+        unmapped: u.data?.data || [],
+      }
+    })
+      .then((next) => {
+        if (next) {
+          setRows(next.rows)
+          setFaculty(next.faculty)
+          setUnmapped(next.unmapped)
+        }
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load section mappings.'))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -169,7 +178,7 @@ function MisdSectionMappings() {
           <input
             className="form-control form-control-sm"
             style={{ width: 140 }}
-            placeholder="AY e.g. 2025-2026"
+            placeholder="School Year"
             value={filters.academic_year}
             onChange={(e) => setFilters((p) => ({ ...p, academic_year: e.target.value }))}
           />
@@ -204,7 +213,7 @@ function MisdSectionMappings() {
             <div className="row g-3">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Section <span className="text-danger">*</span></label>
-                <input className="form-control" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="4ITA" required />
+                <input className="form-control" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="Section" required />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Academic Year <span className="text-danger">*</span></label>
@@ -251,7 +260,7 @@ function MisdSectionMappings() {
         <div className="content-card-header"><i className="fa fa-table"></i><h6>Current Mappings</h6></div>
         <div className="table-responsive">
           {loading ? (
-            <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+            <div className="text-center py-4"><InternTrackLoader /></div>
           ) : (
             <table className="table table-hover mb-0">
               <thead>

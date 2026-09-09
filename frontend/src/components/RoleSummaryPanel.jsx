@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import api from '../services/api'
 import DashboardHeroBanner from './DashboardHeroBanner'
 import { formatYearSection } from '../utils/formatSection'
+import { useCachedPage } from '../hooks/useCachedPage'
+import { useStaffWorkspace } from '../hooks/useStaffWorkspace'
 
 /** Role-specific metric tiles rendered under the shared hero banner. */
 const ROLE_METRICS = {
@@ -56,30 +58,31 @@ function formatInternshipStatus(status) {
  * Used on Director, Coordinator, Faculty, Supervisor, and MISD Admin dashboards.
  */
 function RoleSummaryPanel({ showMetrics = true }) {
-  const [summary, setSummary] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Coordinators in the Faculty Supervisor workspace get an advisee-scoped
+  // faculty summary instead of the department-wide coordinator one.
+  const { workspace, canSwitch } = useStaffWorkspace()
+  const facultyWorkspace = canSwitch && workspace === 'faculty'
+  const { loading, seed, run } = useCachedPage(facultyWorkspace ? 'dashboard:summary:faculty' : 'dashboard:summary')
+  const [summary, setSummary] = useState(seed ?? null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     let active = true
-    setLoading(true)
     setError(null)
 
-    api.get('/dashboard/summary')
-      .then((res) => {
-        if (active) setSummary(res.data)
+    const params = facultyWorkspace ? { workspace: 'faculty' } : {}
+    run(() => api.get('/dashboard/summary', { params }).then((res) => res.data))
+      .then((next) => {
+        if (active && next) setSummary(next)
       })
       .catch((err) => {
         if (active) {
           setError(err.response?.data?.message || 'Could not load dashboard summary.')
         }
       })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
 
     return () => { active = false }
-  }, [])
+  }, [run, facultyWorkspace])
 
   const view = useMemo(() => {
     if (!summary) return null
@@ -132,7 +135,7 @@ function RoleSummaryPanel({ showMetrics = true }) {
       title: `Welcome back, ${summary.name || 'User'}`,
       meta,
       badges,
-      metrics: ROLE_METRICS[role] || [],
+      metrics: ROLE_METRICS[summary.workspace || role] || [],
     }
   }, [summary])
 

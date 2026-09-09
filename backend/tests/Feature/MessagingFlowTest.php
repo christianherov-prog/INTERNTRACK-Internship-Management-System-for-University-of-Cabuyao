@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Internship;
 use App\Models\Message;
+use App\Models\SupervisorProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -16,11 +17,12 @@ class MessagingFlowTest extends TestCase
     private function user(string $role, string $username, string $email): User
     {
         $field = $role === 'student' ? 'student_number' : 'faculty_number';
+
         return User::create([
-            $field      => $username,
-            'email'     => $email,
-            'password'  => Hash::make('password123'),
-            'role'      => $role,
+            $field => $username,
+            'email' => $email,
+            'password' => Hash::make('password123'),
+            'role' => $role,
             'is_active' => true,
         ]);
     }
@@ -28,15 +30,15 @@ class MessagingFlowTest extends TestCase
     private function placedInternship(User $student, User $faculty, User $supervisor, User $coordinator): Internship
     {
         return Internship::create([
-            'student_id'     => $student->id,
-            'faculty_id'     => $faculty->id,
-            'supervisor_id'  => $supervisor->id,
+            'student_id' => $student->id,
+            'faculty_id' => $faculty->id,
+            'supervisor_id' => $supervisor->id,
             'coordinator_id' => $coordinator->id,
-            'school_year'  => '2025-2026',
-            'semester'       => 2,
-            'term'           => 'AY 2025-2026, Sem 2',
-            'status'         => 'active',
-            'target_hours'   => config('interntrack.target_hours', 500),
+            'school_year' => '2025-2026',
+            'semester' => 2,
+            'term' => 'AY 2025-2026, Sem 2',
+            'status' => 'active',
+            'target_hours' => config('interntrack.target_hours', 500),
         ]);
     }
 
@@ -50,8 +52,8 @@ class MessagingFlowTest extends TestCase
 
         $send = $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $faculty->id,
-            'body'          => 'Hello faculty, please check my journal.',
+            'recipient_id' => $faculty->id,
+            'body' => 'Hello faculty, please check my journal.',
         ]);
         $send->assertCreated()->assertJsonPath('data.body', 'Hello faculty, please check my journal.');
         $this->assertSame('student', $send->json('data.sender_role'));
@@ -67,8 +69,8 @@ class MessagingFlowTest extends TestCase
 
         $reply = $this->actingAs($coordinator, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $student->id,
-            'body'          => 'Coordinator here — documents look good.',
+            'recipient_id' => $student->id,
+            'body' => 'Coordinator here — documents look good.',
         ]);
         $reply->assertCreated();
 
@@ -77,6 +79,70 @@ class MessagingFlowTest extends TestCase
         $conversations->assertOk();
         $this->assertGreaterThanOrEqual(2, count($conversations->json('data')));
         $this->assertArrayHasKey('meta', $conversations->json());
+    }
+
+    public function test_conversation_peer_uses_canonical_avatar_and_display_name(): void
+    {
+        $student = $this->user('student', 'STU-AV', 'stu-av@example.com');
+        $faculty = $this->user('faculty', 'FAC-AV', 'fac-av@example.com');
+        $supervisor = $this->user('supervisor', 'SUP-AV', 'sup-av@example.com');
+        $coordinator = $this->user('coordinator', 'COR-AV', 'cor-av@example.com');
+        $this->placedInternship($student, $faculty, $supervisor, $coordinator);
+
+        SupervisorProfile::create([
+            'user_id' => $supervisor->id,
+            'first_name' => 'Adrian',
+            'last_name' => 'Reyes',
+        ]);
+        $supervisor->forceFill(['avatar_path' => 'avatars/adrian.png'])->save();
+
+        $conversations = $this->actingAs($student, 'sanctum')
+            ->getJson('/api/v1/messages/conversations')
+            ->assertOk();
+
+        $peer = collect($conversations->json('data'))->firstWhere('peer.id', $supervisor->id);
+        $this->assertNotNull($peer);
+        $this->assertSame('Adrian Reyes', $peer['peer']['name']);
+        $this->assertSame('AR', $peer['peer']['avatar']);
+        $this->assertStringContainsString('/api/v1/media/avatars/adrian.png', (string) $peer['peer']['avatarUrl']);
+        $this->assertStringNotContainsString('/storage/', (string) $peer['peer']['avatarUrl']);
+    }
+
+    public function test_two_way_thread_does_not_duplicate_messages(): void
+    {
+        $student = $this->user('student', 'STU-DUP', 'stu-dup@example.com');
+        $faculty = $this->user('faculty', 'FAC-DUP', 'fac-dup@example.com');
+        $supervisor = $this->user('supervisor', 'SUP-DUP', 'sup-dup@example.com');
+        $coordinator = $this->user('coordinator', 'COR-DUP', 'cor-dup@example.com');
+        $internship = $this->placedInternship($student, $faculty, $supervisor, $coordinator);
+
+        $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
+            'internship_id' => $internship->id,
+            'recipient_id' => $supervisor->id,
+            'body' => 'Hello Sir Reyes',
+        ])->assertCreated();
+
+        $this->actingAs($supervisor, 'sanctum')->postJson('/api/v1/messages', [
+            'internship_id' => $internship->id,
+            'recipient_id' => $student->id,
+            'body' => 'Received, Clarence.',
+        ])->assertCreated();
+
+        $studentThread = $this->actingAs($student, 'sanctum')
+            ->getJson("/api/v1/messages/conversations/{$internship->id}/{$supervisor->id}")
+            ->assertOk()
+            ->json('messages');
+        $supervisorThread = $this->actingAs($supervisor, 'sanctum')
+            ->getJson("/api/v1/messages/conversations/{$internship->id}/{$student->id}")
+            ->assertOk()
+            ->json('messages');
+
+        $this->assertCount(2, $studentThread);
+        $this->assertCount(2, $supervisorThread);
+        $this->assertSame(array_column($studentThread, 'id'), array_column($supervisorThread, 'id'));
+        $this->assertCount(2, array_unique(array_column($studentThread, 'id')));
+        $this->assertSame('Hello Sir Reyes', $studentThread[0]['body']);
+        $this->assertSame('Received, Clarence.', $studentThread[1]['body']);
     }
 
     public function test_outsider_cannot_send_or_read_thread(): void
@@ -92,14 +158,14 @@ class MessagingFlowTest extends TestCase
 
         $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $faculty->id,
-            'body'          => 'Private note',
+            'recipient_id' => $faculty->id,
+            'body' => 'Private note',
         ])->assertCreated();
 
         $this->actingAs($otherStudent, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $faculty->id,
-            'body'          => 'Hacked?',
+            'recipient_id' => $faculty->id,
+            'body' => 'Hacked?',
         ])->assertStatus(403);
 
         $this->actingAs($otherCoord, 'sanctum')
@@ -119,8 +185,8 @@ class MessagingFlowTest extends TestCase
 
         $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $stranger->id,
-            'body'          => 'Should fail',
+            'recipient_id' => $stranger->id,
+            'body' => 'Should fail',
         ])->assertStatus(403);
     }
 
@@ -135,8 +201,8 @@ class MessagingFlowTest extends TestCase
 
         $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $oldFaculty->id,
-            'body'          => 'History for the faculty role slot',
+            'recipient_id' => $oldFaculty->id,
+            'body' => 'History for the faculty role slot',
         ])->assertCreated();
 
         $internship->update(['faculty_id' => $newFaculty->id]);
@@ -162,8 +228,8 @@ class MessagingFlowTest extends TestCase
 
         $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $faculty->id,
-            'body'          => 'Before completion',
+            'recipient_id' => $faculty->id,
+            'body' => 'Before completion',
         ])->assertCreated();
 
         $internship->update(['status' => 'completed']);
@@ -192,8 +258,8 @@ class MessagingFlowTest extends TestCase
         for ($i = 0; $i < 31; $i++) {
             $last = $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
                 'internship_id' => $internship->id,
-                'recipient_id'  => $faculty->id,
-                'body'          => "Flood {$i}",
+                'recipient_id' => $faculty->id,
+                'body' => "Flood {$i}",
             ]);
         }
 
@@ -211,8 +277,8 @@ class MessagingFlowTest extends TestCase
 
         $this->actingAs($coordinator, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $student->id,
-            'body'          => 'Archive me',
+            'recipient_id' => $student->id,
+            'body' => 'Archive me',
         ])->assertCreated();
 
         $this->actingAs($coordinator, 'sanctum')
@@ -272,8 +338,8 @@ class MessagingFlowTest extends TestCase
 
         $send = $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $coordinator->id,
-            'body'          => 'Secret oops',
+            'recipient_id' => $coordinator->id,
+            'body' => 'Secret oops',
         ])->assertCreated();
 
         $messageId = $send->json('data.id');
@@ -308,8 +374,8 @@ class MessagingFlowTest extends TestCase
 
         $this->actingAs($student, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $coordinator->id,
-            'body'          => 'Keep for coordinator',
+            'recipient_id' => $coordinator->id,
+            'body' => 'Keep for coordinator',
         ])->assertCreated();
 
         $this->actingAs($student, 'sanctum')
@@ -330,8 +396,8 @@ class MessagingFlowTest extends TestCase
         // New messages after clear still appear for the clearer
         $this->actingAs($coordinator, 'sanctum')->postJson('/api/v1/messages', [
             'internship_id' => $internship->id,
-            'recipient_id'  => $student->id,
-            'body'          => 'After clear',
+            'recipient_id' => $student->id,
+            'body' => 'After clear',
         ])->assertCreated();
 
         $stuAfter = $this->actingAs($student, 'sanctum')

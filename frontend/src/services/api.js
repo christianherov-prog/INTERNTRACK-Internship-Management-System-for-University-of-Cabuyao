@@ -62,8 +62,14 @@ api.interceptors.response.use(
     }
 
     if (status === 403 && !requestUrl.includes('/files/download')) {
-      const detail = error.response?.data?.message || 'Access denied — different department'
-      window.dispatchEvent(new CustomEvent('access-denied', { detail }))
+      const message = error.response?.data?.message || ''
+      const isAttendanceWorkflow =
+        requestUrl.includes('/student/attendance')
+        || /HTE Supervisor is approved/i.test(message)
+      if (!isAttendanceWorkflow) {
+        const detail = message || 'Access denied — different department'
+        window.dispatchEvent(new CustomEvent('access-denied', { detail }))
+      }
     }
 
     return Promise.reject(error)

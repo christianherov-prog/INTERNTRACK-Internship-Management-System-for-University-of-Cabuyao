@@ -10,7 +10,7 @@ class Document extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'internship_id', 'document_type', 'week_number', 'file_path', 'file_name', 'file_size', 'mime_type',
+        'internship_id', 'document_type', 'week_number',
         'status', 'current_stage', 'remarks', 'reviewed_by', 'reviewed_at', 'submitted_at',
         'attestation_name', 'attested_at', 'drive_link',
     ];
@@ -47,4 +47,3 @@ class Document extends Model
         return null;
     }
 }
-

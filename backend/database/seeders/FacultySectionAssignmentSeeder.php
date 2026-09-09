@@ -49,22 +49,22 @@ class FacultySectionAssignmentSeeder extends Seeder
 
     public function run(): void
     {
-        $pw  = Hash::make(config('interntrack.default_password'));
-        $ay  = '2025-2026';
+        $pw = Hash::make(config('interntrack.default_password'));
+        $ay = '2025-2026';
         $sem = '2nd Semester';
 
         // ─── Faculty accounts ──────────────────────────────────────────────────
         $facultyRows = [
             [
                 'faculty_number' => 'FAC-1001',
-                'email'          => 'm.bicua@uc.edu.ph',
-                'first_name'     => 'Marvin',
-                'middle_name'    => 'M.',
-                'last_name'      => 'Bicua',
-                'sex'            => 'Male',
-                'department'     => 'College of Computing Studies',
-                'position'       => 'CCS Faculty',
-                'sections'       => ['4IT-A', '4IT-B', '4IT-C', '4IT-D'],
+                'email' => 'm.bicua@uc.edu.ph',
+                'first_name' => 'Marvin',
+                'middle_name' => 'M.',
+                'last_name' => 'Bicua',
+                'sex' => 'Male',
+                'department' => 'College of Computing Studies',
+                'position' => 'CCS Faculty',
+                'sections' => ['4IT-A', '4IT-B', '4IT-C', '4IT-D'],
             ],
         ];
 
@@ -73,10 +73,10 @@ class FacultySectionAssignmentSeeder extends Seeder
             $user = User::withTrashed()->updateOrCreate(
                 ['faculty_number' => $row['faculty_number']],
                 [
-                    'email'      => $row['email'],
-                    'password'   => $pw,
-                    'role'       => 'faculty',
-                    'is_active'  => true,
+                    'email' => $row['email'],
+                    'password' => $pw,
+                    'role' => 'faculty',
+                    'is_active' => true,
                     'deleted_at' => null,
                 ]
             );
@@ -88,16 +88,16 @@ class FacultySectionAssignmentSeeder extends Seeder
             FacultyProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'faculty_number'    => $row['faculty_number'],
-                    'first_name'        => $row['first_name'],
-                    'middle_name'       => $row['middle_name'] ?? 'N/A',
-                    'last_name'         => $row['last_name'],
-                    'email'             => $row['email'],
-                    'sex'               => $row['sex'],
-                    'department_id'     => $this->ensureDepartment($row['department']),
-                    'position'          => $row['position'],
+                    'faculty_number' => $row['faculty_number'],
+                    'first_name' => $row['first_name'],
+                    'middle_name' => $row['middle_name'] ?? 'N/A',
+                    'last_name' => $row['last_name'],
+                    'email' => $row['email'],
+                    'sex' => $row['sex'],
+                    'department_id' => $this->ensureDepartment($row['department']),
+                    'position' => $row['position'],
                     'employment_status' => 'Regular',
-                    'synced_at'         => now(),
+                    'synced_at' => now(),
                 ]
             );
 
@@ -105,13 +105,13 @@ class FacultySectionAssignmentSeeder extends Seeder
             foreach ($row['sections'] as $section) {
                 FacultySectionAssignment::updateOrCreate(
                     [
-                        'section'       => $section,
+                        'section' => $section,
                         'school_year' => $ay,
-                        'semester'      => $sem,
+                        'semester' => $sem,
                     ],
                     [
                         'faculty_user_id' => $user->id,
-                        'is_active'       => true,
+                        'is_active' => true,
                     ]
                 );
             }
@@ -139,7 +139,7 @@ class FacultySectionAssignmentSeeder extends Seeder
 
         foreach ($maps as $facultyNumber => $rows) {
             $user = User::where('faculty_number', $facultyNumber)->first();
-            if (!$user) {
+            if (! $user) {
                 continue;
             }
 
@@ -173,13 +173,22 @@ class FacultySectionAssignmentSeeder extends Seeder
         }
 
         FacultySectionAssignment::query()
-            ->where('faculty_user_id', $dummy->id)
+            ->where(function ($q) use ($dummy) {
+                $q->where('faculty_user_id', $dummy->id)
+                    ->orWhereIn('section', ['4IT-A', '4IT-B', '4IT-C', '4IT-D', '4ITA', '4ITB', '4ITC', '4ITD']);
+            })
             ->where('school_year', $ay)
             ->where('semester', $sem)
             ->where(function ($q) {
                 $q->whereIn('section', ['4IT-A', '4IT-B', '4IT-C', '4IT-D', '4ITA', '4ITB', '4ITC', '4ITD'])
                     ->orWhere('section', 'like', '4IT%');
             })
-            ->update(['faculty_user_id' => $primary->id]);
+            ->get()
+            ->each(function (FacultySectionAssignment $assignment) use ($primary) {
+                if ((int) $assignment->faculty_user_id !== (int) $primary->id) {
+                    $assignment->faculty_user_id = $primary->id;
+                    $assignment->save();
+                }
+            });
     }
 }

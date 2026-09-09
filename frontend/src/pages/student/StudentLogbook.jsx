@@ -6,6 +6,9 @@ import { unwrapList } from '../../utils/apiList'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { displayLabel } from '../../utils/displayLabel'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const STATUS_MAP = {
   submitted:      { cls: 'badge-pending',  label: 'Submitted' },
@@ -47,8 +50,9 @@ const EMPTY_FORM = {
 
 function StudentLogbook() {
   const { user } = useAuth()
-  const [journals, setJournals]       = useState([])
-  const [loading, setLoading]         = useState(true)
+  const { loading, seed, run } = useCachedPage('student:logbook')
+  const [journals, setJournals]       = useState(() => seed?.items ?? seed ?? [])
+  const [internFeedback, setInternFeedback] = useState(() => seed?.internFeedback ?? null)
   const [error, setError]             = useState(null)
   const [submitting, setSubmitting]   = useState(false)
   const [generating, setGenerating]   = useState(null) // week_number being generated
@@ -59,15 +63,21 @@ function StudentLogbook() {
   const [previewModal, setPreviewModal] = useState(null)
 
   const fetchJournals = () => {
-    setLoading(true)
     setError(null)
-    api.get('/student/logbook')
-      .then(res => setJournals(unwrapList(res.data).items))
+    run(() => api.get('/student/logbook').then(res => ({
+      items: unwrapList(res.data).items,
+      internFeedback: res.data.intern_feedback || null,
+    })))
+      .then((next) => {
+        if (next) {
+          setJournals(next.items)
+          setInternFeedback(next.internFeedback)
+        }
+      })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load journals.')
         setJournals([])
       })
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { fetchJournals() }, [])
@@ -114,6 +124,7 @@ function StudentLogbook() {
     setMessage(null)
     try {
       await api.post('/student/logbook', form)
+      invalidateStudentPortfolio()
       setMessage({ type: 'success', text: `Week ${form.week_number} journal saved successfully!` })
       setShowForm(false)
       setForm(EMPTY_FORM)
@@ -196,7 +207,7 @@ function StudentLogbook() {
                 </label>
                 <input
                   type="number" name="week_number" className="form-control"
-                  placeholder="e.g. 1" min={1} max={52}
+                  placeholder="Week Number" min={1} max={52}
                   value={form.week_number} onChange={handleChange} required
                 />
               </div>
@@ -227,7 +238,7 @@ function StudentLogbook() {
                 </label>
                 <textarea
                   name="activities_summary" className="form-control" rows={8}
-                  placeholder="What did you accomplish this week? List your tasks and achievements..."
+                  placeholder="Accomplishments"
                   value={form.activities_summary} onChange={handleChange} required
                 />
                 <small className="text-muted">Mapped to: "ACCOMPLISHMENT" column in Form 31</small>
@@ -239,7 +250,7 @@ function StudentLogbook() {
                 </label>
                 <textarea
                   name="challenges" className="form-control" rows={8}
-                  placeholder="What challenges or problems did you encounter this week?..."
+                  placeholder="Challenges"
                   value={form.challenges} onChange={handleChange}
                 />
                 <small className="text-muted">Mapped to: "DIFFICULTIES ENCOUNTERED" column in Form 31</small>
@@ -251,7 +262,7 @@ function StudentLogbook() {
                 </label>
                 <textarea
                   name="learnings" className="form-control" rows={8}
-                  placeholder="What new skills or knowledge did you gain this week?..."
+                  placeholder="Learnings"
                   value={form.learnings} onChange={handleChange}
                 />
                 <small className="text-muted">Mapped to: "NEW LEARNING / INSIGHTS" column in Form 31</small>
@@ -262,7 +273,7 @@ function StudentLogbook() {
               <label className="form-label fw-semibold">Notes / Remarks (Optional)</label>
               <textarea
                 name="notes" className="form-control" rows={2}
-                placeholder="Any additional remarks..."
+                placeholder="Remarks"
                 value={form.notes} onChange={handleChange}
               />
             </div>
@@ -283,6 +294,19 @@ function StudentLogbook() {
         </div>
       )}
 
+      {internFeedback?.feedback && (
+        <div className="content-card mb-4">
+          <div className="content-card-header">
+            <i className="fa fa-comment-dots"></i>
+            <h6>Industry Supervisor Feedback</h6>
+          </div>
+          <div className="p-3">
+            <p className="mb-1">{internFeedback.feedback}</p>
+            <div className="small text-muted">{internFeedback.supervisor_reviewed_at_manila || internFeedback.supervisor_reviewed_at}</div>
+          </div>
+        </div>
+      )}
+
       {/* ── Journal List ── */}
       <div className="content-card">
         <div className="content-card-header">
@@ -290,9 +314,9 @@ function StudentLogbook() {
           <h6>My Weekly Journal Entries</h6>
         </div>
         <div className="table-card">
-          {loading ? (
+          {loading && journals.length === 0 ? (
             <div className="text-center py-5">
-              <i className="fa fa-spinner fa-spin fa-2x text-muted"></i>
+              <InternTrackLoader />
             </div>
           ) : journals.length === 0 && !error ? (
             <div className="text-center py-5 text-muted">
@@ -345,7 +369,7 @@ function StudentLogbook() {
                   {j.supervisor_feedback && (
                     <div className="mt-2 p-2 rounded" style={{ background: '#f0fdf4', fontSize: '0.82rem', color: '#15803d' }}>
                       <i className="fa fa-comment-dots me-1"></i>
-                      <strong>Feedback:</strong> {j.supervisor_feedback}
+                      <strong>Industry Supervisor note:</strong> {j.supervisor_feedback}
                     </div>
                   )}
                 </div>

@@ -3,9 +3,11 @@ import { useReactToPrint } from 'react-to-print'
 import { Link } from 'react-router-dom'
 import PageError from '../../../components/PageError'
 import api from '../../../services/api'
+import { cacheGet, cacheSet } from '../../../utils/pageCache'
 import '../../../assets/css/portfolio-print.css'
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow'
 import { displayLabel } from '../../../utils/displayLabel'
+import InternTrackLoader from '../../../components/InternTrackLoader'
 import {
   NUR_COURSE,
   NUR_ROTATIONS,
@@ -167,23 +169,26 @@ function displayName(profile, user) {
 }
 
 function NursingPortfolioPreview() {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(() => cacheGet('student:portfolio') ?? null)
+  const [loading, setLoading] = useState(() => !cacheGet('student:portfolio'))
   const [error, setError] = useState(null)
   const printRef = useRef(null)
   const handlePrint = useReactToPrint({ contentRef: printRef, documentTitle: 'Nursing_Internship_Portfolio' })
 
   useEffect(() => {
     api.get('/student/portfolio')
-      .then((res) => setData(res.data))
+      .then((res) => {
+        cacheSet('student:portfolio', res.data)
+        setData(res.data)
+      })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load portfolio.'))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center min-vh-100 text-muted">
-        <i className="fa fa-spinner fa-spin fa-2x mb-3" aria-hidden="true" />
+        <InternTrackLoader />
         <div className="small">Loading preview…</div>
       </div>
     )

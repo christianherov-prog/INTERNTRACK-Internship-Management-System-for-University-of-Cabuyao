@@ -3,60 +3,71 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\AttendanceLog;
+use App\Models\Announcement;
+use App\Models\Company;
+use App\Models\Document;
+use App\Models\Evaluation;
+use App\Models\HteRequest;
 use App\Models\Internship;
 use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
-use App\Models\Document;
-use App\Models\Announcement;
 use App\Models\Notification;
+use App\Models\OjtRequirementTemplate;
 use App\Services\AbsorptionService;
 use App\Services\CertificateEligibilityService;
 use App\Services\DtrWorkflowService;
+use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
 use App\Services\ProgramRequirementService;
+use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
-use App\Support\RequiredDocuments;
+use App\Support\InternshipProvisioning;
+use App\Support\ManilaTime;
+use App\Support\InternshipStatuses;
+use App\Support\PlacementMoa;
 use App\Support\RequirementAudience;
 use App\Support\UniqueWrite;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
-    public function __construct(private DtrWorkflowService $dtr)
-    {
-    }
+    public function __construct(private DtrWorkflowService $dtr) {}
 
     private function internship(Request $request)
     {
         $user = $request->user();
-        
+        $user->loadMissing('studentProfile.program');
+
         $query = $user->internshipsAsStudent()
             ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
-            
+
         $requestedId = $request->header('X-Internship-Id') ?: $request->input('internship_id');
         if ($requestedId) {
             $internship = $query->where('id', $requestedId)->first();
         } else {
-            // Default to the latest active/current internship
-            $internship = $user->activeInternship()
-                ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile'])
-                ->first();
+            $internship = InternshipProvisioning::openForStudent($user->id);
+            if ($internship) {
+                $internship->load(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
+            } else {
+                $internship = $user->activeInternship()
+                    ->with(['student.studentProfile', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile'])
+                    ->first();
+            }
         }
 
-        if (!$internship) {
+        if (! $internship) {
             $profile = $user->studentProfile;
             $ay = $profile?->school_year ?: '2025-2026';
             $sem = $profile?->semester ?: '2nd Semester';
-            $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
+            $facultyId = app(FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
             $targetHours = ProgramRequirementService::targetHoursForProfile($profile);
 
-            $internship = $user->internshipsAsStudent()->create([
+            $internship = InternshipProvisioning::createPendingIfNone($user, [
                 'status' => 'pending_placement',
                 'school_year' => $ay,
                 'semester' => $sem,
@@ -64,59 +75,42 @@ class StudentController extends Controller
                 'program' => $profile?->program?->name,
                 'faculty_id' => $facultyId,
                 'target_hours' => $targetHours,
-                'total_hours_rendered' => 0
+                'total_hours_rendered' => 0,
             ]);
-            if (!$internship->relationLoaded('student')) {
-                $internship->load(['student.studentProfile.program', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
-            }
-        } else {
-            $dirty = false;
-            if (empty($internship->program)) {
-                $profile = $user->studentProfile;
-                $program = $profile?->program?->name;
-                if ($program) {
-                    $internship->program = $program;
-                    $dirty = true;
-                }
-            }
-            if (empty($internship->faculty_id)) {
-                $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($user->studentProfile)?->id;
-                if ($facultyId) {
-                    $internship->faculty_id = $facultyId;
-                    $dirty = true;
-                }
-            }
-            if ($dirty) {
-                $internship->save();
-            }
+            $internship->load(['student.studentProfile.program', 'company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'coordinator.facultyProfile']);
         }
 
-        InternshipProgressService::synchronize($internship);
-
-        return $internship->fresh([
+        $with = [
             'student.studentProfile.program',
             'company',
             'supervisor.supervisorProfile',
             'faculty.facultyProfile',
             'coordinator.facultyProfile',
-            'placements',
-        ]);
+        ];
+        if (Schema::hasTable('internship_placements')) {
+            $with[] = 'placements';
+            $with[] = 'currentPlacement';
+        }
+
+        return $internship->fresh($with);
     }
 
     /** Build the compact student summary used by the dashboard hero banner. */
     private function studentSummary($profile): ?array
     {
-        if (!$profile) return null;
+        if (! $profile) {
+            return null;
+        }
 
-        $middleInitial = $profile->middle_name ? substr($profile->middle_name, 0, 1) . '.' : null;
-        $name = trim($profile->last_name . ', ' . implode(' ', array_filter([$profile->first_name, $middleInitial])));
+        $middleInitial = $profile->middle_name ? substr($profile->middle_name, 0, 1).'.' : null;
+        $name = trim($profile->last_name.', '.implode(' ', array_filter([$profile->first_name, $middleInitial])));
 
         return [
-            'name'           => $name,
+            'name' => $name,
             'student_number' => $profile->student_number,
-            'section'        => $profile->section,
-            'course_name'    => $profile->program?->name,
-            'year_level'     => $profile->year_level,
+            'section' => $profile->section,
+            'course_name' => $profile->program?->name,
+            'year_level' => $profile->year_level,
         ];
     }
 
@@ -127,54 +121,73 @@ class StudentController extends Controller
             ->with(['company', 'supervisor.supervisorProfile'])
             ->orderBy('created_at', 'desc')
             ->get();
+
         return response()->json(['internships' => $internships]);
     }
 
     public function startNewInternship(Request $request)
     {
         $user = $request->user();
-        
-        // Ensure they don't already have an active/ongoing one that isn't completed
-        $active = $user->activeInternship()->first();
-        if ($active && $active->status !== 'completed') {
-            return response()->json(['message' => 'You still have an ongoing internship. Finish it first.'], 422);
+        $user->loadMissing('studentProfile.program');
+
+        try {
+            $internship = UniqueWrite::retry(fn () => DB::transaction(function () use ($user) {
+                $open = InternshipProvisioning::openQuery($user->id)
+                    ->lockForUpdate()
+                    ->latest('id')
+                    ->first();
+
+                if ($open) {
+                    throw new \RuntimeException('You still have an ongoing internship. Finish it first.');
+                }
+
+                $profile = $user->studentProfile;
+                $ay = $profile?->school_year ?: '2025-2026';
+                $sem = $profile?->semester ?: '2nd Semester';
+                $facultyId = app(FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
+                $targetHours = ProgramRequirementService::targetHoursForProfile($profile);
+
+                $created = $user->internshipsAsStudent()->create([
+                    'status' => 'pending_placement',
+                    'school_year' => $ay,
+                    'semester' => $sem,
+                    'term' => "AY {$ay}, {$sem}",
+                    'program' => $profile?->program?->name,
+                    'faculty_id' => $facultyId,
+                    'target_hours' => $targetHours,
+                    'total_hours_rendered' => 0,
+                ]);
+
+                InternshipProgressService::synchronize($created);
+
+                return $created;
+            }));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $profile = $user->studentProfile;
-        $ay = $profile?->school_year ?: '2025-2026';
-        $sem = $profile?->semester ?: '2nd Semester';
-        $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($profile)?->id;
-        $targetHours = ProgramRequirementService::targetHoursForProfile($profile);
-
-        $internship = $user->internshipsAsStudent()->create([
-            'status' => 'pending_placement',
-            'school_year' => $ay,
-            'semester' => $sem,
-            'term' => "AY {$ay}, {$sem}",
-            'program' => $profile?->program?->name,
-            'faculty_id' => $facultyId,
-            'target_hours' => $targetHours,
-            'total_hours_rendered' => 0
-        ]);
 
         return response()->json([
             'message' => 'New practicum deployment started.',
-            'internship' => $internship
+            'internship' => $internship,
         ]);
     }
 
     public function dashboard(Request $request)
     {
-        $user       = $request->user()->load('studentProfile.program');
+        $user = $request->user()->load('studentProfile.program');
         $internship = $this->internship($request);
-        $profile    = $user->studentProfile;
-        $progress   = InternshipProgressService::snapshot($internship);
-        $internship->load('company', 'placements.company', 'placements.supervisor', 'currentPlacement');
+        $profile = $user->studentProfile;
+        $progress = InternshipProgressService::snapshot($internship);
+        $load = ['company'];
+        if (Schema::hasTable('internship_placements')) {
+            $load = array_merge($load, ['placements.company', 'placements.supervisor.supervisorProfile', 'currentPlacement']);
+        }
+        $internship->load($load);
 
         // Attendance stats
-        $daysPresent     = $internship->attendance()->where('status', 'validated')->count();
-        $hoursRendered   = $progress['hours_rendered'];
-        $targetHours     = $progress['target_hours'];
+        $daysPresent = $internship->attendance()->where('status', 'validated')->count();
+        $hoursRendered = $progress['hours_rendered'];
+        $targetHours = $progress['target_hours'];
         $progressPercent = $progress['progress_pct'];
 
         // Journal stats
@@ -182,7 +195,7 @@ class StudentController extends Controller
 
         // Document compliance stats (properly scoped to logged-in student)
         $studentTargets = [
-            ['type' => 'student', 'id' => (string) $user->id]
+            ['type' => 'student', 'id' => (string) $user->id],
         ];
         if ($profile) {
             if ($profile->section) {
@@ -194,14 +207,14 @@ class StudentController extends Controller
             }
         }
 
-        $matchingTemplates = \App\Models\OjtRequirementTemplate::where('is_active', true)
-            ->where(function($query) use ($studentTargets) {
-                $query->whereHas('targets', function($q) use ($studentTargets) {
-                    $q->where(function($subQ) use ($studentTargets) {
-                        foreach($studentTargets as $target) {
-                            $subQ->orWhere(function($targetQ) use ($target) {
+        $matchingTemplates = OjtRequirementTemplate::where('is_active', true)
+            ->where(function ($query) use ($studentTargets) {
+                $query->whereHas('targets', function ($q) use ($studentTargets) {
+                    $q->where(function ($subQ) use ($studentTargets) {
+                        foreach ($studentTargets as $target) {
+                            $subQ->orWhere(function ($targetQ) use ($target) {
                                 $targetQ->where('target_type', $target['type'])
-                                        ->where('target_id', $target['id']);
+                                    ->where('target_id', $target['id']);
                             });
                         }
                     });
@@ -231,7 +244,7 @@ class StudentController extends Controller
 
         // Weekly chart — last 8 weeks (single query)
         $weekStart8 = now()->startOfWeek()->subWeeks(7);
-        $weekEnd0   = now()->endOfWeek();
+        $weekEnd0 = now()->endOfWeek();
 
         $weeklyData = $internship->attendance()
             ->where('status', 'validated')
@@ -241,19 +254,21 @@ class StudentController extends Controller
             ->pluck('total', 'yw');
 
         $labels = [];
-        $hours  = [];
+        $hours = [];
         for ($i = 7; $i >= 0; $i--) {
             $ws = now()->startOfWeek()->subWeeks($i);
             $yw = $ws->format('oW'); // ISO year + week number, matching YEARWEEK(..., 1)
-            $labels[] = 'Wk ' . (8 - $i);
-            $hours[]  = round((float) ($weeklyData[$yw] ?? 0), 1);
+            $labels[] = 'Wk '.(8 - $i);
+            $hours[] = round((float) ($weeklyData[$yw] ?? 0), 1);
         }
 
         // Announcements for student role
         $announcements = Announcement::where(function ($q) {
-                $q->where('target_role', 'all')->orWhere('target_role', 'student');
+            $q->where('target_role', 'all')->orWhere('target_role', 'student');
+        })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
             })
-            ->where(function ($q) { $q->whereNull('expires_at')->orWhere('expires_at', '>', now()); })
             ->orderByDesc('is_pinned')
             ->latest()
             ->take(5)
@@ -264,48 +279,51 @@ class StudentController extends Controller
         return response()->json([
             'student' => $this->studentSummary($user->studentProfile),
             'stats' => [
-                'hours_rendered'   => $hoursRendered,
-                'target_hours'     => $targetHours,
-                'days_present'     => $daysPresent,
-                'journal_count'    => $journalCount,
-                'docs_submitted'   => $docsSubmitted,
-                'docs_total'       => $docsTotal,
+                'hours_rendered' => $hoursRendered,
+                'target_hours' => $targetHours,
+                'days_present' => $daysPresent,
+                'journal_count' => $journalCount,
+                'docs_submitted' => $docsSubmitted,
+                'docs_total' => $docsTotal,
                 'progress_percent' => $progressPercent,
-                'doc_compliance'   => $docCompliance,
+                'doc_compliance' => $docCompliance,
                 'evaluation_score' => $evaluationScore,
-                'status'           => \App\Support\InternshipStatuses::normalize($internship->status),
+                'status' => InternshipStatuses::normalize($internship->status),
             ],
-            'weekly_chart'  => ['labels' => $labels, 'hours' => $hours],
+            'weekly_chart' => ['labels' => $labels, 'hours' => $hours],
             'announcements' => $announcements,
             'incomplete_dtr_days' => $internship->supervisor_id ? $this->dtr->incompleteDays($internship) : [],
-            'internship'    => [
-                'id'            => $internship->id,
-                'term'          => $internship->term,
-                'status'        => \App\Support\InternshipStatuses::normalize($internship->status),
-                'status_label'  => \App\Support\InternshipStatuses::label($internship->status),
+            'internship' => [
+                'id' => $internship->id,
+                'term' => $internship->term,
+                'status' => InternshipStatuses::normalize($internship->status),
+                'status_label' => InternshipStatuses::label($internship->status),
                 'status_reason' => $internship->status_reason,
-                'company_name'  => $internship->company?->company_name ?? '—',
-                'supervisor_name'=> $internship->supervisor?->supervisorProfile?->full_name
-                    ?? $internship->supervisor?->profile_name,
-                'start_date'    => $internship->start_date?->toDateString(),
-                'placements'    => $internship->placements->map(fn ($p) => [
-                    'id'                => $p->id,
-                    'sequence_order'    => $p->sequence_order,
-                    'label'             => $p->label,
-                    'required_hours'    => (float) $p->required_hours,
-                    'accumulated_hours' => (float) $p->accumulated_hours,
-                    'progress_percent'  => $p->progress_percent,
-                    'status'            => $p->status,
-                    'company_name'      => $p->company?->company_name ?? null,
-                    'supervisor_name'   => $p->supervisor?->name ?? null,
-                    'is_current'        => $p->id === $internship->current_placement_id,
-                ]),
+                'company_name' => $internship->company?->company_name ?? '—',
+                'supervisor_name' => $internship->supervisor?->supervisorProfile?->full_name
+                    ?: ($internship->supervisor?->username),
+                'start_date' => $internship->start_date?->toDateString(),
+                'placements' => Schema::hasTable('internship_placements')
+                    ? $internship->placements->map(fn ($p) => [
+                        'id' => $p->id,
+                        'sequence_order' => $p->sequence_order,
+                        'label' => $p->label,
+                        'required_hours' => (float) $p->required_hours,
+                        'accumulated_hours' => (float) $p->accumulated_hours,
+                        'progress_percent' => $p->progress_percent,
+                        'status' => $p->status,
+                        'company_name' => $p->company?->company_name ?? null,
+                        'supervisor_name' => $p->supervisor?->supervisorProfile?->full_name
+                            ?: ($p->supervisor?->username),
+                        'is_current' => $p->id === $internship->current_placement_id,
+                    ])
+                    : [],
                 'current_placement' => $internship->currentPlacement ? [
-                    'id'                => $internship->currentPlacement->id,
-                    'label'             => $internship->currentPlacement->label,
-                    'required_hours'    => (float) $internship->currentPlacement->required_hours,
+                    'id' => $internship->currentPlacement->id,
+                    'label' => $internship->currentPlacement->label,
+                    'required_hours' => (float) $internship->currentPlacement->required_hours,
                     'accumulated_hours' => (float) $internship->currentPlacement->accumulated_hours,
-                    'progress_percent'  => $internship->currentPlacement->progress_percent,
+                    'progress_percent' => $internship->currentPlacement->progress_percent,
                 ] : null,
             ],
         ]);
@@ -315,7 +333,7 @@ class StudentController extends Controller
     public function attendance(Request $request)
     {
         $internship = $this->internship($request);
-        if (!$internship->supervisor_id) {
+        if (! $internship->hasApprovedHteSupervisor()) {
             return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
         }
         $logs = $internship->attendance()
@@ -325,9 +343,9 @@ class StudentController extends Controller
 
         $this->dtr->decorateLogs(collect($logs->items()));
 
-        $today       = now()->toDateString();
+        $today = now()->toDateString();
         $todayRecord = $internship->attendance()->whereDate('date', $today)->first();
-        $canUndo     = $todayRecord ? $this->dtr->canUndoClockOut($todayRecord) : false;
+        $canUndo = $todayRecord ? $this->dtr->canUndoClockOut($todayRecord) : false;
         $undoExpires = null;
         if ($todayRecord?->clock_out) {
             $undoExpires = $this->dtr
@@ -337,9 +355,10 @@ class StudentController extends Controller
         }
 
         $overtimePrompt = $todayRecord ? $this->dtr->overtimePromptFor($todayRecord->loadMissing('internship')) : null;
+        $manilaNow = ManilaTime::now();
 
         return response()->json([
-            'attendance'   => $logs,
+            'attendance' => $logs,
             'today_record' => $todayRecord,
             'today_status' => $todayRecord
                 ? ($todayRecord->clock_out ? 'clocked_out' : 'clocked_in')
@@ -351,6 +370,9 @@ class StudentController extends Controller
             'pending_schedule' => $this->dtr->serializeSchedule($this->dtr->pendingScheduleFor($internship)),
             'schedule_history' => $this->dtr->scheduleHistory($internship)->map(fn ($s) => $this->dtr->serializeSchedule($s))->values(),
             'incomplete_dtr_days' => $this->dtr->incompleteDays($internship),
+            'server_now' => $manilaNow->toIso8601String(),
+            'server_now_display' => ManilaTime::clockDisplay($manilaNow),
+            'server_timezone' => ManilaTime::TZ,
         ]);
     }
 
@@ -358,7 +380,7 @@ class StudentController extends Controller
     public function clockIn(Request $request)
     {
         $internship = $this->internship($request);
-        if (!$internship->supervisor_id) {
+        if (! $internship->hasApprovedHteSupervisor()) {
             return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
         }
 
@@ -373,11 +395,11 @@ class StudentController extends Controller
 
                 $clockIn = now()->toTimeString();
                 $log = $internship->attendance()->create([
-                    'date'              => $today,
-                    'placement_id'      => $internship->current_placement_id,
-                    'clock_in'          => $clockIn,
-                    'am_time_in'        => $clockIn,
-                    'status'            => 'pending',
+                    'date' => $today,
+                    'placement_id' => $internship->current_placement_id,
+                    'clock_in' => $clockIn,
+                    'am_time_in' => $clockIn,
+                    'status' => 'pending',
                     'clock_in_location' => $request->location ?? null,
                 ]);
 
@@ -401,31 +423,31 @@ class StudentController extends Controller
     public function clockOut(Request $request)
     {
         $internship = $this->internship($request);
-        if (!$internship->supervisor_id) {
+        if (! $internship->hasApprovedHteSupervisor()) {
             return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
         }
         $today = now()->toDateString();
         try {
-            $log = DB::transaction(function () use ($internship, $today) {
+            $result = UniqueWrite::retry(fn () => DB::transaction(function () use ($internship, $today, $request) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
                 $open = $internship->attendance()
                     ->whereDate('date', $today)
-                    ->whereNull('clock_out')
                     ->lockForUpdate()
                     ->first();
-                if (! $open) {
+                if (! $open || ! $open->clock_in) {
                     throw new \RuntimeException('No open clock-in was found for today.');
                 }
+                if ($open->clock_out) {
+                    throw new \RuntimeException('You have already clocked out today.');
+                }
 
-                return $open;
-            });
+                $open->setRelation('internship', $internship);
+
+                return $this->dtr->finalizeClockOut($open, now(), $request->location ?? null);
+            }));
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $log->setRelation('internship', $internship);
-
-        $result = $this->dtr->finalizeClockOut($log, now(), $request->location ?? null);
 
         audit_log($request->user()->id, 'clock_out', [
             'date' => $today,
@@ -440,6 +462,9 @@ class StudentController extends Controller
             'excess_minutes' => $result['excess_minutes'],
             'undo_expires_at' => $result['undo_expires_at'],
             'can_undo_clock_out' => $result['can_undo_clock_out'],
+            'clocked_out_at' => $result['record']->clock_out,
+            'server_now_display' => ManilaTime::clockDisplay(),
+            'server_timezone' => ManilaTime::TZ,
         ]);
     }
 
@@ -448,7 +473,7 @@ class StudentController extends Controller
     {
         $internship = $this->internship($request);
         $internship->loadMissing('company', 'student.studentProfile.program');
-        $journals   = $internship->journals()->orderByDesc('week_number')->paginate(20);
+        $journals = $internship->journals()->academic()->orderByDesc('week_number')->paginate(20);
         $student = $request->user()->loadMissing('studentProfile.program');
         $profile = $student->studentProfile;
         $journals->getCollection()->transform(function (JournalEntry $journal) use ($profile, $student, $internship) {
@@ -467,20 +492,39 @@ class StudentController extends Controller
             return $journal;
         });
 
-        return ApiResponse::list($journals);
+        $payload = ApiResponse::list($journals)->getData(true);
+        $payload['intern_feedback'] = app(SupervisorFeedbackService::class)->serialize(
+            app(SupervisorFeedbackService::class)->noteForInternship($internship)
+        );
+
+        return response()->json($payload);
+    }
+
+    /** GET /api/v1/student/supervisor-feedback */
+    public function supervisorFeedback(Request $request)
+    {
+        $internship = $this->internship($request);
+        $internship->loadMissing('student.studentProfile', 'company', 'supervisor.supervisorProfile');
+        $service = app(SupervisorFeedbackService::class);
+        $note = $service->noteForInternship($internship);
+
+        return response()->json([
+            'data' => $note ? [$service->serialize($note)] : [],
+            'intern_feedback' => $service->serialize($note),
+        ]);
     }
 
     /** POST /api/v1/student/logbook */
     public function submitJournal(Request $request)
     {
         $request->validate([
-            'week_number'        => 'required|integer|min:1|max:52',
-            'date'               => 'required|date',
-            'end_date'           => 'required|date|after_or_equal:date',
+            'week_number' => 'required|integer|min:1|max:52',
+            'date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:date',
             'activities_summary' => 'required_without_all:challenges,learnings|string|nullable',
-            'challenges'         => 'required_without_all:activities_summary,learnings|string|nullable',
-            'learnings'          => 'required_without_all:activities_summary,challenges|string|nullable',
-            'notes'              => 'nullable|string',
+            'challenges' => 'required_without_all:activities_summary,learnings|string|nullable',
+            'learnings' => 'required_without_all:activities_summary,challenges|string|nullable',
+            'notes' => 'nullable|string',
         ]);
 
         $internship = $this->internship($request);
@@ -502,20 +546,18 @@ class StudentController extends Controller
                 }
 
                 $data = [
-                    'entry_number'       => $request->week_number,
-                    'week_number'        => $request->week_number,
-                    'date'               => $request->date,
-                    'end_date'           => $request->end_date,
+                    'entry_number' => $request->week_number,
+                    'week_number' => $request->week_number,
+                    'date' => $request->date,
+                    'end_date' => $request->end_date,
                     'activities_summary' => $request->activities_summary,
-                    'challenges'         => $request->challenges,
-                    'learnings'          => $request->learnings,
-                    'notes'              => $request->notes,
-                    'status'             => 'submitted',
+                    'challenges' => $request->challenges,
+                    'learnings' => $request->learnings,
+                    'notes' => $request->notes,
+                    'status' => 'submitted',
                 ];
 
                 if ($journal) {
-                    $data['supervisor_reviewed_at'] = null;
-                    $data['supervisor_reviewed_by'] = null;
                     $data['faculty_reviewed_at'] = null;
                     $data['faculty_reviewed_by'] = null;
                     $data['score'] = null;
@@ -539,13 +581,13 @@ class StudentController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        if ($internship->supervisor_id) {
+        if ($internship->faculty_id) {
             Notification::notify(
-                (int) $internship->supervisor_id,
+                (int) $internship->faculty_id,
                 'journal_submitted',
                 'Weekly journal submitted',
-                'An assigned intern submitted Week '.($journal->week_number ?? $journal->entry_number ?? '—').' for validation.',
-                '/supervisor/journals',
+                'An assigned intern submitted Week '.($journal->week_number ?? $journal->entry_number ?? '—').' for faculty review.',
+                '/faculty/journals',
                 ['journal_id' => $journal->id, 'internship_id' => $internship->id]
             );
         }
@@ -561,7 +603,7 @@ class StudentController extends Controller
         $user = $request->user();
 
         $templates = RequirementAudience::scopeTemplatesForStudent(
-            \App\Models\OjtRequirementTemplate::where('is_active', true)
+            OjtRequirementTemplate::where('is_active', true)
                 ->with(['creator.facultyProfile', 'creator.supervisorProfile', 'creator.studentProfile', 'attachments']),
             $user
         )
@@ -573,12 +615,12 @@ class StudentController extends Controller
         $docs = $templates->map(function ($template) use ($submitted, $internship) {
             $type = $template->name;
             $doc = $submitted->get($type);
-            
+
             $status = $doc?->status ?? 'not_submitted';
             $isMissed = false;
 
             if ($template->deadline && now()->greaterThan($template->deadline)) {
-                if (!$doc || $status === 'rejected' || $status === 'not_submitted') {
+                if (! $doc || $status === 'rejected' || $status === 'not_submitted') {
                     $status = 'no_submission';
                     $isMissed = true;
                 }
@@ -593,38 +635,38 @@ class StudentController extends Controller
             $senderRole = $responsible ? ucfirst($responsible->role) : ($creator ? ucfirst($creator->role) : 'Admin');
 
             return [
-                'template_id'   => $template->id,
-                'has_template'  => $template->attachments->isNotEmpty(),
+                'template_id' => $template->id,
+                'has_template' => $template->attachments->isNotEmpty(),
                 'template_attachments' => $template->attachments->map(function ($a) {
                     return [
                         'id' => $a->id,
                         'file_name' => $a->file_name,
                         'file_path' => $a->file_path,
-                        'file_url' => url('/api/v1/files/download?path=' . urlencode($a->file_path)),
+                        'file_url' => url('/api/v1/files/download?path='.urlencode($a->file_path)),
                     ];
                 })->toArray(),
                 'template_link' => $template->drive_link,
-                'description'   => $template->description,
+                'description' => $template->description,
                 'document_type' => $type,
-                'sender'        => [
+                'sender' => [
                     'name' => $senderName,
                     'role' => $senderRole,
                 ],
-                'status'        => $status,
-                'deadline'      => $template->deadline?->toIso8601String(),
-                'is_missed'     => $isMissed,
-                'submitted_at'  => $doc?->submitted_at?->toIso8601String() ?? null,
-                'remarks'       => $doc?->remarks ?? null,
-                'id'            => $doc?->id ?? null,
-                'attachments'   => $doc ? $doc->attachments->map(function ($a) {
+                'status' => $status,
+                'deadline' => $template->deadline?->toIso8601String(),
+                'is_missed' => $isMissed,
+                'submitted_at' => $doc?->submitted_at?->toIso8601String() ?? null,
+                'remarks' => $doc?->remarks ?? null,
+                'id' => $doc?->id ?? null,
+                'attachments' => $doc ? $doc->attachments->map(function ($a) {
                     return [
                         'id' => $a->id,
                         'file_name' => $a->file_name,
                         'file_path' => $a->file_path,
-                        'file_url' => url('/api/v1/files/download?path=' . urlencode($a->file_path)),
+                        'file_url' => url('/api/v1/files/download?path='.urlencode($a->file_path)),
                     ];
                 })->toArray() : [],
-                'drive_link'    => $doc?->drive_link ?? null,
+                'drive_link' => $doc?->drive_link ?? null,
             ];
         });
 
@@ -645,7 +687,7 @@ class StudentController extends Controller
         $user = $request->user();
 
         $templates = RequirementAudience::scopeTemplatesForStudent(
-            \App\Models\OjtRequirementTemplate::where('is_active', true)->with('creator'),
+            OjtRequirementTemplate::where('is_active', true)->with('creator'),
             $user
         )->get()->keyBy('name');
 
@@ -653,11 +695,11 @@ class StudentController extends Controller
 
         $request->validate([
             'document_type' => ['required', 'string', Rule::in($validTypes)],
-            'files.*'       => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
-            'drive_link'    => 'nullable|url|max:2048',
+            'files.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
+            'drive_link' => 'nullable|url|max:2048',
         ]);
 
-        if (!$request->hasFile('files') && empty($request->drive_link)) {
+        if (! $request->hasFile('files') && empty($request->drive_link)) {
             return response()->json(['message' => 'Please provide either a file or a Google Drive link.'], 422);
         }
 
@@ -683,10 +725,10 @@ class StudentController extends Controller
                 }
 
                 $payload = [
-                    'status'        => 'pending',
+                    'status' => 'pending',
                     'current_stage' => $reviewStage,
-                    'submitted_at'  => now(),
-                    'remarks'       => null,
+                    'submitted_at' => now(),
+                    'remarks' => null,
                 ];
                 if ($request->has('drive_link')) {
                     $payload['drive_link'] = $request->drive_link;
@@ -700,7 +742,7 @@ class StudentController extends Controller
 
                 return $internship->documents()->create(array_merge($payload, [
                     'document_type' => $request->document_type,
-                    'drive_link'    => $request->drive_link,
+                    'drive_link' => $request->drive_link,
                 ]));
             }));
         } catch (QueryException $e) {
@@ -709,11 +751,11 @@ class StudentController extends Controller
             }
             $doc = $internship->documents()->where('document_type', $request->document_type)->firstOrFail();
             $doc->update([
-                'status'        => 'pending',
+                'status' => 'pending',
                 'current_stage' => $reviewStage,
-                'submitted_at'  => now(),
-                'remarks'       => null,
-                'drive_link'    => $request->has('drive_link') ? $request->drive_link : $doc->drive_link,
+                'submitted_at' => now(),
+                'remarks' => null,
+                'drive_link' => $request->has('drive_link') ? $request->drive_link : $doc->drive_link,
             ]);
         }
 
@@ -765,8 +807,9 @@ class StudentController extends Controller
     /** GET /api/v1/student/evaluations */
     public function evaluations(Request $request)
     {
-        $internship  = $this->internship($request);
+        $internship = $this->internship($request);
         $evaluations = $internship->evaluations()->with('evaluator')->get();
+
         return ApiResponse::list($evaluations);
     }
 
@@ -775,15 +818,15 @@ class StudentController extends Controller
     {
         $request->validate([
             'evaluation_period' => 'required|string',
-            'form_type'         => 'required|in:FO-22,FO-23',
-            'responses'         => 'required|array',
-            'general_comments'  => 'nullable|string',
+            'form_type' => 'required|in:FO-22,FO-23',
+            'responses' => 'required|array',
+            'general_comments' => 'nullable|string',
         ]);
 
         $internship = $this->internship($request);
         $period = $request->input('evaluation_period');
 
-        $eval = \App\Models\Evaluation::updateOrCreate(
+        $eval = Evaluation::updateOrCreate(
             [
                 'internship_id' => $internship->id,
                 'evaluator_type' => 'student',
@@ -811,12 +854,19 @@ class StudentController extends Controller
     /** GET /api/v1/student/records */
     public function records(Request $request)
     {
-        $user    = $request->user()->load('studentProfile.program');
-        $history = $user->internshipsAsStudent()->with(['company', 'supervisor.supervisorProfile', 'faculty.facultyProfile', 'student.studentProfile.program'])->orderBy('school_year', 'desc')
-            ->withCount(['attendance as validated_days' => fn($q) => $q->where('status', 'validated')])
+        $user = $request->user()->load('studentProfile.program');
+        $feedbackService = app(SupervisorFeedbackService::class);
+        $history = $user->internshipsAsStudent()->with([
+            'company',
+            'supervisor.supervisorProfile',
+            'faculty.facultyProfile',
+            'student.studentProfile.program',
+            'journals' => fn ($q) => $q->where('status', SupervisorFeedbackService::NOTE_STATUS)->whereNotNull('supervisor_feedback'),
+        ])->orderBy('school_year', 'desc')
+            ->withCount(['attendance as validated_days' => fn ($q) => $q->where('status', 'validated')])
             ->orderByDesc('created_at')
             ->get()
-            ->map(function ($internship) {
+            ->map(function ($internship) use ($feedbackService) {
                 $snapshot = InternshipProgressService::snapshot($internship);
                 $internship->total_hours_rendered = $snapshot['hours_rendered'];
                 $internship->target_hours = $snapshot['target_hours'];
@@ -827,6 +877,8 @@ class StudentController extends Controller
                 $internship->setAttribute('hte_completed', $snapshot['hte_completed']);
                 $internship->setAttribute('company_name', $snapshot['company_name']);
                 $internship->setAttribute('status_label', $snapshot['status_label']);
+                $note = $internship->journals->first();
+                $internship->setAttribute('supervisor_feedback', $feedbackService->serialize($note));
 
                 return $internship;
             });
@@ -844,7 +896,7 @@ class StudentController extends Controller
     {
         $request->validate([
             'internship_id' => 'nullable|integer',
-            'notes'         => 'nullable|string|max:1000',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $query = $request->user()->internshipsAsStudent()->where('status', 'completed');
@@ -873,16 +925,16 @@ class StudentController extends Controller
         $internship = $this->internship($request);
         $internship->load(['documents', 'evaluations']);
 
-        $eligible  = CertificateEligibilityService::isEligible($internship);
+        $eligible = CertificateEligibilityService::isEligible($internship);
         $checklist = CertificateEligibilityService::checklist($internship);
 
         // If newly eligible and never issued, mark the flag
-        if ($eligible && !$internship->certificate_eligible) {
+        if ($eligible && ! $internship->certificate_eligible) {
             $internship->update(['certificate_eligible' => true]);
         }
 
         return response()->json([
-            'eligible'  => $eligible,
+            'eligible' => $eligible,
             'issued_at' => $internship->certificate_issued_at,
             'checklist' => $checklist,
         ]);
@@ -890,7 +942,8 @@ class StudentController extends Controller
 
     public function companies()
     {
-        $companies = \App\Models\Company::where('moa_status', 'active')->get();
+        $companies = Company::where('moa_status', 'active')->get();
+
         return response()->json(['companies' => $companies]);
     }
 
@@ -901,16 +954,7 @@ class StudentController extends Controller
             ->with('company')
             ->latest()
             ->get()
-            ->map(function (InternshipApplication $application) {
-                return [
-                    'id' => $application->id,
-                    'status' => $application->status,
-                    'company_id' => $application->company_id,
-                    'company' => $application->company,
-                    'company_name' => $application->company?->company_name,
-                    'created_at' => $application->created_at?->toDateTimeString(),
-                ];
-            });
+            ->map(fn (InternshipApplication $application) => $this->serializeApplication($application));
 
         if ($applications->isEmpty()) {
             $applications = $request->user()->internshipsAsStudent()
@@ -923,6 +967,9 @@ class StudentController extends Controller
                     'company_id' => $internship->company_id,
                     'company' => $internship->company,
                     'company_name' => $internship->company?->company_name,
+                    'coordinator_remarks' => null,
+                    'has_moa' => false,
+                    'moa_path' => null,
                     'created_at' => $internship->created_at?->toDateTimeString(),
                 ]);
         }
@@ -932,21 +979,63 @@ class StudentController extends Controller
 
     public function applyCompany(Request $request)
     {
-        $data = $request->validate(['company_id' => 'required|exists:companies,id']);
+        $data = $request->validate([
+            'company_id' => 'required|exists:companies,id',
+            'moa' => PlacementMoa::RULE,
+        ]);
         $internship = $this->internship($request);
 
+        $existing = InternshipApplication::where('student_id', $request->user()->id)
+            ->where('company_id', $data['company_id'])
+            ->first();
+
+        if ($existing && $existing->status === 'approved') {
+            return response()->json([
+                'message' => 'This application was already approved.',
+                'application' => $this->serializeApplication($existing->load('company')),
+            ]);
+        }
+
+        if ($existing && $existing->status === 'pending' && ! $request->hasFile('moa')) {
+            return response()->json([
+                'message' => 'Application submitted. Please await coordinator approval.',
+                'application' => $this->serializeApplication($existing->load('company')),
+            ]);
+        }
+
         try {
-            $application = DB::transaction(function () use ($request, $internship, $data) {
+            $application = DB::transaction(function () use ($request, $internship, $data, $existing) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
                 $internship->update(['company_id' => $data['company_id']]);
 
-                return InternshipApplication::updateOrCreate(
+                $payload = [
+                    'student_id' => $request->user()->id,
+                    'company_id' => $data['company_id'],
+                    'status' => 'pending',
+                    'coordinator_remarks' => null,
+                ];
+
+                if ($request->hasFile('moa')) {
+                    if ($existing?->moa_path) {
+                        PlacementMoa::delete($existing->moa_path);
+                    }
+                    $payload['moa_path'] = PlacementMoa::store(
+                        $request->file('moa'),
+                        'applications',
+                        $request->user()->id
+                    );
+                    $payload['moa_original_name'] = $request->file('moa')->getClientOriginalName();
+                }
+
+                $application = InternshipApplication::updateOrCreate(
                     [
                         'student_id' => $request->user()->id,
                         'company_id' => $data['company_id'],
                     ],
-                    ['status' => 'pending']
+                    $payload
                 )->load('company');
+
+                return $application;
             });
         } catch (QueryException $e) {
             if (! UniqueWrite::isDuplicate($e)) {
@@ -958,37 +1047,123 @@ class StudentController extends Controller
                 ->load('company');
         }
 
+        $student = $request->user()->loadMissing('studentProfile');
+        PlacementMoa::notifyDepartmentCoordinators(
+            $student,
+            'placement_application',
+            'New company application',
+            ($student->profile_name ?: $student->username).' applied to '.$application->company?->company_name.'.',
+            '/coordinator/internship-management'
+        );
+
         return response()->json([
             'message' => 'Application submitted. Please await coordinator approval.',
-            'application' => [
-                'id' => $application->id,
-                'status' => $application->status,
-                'company_id' => $application->company_id,
-                'company' => $application->company,
-                'company_name' => $application->company?->company_name,
-            ],
+            'application' => $this->serializeApplication($application),
         ]);
     }
 
     public function hteRequests(Request $request)
     {
-        $requests = \App\Models\HteRequest::where('student_id', $request->user()->id)->get();
+        $requests = HteRequest::where('student_id', $request->user()->id)
+            ->latest()
+            ->get()
+            ->map(fn ($req) => $this->serializeHteRequest($req));
+
         return response()->json(['requests' => $requests]);
     }
 
     public function submitHteRequest(Request $request)
     {
         $data = $request->validate([
-            'company_name' => 'required|string',
-            'address' => 'required|string',
-            'contact_person' => 'required|string',
-            'contact_email' => 'required|email',
-            'contact_number' => 'required|string',
-            'remarks' => 'nullable|string',
+            'company_name' => 'required|string|max:255',
+            'address' => 'required|string|max:500',
+            'contact_person' => 'required|string|max:255',
+            'contact_email' => 'required|email|max:255',
+            'contact_number' => ['required', 'string', 'max:50', 'regex:/^[0-9+\-\s()]{7,50}$/'],
+            'remarks' => 'nullable|string|max:2000',
+            'moa' => PlacementMoa::RULE,
         ]);
+
+        $accredited = Company::query()
+            ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
+            ->exists();
+
+        if ($accredited) {
+            return response()->json([
+                'message' => 'This HTE already exists in the accredited company list.',
+            ], 422);
+        }
+
+        $duplicate = HteRequest::where('student_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
+            ->exists();
+
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'You already have a pending HTE request for this company.',
+            ], 422);
+        }
+
         $data['student_id'] = $request->user()->id;
         $data['status'] = 'pending';
-        $req = \App\Models\HteRequest::create($data);
-        return response()->json(['message' => 'HTE Request submitted.', 'request' => $req]);
+        $data['coordinator_remarks'] = null;
+
+        if ($request->hasFile('moa')) {
+            $data['moa_path'] = PlacementMoa::store(
+                $request->file('moa'),
+                'hte',
+                $request->user()->id
+            );
+            $data['moa_original_name'] = $request->file('moa')->getClientOriginalName();
+        }
+
+        $req = HteRequest::create($data);
+
+        $student = $request->user()->loadMissing('studentProfile');
+        PlacementMoa::notifyDepartmentCoordinators(
+            $student,
+            'hte_request',
+            'New HTE request',
+            ($student->profile_name ?: $student->username).' requested a new HTE: '.$req->company_name.'.',
+            '/coordinator/internship-management'
+        );
+
+        return response()->json(['message' => 'HTE Request submitted.', 'request' => $this->serializeHteRequest($req)]);
+    }
+
+    private function serializeApplication(InternshipApplication $application): array
+    {
+        return [
+            'id' => $application->id,
+            'status' => $application->status,
+            'company_id' => $application->company_id,
+            'company' => $application->company,
+            'company_name' => $application->company?->company_name,
+            'coordinator_remarks' => $application->coordinator_remarks,
+            'has_moa' => (bool) $application->moa_path,
+            'moa_path' => $application->moa_path,
+            'moa_original_name' => $application->moa_original_name,
+            'created_at' => $application->created_at?->toDateTimeString(),
+        ];
+    }
+
+    private function serializeHteRequest(HteRequest $req): array
+    {
+        return [
+            'id' => $req->id,
+            'company_name' => $req->company_name,
+            'address' => $req->address,
+            'contact_person' => $req->contact_person,
+            'contact_email' => $req->contact_email,
+            'contact_number' => $req->contact_number,
+            'status' => $req->status,
+            'remarks' => $req->remarks,
+            'coordinator_remarks' => $req->coordinator_remarks,
+            'has_moa' => (bool) $req->moa_path,
+            'moa_path' => $req->moa_path,
+            'moa_original_name' => $req->moa_original_name,
+            'created_at' => $req->created_at?->toDateTimeString(),
+        ];
     }
 }

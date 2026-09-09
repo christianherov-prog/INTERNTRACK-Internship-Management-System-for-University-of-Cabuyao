@@ -8,9 +8,11 @@ import { unwrapList } from "../../utils/apiList"
 import { CURRENT_TERM } from "../../config/term"
 import { AuthenticatedFileImage, AuthenticatedFileLink } from "../../components/AuthenticatedFile"
 import { useCurrentTerm } from "../../hooks/useCurrentTerm"
+import { useCachedPage } from "../../hooks/useCachedPage"
 import FormPreviewModal from "../../components/portfolio/FormPreviewModal"
 import { formatStudentName as studentName } from "../../utils/formatName"
 import { displayLabel } from "../../utils/displayLabel"
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 function studentSection(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
@@ -51,9 +53,6 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
             <div className="mb-3 p-3 rounded" style={{ background: "#f8fafc", fontSize: "0.88rem" }}>
               <div className="fw-semibold mb-1">Week {journal.week_number ?? journal.entry_number}</div>
               {journal.notes && <p className="mb-0 text-muted"><strong>Notes:</strong> {journal.notes}</p>}
-              {journal.supervisor_feedback && (
-                <div className="mt-2 alert alert-secondary py-2 mb-0"><strong>Supervisor feedback:</strong> {journal.supervisor_feedback}</div>
-              )}
               {journal.faculty_feedback && (
                 <div className="mt-2 alert alert-info py-2 mb-0"><strong>Previous Feedback:</strong> {journal.faculty_feedback}</div>
               )}
@@ -97,7 +96,7 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
                 <input
                   type="number"
                   className="form-control"
-                  placeholder="e.g. 100"
+                  placeholder="Score"
                   min="0"
                   max="100"
                   value={score}
@@ -108,7 +107,7 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
             )}
             <div>
               <label className="form-label fw-semibold">Feedback {action === "needs_revision" && <span className="text-danger">*</span>}</label>
-              <textarea className="form-control" rows={3} value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Write feedback for the student…"></textarea>
+              <textarea className="form-control" rows={3} value={feedback} onChange={e => setFeedback(e.target.value)} placeholder="Feedback"></textarea>
             </div>
           </div>
           <div className="modal-footer">
@@ -125,11 +124,11 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
 
 // ─── Tab: Students ────────────────────────────────────────────────────────────
 function TabStudents() {
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [archived, setArchived] = useState(false)
+  const { loading, seed, run } = useCachedPage(`faculty:assigned-students:${archived ? 1 : 0}`)
+  const [rows, setRows] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
-  const [archived, setArchived] = useState(false)
   const [search, setSearch] = useState("")
   const [programFilter, setProgramFilter] = useState("all")
   const [sectionFilter, setSectionFilter] = useState("all")
@@ -140,14 +139,16 @@ function TabStudents() {
   const [previewModal, setPreviewModal] = useState(null)
 
   const fetchStudents = () => {
-    setLoading(true); setError(null)
-    api.get("/faculty/assigned-students", { params: { archived: archived ? 1 : 0 } })
-      .then(res => setRows(unwrapList(res.data).items || []))
-      .catch(err => { setError(err.response?.data?.message || "Failed to load students."); setRows([]) })
-      .finally(() => setLoading(false))
+    setError(null)
+    run(() => api.get("/faculty/assigned-students", { params: { archived: archived ? 1 : 0 } }).then(res => unwrapList(res.data).items || []))
+      .then((next) => { if (next) setRows(next) })
+      .catch((err) => {
+        setError(err.response?.data?.message || "Failed to load students.")
+      })
   }
 
   useEffect(() => {
+    setRows(seed ?? [])
     fetchStudents()
   }, [archived]) // Re-fetch when archived toggle changes
 
@@ -189,7 +190,7 @@ function TabStudents() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           {programs.map(p => <option key={p} value={p}>{p === "all" ? "All Programs" : p}</option>)}
@@ -212,7 +213,7 @@ function TabStudents() {
 
 
 
-      {loading ? <div className="text-center py-5"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+      {loading && rows.length === 0 ? <div className="text-center py-5"><InternTrackLoader /></div>
         : filtered.length === 0 ? (
           <div className="content-card">
             <div className="text-center py-5 text-muted">
@@ -316,8 +317,8 @@ function TabStudents() {
 // ─── Tab: Journal Queue ───────────────────────────────────────────────────────
 function TabJournals() {
   const currentTerm = useCurrentTerm()
-  const [journals, setJournals] = useState([])
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage("faculty:assigned-journals")
+  const [journals, setJournals] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [message, setMessage] = useState(null)
@@ -325,11 +326,12 @@ function TabJournals() {
   const [previewModal, setPreviewModal] = useState(null)
 
   const fetchJournals = () => {
-    setLoading(true); setError(null)
-    api.get("/faculty/journals")
-      .then(res => setJournals(unwrapList(res.data).items))
-      .catch(err => { setError(err.response?.data?.message || "Failed to load journals."); setJournals([]) })
-      .finally(() => setLoading(false))
+    setError(null)
+    run(() => api.get("/faculty/journals").then(res => unwrapList(res.data).items || []))
+      .then((next) => { if (next) setJournals(next) })
+      .catch((err) => {
+        setError(err.response?.data?.message || "Failed to load journals.")
+      })
   }
   useEffect(() => { fetchJournals() }, [])
 
@@ -377,7 +379,7 @@ function TabJournals() {
           <span className="ms-auto badge bg-warning text-dark">{journals.length} pending</span>
         </div>
         <div className="table-card">
-          {loading ? <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+          {loading && journals.length === 0 ? <div className="text-center py-4"><InternTrackLoader /></div>
             : journals.length === 0 && !error ? (
               <div className="text-center py-4 text-muted"><i className="fa fa-check-circle fa-2x mb-2 d-block text-success"></i>All journals reviewed!</div>
             ) : journals.map(j => {
@@ -390,10 +392,8 @@ function TabJournals() {
                     <div className="text-muted" style={{ fontSize: "0.82rem" }}>{j.date}</div>
                     {j.notes && <p className="mt-1 mb-0 text-muted" style={{ fontSize: "0.85rem" }}>{j.notes?.substring(0, 100)}…</p>}
                     <span className={`badge mt-1 ${j.status === "approved" ? "bg-success" : j.status === "needs_revision" ? "bg-warning text-dark" : "bg-secondary"}`}>{j.status}</span>
-                    {j.awaiting_supervisor && <span className="badge bg-warning text-dark mt-1 ms-1">Awaiting supervisor</span>}
-                    {j.supervisor_validated && <span className="badge bg-info text-dark mt-1 ms-1">Supervisor validated</span>}
                   </div>
-                  <button className="btn btn-sm btn-primary ms-3 flex-shrink-0" onClick={() => setModal(j)} disabled={j.faculty_can_review === false}>
+                  <button className="btn btn-sm btn-primary ms-3 flex-shrink-0" onClick={() => setModal(j)}>
                     <i className="fa fa-pen me-1"></i>Review
                   </button>
                 </div>
@@ -414,36 +414,46 @@ function TabJournals() {
 
 // ─── Tab: Attendance Monitor ──────────────────────────────────────────────────
 function TabAttendance() {
-  const [rows, setRows] = useState([])
-  const [students, setStudents] = useState([])
-  const [corrections, setCorrections] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [statusFilter, setStatusFilter] = useState("all")
   const [internshipId, setInternshipId] = useState("")
+  const { loading, seed, run } = useCachedPage(`faculty:assigned-attendance:${statusFilter}:${internshipId || 'all'}`)
+  const [rows, setRows] = useState(() => seed?.rows ?? [])
+  const [students, setStudents] = useState([])
+  const [corrections, setCorrections] = useState(() => seed?.corrections ?? [])
+  const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(null)
   const [message, setMessage] = useState(null)
 
   const fetchAttendance = () => {
-    setLoading(true); setError(null)
+    setError(null)
     const params = {}
     if (statusFilter && statusFilter !== "all") params.status = statusFilter
     if (internshipId) params.internship_id = internshipId
-    Promise.all([
+    run(() => Promise.all([
       api.get("/faculty/attendance", { params }),
       api.get("/faculty/dtr/corrections").catch(() => ({ data: { data: [] } })),
-    ])
-      .then(([res, corrRes]) => {
-        setRows(unwrapList(res.data).items)
-        setCorrections(unwrapList(corrRes.data).items)
+    ]).then(([res, corrRes]) => ({
+      rows: unwrapList(res.data).items || [],
+      corrections: unwrapList(corrRes.data).items || [],
+    })))
+      .then((next) => {
+        if (next) {
+          setRows(next.rows)
+          setCorrections(next.corrections)
+        }
       })
-      .catch(err => { setError(err.response?.data?.message || "Failed to load attendance."); setRows([]) })
-      .finally(() => setLoading(false))
+      .catch((err) => {
+        setError(err.response?.data?.message || "Failed to load attendance.")
+      })
   }
   useEffect(() => {
     api.get("/faculty/assigned-students").then(res => setStudents(unwrapList(res.data).items)).catch(() => setStudents([]))
   }, [])
-  useEffect(() => { fetchAttendance() }, [statusFilter, internshipId])
+  useEffect(() => {
+    setRows(seed?.rows ?? [])
+    setCorrections(seed?.corrections ?? [])
+    fetchAttendance()
+  }, [statusFilter, internshipId])
 
   const reviewCorrection = async (id, action) => {
     setProcessing(id)
@@ -525,7 +535,7 @@ function TabAttendance() {
           <span className="ms-auto badge bg-secondary">{rows.length} record{rows.length === 1 ? "" : "s"}</span>
         </div>
         <div className="table-card">
-          {loading ? <div className="text-center py-4"><i className="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+          {loading && rows.length === 0 ? <div className="text-center py-4"><InternTrackLoader /></div>
             : rows.length === 0 ? <div className="text-center py-4 text-muted">No attendance records for the selected filters.</div>
               : (
                 <div className="table-responsive">
@@ -591,9 +601,9 @@ function FacultyAssignedStudents({ embedded = false }) {
         ))}
       </ul>
 
-      {tab === "students" && <TabStudents />}
-      {tab === "journals" && <TabJournals />}
-      {tab === "attendance" && <TabAttendance />}
+      <div hidden={tab !== "students"}><TabStudents /></div>
+      <div hidden={tab !== "journals"}><TabJournals /></div>
+      <div hidden={tab !== "attendance"}><TabAttendance /></div>
     </Wrapper>
   )
 }

@@ -112,7 +112,7 @@ function formatDate(value) {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Manila' })
 }
 
 function trainingPeriod(internship) {
@@ -128,6 +128,7 @@ function trainingPeriod(internship) {
  */
 export function resolveFormIdentity(internship, extras = {}) {
   const user = extras.user || null
+  const supplied = extras.identity || {}
   const term = extras.term || user?.term || CURRENT_TERM
   const profile = studentProfileOf(internship, extras)
   const faculty = facultyProfileOf(internship)
@@ -164,21 +165,24 @@ export function resolveFormIdentity(internship, extras = {}) {
   const programSection = [program, section].filter(Boolean).join(' / ')
 
   return {
-    studentName,
-    program,
-    section,
-    programSection,
-    facultyName,
-    supervisorName,
-    supervisorPosition: firstNonEmpty(supervisor?.position, supervisor?.designation),
-    companyName: firstNonEmpty(company.company_name, company.name, internship?.company_name),
-    companyAddress: firstNonEmpty(company.address),
-    companyDepartment: firstNonEmpty(company.department),
-    semester: semester.label,
+    studentName: firstNonEmpty(supplied.student_name, supplied.studentName, studentName),
+    program: firstNonEmpty(supplied.program, program),
+    section: firstNonEmpty(supplied.section, section),
+    programSection: firstNonEmpty(supplied.program_section, programSection),
+    facultyName: firstNonEmpty(supplied.faculty_name, facultyName),
+    supervisorName: firstNonEmpty(supplied.supervisor_name, supervisorName),
+    supervisorPosition: firstNonEmpty(supplied.supervisor_position, supervisor?.position, supervisor?.designation),
+    companyName: firstNonEmpty(supplied.company_name, company.company_name, company.name, internship?.company_name),
+    companyAddress: firstNonEmpty(supplied.company_address, company.address),
+    companyDepartment: firstNonEmpty(supplied.company_department, company.department),
+    semester: firstNonEmpty(supplied.semester, semester.label),
     evaluationPeriod: semester.period,
-    academicYear: parseAcademicYear(internship, user, term),
+    academicYear: firstNonEmpty(supplied.academic_year, parseAcademicYear(internship, user, term)),
     term,
-    trainingPeriod: trainingPeriod(internship),
+    trainingPeriod: firstNonEmpty(supplied.training_period, trainingPeriod(internship)),
+    studentSignaturePath: supplied.student_signature_path || '',
+    supervisorSignaturePath: supplied.supervisor_signature_path || '',
+    facultySignaturePath: supplied.faculty_signature_path || '',
   }
 }
 

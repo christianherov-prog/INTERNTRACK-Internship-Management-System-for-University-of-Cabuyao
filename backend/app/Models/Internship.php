@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\FacultySectionAssignmentService;
+use App\Services\InternshipPlacementService;
+use App\Support\DepartmentScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class Internship extends Model
 {
@@ -22,25 +26,65 @@ class Internship extends Model
     ];
 
     protected $casts = [
-        'start_date'             => 'date',
-        'end_date'               => 'date',
-        'expected_end_date'      => 'date',
-        'absorbed_at'            => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'expected_end_date' => 'date',
+        'absorbed_at' => 'date',
         'absorption_recorded_at' => 'datetime',
-        'student_declared_at'    => 'datetime',
-        'student_declared_hired'  => 'boolean',
-        'certificate_eligible'    => 'boolean',
-        'certificate_issued_at'   => 'datetime',
-        'total_hours_rendered'    => 'decimal:2',
-        'final_grade'             => 'decimal:2',
+        'student_declared_at' => 'datetime',
+        'student_declared_hired' => 'boolean',
+        'certificate_eligible' => 'boolean',
+        'certificate_issued_at' => 'datetime',
+        'total_hours_rendered' => 'decimal:2',
+        'final_grade' => 'decimal:2',
     ];
 
     // ─── Relationships ─────────────────────────────────────────────────────────
-    public function student()    { return $this->belongsTo(User::class, 'student_id'); }
-    public function company()    { return $this->belongsTo(Company::class); }
-    public function supervisor() { return $this->belongsTo(User::class, 'supervisor_id'); }
-    public function faculty()    { return $this->belongsTo(User::class, 'faculty_id'); }
-    public function coordinator(){ return $this->belongsTo(User::class, 'coordinator_id'); }
+    public function student()
+    {
+        return $this->belongsTo(User::class, 'student_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function supervisor()
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
+    /**
+     * True when an Industry / HTE supervisor is assigned on the internship
+     * or on the current placement row (canonical approved-supervisor check).
+     */
+    public function hasApprovedHteSupervisor(): bool
+    {
+        if ($this->supervisor_id) {
+            return true;
+        }
+
+        if ($this->relationLoaded('currentPlacement')) {
+            return (bool) $this->currentPlacement?->supervisor_id;
+        }
+
+        if ($this->current_placement_id && Schema::hasTable('internship_placements')) {
+            return (bool) $this->currentPlacement()->value('supervisor_id');
+        }
+
+        return false;
+    }
+
+    public function faculty()
+    {
+        return $this->belongsTo(User::class, 'faculty_id');
+    }
+
+    public function coordinator()
+    {
+        return $this->belongsTo(User::class, 'coordinator_id');
+    }
 
     public function attendance()
     {
@@ -133,31 +177,46 @@ class Internship extends Model
     // ─── Computed Helpers ──────────────────────────────────────────────────────
     public function getProgressPercentAttribute(): float
     {
-        if ($this->target_hours <= 0) return 0;
+        if ($this->target_hours <= 0) {
+            return 0;
+        }
+
         return min(100, round(($this->total_hours_rendered / $this->target_hours) * 100, 1));
+    }
+
+    public function computeTotalHours(): float
+    {
+        $attendanceHours = (float) $this->attendance()
+            ->where('status', 'validated')
+            ->sum('hours_rendered');
+
+        $placementHours = 0.0;
+        if (Schema::hasTable('internship_placements')) {
+            $placementHours = (float) $this->placements()->sum('accumulated_hours');
+        }
+
+        if ($attendanceHours > 0) {
+            return $attendanceHours;
+        }
+
+        if ($placementHours > 0) {
+            return $placementHours;
+        }
+
+        return (float) ($this->total_hours_rendered ?? 0);
     }
 
     public function refreshTotalHours(): void
     {
-        $this->loadMissing('placements');
+        if (Schema::hasTable('internship_placements')) {
+            $this->loadMissing('placements');
 
-        foreach ($this->placements as $placement) {
-            $placement->refreshAccumulatedHours();
+            foreach ($this->placements as $placement) {
+                $placement->refreshAccumulatedHours();
+            }
         }
 
-        $attendanceHours = (float) $this->attendance()
-            ->where('status', 'validated')
-            ->sum('hours_rendered');
-        $placementHours = (float) $this->placements()->sum('accumulated_hours');
-
-        if ($attendanceHours > 0) {
-            $total = $attendanceHours;
-        } elseif ($placementHours > 0) {
-            $total = $placementHours;
-        } else {
-            // Keep a seeded/legacy stored total when no validated attendance exists yet.
-            $total = (float) ($this->total_hours_rendered ?? 0);
-        }
+        $total = $this->computeTotalHours();
 
         if ((float) $this->total_hours_rendered !== $total) {
             $this->update(['total_hours_rendered' => $total]);
@@ -167,16 +226,16 @@ class Internship extends Model
     // ─── Scopes ────────────────────────────────────────────────────────────────
     public function scopeInDepartment($query)
     {
-        return \App\Support\DepartmentScope::constrainInternships($query, auth()->user());
+        return DepartmentScope::constrainInternships($query, auth()->user());
     }
 
     protected static function booted(): void
     {
         $resolveFaculty = function (Internship $internship) {
             if (empty($internship->faculty_id) && $internship->student_id) {
-                $user = \App\Models\User::with('studentProfile')->find($internship->student_id);
+                $user = User::with('studentProfile')->find($internship->student_id);
                 if ($user?->studentProfile) {
-                    $facultyId = app(\App\Services\FacultySectionAssignmentService::class)->resolveFacultyForProfile($user->studentProfile)?->id;
+                    $facultyId = app(FacultySectionAssignmentService::class)->resolveFacultyForProfile($user->studentProfile)?->id;
                     if ($facultyId) {
                         $internship->faculty_id = $facultyId;
                     }
@@ -187,7 +246,7 @@ class Internship extends Model
         static::creating($resolveFaculty);
         static::updating($resolveFaculty);
         static::created(function (Internship $internship) {
-            \App\Services\InternshipPlacementService::ensurePlacements($internship);
+            InternshipPlacementService::ensurePlacements($internship);
         });
     }
 }

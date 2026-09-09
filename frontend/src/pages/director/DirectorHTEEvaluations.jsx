@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import api from '../../services/api'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
 
 const FORM_LABELS = {
   'FO-24': { label: 'FO-24', color: 'btn-outline-primary', desc: 'Performance Eval (Supervisor)' },
@@ -11,36 +13,44 @@ const FORM_LABELS = {
 }
 
 export default function DirectorHTEEvaluations() {
-  const [internships, setInternships] = useState([])
-  const [stats, setStats] = useState(null)
-  const [ratingCounts, setRatingCounts] = useState({})
-  const [formCounts, setFormCounts] = useState({})
-  const [loading, setLoading] = useState(true)
+  const { loading, seed, run } = useCachedPage('director:hte-evaluations')
+  const [internships, setInternships] = useState(() => seed?.internships ?? [])
+  const [stats, setStats] = useState(() => seed?.stats ?? null)
+  const [ratingCounts, setRatingCounts] = useState(() => seed?.ratingCounts ?? {})
+  const [formCounts, setFormCounts] = useState(() => seed?.formCounts ?? {})
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)   // { eval, internship }
   const [currentPage, setCurrentPage] = useState(1)
-  const [pagination, setPagination] = useState(null)
+  const [pagination, setPagination] = useState(() => seed?.pagination ?? null)
   const [filters, setFilters] = useState({ department_id: '', program_id: '', section: '' })
   const [departments, setDepartments] = useState([])
   const [programs, setPrograms] = useState([])
 
   const loadPage = (page = 1) => {
-    setLoading(true)
     const params = new URLSearchParams({ page })
     if (filters.department_id) params.set('department_id', filters.department_id)
     if (filters.program_id) params.set('program_id', filters.program_id)
     if (filters.section) params.set('section', filters.section)
-    api.get(`/director/evaluations?${params.toString()}`)
-      .then(res => {
-        const { internships: iData, stats: s, rating_counts, form_counts } = res.data
-        setInternships(iData.data || [])
-        setPagination(iData)
-        setStats(s)
-        setRatingCounts(rating_counts || {})
-        setFormCounts(form_counts || {})
+    run(() => api.get(`/director/evaluations?${params.toString()}`).then(res => {
+      const { internships: iData, stats: s, rating_counts, form_counts } = res.data
+      return {
+        internships: iData.data || [],
+        pagination: iData,
+        stats: s,
+        ratingCounts: rating_counts || {},
+        formCounts: form_counts || {},
+      }
+    }))
+      .then((next) => {
+        if (next) {
+          setInternships(next.internships)
+          setPagination(next.pagination)
+          setStats(next.stats)
+          setRatingCounts(next.ratingCounts)
+          setFormCounts(next.formCounts)
+        }
       })
       .catch(err => setError(err.response?.data?.message || 'Failed to load evaluations'))
-      .finally(() => setLoading(false))
   }
 
   useEffect(() => { loadPage(1) }, [filters])
@@ -68,10 +78,10 @@ export default function DirectorHTEEvaluations() {
   return (
     <Layout title="Evaluations Overview" subtitle="All submitted evaluation forms by Department, Program, and Section." icon="fa-star" bodyClass="student-page">
       <div className="container-fluid px-4 py-4">
-        {loading && <div className="text-center py-5"><div className="spinner-border text-primary" role="status"></div></div>}
+        {loading && !seed && <div className="text-center py-5"><InternTrackLoader /></div>}
         {error && <div className="alert alert-danger">{error}</div>}
 
-        {!loading && !error && (
+        {(!loading || seed) && !error && (
           <>
             {/* Filters */}
             <div className="card border-0 shadow-sm mb-4">
@@ -97,7 +107,7 @@ export default function DirectorHTEEvaluations() {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small text-muted mb-1">Section</label>
-                    <input type="text" className="form-control form-control-sm" placeholder="e.g. 4A" value={filters.section} onChange={e => setFilters({...filters, section: e.target.value})} />
+                    <input type="text" className="form-control form-control-sm" placeholder="Section" value={filters.section} onChange={e => setFilters({...filters, section: e.target.value})} />
                   </div>
                 </div>
               </div>
