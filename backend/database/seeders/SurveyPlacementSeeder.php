@@ -15,11 +15,11 @@ use Illuminate\Support\Facades\Hash;
  *
  * Accounts prepared:
  *   Students:     2300592 (Montealegre) — fully placed for messaging demos
- *                 2300600 (Valinado), 2300590 (Taac-Taac), and 2300500 (Taduran)
+ *                 2300600 (Valinado), 2300590 (Angel Luis Taac - Taac), and 2300500 (Taduran)
  *                 are intentionally NOT placed (fresh enrollees)
  *   Faculty:      FAC-1001
  *   Coordinator:  COR-1001
- *   Supervisor:   first existing supervisor, or SUP-0001 if none exist
+ *   Supervisor:   SUP-0002 Adrian Reyes when present
  *   Company:      first active MOA company (TechCorp PH when freshly seeded)
  *
  * Password for all: interntrack123
@@ -41,7 +41,8 @@ class SurveyPlacementSeeder extends Seeder
             return;
         }
 
-        $supervisor = User::where('role', 'supervisor')->first();
+        $supervisor = User::where('faculty_number', 'SUP-0002')->first()
+            ?? User::where('role', 'supervisor')->where('is_active', true)->first();
         if (! $supervisor) {
             $supervisor = User::create([
                 'faculty_number' => \App\Support\SupervisorIds::nextFacultyNumber(),
@@ -50,18 +51,17 @@ class SurveyPlacementSeeder extends Seeder
                 'role' => 'supervisor',
                 'is_active' => true,
             ]);
+            SupervisorProfile::updateOrCreate(
+                ['user_id' => $supervisor->id],
+                [
+                    'first_name' => 'Demo',
+                    'last_name' => 'Supervisor',
+                    'email' => 'supervisor.demo@interntrack.local',
+                    'contact_number' => '09170000001',
+                    'position' => 'Industry Supervisor',
+                ]
+            );
         }
-
-        SupervisorProfile::updateOrCreate(
-            ['user_id' => $supervisor->id],
-            [
-                'first_name' => 'Demo',
-                'last_name' => 'Supervisor',
-                'email' => 'supervisor.demo@interntrack.local',
-                'contact_number' => '09170000001',
-                'position' => 'Industry Supervisor',
-            ]
-        );
 
         $company = Company::where('moa_status', 'active')->orderBy('id')->first()
             ?? Company::orderBy('id')->first();

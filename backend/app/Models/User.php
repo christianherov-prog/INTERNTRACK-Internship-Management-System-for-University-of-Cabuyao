@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -28,6 +29,29 @@ class User extends Authenticatable
         'last_login_at' => 'datetime',
         'notification_preferences' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            $code = trim((string) ($user->faculty_number ?? ''));
+            if ($code === '') {
+                $user->faculty_number = null;
+
+                return;
+            }
+
+            $taken = static::withTrashed()
+                ->where('faculty_number', $code)
+                ->when($user->exists, fn ($q) => $q->whereKeyNot($user->getKey()))
+                ->exists();
+
+            if ($taken) {
+                throw ValidationException::withMessages([
+                    'faculty_number' => ['This ID is already assigned to another account.'],
+                ]);
+            }
+        });
+    }
 
     // ─── Profile Relationships ────────────────────────────────────────────────
 

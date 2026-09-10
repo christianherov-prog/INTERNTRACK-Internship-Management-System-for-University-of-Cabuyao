@@ -68,6 +68,36 @@ export function AuthenticatedFileLink({ path, children, className, style, title 
   )
 }
 
+/** Downloads a private storage file without exposing the raw storage path. */
+export function AuthenticatedFileDownload({ path, filename, children, className, style, title }) {
+  const [busy, setBusy] = useState(false)
+
+  const download = async (e) => {
+    e.preventDefault()
+    if (!path || busy) return
+    setBusy(true)
+    try {
+      const url = await fetchBlobUrl(path)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename || (path ? path.split('/').pop() : 'download')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch {
+      alert('Unable to download this file. You may not have access, or it was removed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button type="button" onClick={download} className={className} style={style} title={title} aria-busy={busy} disabled={busy}>
+      {children}
+    </button>
+  )
+}
+
 /** Loads a private image via authenticated download (Bearer token). */
 export function AuthenticatedFileImage({ path, alt = '', className, style, fallback = null }) {
   const [src, setSrc] = useState(() => (path && urlCache.has(path) ? urlCache.get(path) : ''))
@@ -100,7 +130,7 @@ export function AuthenticatedFileImage({ path, alt = '', className, style, fallb
 }
 
 /** Image or PDF preview for private storage files (faculty review). */
-export function AuthenticatedFilePreview({ path, mime, name, height = 480 }) {
+export function AuthenticatedFilePreview({ path, mime, name, height = 480, errorMessage }) {
   const [src, setSrc] = useState(() => (path && urlCache.has(path) ? urlCache.get(path) : ''))
   const [failed, setFailed] = useState(false)
 
@@ -138,7 +168,9 @@ export function AuthenticatedFilePreview({ path, mime, name, height = 480 }) {
   if (!path) return <p className="text-muted mb-0">No file.</p>
   if (failed) {
     return (
-      <p className="text-danger mb-0">Unable to load this file. You may not have access, or it was removed.</p>
+      <p className="text-danger mb-0">
+        {errorMessage || 'Unable to load this file. You may not have access, or it was removed.'}
+      </p>
     )
   }
   if (!src) {
@@ -152,7 +184,7 @@ export function AuthenticatedFilePreview({ path, mime, name, height = 480 }) {
       <iframe
         title={label}
         src={src}
-        style={{ width: '100%', height, border: '1px solid #dee2e6', borderRadius: 4, background: '#fff' }}
+        style={{ width: '100%', height, border: '0', borderRadius: 8, background: '#fff' }}
       />
     )
   }

@@ -9,6 +9,8 @@ import { CURRENT_TERM } from '../../config/term'
 import { formatStudentName } from '../../utils/formatName'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { openOfficialFo30 } from '../../utils/officialForm'
 
 
 function ChangeSectionModal({ student, onClose, onUpdated }) {
@@ -189,6 +191,7 @@ function CoordRecords() {
   const [message, setMessage] = useState(null)
   const [certLoading, setCertLoading] = useState(null)
   const [archiveBusy, setArchiveBusy] = useState(null)
+  const [previewModal, setPreviewModal] = useState(null)
 
   const [search, setSearch] = useState("")
   const [programFilter, setProgramFilter] = useState("all")
@@ -457,6 +460,13 @@ function CoordRecords() {
                           {internship?.id ? (
                             <>
                               <button
+                                className="btn btn-sm btn-outline-info me-1"
+                                title="DTR Preview (FO-30)"
+                                onClick={() => openOfficialFo30(internship.id, setPreviewModal).catch((err) => setMessage({ type: 'danger', text: err.response?.data?.message || 'Unable to load FO-30 preview.' }))}
+                              >
+                                <i className="fa fa-clock me-1"></i> DTR
+                              </button>
+                              <button
                                 className="btn btn-sm btn-outline-primary me-1"
                                 onClick={() => setStatusTarget({
                                   internshipId: internship.id,
@@ -501,6 +511,13 @@ function CoordRecords() {
           </div>
         </div>
       </div>
+      <FormPreviewModal
+        isOpen={!!previewModal}
+        onClose={() => setPreviewModal(null)}
+        type={previewModal?.type}
+        data={previewModal?.data || {}}
+        onDownload={previewModal?.onDownload}
+      />
     </Layout>
   )
 }

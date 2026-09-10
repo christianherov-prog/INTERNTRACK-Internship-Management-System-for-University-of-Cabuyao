@@ -5,9 +5,9 @@ namespace Tests\Feature;
 use App\Models\SupervisorProfile;
 use App\Models\User;
 use App\Support\SupervisorIds;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Tests\Support\CreatesInternshipFixtures;
 use Tests\TestCase;
 
@@ -104,19 +104,34 @@ class SupervisorAuthenticationAndIdsTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'taken@example.com', 'faculty_number' => 'SUP-0001']);
     }
 
-    public function test_faculty_number_is_unique_at_the_database_level(): void
+    public function test_faculty_number_is_rejected_when_already_assigned(): void
     {
         User::factory()->role('supervisor')->create([
-            'faculty_number' => 'SUP-0001',
+            'faculty_number' => 'SUP-0002',
             'email' => 'first@example.com',
         ]);
 
-        $this->expectException(QueryException::class);
+        try {
+            User::factory()->role('supervisor')->create([
+                'faculty_number' => 'SUP-0002',
+                'email' => 'second@example.com',
+            ]);
+            $this->fail('Expected duplicate Supervisor ID to be rejected.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('faculty_number', $e->errors());
+        }
 
-        User::factory()->role('supervisor')->create([
-            'faculty_number' => 'SUP-0001',
-            'email' => 'second@example.com',
-        ]);
+        $this->assertSame(1, User::withTrashed()->where('faculty_number', 'SUP-0002')->count());
+    }
+
+    public function test_inactive_supervisor_ids_are_not_recycled(): void
+    {
+        $this->makeSupervisor('SUP-0001', 'retired@example.com', 'interntrack123', active: false);
+        $this->makeSupervisor('SUP-0002', 'adrian@example.com', 'interntrack123');
+        $this->makeSupervisor('SUP-0003', 'arthur@example.com', 'interntrack123');
+
+        $this->assertSame('SUP-0004', SupervisorIds::nextFacultyNumber());
+        $this->assertDatabaseHas('users', ['faculty_number' => 'SUP-0001', 'is_active' => false]);
     }
 
     private function makeSupervisor(string $id, string $email, string $password, bool $active = true): User

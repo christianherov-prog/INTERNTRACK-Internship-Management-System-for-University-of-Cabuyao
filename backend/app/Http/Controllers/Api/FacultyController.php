@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\DtrWorkflowService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
+use App\Services\OfficialFormDataService;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
@@ -116,6 +117,11 @@ class FacultyController extends Controller
                 ? $internship->program
                 : ($profile?->getRelation('program')?->name ?? '—');
 
+            $progress = $internship ? InternshipProgressService::snapshot($internship) : null;
+            $supervisorProfile = $internship?->supervisor?->supervisorProfile;
+            $supervisorName = $supervisorProfile?->full_name ?: NameParts::fromProfile($supervisorProfile);
+            $fo30 = $internship ? app(OfficialFormDataService::class)->fo30($internship) : null;
+
             return [
                 'id' => $internship?->id ?? 0,
                 'user_id' => $student->id,
@@ -123,17 +129,33 @@ class FacultyController extends Controller
                 'status' => $internship?->status ?? 'unplaced',
                 'program' => $programName,
                 'section' => $profile?->section ?? '—',
-                'company' => $internship?->company?->company_name ?? null,
-                'supervisor' => $internship?->supervisor?->supervisorProfile?->full_name ?? null,
+                'company' => $internship?->company ? [
+                    'id' => $internship->company->id,
+                    'company_name' => $internship->company->company_name,
+                    'company_logo_path' => $fo30['company_logo_path'] ?? null,
+                ] : null,
+                'supervisor' => $internship?->supervisor ? [
+                    'id' => $internship->supervisor->id,
+                    'supervisor_profile' => [
+                        'first_name' => $supervisorProfile?->first_name,
+                        'last_name' => $supervisorProfile?->last_name,
+                        'full_name' => $supervisorName !== '' ? $supervisorName : null,
+                    ],
+                ] : null,
+                'target_hours' => $progress['target_hours'] ?? 0,
+                'total_hours_rendered' => $progress['hours_rendered'] ?? 0,
                 'student' => [
                     'id' => $student->id,
                     'username' => $student->username,
                     'email' => $student->email,
+                    'student_number' => $student->student_number ?? $profile?->student_number,
                     'sex' => collect([$student->sex, $profile?->sex])->first(fn ($s) => ! empty($s)) ?? '—',
                     'is_active' => $student->is_active,
                     'student_profile' => $profile,
                 ],
-                'attendance_logs' => $internship?->attendance?->sortBy('date')->values() ?? [],
+                'student_signature_path' => $fo30['student_signature_path'] ?? null,
+                'supervisor_signature_path' => $fo30['supervisor_signature_path'] ?? null,
+                'attendance_logs' => $fo30['logs'] ?? [],
             ];
         });
 
@@ -253,11 +275,7 @@ class FacultyController extends Controller
 
         $journalCount = $journals->count();
         $lastJournal = $journals->sortByDesc('created_at')->first();
-
-        // Get all attendance logs for the DTR preview
-        $attendanceLogs = AttendanceLog::where('internship_id', $internship->id)
-            ->orderBy('date', 'asc')
-            ->get();
+        $officialForm = app(OfficialFormDataService::class)->bundle($internship);
 
         return response()->json([
             'student' => [
@@ -306,7 +324,8 @@ class FacultyController extends Controller
                 ])->values(),
             ],
             'supervisor_feedback' => $internFeedback,
-            'attendance_logs' => $attendanceLogs,
+            'attendance_logs' => $officialForm['fo30']['logs'] ?? [],
+            'official_form' => $officialForm,
         ]);
     }
 
@@ -348,14 +367,24 @@ class FacultyController extends Controller
         $journals = JournalEntry::whereIn('internship_id', $internshipIds)
             ->academic()
             ->whereIn('status', ['submitted', 'approved', 'needs_revision'])
-            ->with(['internship.student.studentProfile', 'internship.company'])
+            ->with(['internship.student.studentProfile.program', 'internship.company'])
             ->orderByDesc('date')
             ->paginate(25);
 
         $journals->getCollection()->transform(function ($journal) {
+            $student = $journal->internship?->student;
+            $profile = $student?->studentProfile;
+            $last = trim((string) ($profile?->last_name ?? ''));
+            $first = trim((string) ($profile?->first_name ?? ''));
+            $display = trim($last.($last !== '' && $first !== '' ? ', ' : '').$first);
+
             $journal->setAttribute('awaiting_supervisor', false);
             $journal->setAttribute('supervisor_validated', false);
             $journal->setAttribute('faculty_can_review', $journal->facultyCanReview());
+            $journal->setAttribute('student_display_name', $display !== '' ? $display : NameParts::fromProfile($profile));
+            $journal->setAttribute('program_name', $profile?->program?->name);
+            $journal->setAttribute('student_number', $profile?->student_number ?: $student?->student_number);
+            $journal->setAttribute('student_signature_path', $student ? SignatureCapture::profilePath($student) : null);
 
             $student = $journal->internship?->student;
             $profile = $student?->studentProfile;
@@ -460,7 +489,7 @@ class FacultyController extends Controller
             $q->inDepartment()->where('faculty_id', $request->user()->id)->where('student_id', $studentId);
         })
             ->academic()
-            ->with(['internship.student.studentProfile', 'internship.company'])
+            ->with(['internship.student.studentProfile.program', 'internship.company'])
             ->orderBy('week_number', 'asc')
             ->orderBy('entry_number', 'asc')
             ->get();

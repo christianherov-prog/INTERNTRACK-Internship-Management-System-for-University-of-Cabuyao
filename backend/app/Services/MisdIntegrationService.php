@@ -84,7 +84,7 @@ class MisdIntegrationService
         $data = $this->fetchStudent($studentNumber);
 
         $user = User::create([
-            'username' => strtoupper($studentNumber),
+            'student_number' => strtoupper($studentNumber),
             'email'    => $data['email'] ?? null,
             'password' => Hash::make($password),
             'role'     => 'student',
@@ -123,7 +123,7 @@ class MisdIntegrationService
         $data = $this->fetchFaculty($employeeNumber);
 
         $user = User::create([
-            'username' => strtoupper($employeeNumber),
+            'faculty_number' => strtoupper($employeeNumber),
             'email'    => $data['email'] ?? null,
             'password' => Hash::make($password),
             'role'     => 'faculty',
@@ -158,7 +158,7 @@ class MisdIntegrationService
         $data = $this->fetchFaculty($username);
 
         $user = User::create([
-            'username' => strtoupper($username),
+            'faculty_number' => strtoupper($username),
             'email'    => $data['email'] ?? null,
             'password' => Hash::make($password),
             'role'     => $role,
@@ -252,8 +252,14 @@ class MisdIntegrationService
     public function syncStudent(User $user): void
     {
         $this->forgetStudentCache($user->username);
-        $data = $this->fetchStudent($user->username);
+        $data = $this->fetchStudent($user->username ?: $user->student_number);
         if (empty($data) || !$user->studentProfile) {
+            return;
+        }
+
+        // Unknown 7-digit IDs still get the mock "UC Student" stub. Never let that
+        // stub replace a real InternTrack / iEnroll identity on login.
+        if ($this->isGenericStudentStub($data) && $this->profileHasRealStudentName($user->studentProfile)) {
             return;
         }
 
@@ -286,6 +292,27 @@ class MisdIntegrationService
         if (!empty($data['email'])) {
             $user->update(['email' => $data['email']]);
         }
+    }
+
+    private function isGenericStudentStub(array $data): bool
+    {
+        return ($data['first_name'] ?? null) === 'UC'
+            && ($data['last_name'] ?? null) === 'Student';
+    }
+
+    private function profileHasRealStudentName(?StudentProfile $profile): bool
+    {
+        if (! $profile) {
+            return false;
+        }
+
+        $first = trim((string) $profile->first_name);
+        $last = trim((string) $profile->last_name);
+        if ($first === '' || $last === '') {
+            return false;
+        }
+
+        return ! ($first === 'UC' && $last === 'Student');
     }
 
     /**

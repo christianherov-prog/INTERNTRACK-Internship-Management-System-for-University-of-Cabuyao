@@ -10,8 +10,8 @@ import { AuthenticatedFileImage, AuthenticatedFileLink } from "../../components/
 import { useCachedPage } from "../../hooks/useCachedPage"
 import FormPreviewModal from "../../components/portfolio/FormPreviewModal"
 import { formatStudentName as studentName } from "../../utils/formatName"
-import { displayLabel } from "../../utils/displayLabel"
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { openOfficialFo30, openOfficialFo31 } from "../../utils/officialForm"
 
 function studentSection(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
@@ -230,6 +230,7 @@ function TabStudents() {
 
   const [busyId, setBusyId] = useState(null)
   const [previewModal, setPreviewModal] = useState(null)
+  const [previewBusy, setPreviewBusy] = useState(false)
 
   const fetchStudents = () => {
     setError(null)
@@ -327,7 +328,10 @@ function TabStudents() {
                   <tbody>
                     {filtered.map(row => {
                       const profile = row.student?.student_profile || row.student?.studentProfile
-                      const supervisorName = row.supervisor?.supervisorProfile?.full_name || row.supervisor?.supervisor_profile?.full_name || "—"
+                      const supervisorName = row.supervisor?.supervisorProfile?.full_name
+                        || row.supervisor?.supervisor_profile?.full_name
+                        || [row.supervisor?.supervisor_profile?.last_name, row.supervisor?.supervisor_profile?.first_name].filter(Boolean).join(', ')
+                        || "—"
                       const totalHours = row.total_hours_rendered ?? 0
                       const targetHours = Number(row.target_hours) || 0
                       const progressPct = targetHours > 0 ? Math.min(100, Math.round((totalHours / targetHours) * 100)) : 0
@@ -364,18 +368,14 @@ function TabStudents() {
                                 type="button"
                                 className="btn btn-sm btn-outline-info"
                                 title="DTR Preview (FO-30)"
-                                onClick={() => setPreviewModal({
-                                  type: 'dtr',
-                                  data: {
-                                    studentName: studentName(row),
-                                    program: studentCourse(row),
-                                    companyName: row.company?.company_name || '—',
-                                    companyLogoPath: row.company?.company_logo_path || '',
-                                    supervisorName: supervisorName,
-                                    logs: row.attendance_logs || [],
-                                    month: new Date().toISOString().slice(0, 7)
-                                  }
-                                })}
+                                disabled={!row.id || previewBusy}
+                                onClick={() => {
+                                  if (!row.id) return
+                                  setPreviewBusy(true)
+                                  openOfficialFo30(row.id, setPreviewModal)
+                                    .catch((err) => alert(err.response?.data?.message || 'Unable to load FO-30 preview.'))
+                                    .finally(() => setPreviewBusy(false))
+                                }}
                               >
                                 DTR Preview (FO-30)
                                 <i className="fa fa-clock"></i>
@@ -402,6 +402,7 @@ function TabStudents() {
         onClose={() => setPreviewModal(null)}
         type={previewModal?.type}
         data={previewModal?.data || {}}
+        onDownload={previewModal?.onDownload}
       />
     </>
   )
@@ -461,22 +462,20 @@ function TabJournals() {
   }
 
   const handlePreviewJournal = (j) => {
-    const profile = j.internship?.student?.student_profile || j.internship?.student?.studentProfile
-    const name = journalSubmitterName(j)
-    setPreviewModal({
-      type: 'journal',
-      data: {
-        studentName: name,
-        program: displayLabel(profile?.program, '—'),
-        companyName: j.internship?.company?.company_name || '—',
-        weekNumber: j.week_number ?? j.entry_number,
-        date: j.date,
-        endDate: j.end_date,
-        accomplishment: j.activities_summary,
-        difficulties: j.challenges,
-        insights: j.learnings,
-      }
-    })
+    const internshipId = j.internship_id || j.internship?.id
+    if (!internshipId) return
+    openOfficialFo31(internshipId, {
+      studentName: j.student_display_name || journalSubmitterName(j),
+      program: j.program_name,
+      companyName: j.internship?.company?.company_name,
+      weekNumber: j.week_number ?? j.entry_number,
+      date: j.date,
+      endDate: j.end_date,
+      accomplishment: j.activities_summary,
+      difficulties: j.challenges,
+      insights: j.learnings,
+      studentSignaturePath: j.student_signature_path,
+    }, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))
   }
 
   return (
@@ -581,6 +580,7 @@ function TabJournals() {
         onClose={() => setPreviewModal(null)}
         type={previewModal?.type}
         data={previewModal?.data || {}}
+        onDownload={previewModal?.onDownload}
       />
     </>
   )
@@ -751,8 +751,8 @@ function TabAttendance() {
                               </>
                             )}
                             <td>{log.date ? String(log.date).slice(0, 10) : "—"}</td>
-                            <td>{log.clock_in || "—"}</td>
-                            <td>{log.clock_out || "—"}</td>
+                            <td>{log.clock_in_display || log.clock_in || "—"}</td>
+                            <td>{log.clock_out_display || log.clock_out || "—"}</td>
                             <td>{log.hours_rendered != null ? Number(log.hours_rendered).toFixed(2) : "—"}</td>
                             <td>{attStatusBadge(log.status)}</td>
                             <td>{log.correction_status_label || "—"}</td>

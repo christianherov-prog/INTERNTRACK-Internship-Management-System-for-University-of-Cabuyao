@@ -143,7 +143,9 @@ class SupervisorFeedbackService
     {
         $internship->loadMissing('student.studentProfile.program');
         $title = $updated ? 'Industry Supervisor feedback updated' : 'New feedback from Industry Supervisor';
-        $body = $feedback;
+        $body = $updated
+            ? 'Your Industry Supervisor updated intern feedback for this week.'
+            : 'Your Industry Supervisor submitted intern feedback for this week.';
 
         if ($internship->student_id) {
             Notification::notify(

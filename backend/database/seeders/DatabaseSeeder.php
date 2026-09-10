@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Hash;
  *   Director    → username: DIR-1001
  *   Coordinator → username: COR-1001
  *   Faculty     → username: FAC-1001
- *   Student     → username: 2300600 (Valinado), 2300590 (Taac-Taac), 2300500 (Taduran), 2300592 (Montealegre)
+ *   Student     → username: 2300600 (Valinado), 2300590 (Angel Luis Taac - Taac), 2300500 (Taduran), 2300592 (Montealegre)
  */
 class DatabaseSeeder extends Seeder
 {
@@ -211,36 +211,40 @@ class DatabaseSeeder extends Seeder
             'slots_available'=> 15,
         ]);
 
-        // ─── 3b. Supervisor demo account (Patrick Bateman at TechCorp PH) ────
+        // ─── 3b. Supervisor demo accounts ────────────────────────────────────
+        // SUP-0001 Patrick Bateman is retained only as an inactive reserved ID so
+        // the generator never recycles it. Active local supervisors:
+        // SUP-0002 Adrian Reyes (Accenture PH) and later SUP-0003 Arthur Morgan.
         $techCorp = Company::where('company_name', 'TechCorp PH')->first();
-        $supervisor = User::where('email', 'patrick.bateman@techcorp.ph')->first();
-        $sup0001Owner = User::where('faculty_number', 'SUP-0001')->first();
+        $accenture = Company::where('company_name', 'Accenture PH')->first();
 
-        if (! $supervisor) {
-            $supervisorCode = ($sup0001Owner && $sup0001Owner->email !== 'patrick.bateman@techcorp.ph')
-                ? \App\Support\SupervisorIds::nextFacultyNumber()
-                : 'SUP-0001';
-            $supervisor = User::create([
-                'faculty_number' => $supervisorCode,
+        $patrick = User::where('email', 'patrick.bateman@techcorp.ph')->first()
+            ?? User::where('faculty_number', 'SUP-0001')->where('role', 'supervisor')->first();
+        if (! $patrick) {
+            $patrick = User::create([
+                'faculty_number' => 'SUP-0001',
                 'email' => 'patrick.bateman@techcorp.ph',
                 'password' => $pw,
                 'role' => 'supervisor',
-                'is_active' => true,
+                'is_active' => false,
             ]);
         } else {
-            if (blank($supervisor->faculty_number)) {
-                $supervisor->faculty_number = ($sup0001Owner && $sup0001Owner->id !== $supervisor->id)
+            if (blank($patrick->faculty_number)) {
+                $patrick->faculty_number = User::withTrashed()
+                    ->where('faculty_number', 'SUP-0001')
+                    ->where('id', '!=', $patrick->id)
+                    ->exists()
                     ? \App\Support\SupervisorIds::nextFacultyNumber()
                     : 'SUP-0001';
             }
-            $supervisor->forceFill([
+            $patrick->forceFill([
                 'password' => $pw,
                 'role' => 'supervisor',
-                'is_active' => true,
+                'is_active' => false,
             ])->save();
         }
 
-        \App\Models\SupervisorProfile::updateOrCreate(['user_id' => $supervisor->id], [
+        \App\Models\SupervisorProfile::updateOrCreate(['user_id' => $patrick->id], [
             'first_name' => 'Patrick',
             'last_name' => 'Bateman',
             'email' => 'patrick.bateman@techcorp.ph',
@@ -248,6 +252,47 @@ class DatabaseSeeder extends Seeder
             'sex' => 'Male',
             'position' => 'Senior Vice President / OJT Supervisor',
             'company_id' => $techCorp?->id,
+        ]);
+
+        $adrianOwner = User::where('faculty_number', 'SUP-0002')->first();
+        $adrian = User::where('email', 'adrian.reyes@accenture.ph')->first();
+        if (! $adrian && $adrianOwner && $adrianOwner->role === 'supervisor') {
+            $adrianProfile = $adrianOwner->supervisorProfile;
+            if ($adrianProfile && strcasecmp((string) $adrianProfile->last_name, 'Reyes') === 0) {
+                $adrian = $adrianOwner;
+            }
+        }
+        if (! $adrian) {
+            $adrianCode = ($adrianOwner && $adrianOwner->email !== 'adrian.reyes@accenture.ph')
+                ? \App\Support\SupervisorIds::nextFacultyNumber()
+                : 'SUP-0002';
+            $adrian = User::create([
+                'faculty_number' => $adrianCode,
+                'email' => 'adrian.reyes@accenture.ph',
+                'password' => $pw,
+                'role' => 'supervisor',
+                'is_active' => true,
+            ]);
+        } else {
+            if (blank($adrian->faculty_number)
+                || ($adrian->faculty_number !== 'SUP-0002' && ! $adrianOwner)) {
+                $adrian->faculty_number = 'SUP-0002';
+            }
+            $adrian->forceFill([
+                'password' => $pw,
+                'role' => 'supervisor',
+                'is_active' => true,
+            ])->save();
+        }
+
+        \App\Models\SupervisorProfile::updateOrCreate(['user_id' => $adrian->id], [
+            'first_name' => 'Adrian',
+            'last_name' => 'Reyes',
+            'email' => $adrian->email,
+            'contact_number' => '09175550002',
+            'sex' => 'Male',
+            'position' => 'Industry Supervisor',
+            'company_id' => $accenture?->id ?? $techCorp?->id,
         ]);
 
         // ─── 4. Faculty accounts + section assignments ────────────────────────
@@ -283,11 +328,12 @@ class DatabaseSeeder extends Seeder
   Facul (COED)  FAC-COED-001           {$demoPassword}
   Coord (COE)   COR-COE-001            {$demoPassword}
   Facul (COE)   FAC-COE-001            {$demoPassword}
-  Supervisor    SUP-0001               {$demoPassword} (Patrick Bateman)
+  Supervisor    SUP-0002               {$demoPassword} (Adrian Reyes, Accenture PH)
+  Supervisor    SUP-0001               inactive reserved ID (Patrick Bateman)
   Stud (CCS)    2300600                {$demoPassword} (Fresh/Pending)
-  Stud (CCS)    2300590                {$demoPassword} (Fresh/Pending)
+  Stud (CCS)    2300590                {$demoPassword} (Angel Luis Taac - Taac, Fresh/Pending)
   Stud (CCS)    2300500                {$demoPassword} (Fresh/Pending)
-  Stud (CCS)    2300592                {$demoPassword} (Populated: TechCorp PH)
+  Stud (CCS)    2300592                {$demoPassword} (Populated: Accenture PH / Adrian Reyes)
   Stud (COED)   2300601                {$demoPassword} (Fresh/Pending)
   Stud (COE)    2300602                {$demoPassword} (Fresh/Pending)
   Stud (COE)    2300608                {$demoPassword} (Fresh/Pending)

@@ -4,82 +4,48 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Internship;
-use App\Models\JournalEntry;
-use Illuminate\Http\Request;
+use App\Services\OfficialFormDataService;
+use App\Support\InternshipAccess;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class JournalPdfController extends Controller
 {
     /**
      * Generate Form 31 — Weekly Student Internship Journal PDF
      * GET /v1/student/journal/generate?internship_id=&week_number=
-     * Optional: omit week_number to generate all weeks as a multi-page PDF.
+     * GET /v1/official-forms/{internship}/journal.pdf
      */
-    public function generate(Request $request)
+    public function generate(Request $request, ?Internship $internship = null)
     {
         $request->validate([
-            'internship_id' => 'required|exists:internships,id',
-            'week_number'   => 'nullable|integer|min:1',
+            'internship_id' => 'nullable|exists:internships,id',
+            'week_number' => 'nullable|integer|min:1',
         ]);
 
-        $user       = auth()->user();
-        $internship = Internship::with([
-            'student.studentProfile.program',
-            'company',
-            'supervisor.supervisorProfile',
-            'faculty.facultyProfile',
-        ])->findOrFail($request->internship_id);
-
-        $this->authorizeInternshipAccess($user, $internship);
-
-        $query = JournalEntry::where('internship_id', $internship->id)
-            ->academic()
-            ->orderBy('week_number');
-
-        if ($request->week_number) {
-            $query->where('week_number', $request->week_number);
+        if (! $internship) {
+            $internship = Internship::findOrFail($request->integer('internship_id'));
         }
 
-        $journals = $query->get();
+        InternshipAccess::abortUnlessCanView($request->user(), $internship);
+
+        $pdfData = app(OfficialFormDataService::class)->pdfJournal($internship);
+        $journals = collect($pdfData['journals'] ?? []);
+        if ($request->filled('week_number')) {
+            $journals = $journals->where('week_number', (int) $request->week_number)->values();
+        }
 
         if ($journals->isEmpty()) {
             return response()->json(['error' => 'No journal entries found for the selected period.'], 404);
         }
 
-        $studentProfile  = $internship->student->studentProfile;
-        $studentSignature = $this->getSignaturePath($internship->student);
+        $pdfData['journals'] = $journals;
+        $studentNumber = $pdfData['identity']['student_number'] ?? $internship->student_id;
+        $weekSuffix = $request->week_number ? '_Week'.$request->week_number : '_All';
+        $filename = 'Journal_'.$studentNumber.$weekSuffix.'.pdf';
 
-        $pdf = Pdf::loadView('pdf.form31_journal', [
-            'internship'       => $internship,
-            'studentProfile'   => $studentProfile,
-            'company'          => $internship->company,
-            'journals'         => $journals,
-            'studentSignature' => $studentSignature ? $this->signatureBase64($studentSignature) : null,
-        ])->setPaper('letter', 'portrait');
-
-        $weekSuffix = $request->week_number ? '_Week' . $request->week_number : '_All';
-        $filename   = 'Journal_' . ($studentProfile->student_number ?? $internship->student_id) . $weekSuffix . '.pdf';
-
-        return $pdf->download($filename);
-    }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
-
-    protected function authorizeInternshipAccess($user, Internship $internship): void
-    {
-        \App\Support\InternshipAccess::abortUnlessCanView($user, $internship);
-    }
-
-    protected function getSignaturePath($user): ?string
-    {
-        $path = "signatures/{$user->id}_processed.png";
-        return Storage::exists($path) ? $path : null;
-    }
-
-    protected function signatureBase64(string $storagePath): string
-    {
-        $data = Storage::get($storagePath);
-        return 'data:image/png;base64,' . base64_encode($data);
+        return Pdf::loadView('pdf.form31_journal', $pdfData)
+            ->setPaper('letter', 'portrait')
+            ->download($filename);
     }
 }

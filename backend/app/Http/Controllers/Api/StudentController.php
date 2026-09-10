@@ -302,6 +302,7 @@ class StudentController extends Controller
                 'company_name' => $internship->company?->company_name ?? '—',
                 'supervisor_name' => $internship->supervisor?->supervisorProfile?->full_name
                     ?: ($internship->supervisor?->username),
+                'supervisor_faculty_number' => $internship->supervisor?->faculty_number,
                 'start_date' => $internship->start_date?->toDateString(),
                 'placements' => Schema::hasTable('internship_placements')
                     ? $internship->placements->map(fn ($p) => [
@@ -476,7 +477,9 @@ class StudentController extends Controller
         $journals = $internship->journals()->academic()->orderByDesc('week_number')->paginate(20);
         $student = $request->user()->loadMissing('studentProfile.program');
         $profile = $student->studentProfile;
-        $journals->getCollection()->transform(function (JournalEntry $journal) use ($profile, $student, $internship) {
+        $companyLogoPath = app(\App\Services\PortfolioDataService::class)->companyLogoPath($internship);
+        $studentSignaturePath = \App\Support\SignatureCapture::profilePath($student);
+        $journals->getCollection()->transform(function (JournalEntry $journal) use ($profile, $student, $internship, $companyLogoPath, $studentSignaturePath) {
             $journal->setAttribute('date', $journal->date?->toDateString());
             $journal->setAttribute('end_date', $journal->end_date?->toDateString());
             $journal->setAttribute('editable', ! in_array($journal->status, ['approved'], true));
@@ -488,6 +491,9 @@ class StudentController extends Controller
                 : $student->username);
             $journal->setAttribute('program', $profile?->program?->name ?: $internship->program);
             $journal->setAttribute('company_name', $internship->company?->company_name);
+            $journal->setAttribute('internship_id', $internship->id);
+            $journal->setAttribute('company_logo_path', $companyLogoPath);
+            $journal->setAttribute('student_signature_path', $studentSignaturePath);
 
             return $journal;
         });

@@ -9,8 +9,8 @@ use Throwable;
 /**
  * Sequential supervisor login IDs: SUP-0001, SUP-0002, …
  *
- * Scans every users.faculty_number that looks like SUP-####, regardless of role,
- * so NULL-ID supervisors and leftover codes cannot reset the sequence to 0001.
+ * Scans every users.faculty_number that looks like SUP-####, including inactive
+ * and soft-deleted rows, so leftover codes cannot reset or recycle the sequence.
  */
 final class SupervisorIds
 {

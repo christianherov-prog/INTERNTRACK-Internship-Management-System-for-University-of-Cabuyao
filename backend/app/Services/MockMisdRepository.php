@@ -41,6 +41,23 @@ class MockMisdRepository implements MisdRepositoryInterface
                 'semester'          => '2nd Semester',
                 'enrollment_status' => 'Enrolled',
             ],
+            '2300590' => [
+                'student_number'    => '2300590',
+                'first_name'        => 'Angel Luis',
+                'middle_name'       => null,
+                'last_name'         => 'Taac - Taac',
+                'email'             => 'angel.taactaac@uc.edu.ph',
+                'contact_number'    => '09175550590',
+                'sex'               => 'Male',
+                'program'           => 'Bachelor of Science in Information Technology',
+                'department'        => 'College of Computing Studies',
+                'course_description'=> 'IT Practicum (500 hours)',
+                'year_level'        => 4,
+                'section'           => '4ITD',
+                'academic_year'     => '2025-2026',
+                'semester'          => '2nd Semester',
+                'enrollment_status' => 'Enrolled',
+            ],
             '2300592' => [
                 'student_number' => '2300592',
                 'first_name'     => 'Clarence',
@@ -399,6 +416,10 @@ class MockMisdRepository implements MisdRepositoryInterface
         return array_values($this->faculty());
     }
 
+    /**
+     * Emergency placeholder for unknown campus IDs only.
+     * Catalogued demo students (2300590, 2300592, …) must never hit this path.
+     */
     private function generateGenericStudent(string $studentNumber): array
     {
         return [

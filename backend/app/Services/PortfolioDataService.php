@@ -67,8 +67,7 @@ class PortfolioDataService
             ]);
         }
 
-        $logoDoc = $photos->first(fn ($d) => in_array($d['type'] ?? '', ['company_logo', 'logo'], true)
-            || in_array($d['document_type'] ?? '', ['company_logo', 'logo'], true));
+        $logoPath = $this->pickCompanyLogoPath($photos);
         $orgDoc = $photos->first(fn ($d) => in_array($d['type'] ?? '', ['org_chart', 'chart'], true));
         $vmDoc = $photos->first(fn ($d) => in_array($d['type'] ?? '', ['vision_mission', 'company_vision_mission', 'vision_mission_photo'], true));
 
@@ -97,14 +96,14 @@ class PortfolioDataService
         $portfolioData['assessment_recommendations'] = $portfolio?->assessment_recommendations ?? '';
         $portfolioData['advice'] = $portfolio?->assessment_advice ?? '';
         $portfolioData['assessment_advice'] = $portfolio?->assessment_advice ?? '';
-        $portfolioData['company_logo_path'] = $logoDoc['file_path'] ?? null;
+        $portfolioData['company_logo_path'] = $logoPath;
         $portfolioData['org_chart_path'] = $orgDoc['file_path'] ?? null;
         $portfolioData['vision_mission_path'] = $vmDoc['file_path'] ?? null;
         $portfolioData['photos'] = $photos->values();
         $portfolioData['company_name'] = $companyName;
         $portfolioData['company_address'] = $companyAddress;
 
-        $identity = $this->identity($internship);
+        $identity = $this->identity($internship, ['company_logo_path' => $logoPath]);
         $journals = JournalEntry::where('internship_id', $internship->id)
             ->academic()
             ->orderBy('date')
@@ -150,7 +149,7 @@ class PortfolioDataService
         ];
     }
 
-    public function identity(Internship $internship): array
+    public function identity(Internship $internship, array $extras = []): array
     {
         $internship->loadMissing([
             'student.studentProfile.program',
@@ -198,7 +197,11 @@ class PortfolioDataService
             'semester_raw' => $semester,
             'company_name' => $this->firstNonEmpty($internship->company?->company_name, $internship->company?->name),
             'company_address' => $internship->company?->address,
+            'company_logo_path' => array_key_exists('company_logo_path', $extras)
+                ? $extras['company_logo_path']
+                : $this->companyLogoPath($internship),
             'supervisor_name' => $this->lastFirst($supervisor?->supervisorProfile) ?: NameParts::fromProfile($supervisor?->supervisorProfile),
+            'supervisor_faculty_number' => $supervisor?->faculty_number,
             'supervisor_position' => $supervisor?->supervisorProfile?->position,
             'faculty_name' => $this->lastFirst($faculty?->facultyProfile) ?: NameParts::fromProfile($faculty?->facultyProfile),
             'coordinator_name' => $this->lastFirst($coordinator?->facultyProfile) ?: NameParts::fromProfile($coordinator?->facultyProfile),
@@ -209,6 +212,27 @@ class PortfolioDataService
             'faculty_signature_path' => $faculty ? SignatureCapture::profilePath($faculty) : null,
             'timezone' => ManilaTime::TZ,
         ];
+    }
+
+    /**
+     * HTE logo for this internship only: the intern's authorized company_logo
+     * (or logo) document. Never another company's file and never Company::first().
+     */
+    public function companyLogoPath(Internship $internship): ?string
+    {
+        return $this->pickCompanyLogoPath($this->documents($internship));
+    }
+
+    public function pickCompanyLogoPath(Collection $photos): ?string
+    {
+        $logoDoc = $photos->first(fn ($d) => in_array($d['type'] ?? '', ['company_logo', 'logo'], true)
+            || in_array($d['document_type'] ?? '', ['company_logo', 'logo'], true));
+        $path = $logoDoc['file_path'] ?? null;
+        if (! filled($path) || ! $this->fileExists((string) $path)) {
+            return null;
+        }
+
+        return $path;
     }
 
     /**
@@ -223,12 +247,12 @@ class PortfolioDataService
     public function serializeAttendance(AttendanceLog $log, array $identity = []): array
     {
         $inRaw = $log->clock_in ?: $log->am_time_in;
-        $outRaw = $log->clock_out ?: $log->am_time_out;
+        $outRaw = $log->clock_out ?: $log->pm_time_out ?: $log->am_time_out;
         $inAt = ManilaTime::fromStoredDateAndTime($log->date, $inRaw);
         $outAt = ManilaTime::fromStoredDateAndTime($log->date, $outRaw);
-        $manilaDate = $inAt?->toDateString()
+        $manilaDate = ManilaTime::dateString($log->date)
             ?: ManilaTime::manilaDateString($log->date)
-            ?: ManilaTime::dateString($log->date);
+            ?: $inAt?->toDateString();
 
         $amIn = ManilaTime::clockHm(ManilaTime::fromStoredDateAndTime($log->date, $log->am_time_in));
         $amOut = ManilaTime::clockHm(ManilaTime::fromStoredDateAndTime($log->date, $log->am_time_out));

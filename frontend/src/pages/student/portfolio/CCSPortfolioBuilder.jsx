@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import api from '../../../services/api'
-import { cacheGet, cacheSet } from '../../../utils/pageCache'
+import { cacheGet, cacheSet, invalidateOfficialFormCaches } from '../../../utils/pageCache'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
@@ -168,6 +168,7 @@ function PortfolioBuilder() {
     try {
       await api.post('/student/portfolio/photos', formData)
       toast.success('File uploaded.')
+      invalidateOfficialFormCaches()
       fetchPortfolio()
     } catch (err) {
       toast.error(safeUploadError(err))
@@ -189,6 +190,7 @@ function PortfolioBuilder() {
     setIsDeleting(true)
     try {
       await api.delete(`/student/portfolio/photos/${deletingItem.id}`)
+      invalidateOfficialFormCaches()
       fetchPortfolio()
       setDeletingItem(null)
     } catch (err) {
@@ -234,6 +236,7 @@ function PortfolioBuilder() {
     { type: 'acceptance_form', label: 'Internship Acceptance Form' },
     { type: 'consent_form', label: 'Internship Consent Form' },
     { type: 'training_plan', label: 'Internship Training Plan' },
+    { type: 'moa_document', label: 'MOA Image' },
     { type: 'visitation_form', label: 'Visitation Form' },
     { type: 'completion_certificate', label: 'Certification of Completion' },
     { type: 'hte_evaluation', label: 'HTE Evaluation' },
@@ -680,6 +683,7 @@ function PortfolioBuilder() {
                 {renderFileList('acceptance_form', 'Student Internship Acceptance Form — PNC-AA-FO-29', false, false, DOC_ACCEPT)}
                 {renderFileList('consent_form', 'Student Internship Consent Form — PNC-AA-FO-28', false, false, DOC_ACCEPT)}
                 {renderFileList('training_plan', 'Internship Training Plan — PNC-AA-FO-25.3', false, false, DOC_ACCEPT)}
+                {renderFileList('moa_document', 'MOA Image', false, false, DOC_ACCEPT)}
                 {renderFileList('visitation_form', 'Internship / OJT Visitation Form', false, false, DOC_ACCEPT)}
                 {renderFileList('completion_certificate', 'Certification of Completion', false, false, DOC_ACCEPT)}
               </div>

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\MisdAdminController;
 use App\Http\Controllers\Api\MockMisdController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OfficialFormController;
 use App\Http\Controllers\Api\PortfolioPdfController;
 use App\Http\Controllers\Api\PublicAvatarController;
 use App\Http\Controllers\Api\RequirementTemplateController;
@@ -104,6 +105,10 @@ Route::prefix('v1')->group(function () {
 
         // Private uploads (journals, documents, signatures, portfolio)
         Route::get('/files/download', [SecureFileController::class, 'download']);
+
+        Route::get('/official-forms/{internship}', [OfficialFormController::class, 'show']);
+        Route::get('/official-forms/{internship}/dtr.pdf', [DtrPdfController::class, 'generate']);
+        Route::get('/official-forms/{internship}/journal.pdf', [JournalPdfController::class, 'generate']);
 
         // Student
         Route::prefix('student')->middleware('role:student')->group(function () {
@@ -279,6 +284,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/requirements', [RequirementTemplateController::class, 'store']);
             Route::match(['put', 'post'], '/requirements/{id}', [RequirementTemplateController::class, 'update']);
             Route::delete('/requirements/{id}', [RequirementTemplateController::class, 'destroy']);
+
+            Route::get('/dtr/generate', [DtrPdfController::class, 'generate']);
+            Route::get('/journal/generate', [JournalPdfController::class, 'generate']);
         });
 
         // Director

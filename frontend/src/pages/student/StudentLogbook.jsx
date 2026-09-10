@@ -7,8 +7,9 @@ import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { displayLabel } from '../../utils/displayLabel'
 import { useCachedPage } from '../../hooks/useCachedPage'
-import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import { invalidateOfficialFormCaches, invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { openOfficialFo31 } from '../../utils/officialForm'
 
 const STATUS_MAP = {
   submitted:      { cls: 'badge-pending',  label: 'Submitted' },
@@ -125,6 +126,7 @@ function StudentLogbook() {
     try {
       await api.post('/student/logbook', form)
       invalidateStudentPortfolio()
+      invalidateOfficialFormCaches()
       setMessage({ type: 'success', text: `Week ${form.week_number} journal saved successfully!` })
       setShowForm(false)
       setForm(EMPTY_FORM)
@@ -140,12 +142,19 @@ function StudentLogbook() {
   // ── PDF Generation ────────────────────────────────────────────────────────
 
   const handlePreviewJournal = (j) => {
+    const internshipId = j.internship_id
+    if (internshipId) {
+      openOfficialFo31(internshipId, j, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))
+      return
+    }
     setPreviewModal({
       type: 'journal',
       data: {
         studentName: j.student_name || user?.name || '',
         program: displayLabel(j.program || user?.program, ''),
         companyName: j.company_name || user?.company || '',
+        companyLogoPath: j.company_logo_path || '',
+        studentSignaturePath: j.student_signature_path || '',
         weekNumber: j.week_number ?? j.entry_number,
         date: j.date,
         endDate: j.end_date,
@@ -183,6 +192,7 @@ function StudentLogbook() {
         onClose={() => setPreviewModal(null)}
         type={previewModal?.type}
         data={previewModal?.data || {}}
+        onDownload={previewModal?.onDownload}
       />
 
       {/* Action bar */}

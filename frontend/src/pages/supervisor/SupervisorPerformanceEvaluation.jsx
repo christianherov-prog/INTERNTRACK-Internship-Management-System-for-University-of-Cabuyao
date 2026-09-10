@@ -148,6 +148,20 @@ export default function SupervisorPerformanceEvaluation() {
                           <div className="text-muted small">
                             Status: <span className="text-uppercase">{internship.status}</span>
                           </div>
+                          {internship.evaluation_eligibility && (
+                            <div className="mt-2">
+                              <span className={`badge ${internship.evaluation_eligibility.status === 'not_yet_eligible' ? 'bg-warning text-dark' : 'bg-success'}`}>
+                                {internship.evaluation_eligibility.label}
+                              </span>
+                              <div className="text-muted small mt-1">
+                                {internship.hours_rendered ?? internship.evaluation_eligibility.hours_rendered ?? 0}
+                                {' / '}
+                                {internship.target_hours ?? internship.evaluation_eligibility.target_hours ?? 0}
+                                {' hrs'}
+                                {internship.evaluation_eligibility.reason ? ` — ${internship.evaluation_eligibility.reason}` : ''}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="d-flex flex-column gap-2 align-items-end">
                           {(internship.evaluation_period_status || 'pending') !== 'approved' ? (

@@ -125,6 +125,7 @@ export function PageHeader({ companyLogoPath }) {
               width: "78px",
               height: "78px",
               objectFit: "contain",
+              objectPosition: "center",
             }}
           />
         ) : (
@@ -187,7 +188,9 @@ const DailyTimeRecord = ({
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
-    const [h, m] = String(timeStr).split(':');
+    const raw = String(timeStr).trim();
+    if (/[ap]m/i.test(raw)) return raw;
+    const [h, m] = raw.split(':');
     let hr = parseInt(h, 10);
     if (Number.isNaN(hr)) return '';
     const ampm = hr >= 12 ? 'PM' : 'AM';
@@ -226,7 +229,8 @@ const DailyTimeRecord = ({
     pageDays.forEach(dateStr => {
       const log = logMap[dateStr];
       const isWeekend = weekdayUtc(dateStr) === 0 || weekdayUtc(dateStr) === 6;
-      const rowSig = (log?.validated && (log.hte_signature_path || supervisorSignaturePath))
+      const isValidated = log?.validated === true || log?.status === 'validated';
+      const rowSig = (isValidated && (log.hte_signature_path || supervisorSignaturePath))
         ? (log.hte_signature_path || supervisorSignaturePath)
         : '';
 

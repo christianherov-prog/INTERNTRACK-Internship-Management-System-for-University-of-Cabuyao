@@ -62,6 +62,22 @@ export function invalidateStudentPortfolio() {
   cacheDelete('student:portfolio')
 }
 
+export function invalidateOfficialFormCaches() {
+  invalidateStudentPortfolio()
+  const keys = []
+  store.forEach((_, key) => {
+    if (
+      key.startsWith('faculty:assigned')
+      || key.startsWith('supervisor:assigned')
+      || key.startsWith('coordinator:records')
+      || key.includes('student-progress')
+    ) {
+      keys.push(key)
+    }
+  })
+  keys.forEach(cacheDelete)
+}
+
 export function cacheClear() {
   store.clear()
   inflight.clear()

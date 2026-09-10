@@ -223,6 +223,7 @@ function PortfolioPreview() {
   const u = data?.user;
   const sp = u?.student_profile || u?.studentProfile;
   const idn = data?.identity || {};
+  const companyLogoPath = p?.company_logo_path || idn.company_logo_path || '';
 
   const studentName = idn.student_name
     || (sp ? `${sp.last_name?.toUpperCase()}, ${sp.first_name?.toUpperCase()}${sp.middle_name ? ' ' + sp.middle_name[0].toUpperCase() + '.' : ''}` : '');
@@ -283,7 +284,7 @@ function PortfolioPreview() {
       <PaginatedImageCollection
         list={list}
         title={title}
-        companyLogoPath={p?.company_logo_path}
+        companyLogoPath={companyLogoPath}
         nextPg={nextPg}
         pageHeaderComponent={PageHeader}
         requiresWeek={requiresWeek}
@@ -346,7 +347,7 @@ function PortfolioPreview() {
 
       {/* PAGE 3: NARRATIVE HEAD */}
       <div className="a4-page page-break portfolio-document position-relative" style={{ fontFamily: "Arial, sans-serif", fontSize: "11pt" }}>
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <div style={{ flex: 1, width: "93%", textAlign: "center", paddingTop: "0px", paddingBottom: "40px" }}>
           <div style={{ marginBottom: "42px" }}>
             <p style={{ textAlign: "center" }}>A Narrative Report on the On-The-Job</p>
@@ -391,7 +392,7 @@ function PortfolioPreview() {
 
       {/* TABLE OF CONTENTS - STRETCHED FULL PAGE */}
       <div className="a4-page page-break portfolio-document position-relative d-flex flex-column">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <h3 style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '15px', fontSize: '12pt', fontFamily: '"Arial", sans-serif' }}>Table of Contents</h3>
 
         {/* flex-grow-1 and space-between distribute the items perfectly across the full A4 height */}
@@ -458,7 +459,7 @@ function PortfolioPreview() {
 
       {/* CHAPTER I */}
       <div data-toc-id="chap1" className="a4-page page-break portfolio-document d-flex flex-column justify-content-between position-relative">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <div style={{ textAlign: "center", margin: "auto 0" }}>
           <h1 style={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", fontSize: "36pt", marginBottom: "30px" }}>CHAPTER I</h1>
           <h2 style={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", fontSize: "28pt" }}>INTRODUCTION</h2>
@@ -468,7 +469,7 @@ function PortfolioPreview() {
 
       {hasVisionMissionImg ? (
         <div className="a4-page page-break portfolio-document position-relative">
-          <PageHeader companyLogoPath={p?.company_logo_path} />
+          <PageHeader companyLogoPath={companyLogoPath} />
 
           <div style={{ marginTop: '20px', textAlign: 'left' }}>
             <h3 style={{ fontWeight: 'bold', textAlign: 'left', margin: '0 0 10px 0' }}>Vision of UC</h3>
@@ -492,7 +493,7 @@ function PortfolioPreview() {
         </div>
       ) : (
         <PaginatedTextSection
-          companyLogoPath={p?.company_logo_path}
+          companyLogoPath={companyLogoPath}
           nextPg={nextPg}
           pageHeaderComponent={PageHeader}
           sections={[
@@ -508,7 +509,7 @@ function PortfolioPreview() {
 
       {/* Organizational Chart */}
       <div className="a4-page page-break portfolio-document position-relative">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <h5 style={{ fontWeight: "bold", marginTop: "20px", textAlign: "left" }}>Organizational Chart</h5>
         {p?.org_chart_path ? (
           <div style={{ textAlign: "center", marginTop: "20px" }}>
@@ -524,13 +525,13 @@ function PortfolioPreview() {
       </div>
 
       {/* Host Company History */}
-      <PaginatedTextSection companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} sections={[
+      <PaginatedTextSection companyLogoPath={companyLogoPath} nextPg={nextPg} pageHeaderComponent={PageHeader} sections={[
         { title: "History", body: p?.company_background ?? "No history provided.", heading: "h5", inlineTitle: false }
       ]} />
 
       {/* CHAPTER II */}
       <div data-toc-id="chap2" className="a4-page page-break portfolio-document d-flex flex-column justify-content-between position-relative">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <div style={{ textAlign: "center", margin: "auto 0" }}>
           <h1 style={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", fontSize: "36pt", marginBottom: "30px" }}>CHAPTER II</h1>
           <h2 style={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", fontSize: "28pt" }}>WEEKLY PROGRESS REPORT</h2>
@@ -543,7 +544,7 @@ function PortfolioPreview() {
           studentName={studentName}
           program={programTitle}
           studentSignaturePath={studentSignaturePath}
-          companyLogoPath={p?.company_logo_path}
+          companyLogoPath={companyLogoPath}
           nextPg={nextPg}
         />
       )}
@@ -561,12 +562,12 @@ function PortfolioPreview() {
             difficulties={j.challenges || j.difficulties}
             insights={j.learnings || j.insights}
             studentSignaturePath={studentSignaturePath}
-            companyLogoPath={p?.company_logo_path}
+            companyLogoPath={companyLogoPath}
             nextPg={nextPg}
           />
         ) : (
           <div key={j.id} className="a4-page page-break portfolio-document position-relative text-center">
-            <PageHeader companyLogoPath={p?.company_logo_path} />
+            <PageHeader companyLogoPath={companyLogoPath} />
             <h4 style={{ fontWeight: "bold", marginTop: "20px", textAlign: "left" }}>Week {j.week_number || j.week}</h4>
             <div style={{ marginTop: "20px", width: "100%", display: "flex", justifyContent: "center" }}>
               <AuthenticatedFileImage path={j.file_path} alt={`Week ${j.week_number || j.week} Journal`} style={{ maxWidth: "98%", maxHeight: "600px", objectFit: "contain", margin: "0 auto", display: "block" }} />
@@ -578,7 +579,7 @@ function PortfolioPreview() {
 
       {/* CHAPTER III */}
       <div data-toc-id="chap3" className="a4-page page-break portfolio-document d-flex flex-column justify-content-between position-relative">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <div style={{ textAlign: 'center', margin: 'auto 0' }}>
           <h1 style={{ fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '36pt', marginBottom: '30px' }}>CHAPTER III</h1>
           <h2 style={{ fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '28pt' }}>ASSESSMENT OF THE PROGRAM</h2>
@@ -586,7 +587,7 @@ function PortfolioPreview() {
         <div className="page-number">{nextPg()}</div>
       </div>
 
-      <PaginatedTextSection companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} sections={[
+      <PaginatedTextSection companyLogoPath={companyLogoPath} nextPg={nextPg} pageHeaderComponent={PageHeader} sections={[
         { title: 'Professional, Ethical, and Legal Responsibilities as Future IT Professionals', body: p?.prof_ethical_responsibilities, heading: 'h4' },
         { title: 'Things I Learned as a Future IT Professional', body: p?.things_learned, heading: 'h5' },
         { title: 'My Experience with People Around Me', body: p?.experience_with_people, heading: 'h5' },
@@ -597,7 +598,7 @@ function PortfolioPreview() {
 
       {/* APPENDICES */}
       <div data-toc-id="appendices" className="a4-page page-break portfolio-document d-flex flex-column justify-content-between position-relative">
-        <PageHeader companyLogoPath={p?.company_logo_path} />
+        <PageHeader companyLogoPath={companyLogoPath} />
         <div style={{ textAlign: 'center', margin: 'auto 0' }}>
           <h1 style={{ fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '48pt' }}>APPENDICES</h1>
         </div>
@@ -619,7 +620,7 @@ function PortfolioPreview() {
         program={programTitle}
         companyName={companyName}
         supervisorName={supervisorName}
-        companyLogoPath={p?.company_logo_path}
+        companyLogoPath={companyLogoPath}
         studentSignaturePath={studentSignaturePath}
         supervisorSignaturePath={supervisorSignaturePath}
         logs={attendanceLogs}
@@ -651,18 +652,18 @@ function PortfolioPreview() {
 
 
       {ojtWeeks.length === 0 ? (
-        <PaginatedImageCollection list={[]} title="Photos During OJT" companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} emptyMessage="[ Draft Preview Mode: Upload your weekly OJT pictures with captions in the Portfolio Builder to populate this section. ]" />
+        <PaginatedImageCollection list={[]} title="Photos During OJT" companyLogoPath={companyLogoPath} nextPg={nextPg} pageHeaderComponent={PageHeader} emptyMessage="[ Draft Preview Mode: Upload your weekly OJT pictures with captions in the Portfolio Builder to populate this section. ]" />
       ) : (
         ojtWeeks.map(w => {
           const list = ojtPhotos.filter(x => (Number(x.week_number) || 0) === w);
           const title = w > 0 ? `Week ${w}` : 'Photos During OJT';
-          return <PaginatedImageCollection key={`ojt-week-${w}`} list={list} title={title} companyLogoPath={p?.company_logo_path} nextPg={nextPg} pageHeaderComponent={PageHeader} />
+          return <PaginatedImageCollection key={`ojt-week-${w}`} list={list} title={title} companyLogoPath={companyLogoPath} nextPg={nextPg} pageHeaderComponent={PageHeader} />
         })
       )}
 
       {photos.some(x => ['training_certificate', 'training_test_result', 'training_documentation'].includes(x.type)) && (
         <div className="a4-page page-break portfolio-document d-flex flex-column justify-content-between position-relative">
-          <PageHeader companyLogoPath={p?.company_logo_path} />
+          <PageHeader companyLogoPath={companyLogoPath} />
           <div style={{ textAlign: 'center', margin: 'auto 0' }}>
             <h1 style={{ fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '36pt', textAlign: 'center' }}>ONLINE / F2F TRAINING (WADWHANI)</h1>
           </div>
@@ -675,7 +676,7 @@ function PortfolioPreview() {
 
       {photos.some(x => ['exam_certificate', 'exam_test_result', 'exam_documentation'].includes(x.type)) && (
         <div className="a4-page page-break portfolio-document d-flex flex-column justify-content-between">
-          <PageHeader companyLogoPath={p?.company_logo_path} />
+          <PageHeader companyLogoPath={companyLogoPath} />
           <div style={{ textAlign: 'center', margin: 'auto 0' }}>
             <h1 style={{ fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: '36pt', textAlign: 'center' }}>CERTIFICATION EXAM (ONLINE / F2F)</h1>
           </div>

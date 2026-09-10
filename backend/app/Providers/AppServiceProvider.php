@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Internship::class, InternshipPolicy::class);
 
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(5)
+            return Limit::perMinute(20)
                 ->by(strtolower((string) $request->input('username')).'|'.$request->ip())
                 ->response(function (Request $request, array $headers) {
                     $retry = (int) ($headers['Retry-After'][0] ?? $headers['retry-after'][0] ?? 60);

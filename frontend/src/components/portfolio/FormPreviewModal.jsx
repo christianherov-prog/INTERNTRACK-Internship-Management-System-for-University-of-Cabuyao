@@ -129,7 +129,7 @@ const FormPreviewModal = ({
               >
                 <i className="fa fa-print"></i> Print Preview
               </button>
-              {onDownload && type !== 'dtr' && (
+              {onDownload && (
                 <button
                   type="button"
                   className="btn btn-sm btn-primary"

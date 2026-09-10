@@ -12,6 +12,8 @@ use App\Models\Notification;
 use App\Models\SupervisorInviteToken;
 use App\Models\User;
 use App\Services\DtrWorkflowService;
+use App\Services\InternshipProgressService;
+use App\Services\OfficialFormDataService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\InternshipStatuses;
@@ -84,20 +86,25 @@ class SupervisorController extends Controller
                 $hasMidterm = $evals->contains('evaluation_period', 'midterm');
                 $hasFinal = $evals->contains('evaluation_period', 'final');
                 $profile = $internship->student?->studentProfile;
+                $progress = InternshipProgressService::snapshot($internship);
+                $eligibility = InternshipProgressService::evaluationEligibility($internship);
 
                 return [
                     'id' => $internship->id,
                     'student' => $profile ? trim("{$profile->last_name}, {$profile->first_name}") : $internship->student?->username,
                     'course' => $profile?->program?->name ?? $profile?->course_name ?? 'N/A',
                     'status' => $internship->status,
-                    'hours_rendered' => $internship->total_hours_rendered,
-                    'target_hours' => $internship->target_hours,
+                    'hours_rendered' => $progress['hours_rendered'],
+                    'target_hours' => $progress['target_hours'],
+                    'remaining_hours' => $progress['remaining_hours'],
+                    'progress_pct' => $progress['progress_pct'],
                     'company' => $internship->company?->company_name,
                     'term' => $internship->term,
                     'evaluation_status' => [
                         'midterm' => $hasMidterm,
                         'final' => $hasFinal,
                     ],
+                    'evaluation_eligibility' => $eligibility,
                 ];
             });
 
@@ -132,6 +139,8 @@ class SupervisorController extends Controller
 
         $mapped = $rows->getCollection()->map(function (Internship $i) {
             $p = $i->student?->studentProfile;
+            $progress = InternshipProgressService::snapshot($i);
+            $fo30 = app(OfficialFormDataService::class)->fo30($i);
 
             return [
                 'id' => $i->id,
@@ -139,11 +148,14 @@ class SupervisorController extends Controller
                 'status' => InternshipStatuses::normalize($i->status),
                 'status_label' => InternshipStatuses::label($i->status),
                 'status_reason' => $i->status_reason,
-                'target_hours' => $i->target_hours,
-                'total_hours_rendered' => $i->total_hours_rendered,
+                'target_hours' => $progress['target_hours'],
+                'total_hours_rendered' => $progress['hours_rendered'],
+                'remaining_hours' => $progress['remaining_hours'],
+                'progress_pct' => $progress['progress_pct'],
                 'company' => $i->company ? [
                     'id' => $i->company->id,
                     'company_name' => $i->company->company_name,
+                    'company_logo_path' => $fo30['company_logo_path'] ?? null,
                 ] : null,
                 'student' => [
                     'id' => $i->student_id,
@@ -156,9 +168,11 @@ class SupervisorController extends Controller
                         'program' => $p->program?->name,
                     ] : null,
                 ],
-                'attendance_logs' => AttendanceLog::where('internship_id', $i->id)
-                    ->orderBy('date', 'asc')
-                    ->get(),
+                'supervisor_name' => $fo30['supervisor_name'] ?? null,
+                'student_signature_path' => $fo30['student_signature_path'] ?? null,
+                'supervisor_signature_path' => $fo30['supervisor_signature_path'] ?? null,
+                'attendance_logs' => $fo30['logs'] ?? [],
+                'evaluation_eligibility' => InternshipProgressService::evaluationEligibility($i),
             ];
         });
         $rows->setCollection($mapped);
@@ -259,6 +273,8 @@ class SupervisorController extends Controller
             ->limit(15)
             ->get();
 
+        app(DtrWorkflowService::class)->decorateLogs($recentValidated);
+
         return response()->json([
             'data' => $pending->items(),
             'meta' => [
@@ -285,15 +301,25 @@ class SupervisorController extends Controller
             abort(403, 'You may only verify attendance for your assigned interns.');
         }
 
+        $request->user()->loadMissing('supervisorProfile');
+
         if ($log->status !== 'pending') {
             return response()->json(['message' => 'Only pending attendance records can be validated.'], 422);
         }
 
+        $htePath = SignatureCapture::profilePath($request->user());
         $log->update([
             'status' => $request->action,
             'remarks' => $request->remarks,
             'validated_by' => $request->user()->id,
             'validated_at' => now(),
+            'hte_signature_path' => $request->action === 'validated'
+                ? ($log->hte_signature_path ?: $htePath)
+                : $log->hte_signature_path,
+            'hte_signed_name' => $request->action === 'validated'
+                ? ($log->hte_signed_name ?: NameParts::fromProfile($request->user()->supervisorProfile))
+                : $log->hte_signed_name,
+            'hte_signed_at' => $request->action === 'validated' ? now() : $log->hte_signed_at,
         ]);
 
         // Refresh placement hours (if placement is linked) then internship total
@@ -332,12 +358,23 @@ class SupervisorController extends Controller
         $eligible = $logs->filter(fn ($log) => (bool) $log->clock_out);
         $affectedInternships = collect();
 
+        $request->user()->loadMissing('supervisorProfile');
+        $htePath = SignatureCapture::profilePath($request->user());
+        $hteName = NameParts::fromProfile($request->user()->supervisorProfile);
+
         foreach ($eligible as $log) {
             $log->update([
                 'status' => $request->action,
                 'remarks' => $request->remarks,
                 'validated_by' => $request->user()->id,
                 'validated_at' => now(),
+                'hte_signature_path' => $request->action === 'validated'
+                    ? ($log->hte_signature_path ?: $htePath)
+                    : $log->hte_signature_path,
+                'hte_signed_name' => $request->action === 'validated'
+                    ? ($log->hte_signed_name ?: $hteName)
+                    : $log->hte_signed_name,
+                'hte_signed_at' => $request->action === 'validated' ? now() : $log->hte_signed_at,
             ]);
 
             // Refresh placement hours if placement is linked
@@ -393,10 +430,17 @@ class SupervisorController extends Controller
                 }
 
                 $row = $internship->toArray();
+                $progress = InternshipProgressService::snapshot($internship);
+                $eligibility = InternshipProgressService::evaluationEligibility($internship);
                 $row['missing_forms'] = $missing;
                 $row['student'] = $internship->student;
                 $row['company'] = $internship->company;
                 $row['program'] = $internship->student?->studentProfile?->program?->name ?: $internship->program;
+                $row['hours_rendered'] = $progress['hours_rendered'];
+                $row['target_hours'] = $progress['target_hours'];
+                $row['remaining_hours'] = $progress['remaining_hours'];
+                $row['progress_pct'] = $progress['progress_pct'];
+                $row['evaluation_eligibility'] = $eligibility;
 
                 return $row;
             })

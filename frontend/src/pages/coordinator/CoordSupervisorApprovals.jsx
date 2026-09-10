@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
-import { AuthenticatedFileLink, AuthenticatedFilePreview } from '../../components/AuthenticatedFile'
+import { AuthenticatedFileDownload, AuthenticatedFileLink, AuthenticatedFilePreview } from '../../components/AuthenticatedFile'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { cacheDelete } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import '../../assets/css/supervisor-registration-review.css'
 
 function studentLabel(inv) {
+  if (inv.inviting_student_name) return inv.inviting_student_name
   const studentP = inv.student?.student_profile || inv.student?.studentProfile
   return studentP ? `${studentP.last_name}, ${studentP.first_name}` : (inv.student?.username || '—')
 }
@@ -15,6 +17,27 @@ function studentLabel(inv) {
 function reviewerLabel(inv) {
   const reviewerP = inv.reviewer?.faculty_profile || inv.reviewer?.facultyProfile || inv.reviewer?.supervisor_profile
   return reviewerP ? `${reviewerP.last_name}, ${reviewerP.first_name}` : (inv.reviewer?.username || '—')
+}
+
+function supervisorFullName(inv) {
+  return [inv.first_name, inv.middle_name, inv.last_name].filter(Boolean).join(' ').trim()
+}
+
+function SummaryField({ label, value }) {
+  if (value == null || String(value).trim() === '') return null
+  return (
+    <div className="sup-reg-summary-field">
+      <div className="sup-reg-summary-label">{label}</div>
+      <div className="sup-reg-summary-value">{value}</div>
+    </div>
+  )
+}
+
+function statusBadge(inv) {
+  const label = inv.status_label || (inv.status === 'registered' ? 'Pending Faculty Approval' : inv.status)
+  if (inv.status === 'approved') return <span className="badge bg-success">{label}</span>
+  if (inv.status === 'rejected') return <span className="badge bg-danger">{label}</span>
+  return <span className="badge bg-warning text-dark">{label || 'Pending Faculty Approval'}</span>
 }
 
 function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-page' }) {
@@ -28,6 +51,20 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
   const [remarks, setRemarks] = useState('')
   const [reviewTarget, setReviewTarget] = useState(null)
   const [activeFormIndex, setActiveFormIndex] = useState(0)
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [pdfHeight, setPdfHeight] = useState(500)
+
+  useEffect(() => {
+    const apply = () => {
+      const width = window.innerWidth
+      if (width < 430) setPdfHeight(280)
+      else if (width < 768) setPdfHeight(360)
+      else setPdfHeight(500)
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [])
 
   const fetchData = () => {
     setLoadError(null)
@@ -55,12 +92,30 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
     setActiveFormIndex(0)
     setRemarks('')
     setMessage(null)
+    setConfirmAction(null)
   }
 
   const closeReview = () => {
     if (actionLoading) return
     setReviewTarget(null)
     setRemarks('')
+    setConfirmAction(null)
+  }
+
+  const requestApprove = () => {
+    if (!reviewTarget || actionLoading) return
+    setMessage(null)
+    setConfirmAction('approve')
+  }
+
+  const requestReject = () => {
+    if (!reviewTarget || actionLoading) return
+    if (!remarks.trim()) {
+      setMessage('Please provide a reason for rejection.')
+      return
+    }
+    setMessage(null)
+    setConfirmAction('reject')
   }
 
   const handleApprove = async () => {
@@ -70,10 +125,12 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
       await api.patch(`${apiBase}/supervisor-approvals/${reviewTarget.id}/approve`, { remarks: remarks.trim() })
       setReviewTarget(null)
       setRemarks('')
+      setConfirmAction(null)
       cacheDelete(cacheKey)
       fetchData()
     } catch (err) {
       setMessage(err.response?.data?.message || 'Failed to approve.')
+      setConfirmAction(null)
     } finally {
       setActionLoading(null)
     }
@@ -83,6 +140,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
     if (!reviewTarget) return
     if (!remarks.trim()) {
       setMessage('Please provide a reason for rejection.')
+      setConfirmAction(null)
       return
     }
     setActionLoading(reviewTarget.id)
@@ -91,10 +149,12 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
       setReviewTarget(null)
       setRemarks('')
       setMessage(null)
+      setConfirmAction(null)
       cacheDelete(cacheKey)
       fetchData()
     } catch (err) {
       setMessage(err.response?.data?.message || 'Failed to reject.')
+      setConfirmAction(null)
     } finally {
       setActionLoading(null)
     }
@@ -102,6 +162,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
 
   const forms = reviewTarget?.acceptance_forms || []
   const activeForm = forms[activeFormIndex] || null
+  const reviewName = reviewTarget ? supervisorFullName(reviewTarget) : ''
 
   if (loading && !seed) {
     return (
@@ -114,7 +175,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
   return (
     <Layout title="Supervisor Approvals" subtitle="Review Pending Registrations" icon="fa-user-check" bodyClass={bodyClass}>
       {loadError && <PageError message={loadError} onRetry={fetchData} />}
-      {message && (
+      {message && !reviewTarget && (
         <div className="alert alert-danger alert-dismissible mb-3">
           {message}
           <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
@@ -186,38 +247,55 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
       </div>
 
       {reviewTarget && (
-        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={closeReview}>
-          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h6 className="modal-title">
-                  <i className="fa fa-file-signature me-2 text-primary"></i>
-                  Review acceptance form — {reviewTarget.first_name} {reviewTarget.last_name}
-                </h6>
-                <button type="button" className="btn-close" onClick={closeReview} disabled={!!actionLoading}></button>
-              </div>
-              <div className="modal-body">
-                <div className="row g-3 mb-3">
-                  <div className="col-md-4">
-                    <div className="text-muted small">Supervisor</div>
-                    <div className="fw-semibold">{reviewTarget.first_name} {reviewTarget.last_name}</div>
-                    <div className="small">{reviewTarget.email}</div>
-                    <div className="small text-muted">{reviewTarget.contact_number || '—'}</div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="text-muted small">Placement</div>
-                    <div className="fw-semibold">{reviewTarget.position || '—'}</div>
-                    <div className="small">{reviewTarget.company?.company_name || '—'}</div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="text-muted small">Inviting student</div>
-                    <div className="fw-semibold">{studentLabel(reviewTarget)}</div>
-                  </div>
+        <div className="sup-reg-review-overlay" role="dialog" aria-modal="true" aria-labelledby="sup-reg-review-title">
+          <div className="sup-reg-review-dialog">
+            <div className="sup-reg-review-header">
+              <div className="sup-reg-review-title-wrap">
+                <div className="sup-reg-review-icon" aria-hidden="true">
+                  <i className="fa fa-file-signature"></i>
                 </div>
+                <div>
+                  <h6 id="sup-reg-review-title" className="sup-reg-review-title">Review Supervisor Registration</h6>
+                  {reviewName ? <p className="sup-reg-review-subtitle">Supervisor: {reviewName}</p> : null}
+                </div>
+              </div>
+              <button type="button" className="btn-close" onClick={closeReview} disabled={!!actionLoading} aria-label="Close"></button>
+            </div>
 
-                <h6 className="fw-semibold mb-2">Acceptance form</h6>
+            <div className="sup-reg-review-body">
+              {message && (
+                <div className="alert alert-danger alert-dismissible mb-3">
+                  {message}
+                  <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
+                </div>
+              )}
+
+              <div className="sup-reg-summary-grid">
+                <div className="sup-reg-summary-group">
+                  <h6>Supervisor</h6>
+                  <SummaryField label="Name" value={reviewName} />
+                  <SummaryField label="Email" value={reviewTarget.email} />
+                  <SummaryField label="Contact" value={reviewTarget.contact_number} />
+                  <SummaryField label="Position" value={reviewTarget.position} />
+                </div>
+                <div className="sup-reg-summary-group">
+                  <h6>Supervision</h6>
+                  <SummaryField label="HTE / Company" value={reviewTarget.company?.company_name} />
+                  <SummaryField label="Inviting Student" value={studentLabel(reviewTarget)} />
+                  <SummaryField label="Program" value={reviewTarget.student_program} />
+                  <SummaryField label="Department" value={reviewTarget.student_department} />
+                </div>
+              </div>
+
+              <div className="sup-reg-status-row">
+                <span className="text-muted">Status:</span>
+                {statusBadge(reviewTarget)}
+              </div>
+
+              <div className="sup-reg-form-section">
+                <h6>Acceptance Form</h6>
                 {forms.length === 0 ? (
-                  <div className="alert alert-warning mb-3">No acceptance form was uploaded with this registration.</div>
+                  <div className="alert alert-warning mb-0">No acceptance form was uploaded with this registration.</div>
                 ) : (
                   <>
                     {forms.length > 1 && (
@@ -234,25 +312,44 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                         ))}
                       </div>
                     )}
-                    <div className="mb-2 d-flex justify-content-between align-items-center">
-                      <small className="text-muted">{activeForm?.name || 'Acceptance form'}</small>
+                    <div className="sup-reg-form-actions">
+                      <div className="small">
+                        <span className="text-muted">File:</span>{' '}
+                        <strong>{activeForm?.name || 'Acceptance form'}</strong>
+                      </div>
                       {activeForm?.path && (
-                        <AuthenticatedFileLink path={activeForm.path} className="btn btn-sm btn-outline-secondary">
-                          <i className="fa fa-external-link-alt me-1"></i>Open in new tab
-                        </AuthenticatedFileLink>
+                        <div className="d-flex flex-wrap gap-2">
+                          <AuthenticatedFileLink path={activeForm.path} className="btn btn-sm btn-outline-secondary">
+                            <i className="fa fa-external-link-alt me-1"></i>Open in New Tab
+                          </AuthenticatedFileLink>
+                          <AuthenticatedFileDownload
+                            path={activeForm.path}
+                            filename={activeForm.name || 'acceptance-form.pdf'}
+                            className="btn btn-sm btn-outline-primary"
+                          >
+                            <i className="fa fa-download me-1"></i>Download
+                          </AuthenticatedFileDownload>
+                        </div>
                       )}
                     </div>
-                    <AuthenticatedFilePreview
-                      path={activeForm?.path}
-                      mime={activeForm?.mime}
-                      name={activeForm?.name}
-                      height={520}
-                    />
+                    <div className="sup-reg-pdf-shell">
+                      <AuthenticatedFilePreview
+                        path={activeForm?.path}
+                        mime={activeForm?.mime}
+                        name={activeForm?.name}
+                        height={pdfHeight}
+                        errorMessage="Unable to preview the acceptance form. Open the file in a new tab or try again."
+                      />
+                    </div>
                   </>
                 )}
+              </div>
 
-                <label className="form-label fw-semibold mt-3">Remarks {reviewTarget ? <span className="text-muted fw-normal">(required to reject)</span> : null}</label>
+              <div className="sup-reg-remarks-section">
+                <label className="form-label fw-semibold mb-1" htmlFor="sup-reg-remarks">Remarks</label>
+                <div className="small text-muted mb-2">Required when rejecting.</div>
                 <textarea
+                  id="sup-reg-remarks"
                   className="form-control"
                   rows={3}
                   value={remarks}
@@ -260,26 +357,72 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                   placeholder="Remarks"
                 />
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={closeReview} disabled={!!actionLoading}>Close</button>
+            </div>
+
+            <div className="sup-reg-review-footer">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={closeReview} disabled={!!actionLoading}>Close</button>
+              <div className="sup-reg-review-footer-actions">
                 <button
                   type="button"
                   className="btn btn-outline-danger btn-sm"
-                  onClick={handleReject}
+                  onClick={requestReject}
                   disabled={actionLoading === reviewTarget.id}
                 >
-                  {actionLoading === reviewTarget.id ? <i className="fa fa-spinner fa-spin"></i> : <><i className="fa fa-times me-1"></i>Reject</>}
+                  <i className="fa fa-times me-1"></i>Reject
                 </button>
                 <button
                   type="button"
                   className="btn btn-success btn-sm"
-                  onClick={handleApprove}
+                  onClick={requestApprove}
                   disabled={actionLoading === reviewTarget.id}
                 >
-                  {actionLoading === reviewTarget.id ? <i className="fa fa-spinner fa-spin"></i> : <><i className="fa fa-check me-1"></i>Approve</>}
+                  <i className="fa fa-check me-1"></i>Approve
                 </button>
               </div>
             </div>
+
+            {confirmAction && (
+              <div className="sup-reg-confirm-overlay">
+                <div className="sup-reg-confirm-card">
+                  <h6>{confirmAction === 'approve' ? 'Approve Supervisor Registration?' : 'Reject Supervisor Registration?'}</h6>
+                  <SummaryField label="Supervisor" value={reviewName} />
+                  <SummaryField label="Student" value={studentLabel(reviewTarget)} />
+                  <SummaryField label="HTE" value={reviewTarget.company?.company_name} />
+                  {confirmAction === 'reject' ? (
+                    <p className="small text-muted mt-2 mb-0">This supervisor will not gain active student access.</p>
+                  ) : null}
+                  <div className="d-flex justify-content-end gap-2 mt-3">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setConfirmAction(null)}
+                      disabled={!!actionLoading}
+                    >
+                      Cancel
+                    </button>
+                    {confirmAction === 'approve' ? (
+                      <button
+                        type="button"
+                        className="btn btn-success btn-sm"
+                        onClick={handleApprove}
+                        disabled={actionLoading === reviewTarget.id}
+                      >
+                        {actionLoading === reviewTarget.id ? <i className="fa fa-spinner fa-spin"></i> : 'Approve'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        onClick={handleReject}
+                        disabled={actionLoading === reviewTarget.id}
+                      >
+                        {actionLoading === reviewTarget.id ? <i className="fa fa-spinner fa-spin"></i> : 'Reject'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -321,12 +464,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                           ))
                           : '—'}
                       </td>
-                      <td>
-                        {inv.status === 'approved'
-                          ? <span className="badge bg-success">Approved</span>
-                          : <span className="badge bg-danger">Rejected</span>
-                        }
-                      </td>
+                      <td>{statusBadge(inv)}</td>
                       <td>{reviewerLabel(inv)}</td>
                       <td>{inv.reviewed_at ? new Date(inv.reviewed_at).toLocaleDateString('en-PH') : '—'}</td>
                       <td>{inv.review_remarks || '—'}</td>
