@@ -89,4 +89,59 @@ class InternshipProgressService
 
         return ProgramRequirementService::targetHoursForProfile($fallbackProfile);
     }
+
+    /**
+     * Midterm becomes available at 50% of required hours; final at 100%.
+     * Display-only — submission endpoints are unchanged.
+     *
+     * @return array{
+     *     progress_pct: float,
+     *     hours_rendered: float,
+     *     target_hours: float,
+     *     remaining_hours: float,
+     *     midterm_eligible: bool,
+     *     final_eligible: bool,
+     *     status: string,
+     *     label: string,
+     *     reason: ?string
+     * }
+     */
+    public static function evaluationEligibility(Internship $internship): array
+    {
+        $snap = self::snapshot($internship);
+        $pct = (float) $snap['progress_pct'];
+        $hours = (float) $snap['hours_rendered'];
+        $target = (float) $snap['target_hours'];
+        $midterm = $target > 0 && $pct >= 50.0;
+        $final = $target > 0 && $pct >= 100.0;
+
+        $reason = null;
+        if (! $midterm) {
+            $reason = sprintf(
+                'Not yet eligible for midterm evaluation (%s / %s hours = %s%%; 50%% required).',
+                rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format($target, 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format($pct, 1, '.', ''), '0'), '.')
+            );
+        } elseif (! $final) {
+            $reason = sprintf(
+                'Not yet eligible for final evaluation (%s / %s hours = %s%%; 100%% required).',
+                rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format($target, 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format($pct, 1, '.', ''), '0'), '.')
+            );
+        }
+
+        return [
+            'progress_pct' => $pct,
+            'hours_rendered' => $hours,
+            'target_hours' => $target,
+            'remaining_hours' => (float) $snap['remaining_hours'],
+            'midterm_eligible' => $midterm,
+            'final_eligible' => $final,
+            'status' => $final ? 'eligible' : ($midterm ? 'midterm_eligible' : 'not_yet_eligible'),
+            'label' => $final ? 'Eligible' : ($midterm ? 'Midterm eligible' : 'Not Yet Eligible'),
+            'reason' => $reason,
+        ];
+    }
 }

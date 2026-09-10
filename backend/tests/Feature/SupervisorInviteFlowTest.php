@@ -510,4 +510,74 @@ class SupervisorInviteFlowTest extends TestCase
         $this->assertSame($supervisorId, (int) $party['internship']->fresh()->supervisor_id);
         $this->assertSame($supervisorId, (int) $placement->fresh()->supervisor_id);
     }
+
+    public function test_rejection_requires_remarks(): void
+    {
+        Storage::fake('local');
+        $party = $this->studentReadyForInvite();
+        $token = $this->generateInviteToken($party['student']);
+        $this->post('/api/v1/supervisor-register', [
+            'token' => $token,
+            'first_name' => 'Reject',
+            'last_name' => 'Case',
+            'email' => 'reject.case@hte.example',
+            'contact_number' => '09170004444',
+            'position' => 'Lead',
+            'sex' => 'Male',
+            'company_id' => $party['company']->id,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'acceptance_forms' => [UploadedFile::fake()->create('acceptance.pdf', 40, 'application/pdf')],
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $invite = SupervisorInviteToken::where('token', $token)->first();
+        Sanctum::actingAs($party['faculty']);
+        $this->patchJson("/api/v1/faculty/supervisor-approvals/{$invite->id}/reject")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['remarks']);
+        $this->assertSame('registered', $invite->fresh()->status);
+        $this->assertNull($party['internship']->fresh()->supervisor_id);
+    }
+
+    public function test_approval_promotes_pending_placement_and_exposes_review_summary(): void
+    {
+        Storage::fake('local');
+        $party = $this->studentReadyForInvite();
+        $party['internship']->update(['status' => 'pending_placement', 'supervisor_id' => null]);
+        $token = $this->generateInviteToken($party['student']);
+        $this->post('/api/v1/supervisor-register', [
+            'token' => $token,
+            'first_name' => 'Arthur',
+            'last_name' => 'Morgan',
+            'email' => 'arthur.review@hte.example',
+            'contact_number' => '09170005555',
+            'position' => 'Industry Supervisor',
+            'sex' => 'Male',
+            'company_id' => $party['company']->id,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'acceptance_forms' => [UploadedFile::fake()->create('GFAMOA.pdf', 40, 'application/pdf')],
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        $invite = SupervisorInviteToken::where('token', $token)->first();
+        Sanctum::actingAs($party['faculty']);
+        $pending = $this->getJson('/api/v1/faculty/supervisor-approvals')->assertOk();
+        $row = collect($pending->json('pending'))->firstWhere('id', $invite->id);
+        $this->assertNotNull($row);
+        $this->assertSame('Pending Faculty Approval', $row['status_label']);
+        $this->assertSame('Arthur', $row['first_name']);
+        $this->assertSame('Morgan', $row['last_name']);
+        $this->assertNotEmpty($row['acceptance_forms'][0]['path'] ?? null);
+        $this->assertArrayNotHasKey('token', $row);
+        $this->assertArrayNotHasKey('fo29_file_path', $row);
+        $this->assertSame('BSIT', $row['student_program']);
+        $this->assertSame('CCS', $row['student_department']);
+
+        $this->getJson('/api/v1/files/download?path='.urlencode($row['acceptance_forms'][0]['path']))
+            ->assertOk();
+
+        $this->patchJson("/api/v1/faculty/supervisor-approvals/{$invite->id}/approve")->assertOk();
+        $this->assertSame('ongoing', $party['internship']->fresh()->status);
+        $this->assertNotNull($party['internship']->fresh()->supervisor_id);
+    }
 }

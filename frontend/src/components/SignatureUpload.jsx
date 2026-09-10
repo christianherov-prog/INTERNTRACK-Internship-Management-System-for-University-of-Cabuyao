@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../services/api'
+import { invalidateOfficialFormCaches } from '../utils/pageCache'
 
 /**
  * SignatureUpload component
@@ -55,6 +56,7 @@ function SignatureUpload() {
       const fd = new FormData()
       fd.append('signature', file)
       await api.post('/auth/signature', fd)
+      invalidateOfficialFormCaches()
       setHasSignature(true)
       setPreview(null)
       setFileName('')
@@ -72,6 +74,7 @@ function SignatureUpload() {
     setRemoving(true)
     try {
       await api.delete('/auth/signature')
+      invalidateOfficialFormCaches()
       setHasSignature(false)
       setMessage({ type: 'success', text: 'Signature removed.' })
     } catch {

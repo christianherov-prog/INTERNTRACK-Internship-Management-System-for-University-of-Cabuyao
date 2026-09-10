@@ -338,7 +338,8 @@ class SupervisorRegistrationController extends Controller
 
         $pendingQuery = SupervisorInviteToken::where('status', 'registered')
             ->with([
-                'student.studentProfile',
+                'student.studentProfile.program.department',
+                'student.studentProfile.department',
                 'supervisor.supervisorProfile',
                 'company',
                 'internship',
@@ -351,10 +352,11 @@ class SupervisorRegistrationController extends Controller
 
         $historyQuery = SupervisorInviteToken::whereIn('status', ['approved', 'rejected'])
             ->with([
-                'student.studentProfile',
+                'student.studentProfile.program.department',
+                'student.studentProfile.department',
                 'supervisor.supervisorProfile',
                 'company',
-                'reviewer',
+                'reviewer.facultyProfile',
                 'internship',
             ])
             ->orderByDesc('reviewed_at')
@@ -365,8 +367,8 @@ class SupervisorRegistrationController extends Controller
         $history = $historyQuery->get();
 
         return response()->json([
-            'pending' => $invites,
-            'history' => $history,
+            'pending' => $invites->map(fn (SupervisorInviteToken $invite) => $this->serializeReviewInvite($invite))->values(),
+            'history' => $history->map(fn (SupervisorInviteToken $invite) => $this->serializeReviewInvite($invite))->values(),
         ]);
     }
 
@@ -399,10 +401,14 @@ class SupervisorRegistrationController extends Controller
                 return response()->json(['message' => 'This student already has an assigned supervisor.'], 409);
             }
 
-            $internship->update([
+            $internshipPayload = [
                 'supervisor_id' => $supervisorUser->id,
                 'company_id' => $lockedInvite->company_id ?? $internship->company_id,
-            ]);
+            ];
+            if (in_array($internship->status, ['pending_placement', 'placed'], true)) {
+                $internshipPayload['status'] = 'ongoing';
+            }
+            $internship->update($internshipPayload);
 
             $this->syncPlacementSupervisor($internship->fresh(), $supervisorUser->id, $lockedInvite->company_id);
 
@@ -836,5 +842,34 @@ class SupervisorRegistrationController extends Controller
             $payload['company_id'] = $companyId;
         }
         $placement->update($payload);
+    }
+
+    /**
+     * Faculty review payload: structured student/program fields without raw
+     * invite tokens or private storage columns.
+     */
+    private function serializeReviewInvite(SupervisorInviteToken $invite): array
+    {
+        $invite->makeHidden(['token', 'fo29_file_path', 'acceptance_form_paths']);
+
+        $profile = $invite->student?->studentProfile;
+        $program = $profile?->program;
+        $department = $profile?->department ?? $program?->department;
+        $studentName = $profile
+            ? (NameParts::fromProfile($profile) ?: trim($profile->first_name.' '.$profile->last_name))
+            : ($invite->student?->username);
+
+        $payload = $invite->toArray();
+        $payload['inviting_student_name'] = $studentName ?: null;
+        $payload['student_program'] = $program?->code ?: $program?->name;
+        $payload['student_department'] = $department?->code ?: $department?->name;
+        $payload['status_label'] = match ($invite->status) {
+            'registered' => 'Pending Faculty Approval',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => $invite->status ? ucwords(str_replace('_', ' ', $invite->status)) : null,
+        };
+
+        return $payload;
     }
 }

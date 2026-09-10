@@ -400,6 +400,111 @@ img {
     background: transparent;
 }
 
+/* ==========================================================
+   PNC:AA-FO-31 — one official page, print-safe alignment
+   ========================================================== */
+
+.fo31-page {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+}
+
+.fo31-sheet {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fo31-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+}
+
+.fo31-header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+.fo31-info-box {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+.fo31-grid {
+    width: 100%;
+    table-layout: fixed !important;
+    border-collapse: collapse;
+    flex: 1 1 auto;
+}
+
+.fo31-grid th,
+.fo31-grid td {
+    width: 33.333%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.fo31-grid th {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.fo31-grid td {
+    vertical-align: top;
+    height: 92mm;
+}
+
+.fo31-cell-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.fo31-footer {
+    flex: 0 0 auto;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+.fo31-signature-box,
+.fo31-signature-box * {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.fo31-page .portfolio-signature-stack {
+    justify-content: center;
+}
+
+@media print {
+    .fo31-page {
+        height: 297mm !important;
+        max-height: 297mm !important;
+        overflow: hidden !important;
+    }
+
+    .fo31-sheet {
+        height: 100%;
+        max-height: 100%;
+    }
+
+    .fo31-grid td {
+        height: 88mm;
+    }
+
+    .fo31-page .page-number {
+        bottom: 0.85cm;
+    }
+}
+
 @media print {
     .a4-page img,
     .portfolio-document img {

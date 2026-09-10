@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import api from '../../../services/api'
-import { cacheGet, cacheSet } from '../../../utils/pageCache'
+import { cacheGet, cacheSet, invalidateOfficialFormCaches } from '../../../utils/pageCache'
 import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
@@ -168,6 +168,7 @@ function PortfolioBuilder() {
     try {
       await api.post('/student/portfolio/photos', formData)
       toast.success('File uploaded.')
+      invalidateOfficialFormCaches()
       fetchPortfolio()
     } catch (err) {
       toast.error(safeUploadError(err))
@@ -189,6 +190,7 @@ function PortfolioBuilder() {
     setIsDeleting(true)
     try {
       await api.delete(`/student/portfolio/photos/${deletingItem.id}`)
+      invalidateOfficialFormCaches()
       fetchPortfolio()
       setDeletingItem(null)
     } catch (err) {
@@ -226,7 +228,17 @@ function PortfolioBuilder() {
     { type: 'exam_test_result', label: 'Exam Test Result' },
     { type: 'exam_documentation', label: 'Exam Documentation' },
     { type: 'registration_form', label: 'Registration Form' },
+    { type: 'medical_result', label: 'Medical Result' },
+    { type: 'psychological_result', label: 'Psychological Test Result' },
+    { type: 'application_letter', label: 'Application Letter' },
+    { type: 'student_cv', label: 'Curriculum Vitae' },
+    { type: 'recommendation_request', label: 'Recommendation Letter' },
+    { type: 'acceptance_form', label: 'Acceptance Form' },
+    { type: 'consent_form', label: 'Consent Form' },
+    { type: 'training_plan', label: 'Training Plan' },
+    { type: 'moa_document', label: 'MOA Image' },
     { type: 'visitation_form', label: 'Visitation Form' },
+    { type: 'completion_certificate', label: 'Completion Certificate' },
     { type: 'hte_evaluation', label: 'HTE Evaluation' },
     { type: 'program_evaluation', label: 'Program Evaluation' },
   ]
@@ -650,6 +662,24 @@ function PortfolioBuilder() {
                 {renderFileList('exam_certificate', 'Certification', false, false, DOC_ACCEPT)}
                 {renderFileList('exam_test_result', 'Pre and Post Test Result', false, false, DOC_ACCEPT)}
                 {renderFileList('exam_documentation', 'Documentation of Preparation', false, true, 'image/*')}
+              </div>
+            </div>
+
+            <div className="portfolio-appendix-group">
+              <h6 className="portfolio-appendix-group-title">Scanned Supporting Images</h6>
+              <div className="portfolio-upload-grid">
+                {renderFileList('registration_form', 'Registration Form', false, false, DOC_ACCEPT)}
+                {renderFileList('medical_result', 'Medical Result', false, false, DOC_ACCEPT)}
+                {renderFileList('psychological_result', 'Psychological Test Result', false, false, DOC_ACCEPT)}
+                {renderFileList('application_letter', 'Application Letter', false, false, DOC_ACCEPT)}
+                {renderFileList('student_cv', 'Curriculum Vitae', false, false, DOC_ACCEPT)}
+                {renderFileList('recommendation_request', 'Recommendation Letter', false, false, DOC_ACCEPT)}
+                {renderFileList('acceptance_form', 'Acceptance Form', false, false, DOC_ACCEPT)}
+                {renderFileList('consent_form', 'Consent Form', false, false, DOC_ACCEPT)}
+                {renderFileList('training_plan', 'Training Plan', false, false, DOC_ACCEPT)}
+                {renderFileList('moa_document', 'MOA Image', false, false, DOC_ACCEPT)}
+                {renderFileList('visitation_form', 'Visitation Form', false, false, DOC_ACCEPT)}
+                {renderFileList('completion_certificate', 'Completion Certificate', false, false, DOC_ACCEPT)}
               </div>
             </div>
 

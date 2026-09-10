@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\AbsorptionService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
+use App\Services\OfficialFormDataService;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
@@ -112,11 +113,7 @@ class CoordinatorController extends Controller
 
         $journalCount = $journals->count();
         $lastJournal = $journals->sortByDesc('created_at')->first();
-
-        // Get all attendance logs for the DTR preview
-        $attendanceLogs = AttendanceLog::where('internship_id', $internship->id)
-            ->orderBy('date', 'asc')
-            ->get();
+        $officialForm = app(OfficialFormDataService::class)->bundle($internship);
 
         return response()->json([
             'student' => [
@@ -164,7 +161,8 @@ class CoordinatorController extends Controller
                     'insights' => $j->learnings,
                 ])->values(),
             ],
-            'attendance_logs' => $attendanceLogs,
+            'attendance_logs' => $officialForm['fo30']['logs'] ?? [],
+            'official_form' => $officialForm,
         ]);
     }
 

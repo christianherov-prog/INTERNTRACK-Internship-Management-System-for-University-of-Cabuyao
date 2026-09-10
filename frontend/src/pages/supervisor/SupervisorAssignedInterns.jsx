@@ -11,6 +11,7 @@ import { formatStudentName } from '../../utils/formatName'
 import { displayLabel } from '../../utils/displayLabel'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { openOfficialFo30, openOfficialFo31 } from '../../utils/officialForm'
 
 function statusBadge(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -162,19 +163,7 @@ function SupervisorAssignedInterns() {
                               type="button"
                               className="btn btn-xs btn-outline-primary"
                               style={{ fontSize: '0.78rem', padding: '2px 8px' }}
-                              onClick={() => setPreviewModal({
-                                type: 'dtr',
-                                data: {
-                                  studentName: name,
-                                  program: displayLabel(profile?.program || profile?.course_name, '—'),
-                                  companyName: i.company?.company_name || '—',
-                                  companyLogoPath: i.company?.company_logo_path || '',
-                                  supervisorName: user?.username,
-                                  logs: i.attendance_logs || [],
-                                  month: new Date().toISOString().slice(0, 7)
-                                },
-                                onDownload: () => downloadPdf('dtr', i.id, name),
-                              })}
+                              onClick={() => openOfficialFo30(i.id, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-30 preview.'))}
                             >
                               <i className="fa fa-eye me-1"></i>DTR (FO-30)
                             </button>
@@ -182,16 +171,11 @@ function SupervisorAssignedInterns() {
                               type="button"
                               className="btn btn-xs btn-outline-secondary"
                               style={{ fontSize: '0.78rem', padding: '2px 8px' }}
-                              onClick={() => setPreviewModal({
-                                type: 'journal',
-                                data: {
-                                  studentName: name,
-                                  program: displayLabel(profile?.program || profile?.course_name, '—'),
-                                  companyName: i.company?.company_name || '—',
-                                  companyLogoPath: i.company?.company_logo_path || '',
-                                },
-                                onDownload: () => downloadPdf('journal', i.id, name),
-                              })}
+                              onClick={() => openOfficialFo31(i.id, {
+                                studentName: name,
+                                program: displayLabel(profile?.program || profile?.course_name, '—'),
+                                companyName: i.company?.company_name || '—',
+                              }, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))}
                             >
                               <i className="fa fa-eye me-1"></i>Journal (FO-31)
                             </button>

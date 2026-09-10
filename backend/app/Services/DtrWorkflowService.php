@@ -839,12 +839,17 @@ class DtrWorkflowService
                 ) / 60, 2)
                 : null;
 
-            $actualHours = ($log->clock_in && $log->clock_out)
+            $inRaw = $log->clock_in ?: $log->am_time_in;
+            $outRaw = $log->clock_out ?: $log->pm_time_out ?: $log->am_time_out;
+            $spanHours = ($inRaw && $outRaw)
                 ? round($this->minutesBetween(
-                    $this->combineDateAndTime($date, $log->clock_in),
-                    $this->combineDateAndTime($date, $log->clock_out)
+                    $this->combineDateAndTime($date, $inRaw),
+                    $this->combineDateAndTime($date, $outRaw)
                 ) / 60, 2)
                 : null;
+            $actualHours = $log->hours_rendered !== null
+                ? round((float) $log->hours_rendered, 2)
+                : $spanHours;
 
             $otStatus = match ($ot?->status) {
                 'pending' => 'pending',
@@ -868,12 +873,10 @@ class DtrWorkflowService
                 'end_time' => $this->timeString($schedule->end_time),
             ] : null);
 
-            $inAt = ManilaTime::fromStoredDateAndTime($log->date, $log->clock_in ?: $log->am_time_in);
-            $outAt = ManilaTime::fromStoredDateAndTime($log->date, $log->clock_out ?: $log->am_time_out);
+            $inAt = ManilaTime::fromStoredDateAndTime($log->date, $inRaw);
+            $outAt = ManilaTime::fromStoredDateAndTime($log->date, $outRaw);
             $log->setAttribute('timezone', ManilaTime::TZ);
-            $log->setAttribute('date_display', $inAt?->toDateString()
-                ?: ManilaTime::manilaDateString($log->date)
-                ?: $date);
+            $log->setAttribute('date_display', ManilaTime::dateString($log->date) ?: $date);
             $log->setAttribute('clock_in_display', ManilaTime::clockHm($inAt));
             $log->setAttribute('clock_out_display', ManilaTime::clockHm($outAt));
 
@@ -1192,6 +1195,10 @@ class DtrWorkflowService
 
     public function minutesBetween(Carbon $from, Carbon $to): int
     {
+        if ($to->lessThan($from)) {
+            $to = $to->copy()->addDay();
+        }
+
         return (int) max(0, round($from->diffInMinutes($to, false)));
     }
 

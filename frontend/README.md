@@ -20,7 +20,7 @@ Vite + React SPA for the INTERNTRACK internship management system. Talks to the 
 
 | Area | Behavior |
 |------|----------|
-| Journals | Weekly upload of the **FO-31 Daily Journal** form (not a daily submission API) |
+| Journals | Weekly **FO-31** journal: student submits, **faculty** reviews; supervisor does not validate journals. Portfolio FO-31 uses the same record. |
 | Realtime | Reverb WebSockets when configured; else polling |
 | MISD | Local mock + Admin Sync — not live institutional SSO |
 | Absorption | **PALD Director** finalizes Absorbed / Not Hired; supervisor/coord view-only |

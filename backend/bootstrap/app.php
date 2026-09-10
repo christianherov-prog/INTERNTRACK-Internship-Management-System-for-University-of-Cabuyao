@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsureUserHasRole;
+use App\Support\UniqueWrite;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -59,6 +60,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (QueryException $e, Request $request) {
             if (! $request->is('api/*')) {
                 return null;
+            }
+
+            if (UniqueWrite::isDuplicate($e) && str_contains($e->getMessage(), 'faculty_number')) {
+                return response()->json([
+                    'message' => 'This ID is already assigned to another account.',
+                    'errors' => [
+                        'faculty_number' => ['This ID is already assigned to another account.'],
+                    ],
+                ], 422);
             }
 
             Log::error('API query failed', [

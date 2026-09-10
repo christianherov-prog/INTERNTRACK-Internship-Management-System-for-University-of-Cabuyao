@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Hash;
  *
  * Seeded accounts:
  *   - 2300600: Christian Hero Valinado (BSIT, 4IT-D)
- *   - 2300590: John Taac-Taac (BSIT, 4IT-D) — fresh enrollee / pending placement
+ *   - 2300590: Angel Luis Taac - Taac (BSIT, 4IT-D) — fresh enrollee / pending placement
  *   - 2300592: Clarence Montealegre (BSIT, 4IT-D) — progressed profile at TechCorp PH
  *
  * Soft-deleted users are restored so re-seed never fails unique constraints.
@@ -61,10 +61,11 @@ class StudentAccountsSeeder extends Seeder
         $password = Hash::make(config('interntrack.default_password'));
 
         $techCorp = Company::where('company_name', 'TechCorp PH')->first();
+        $accenture = Company::where('company_name', 'Accenture PH')->first();
         $ccsFaculty = User::where('faculty_number', 'FAC-CCS-001')->first()
             ?? User::where('faculty_number', 'FAC-1001')->first();
-        $supervisorUser = User::where('email', 'patrick.bateman@techcorp.ph')->first()
-            ?? User::where('role', 'supervisor')->first();
+        $supervisorUser = User::where('faculty_number', 'SUP-0002')->first()
+            ?? User::where('email', 'adrian.reyes@accenture.ph')->first();
         $facultyResolver = app(FacultySectionAssignmentService::class);
 
         $students = [
@@ -91,13 +92,13 @@ class StudentAccountsSeeder extends Seeder
             ],
             [
                 'student_number' => '2300590',
-                'email' => 'john.taactaac@uc.edu.ph',
+                'email' => 'angel.taactaac@uc.edu.ph',
                 'profile' => [
                     'student_number' => '2300590',
-                    'first_name' => 'John',
+                    'first_name' => 'Angel Luis',
                     'middle_name' => null,
-                    'last_name' => 'Taac-Taac',
-                    'email' => 'john.taactaac@uc.edu.ph',
+                    'last_name' => 'Taac - Taac',
+                    'email' => 'angel.taactaac@uc.edu.ph',
                     'contact_number' => '09175550590',
                     'sex' => 'Male',
                     'program' => 'Bachelor of Science in Information Technology',
@@ -259,9 +260,12 @@ class StudentAccountsSeeder extends Seeder
 
             if (! empty($row['internship'])) {
                 // Populated internship state for progressed demo accounts (e.g. 2300592)
+                $companyId = $row['student_number'] === '2300592'
+                    ? ($accenture?->id ?? $techCorp?->id)
+                    : $techCorp?->id;
                 $internshipData = array_merge($row['internship'], [
                     'student_id' => $user->id,
-                    'company_id' => $techCorp?->id,
+                    'company_id' => $companyId,
                     'supervisor_id' => $supervisorUser?->id,
                     'faculty_id' => $facultyId,
                     'coordinator_id' => $coordId,
@@ -310,8 +314,8 @@ class StudentAccountsSeeder extends Seeder
 
         $this->command?->info('✅ Student accounts seeded:');
         $this->command?->info('  2300600 (Christian Valinado) — interntrack123 (Fresh/Pending)');
-        $this->command?->info('  2300590 (John Taac-Taac)     — interntrack123 (Fresh/Pending)');
-        $this->command?->info('  2300592 (Clarence Montealegre) — interntrack123 (Populated: TechCorp PH)');
+        $this->command?->info('  2300590 (Angel Luis Taac - Taac) — interntrack123 (Fresh/Pending)');
+        $this->command?->info('  2300592 (Clarence Montealegre) — interntrack123 (Populated: Accenture PH / Adrian Reyes)');
         $this->command?->info('  2300601 (COED Student)       — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300602 (COE Civil Eng)      — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300608 (COE CpE)            — interntrack123 (Fresh/Pending)');

@@ -7,7 +7,19 @@ import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../components/
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { formatStudentName } from '../../utils/formatName'
+import { displayLabel } from '../../utils/displayLabel'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { openOfficialFo31 } from '../../utils/officialForm'
+import { formatFo31DateRange } from '../../utils/fo31DateRange'
+import { formatManilaDateTime } from '../../utils/manilaTime'
+
+function journalStudentNumber(journal) {
+  const student = journal?.internship?.student
+  const profile = student?.student_profile || student?.studentProfile
+  return journal?.student_number || profile?.student_number || student?.student_number || ''
+}
+
 function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
   const [action, setAction]     = useState('approved')
   const [feedback, setFeedback] = useState('')
@@ -28,7 +40,20 @@ function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
           </div>
           <div className="modal-body">
             <div className="mb-3 p-3 rounded" style={{ background: '#f8fafc', fontSize: '0.88rem' }}>
+              <div className="fw-semibold mb-1">{journal.student_display_name || 'Student'}</div>
+              {journalStudentNumber(journal) ? <div className="text-muted mb-1">{journalStudentNumber(journal)}</div> : null}
+              {journal.program_name ? <div className="text-muted mb-2">{journal.program_name}</div> : null}
               <div className="fw-semibold mb-1">Week {journal.week_number ?? journal.entry_number}</div>
+              <div className="text-muted mb-2">{formatFo31DateRange(journal.date, journal.end_date) || journal.date}</div>
+              {journal.activities_summary && (
+                <p className="mb-2"><strong>Accomplishment:</strong> {journal.activities_summary}</p>
+              )}
+              {journal.challenges && (
+                <p className="mb-2"><strong>Difficulties Encountered:</strong> {journal.challenges}</p>
+              )}
+              {journal.learnings && (
+                <p className="mb-2"><strong>New Learning / Insights:</strong> {journal.learnings}</p>
+              )}
               {journal.notes && <p className="mb-0 text-muted"><strong>Notes:</strong> {journal.notes}</p>}
               {journal.supervisor_feedback && (
                 <div className="mt-2 alert alert-secondary py-2 mb-0">
@@ -127,6 +152,7 @@ function FacultyJournals() {
   const [historyModal, setHistoryModal] = useState(null)
   const [historyData, setHistoryData] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyError, setHistoryError] = useState(null)
 
   const fetchJournals = () => {
     setError(null)
@@ -154,30 +180,31 @@ function FacultyJournals() {
   const openHistory = (studentId, studentName) => {
     setHistoryModal({ studentId, studentName })
     setLoadingHistory(true)
+    setHistoryError(null)
     api.get(`/faculty/students/${studentId}/journals`)
-      .then(res => setHistoryData(res.data))
-      .catch(() => alert('Failed to load history'))
+      .then(res => setHistoryData(Array.isArray(res.data) ? res.data : (res.data?.data || [])))
+      .catch(() => {
+        setHistoryData([])
+        setHistoryError('Unable to load journal history. Try again.')
+      })
       .finally(() => setLoadingHistory(false))
   }
 
   const handlePreview = (j) => {
-    const profile = j.internship?.student?.studentProfile
-    const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
-    setPreviewModal({
-      type: 'journal',
-      data: {
-        studentName: name,
-        program: profile?.program?.code || '—',
-        companyName: j.internship?.company?.company_name,
-        companyLogoPath: j.internship?.company?.company_logo_path,
-        weekNumber: j.week_number ?? j.entry_number,
-        date: j.date,
-        endDate: j.end_date,
-        accomplishment: j.activities_summary,
-        difficulties: j.challenges,
-        insights: j.learnings,
-      }
-    })
+    const internshipId = j.internship_id || j.internship?.id
+    if (!internshipId) return
+    openOfficialFo31(internshipId, {
+      studentName: j.student_display_name,
+      program: j.program_name,
+      companyName: j.internship?.company?.company_name,
+      weekNumber: j.week_number ?? j.entry_number,
+      date: j.date,
+      endDate: j.end_date,
+      accomplishment: j.activities_summary,
+      difficulties: j.challenges,
+      insights: j.learnings,
+      studentSignaturePath: j.student_signature_path,
+    }, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))
   }
 
   return (
@@ -204,6 +231,7 @@ function FacultyJournals() {
         onClose={() => setPreviewModal(null)}
         type={previewModal?.type}
         data={previewModal?.data || {}}
+        onDownload={previewModal?.onDownload}
       />
       {historyModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -216,6 +244,8 @@ function FacultyJournals() {
               <div className="modal-body p-0">
                 {loadingHistory ? (
                   <div className="p-5 text-center"><InternTrackLoader /></div>
+                ) : historyError ? (
+                  <div className="p-4 text-center text-danger">{historyError}</div>
                 ) : historyData.length === 0 ? (
                   <div className="p-4 text-center text-muted">No past journals found.</div>
                 ) : (
@@ -228,14 +258,25 @@ function FacultyJournals() {
                             {h.status}
                           </span>
                         </div>
-                        <div className="text-muted small mb-2">{h.date} — {h.end_date}</div>
+                        <div className="text-muted small mb-2">{formatFo31DateRange(h.date, h.end_date) || h.date}</div>
+                        {h.faculty_reviewed_at ? (
+                          <div className="text-muted small mb-2">Reviewed {formatManilaDateTime(h.faculty_reviewed_at)}</div>
+                        ) : null}
                         {h.score != null && <div className="text-success small fw-bold"><i className="fa fa-check-circle me-1"></i>Score: {h.score}/100</div>}
                         {h.faculty_feedback && (
                           <div className="bg-light p-2 rounded small mt-2">
                             <strong>Feedback:</strong> {h.faculty_feedback}
                           </div>
                         )}
-                        <button className="btn btn-sm btn-outline-secondary mt-2" onClick={() => handlePreview({ ...h, internship: modal?.internship || historyData[0]?.internship })}>
+                        <button
+                          className="btn btn-sm btn-outline-secondary mt-2"
+                          onClick={() => handlePreview({
+                            ...h,
+                            student_display_name: historyModal.studentName,
+                            internship_id: h.internship_id || h.internship?.id,
+                            internship: h.internship || modal?.internship,
+                          })}
+                        >
                           <i className="fa fa-eye me-1"></i>Preview Form
                         </button>
                       </li>
@@ -255,7 +296,7 @@ function FacultyJournals() {
           <span className="ms-auto badge bg-warning text-dark">{journals.length} pending</span>
         </div>
         <div className="table-card">
-          {loading ? (
+          {loading && journals.length === 0 ? (
             <div className="text-center py-4"><InternTrackLoader /></div>
           ) : journals.length === 0 && !error ? (
             <div className="text-center py-4 text-muted">
@@ -263,15 +304,17 @@ function FacultyJournals() {
               All journals reviewed!
             </div>
           ) : journals.length === 0 ? null : journals.map(j => {
-            const profile = j.internship?.student?.studentProfile
-            const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
+            const name = j.student_display_name || formatStudentName(j.internship)
             return (
               <div key={j.id} className="p-3 border-bottom d-flex align-items-start justify-content-between">
                 <div>
                   <div className="fw-semibold mb-1">
                     {name} · <span className="text-primary">Week {j.week_number ?? j.entry_number}</span>
                   </div>
-                  <div className="text-muted" style={{ fontSize: '0.82rem' }}>{j.date}</div>
+                  <div className="text-muted" style={{ fontSize: '0.82rem' }}>
+                    {formatFo31DateRange(j.date, j.end_date) || j.date}
+                    {journalStudentNumber(j) ? ` · ${journalStudentNumber(j)}` : ''}
+                  </div>
                   {j.notes && <p className="mt-1 mb-0 text-muted" style={{ fontSize: '0.85rem' }}>{j.notes?.substring(0, 100)}…</p>}
                   <span className={`badge mt-1 ${j.status === 'approved' ? 'bg-success' : j.status === 'needs_revision' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
                     {j.status}

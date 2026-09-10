@@ -104,6 +104,56 @@ class AuthTest extends TestCase
         ]);
     }
 
+    public function test_faculty_login_resolves_id_from_faculty_profile_when_users_column_is_empty(): void
+    {
+        $user = $this->createUser([
+            'student_number' => null,
+            'faculty_number' => null,
+            'email' => 'faculty-profile-login@example.com',
+            'role' => 'faculty',
+        ]);
+
+        \App\Models\FacultyProfile::create([
+            'user_id' => $user->id,
+            'faculty_number' => 'FAC-LOGIN-1',
+            'first_name' => 'Marvin',
+            'last_name' => 'Bicua',
+            'email' => $user->email,
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'username' => 'FAC-LOGIN-1',
+            'password' => 'password123',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.role', 'faculty');
+
+        $this->assertSame('FAC-LOGIN-1', $user->fresh()->faculty_number);
+    }
+
+    public function test_local_login_accepts_legacy_default_password_and_rehashes(): void
+    {
+        config(['interntrack.allow_default_password_provision' => true]);
+        config(['interntrack.default_password' => 'InternTrack123!']);
+
+        $this->createUser([
+            'student_number' => null,
+            'faculty_number' => 'FAC-LEGACY-1',
+            'email' => 'faculty-legacy@example.com',
+            'role' => 'faculty',
+            'password' => Hash::make('InternTrack123!'),
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'username' => 'FAC-LEGACY-1',
+            'password' => 'interntrack123',
+        ]);
+
+        $response->assertOk();
+        $this->assertTrue(Hash::check('InternTrack123!', User::where('faculty_number', 'FAC-LEGACY-1')->first()->password));
+    }
+
     public function test_forgot_password_unknown_identifier_returns_generic_success(): void
     {
         $response = $this->postJson('/api/v1/auth/forgot-password', [

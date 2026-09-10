@@ -4,85 +4,44 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Internship;
-use App\Models\AttendanceLog;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use App\Services\OfficialFormDataService;
+use App\Support\InternshipAccess;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class DtrPdfController extends Controller
 {
     /**
      * Generate Form 30 — Student Internship Daily Time Record (DTR)
      * GET /v1/student/dtr/generate?internship_id=&month=YYYY-MM
-     * Also accessible by faculty & coordinator scoped via internship ownership checks.
+     * GET /v1/official-forms/{internship}/dtr.pdf
      */
-    public function generate(Request $request)
+    public function generate(Request $request, ?Internship $internship = null)
     {
         $request->validate([
-            'internship_id' => 'required|exists:internships,id',
-            'month'         => 'required|date_format:Y-m', // e.g. 2025-06
+            'internship_id' => 'nullable|exists:internships,id',
+            'month' => 'nullable|date_format:Y-m',
         ]);
 
-        $user = auth()->user();
-        $internship = Internship::with([
-            'student.studentProfile',
-            'company',
-            'supervisor.supervisorProfile',
-            'faculty.facultyProfile',
-        ])->findOrFail($request->internship_id);
+        if (! $internship) {
+            $internship = Internship::findOrFail($request->integer('internship_id'));
+        }
 
-        // Authorization: student can only view their own; supervisor/faculty can view their assigned
-        $this->authorizeInternshipAccess($user, $internship);
+        InternshipAccess::abortUnlessCanView($request->user(), $internship);
 
-        [$year, $month] = explode('-', $request->month);
-        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
-        $endDate   = $startDate->copy()->endOfMonth();
+        $data = app(OfficialFormDataService::class)->pdfDtr(
+            $internship,
+            $request->input('month')
+        );
+        $studentNumber = $data['fo30']['student_name'] ?? 'student';
+        $filename = 'DTR_'.preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) (
+            $internship->student?->student_number
+            ?: $internship->student?->studentProfile?->student_number
+            ?: $studentNumber
+        )).'.pdf';
 
-        $logs = AttendanceLog::where('internship_id', $internship->id)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->orderBy('date')
-            ->get();
-
-        $student       = $internship->student;
-        $studentProfile = $student->studentProfile;
-        $supervisorProfile = $internship->supervisor?->supervisorProfile;
-        $facultyProfile    = $internship->faculty?->facultyProfile;
-
-        // Signature paths — already background-removed, stored in storage
-        $studentSignaturePath    = $this->getSignaturePath($student);
-        $supervisorSignaturePath = $internship->supervisor ? $this->getSignaturePath($internship->supervisor) : null;
-
-        return view('pdf.form30_dtr', [
-            'internship'              => $internship,
-            'studentProfile'          => $studentProfile,
-            'supervisorProfile'       => $supervisorProfile,
-            'facultyProfile'          => $facultyProfile,
-            'company'                 => $internship->company,
-            'logs'                    => $logs,
-            'month'                   => $startDate->format('F Y'),
-            'studentSignature'        => $studentSignaturePath ? $this->signatureBase64($studentSignaturePath) : null,
-            'supervisorSignature'     => $supervisorSignaturePath ? $this->signatureBase64($supervisorSignaturePath) : null,
-        ]);
-    }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
-
-    protected function authorizeInternshipAccess($user, Internship $internship): void
-    {
-        \App\Support\InternshipAccess::abortUnlessCanView($user, $internship);
-    }
-
-    protected function getSignaturePath($user): ?string
-    {
-        // Signature stored at: signatures/{user_id}_processed.png
-        $path = "signatures/{$user->id}_processed.png";
-        return Storage::exists($path) ? $path : null;
-    }
-
-    protected function signatureBase64(string $storagePath): string
-    {
-        $data = Storage::get($storagePath);
-        return 'data:image/png;base64,' . base64_encode($data);
+        return Pdf::loadView('pdf.form30_dtr', $data)
+            ->setPaper('a4', 'portrait')
+            ->download($filename);
     }
 }

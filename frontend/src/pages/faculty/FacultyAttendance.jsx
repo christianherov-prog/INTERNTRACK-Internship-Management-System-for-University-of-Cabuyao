@@ -106,8 +106,8 @@ function FacultyAttendance() {
                       <td className="fw-semibold">{studentName(log)}</td>
                       <td>{log.internship?.company?.company_name || '—'}</td>
                       <td>{log.date ? String(log.date).slice(0, 10) : '—'}</td>
-                      <td>{log.clock_in || '—'}</td>
-                      <td>{log.clock_out || '—'}</td>
+                      <td>{log.clock_in_display || log.clock_in || '—'}</td>
+                      <td>{log.clock_out_display || log.clock_out || '—'}</td>
                       <td>{log.hours_rendered != null ? Number(log.hours_rendered).toFixed(2) : '—'}</td>
                       <td>
                         <span className={`badge ${statusBadge(log.status)}`}>{log.status}</span>

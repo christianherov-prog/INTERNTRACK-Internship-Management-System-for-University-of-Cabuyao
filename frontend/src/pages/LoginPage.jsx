@@ -73,7 +73,7 @@ function LoginPage() {
         navigate(result.user.dashRoute || '/')
       }, 800)
     } else {
-      setError('Unable to sign in ? the Student Number/Employee ID or password is incorrect. Please check your credentials and try again.')
+      setError(result.error || 'Unable to sign in. The ID or password is incorrect. Please check your credentials and try again.')
       setLoading(false)
     }
   }

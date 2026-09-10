@@ -235,8 +235,8 @@ function SupervisorAttendanceValidation() {
                         </td>
                         <td className="fw-semibold">{name}</td>
                         <td>{new Date(log.date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
-                        <td>{fmtTime(log.clock_in)}</td>
-                        <td>{log.clock_out ? fmtTime(log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
+                        <td>{fmtTime(log.clock_in_display || log.clock_in)}</td>
+                        <td>{(log.clock_out_display || log.clock_out) ? fmtTime(log.clock_out_display || log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
                         <td>{log.hours_rendered != null ? `${log.hours_rendered} hrs` : '—'}</td>
                         <td className="text-center">
                           <button
@@ -384,8 +384,8 @@ function SupervisorAttendanceValidation() {
                     <tr key={log.id}>
                       <td className="fw-semibold">{profileName(log)}</td>
                       <td>{log.date ? String(log.date).slice(0, 10) : '—'}</td>
-                      <td>{fmtTime(log.clock_in)}</td>
-                      <td>{fmtTime(log.clock_out)}</td>
+                      <td>{fmtTime(log.clock_in_display || log.clock_in)}</td>
+                      <td>{fmtTime(log.clock_out_display || log.clock_out)}</td>
                       <td>{log.hours_rendered != null ? `${log.hours_rendered} hrs` : '—'}</td>
                       <td>{log.status}</td>
                       <td>{log.correction_status_label || '—'}</td>

@@ -56,14 +56,25 @@ class AuthService
         $looksLikeEmail = filter_var($raw, FILTER_VALIDATE_EMAIL) !== false;
 
         $user = User::query()
+            ->with(['facultyProfile', 'studentProfile'])
             ->where(function ($q) use ($raw, $upper, $looksLikeEmail) {
                 $q->where('student_number', $upper)
-                    ->orWhere('faculty_number', $upper);
+                    ->orWhere('faculty_number', $upper)
+                    ->orWhereHas('facultyProfile', fn ($p) => $p->where('faculty_number', $upper))
+                    ->orWhereHas('studentProfile', fn ($p) => $p->where('student_number', $upper));
                 if ($looksLikeEmail) {
                     $q->orWhereRaw('LOWER(email) = ?', [strtolower($raw)]);
                 }
             })
             ->first();
+
+        if ($user && blank($user->faculty_number) && filled($user->facultyProfile?->faculty_number)) {
+            $user->forceFill(['faculty_number' => $user->facultyProfile->faculty_number])->save();
+        }
+
+        if ($user && blank($user->student_number) && filled($user->studentProfile?->student_number)) {
+            $user->forceFill(['student_number' => $user->studentProfile->student_number])->save();
+        }
 
         if (app()->runningUnitTests()) {
             Log::info('AuthService Login Dump: '.json_encode($user));
@@ -86,7 +97,7 @@ class AuthService
             }
         }
 
-        if (!Hash::check($password, $user->password)) {
+        if (! $this->passwordMatches($user, $password)) {
             throw ValidationException::withMessages([
                 'username' => ['Invalid credentials. Please check your ID and password.'],
             ]);
@@ -116,6 +127,37 @@ class AuthService
             'token' => $token,
             'user'  => $user->fresh()->load(self::USER_RELATIONS),
         ];
+    }
+
+    /**
+     * Seeded campus accounts historically used interntrack123 while config
+     * default is InternTrack123!. On local provision, accept either and
+     * rehash to the canonical default.
+     */
+    private function passwordMatches(User $user, string $password): bool
+    {
+        if (Hash::check($password, $user->password)) {
+            return true;
+        }
+
+        if (! config('interntrack.allow_default_password_provision')) {
+            return false;
+        }
+
+        $canonical = (string) config('interntrack.default_password');
+        $legacy = 'interntrack123';
+        $typedDefault = in_array($password, [$canonical, $legacy], true);
+        $storedDefault = Hash::check($canonical, $user->password) || Hash::check($legacy, $user->password);
+
+        if ($typedDefault && $storedDefault) {
+            if (! Hash::check($canonical, $user->password)) {
+                $user->forceFill(['password' => Hash::make($canonical)])->save();
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     // ─── Password Management ──────────────────────────────────────────────────

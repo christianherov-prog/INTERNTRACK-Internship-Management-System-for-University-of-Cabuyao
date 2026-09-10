@@ -183,6 +183,7 @@ export function resolveFormIdentity(internship, extras = {}) {
     studentSignaturePath: supplied.student_signature_path || '',
     supervisorSignaturePath: supplied.supervisor_signature_path || '',
     facultySignaturePath: supplied.faculty_signature_path || '',
+    companyLogoPath: firstNonEmpty(supplied.company_logo_path, supplied.companyLogoPath, company.company_logo_path, internship?.portfolio?.company_logo_path),
   }
 }
 
