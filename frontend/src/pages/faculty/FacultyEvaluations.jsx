@@ -81,6 +81,7 @@ function FacultyEvaluations() {
   const [previewData, setPreviewData] = useState(null)  // { eval, internship }
   const [submitModal, setSubmitModal] = useState(null)
   const [message, setMessage] = useState(null)
+  const [approvingId, setApprovingId] = useState(null)
   const [filters, setFilters] = useState({ search: '', section: '' })
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
@@ -112,6 +113,20 @@ function FacultyEvaluations() {
 
   useEffect(() => { fetchData() }, [debouncedSearch, filters.section])
 
+  const approvePeriod = async (internship) => {
+    setApprovingId(internship.id)
+    setMessage(null)
+    try {
+      await api.post(`/faculty/evaluations/${internship.id}/approve-period`)
+      setMessage({ type: 'success', text: 'Evaluation period approved. Student and supervisor forms are now unlocked.' })
+      fetchData()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to approve evaluation period.' })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
   return (
     <Layout title="Evaluation Review — FO-24" subtitle={currentTerm} icon="fa-search" bodyClass="faculty-page">
       {error && <PageError message={error} onRetry={fetchData} />}
@@ -134,7 +149,7 @@ function FacultyEvaluations() {
 
           <div className="p-3 bg-light border-bottom text-muted" style={{ fontSize: '0.88rem' }}>
             <i className="fa fa-info-circle me-2"></i>
-            As Faculty, you have access to the <strong>FO-24</strong> (Supervisor Performance Evaluation) submitted by the Company Supervisor. This serves as the official basis for grading your assigned students.
+            As Faculty, you have access to the <strong>FO-24</strong> (Supervisor Performance Evaluation) submitted by the Company Supervisor. This serves as the official basis for grading your assigned students. Approve the evaluation period to unlock that intern's Student (FO-22, FO-23) and Supervisor (FO-24, FO-03) forms at the same time.
           </div>
 
           {/* Filters */}
@@ -171,12 +186,13 @@ function FacultyEvaluations() {
                   <th>Company</th>
                   <th>Supervisor</th>
                   <th className="text-center">Preview Evaluations</th>
+                  <th className="text-center">Evaluation Period</th>
                   <th className="text-center">Faculty Evaluation</th>
                 </tr>
               </thead>
               <tbody>
                 {internships.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center text-muted py-4">No evaluations found matching the filters.</td></tr>
+                  <tr><td colSpan={7} className="text-center text-muted py-4">No evaluations found matching the filters.</td></tr>
                 ) : internships.map(intern => {
                   const p = intern.student?.student_profile || intern.student?.studentProfile
                   const name = p ? `${p.last_name || ''}, ${p.first_name || ''}`.trim() : intern.student?.student_number || intern.student?.email || '—'
@@ -184,6 +200,7 @@ function FacultyEvaluations() {
                   const supName = sup ? `${sup.last_name || ''}, ${sup.first_name || ''}`.trim() : '—'
                   const fo24 = (intern.evaluations || []).find(e => e.form_type === 'FO-24')
                   const facultyEval = (intern.evaluations || []).find(e => e.form_type === 'faculty_eval')
+                  const periodApproved = intern.evaluation_period_status === 'approved'
 
                   return (
                     <tr key={intern.id}>
@@ -211,6 +228,20 @@ function FacultyEvaluations() {
                           </button>
                         ) : (
                           <span className="text-muted small"><i className="fa fa-clock me-1"></i>Not yet submitted</span>
+                        )}
+                      </td>
+                      <td className="text-center">
+                        {periodApproved ? (
+                          <span className="badge bg-success"><i className="fa fa-unlock me-1"></i>Approved</span>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-outline-warning"
+                            disabled={approvingId === intern.id}
+                            onClick={() => approvePeriod(intern)}
+                          >
+                            <i className={`fa fa-${approvingId === intern.id ? 'spinner fa-spin' : 'unlock'} me-1`}></i>
+                            Approve period
+                          </button>
                         )}
                       </td>
                       <td className="text-center pe-4">

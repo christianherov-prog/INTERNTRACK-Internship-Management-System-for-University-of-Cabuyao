@@ -150,6 +150,12 @@ export default function SupervisorPerformanceEvaluation() {
                           </div>
                         </div>
                         <div className="d-flex flex-column gap-2 align-items-end">
+                          {(internship.evaluation_period_status || 'pending') !== 'approved' ? (
+                            <span className="text-muted small text-end">
+                              <i className="fa fa-lock me-1"></i>Waiting for Faculty approval
+                            </span>
+                          ) : (
+                            <>
                           {(!internship.missing_forms || internship.missing_forms.includes('FO-24')) && (
                             <button className="btn btn-primary btn-sm px-3 rounded-pill text-start" 
                             style={{fontSize: '0.80rem', whiteSpace: 'normal', lineHeight: '1.2'}}
@@ -163,6 +169,8 @@ export default function SupervisorPerformanceEvaluation() {
                               onClick={() => setModal({ internship, activeForm: 'FO-03' })}>
                               <i className="fa fa-edit me-1"></i> Evaluate HTE Evaluation to the University Internship Program
                             </button>
+                          )}
+                            </>
                           )}
                         </div>
                       </li>

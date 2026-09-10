@@ -178,4 +178,15 @@ trait CreatesInternshipFixtures
 
         return $internship;
     }
+
+    protected function approveEvaluationPeriod(Internship $internship, User $faculty): Internship
+    {
+        $internship->forceFill([
+            'evaluation_period_status' => 'approved',
+            'evaluation_period_approved_by' => $faculty->id,
+            'evaluation_period_approved_at' => now(),
+        ])->save();
+
+        return $internship->fresh();
+    }
 }

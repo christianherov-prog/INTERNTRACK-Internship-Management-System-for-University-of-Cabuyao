@@ -32,6 +32,24 @@
     print-color-adjust: exact;
 }
 
+/* Nested .a4-page must not draw a second overlapping sheet */
+.a4-page .a4-page {
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    counter-increment: none !important;
+}
+
 .cover-page-banner {
     height: 297mm !important;
     max-height: 297mm !important;
@@ -102,6 +120,23 @@
 
     .a4-page:last-child {
         page-break-after: auto !important;
+    }
+
+    .a4-page .a4-page {
+        width: 100% !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        overflow: visible !important;
+        page-break-after: auto !important;
+        break-after: auto !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        counter-increment: none !important;
     }
 
 }

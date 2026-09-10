@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Hash;
  * shows Student ↔ Faculty ↔ Industry Supervisor ↔ Coordinator peers.
  *
  * Accounts prepared:
- *   Students:     2300600 (Valinado), 2300592 (Montealegre)
- *                 — fully placed for messaging demos
- *                 2300590 (Taac-Taac) is intentionally NOT placed (fresh enrollee)
+ *   Students:     2300592 (Montealegre) — fully placed for messaging demos
+ *                 2300600 (Valinado), 2300590 (Taac-Taac), and 2300500 (Taduran)
+ *                 are intentionally NOT placed (fresh enrollees)
  *   Faculty:      FAC-1001
  *   Coordinator:  COR-1001
  *   Supervisor:   first existing supervisor, or SUP-0001 if none exist

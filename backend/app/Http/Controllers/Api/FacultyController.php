@@ -357,6 +357,16 @@ class FacultyController extends Controller
             $journal->setAttribute('supervisor_validated', false);
             $journal->setAttribute('faculty_can_review', $journal->facultyCanReview());
 
+            $student = $journal->internship?->student;
+            $profile = $student?->studentProfile;
+            $last = trim((string) ($profile?->last_name ?? ''));
+            $first = trim((string) ($profile?->first_name ?? ''));
+            $studentName = ($last !== '' || $first !== '')
+                ? trim($last.($last !== '' && $first !== '' ? ', ' : '').$first)
+                : ($student?->student_number ?: $student?->email);
+
+            $journal->setAttribute('student_name', $studentName ?: null);
+
             return $journal;
         });
 
@@ -449,6 +459,8 @@ class FacultyController extends Controller
         $journals = JournalEntry::whereHas('internship', function ($q) use ($request, $studentId) {
             $q->inDepartment()->where('faculty_id', $request->user()->id)->where('student_id', $studentId);
         })
+            ->academic()
+            ->with(['internship.student.studentProfile', 'internship.company'])
             ->orderBy('week_number', 'asc')
             ->orderBy('entry_number', 'asc')
             ->get();
@@ -499,6 +511,36 @@ class FacultyController extends Controller
         return response()->json([
             'internships' => $internships,
             'available_sections' => $availableSections,
+        ]);
+    }
+
+    /** POST /api/v1/faculty/evaluations/{internshipId}/approve-period */
+    public function approveEvaluationPeriod(Request $request, int $internshipId)
+    {
+        $internship = Internship::inDepartment()
+            ->where('faculty_id', $request->user()->id)
+            ->find($internshipId);
+
+        if (! $internship) {
+            abort(403, 'Internship not assigned to you.');
+        }
+
+        $internship->forceFill([
+            'evaluation_period_status' => 'approved',
+            'evaluation_period_approved_by' => $request->user()->id,
+            'evaluation_period_approved_at' => now(),
+        ])->save();
+
+        audit_log($request->user()->id, 'approve_evaluation_period', [
+            'internship_id' => $internship->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Evaluation period approved. Student and supervisor forms are now unlocked.',
+            'internship_id' => $internship->id,
+            'evaluation_period_status' => 'approved',
+            'evaluation_period_approved' => true,
+            'evaluation_period_approved_at' => $internship->evaluation_period_approved_at,
         ]);
     }
 

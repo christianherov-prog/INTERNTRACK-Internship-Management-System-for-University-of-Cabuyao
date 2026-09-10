@@ -216,6 +216,7 @@ function StudentEvaluations() {
   const [processing, setProcessing] = useState(false)
   const [internship, setInternship] = useState(() => seed?.internship ?? null)
   const [previewEval, setPreviewEval] = useState(null)
+  const [periodApproved, setPeriodApproved] = useState(() => Boolean(seed?.periodApproved))
 
   const load = () => {
     setError(null)
@@ -238,12 +239,14 @@ function StudentEvaluations() {
       return {
         internship: nextInternship,
         evaluations: unwrapList(evalRes.data).items,
+        periodApproved: Boolean(evalRes.data?.evaluation_period_approved),
       }
     })
       .then((next) => {
         if (next) {
           if (next.internship) setInternship(next.internship)
           setEvaluations(next.evaluations)
+          setPeriodApproved(Boolean(next.periodApproved))
         }
       })
       .catch(err => {
@@ -292,8 +295,8 @@ function StudentEvaluations() {
   const FORM_STATUS = [
     { key: 'FO-24', label: 'FO-24', title: 'Performance Evaluation', source: 'By: Company Supervisor', eval: fo24, color: 'primary' },
     { key: 'FO-03', label: 'FO-03', title: 'HTE Evaluation', source: 'By: Company Supervisor', eval: fo03, color: 'success' },
-    { key: 'FO-22', label: 'FO-22', title: 'HTE Evaluation', source: 'By: You (Student)', eval: fo22, color: 'info', canSubmit: !hasFO22, submitKey: 'FO-22' },
-    { key: 'FO-23', label: 'FO-23', title: 'Program Evaluation', source: 'By: You (Student)', eval: fo23, color: 'warning', canSubmit: !hasFO23, submitKey: 'FO-23' },
+    { key: 'FO-22', label: 'FO-22', title: 'HTE Evaluation', source: 'By: You (Student)', eval: fo22, color: 'info', canSubmit: periodApproved && !hasFO22, submitKey: 'FO-22' },
+    { key: 'FO-23', label: 'FO-23', title: 'Program Evaluation', source: 'By: You (Student)', eval: fo23, color: 'warning', canSubmit: periodApproved && !hasFO23, submitKey: 'FO-23' },
   ]
 
   const totalAvg = evaluations.length > 0
@@ -338,6 +341,12 @@ function StudentEvaluations() {
 
 
       {error && <PageError message={error} onRetry={load} />}
+      {!periodApproved && (
+        <div className="alert alert-warning d-flex align-items-center gap-2 mb-4">
+          <i className="fa fa-lock"></i>
+          <span>Waiting for Faculty approval of the evaluation period. Your forms stay locked until then.</span>
+        </div>
+      )}
       {!!showSubmitModal && <SubmitEvalModal internship={internship} activeForm={showSubmitModal} onClose={() => setShowSubmitModal(null)} onSubmit={handleLocalSubmit} processing={processing} />}
       <FormPreviewModal
         isOpen={!!previewEval}
@@ -392,6 +401,9 @@ function StudentEvaluations() {
                       >
                         <i className="fa fa-plus me-1"></i>Submit
                       </button>
+                    )}
+                    {form.submitKey && !form.eval && !periodApproved && (
+                      <span className="text-muted small"><i className="fa fa-lock me-1"></i>Waiting for Faculty approval</span>
                     )}
                   </div>
                 </div>

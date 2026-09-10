@@ -23,6 +23,7 @@ class Internship extends Model
         'absorption_recorded_by', 'absorption_recorded_at', 'absorption_recorded_by_role',
         'student_declared_hired', 'student_declared_at', 'student_declaration_notes',
         'certificate_eligible', 'certificate_issued_at',
+        'evaluation_period_status', 'evaluation_period_approved_by', 'evaluation_period_approved_at',
     ];
 
     protected $casts = [
@@ -35,6 +36,7 @@ class Internship extends Model
         'student_declared_hired' => 'boolean',
         'certificate_eligible' => 'boolean',
         'certificate_issued_at' => 'datetime',
+        'evaluation_period_approved_at' => 'datetime',
         'total_hours_rendered' => 'decimal:2',
         'final_grade' => 'decimal:2',
     ];
@@ -119,6 +121,18 @@ class Internship extends Model
     public function evaluations()
     {
         return $this->hasMany(Evaluation::class);
+    }
+
+    public function evaluationPeriodIsApproved(): bool
+    {
+        return ($this->evaluation_period_status ?: 'pending') === 'approved';
+    }
+
+    public function abortUnlessEvaluationPeriodApproved(): void
+    {
+        if (! $this->evaluationPeriodIsApproved()) {
+            abort(403, 'Waiting for Faculty approval of the evaluation period.');
+        }
     }
 
     public function portfolio()

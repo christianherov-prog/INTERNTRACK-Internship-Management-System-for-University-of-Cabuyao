@@ -810,7 +810,11 @@ class StudentController extends Controller
         $internship = $this->internship($request);
         $evaluations = $internship->evaluations()->with('evaluator')->get();
 
-        return ApiResponse::list($evaluations);
+        $payload = ApiResponse::list($evaluations)->getData(true);
+        $payload['evaluation_period_status'] = $internship->evaluation_period_status ?: 'pending';
+        $payload['evaluation_period_approved'] = $internship->evaluationPeriodIsApproved();
+
+        return response()->json($payload);
     }
 
     /** POST /api/v1/student/evaluations */
@@ -824,6 +828,7 @@ class StudentController extends Controller
         ]);
 
         $internship = $this->internship($request);
+        $internship->abortUnlessEvaluationPeriodApproved();
         $period = $request->input('evaluation_period');
 
         $eval = Evaluation::updateOrCreate(

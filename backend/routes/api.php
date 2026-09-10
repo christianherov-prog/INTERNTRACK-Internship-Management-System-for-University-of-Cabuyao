@@ -196,6 +196,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/assigned-students', [FacultyController::class, 'assignedStudents']);
             Route::patch('/students/{userId}/archive', [FacultyController::class, 'setStudentArchived']);
             Route::get('/students/{userId}/progress', [FacultyController::class, 'studentProgress']);
+            Route::get('/students/{userId}/journals', [FacultyController::class, 'studentJournalHistory']);
             Route::get('/attendance', [FacultyController::class, 'attendance']);
             Route::get('/dtr/corrections', [DtrWorkflowController::class, 'facultyCorrections']);
             Route::patch('/dtr/corrections/{id}', [DtrWorkflowController::class, 'reviewCorrectionAsFaculty']);
@@ -205,6 +206,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/journals/{id}/review', [FacultyController::class, 'reviewJournal']);
             Route::get('/supervisor-feedback', [FacultyController::class, 'supervisorFeedback']);
             Route::get('/evaluations', [FacultyController::class, 'evaluations']);
+            Route::post('/evaluations/{internshipId}/approve-period', [FacultyController::class, 'approveEvaluationPeriod']);
             Route::post('/evaluations/{internshipId}', [FacultyController::class, 'submitEvaluation']);
             Route::get('/feedback', [FacultyController::class, 'feedback']);
             Route::post('/feedback/{internshipId}', [FacultyController::class, 'submitFeedback']);
@@ -255,6 +257,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/hte-requests/{id}/status', [CoordinatorController::class, 'updateHteRequestStatus']);
             Route::get('/absorption', [CoordinatorController::class, 'absorptionList']);
             // Absorption finalize is Director-only on V2; keep overview + filtered reports from develop.
+            Route::get('/analytics', [CoordinatorController::class, 'analytics']);
             Route::get('/reports/overview', [CoordinatorController::class, 'reportsOverview']);
             Route::get('/reports/student-summary', [CoordinatorController::class, 'reportStudentSummary']);
             Route::get('/reports/compliance', [CoordinatorController::class, 'reportCompliance']);

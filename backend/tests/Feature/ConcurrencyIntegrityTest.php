@@ -392,6 +392,9 @@ class ConcurrencyIntegrityTest extends TestCase
     public function test_double_evaluation_does_not_duplicate_or_500(): void
     {
         $party = $this->party();
+        foreach ($party as $item) {
+            $this->approveEvaluationPeriod($item['internship'], $item['faculty']);
+        }
         $row = $party[0];
         $payload = [
             'evaluation_period' => 'midterm',
@@ -472,6 +475,7 @@ class ConcurrencyIntegrityTest extends TestCase
         $jobs[] = ['method' => 'GET', 'uri' => '/api/v1/dashboard/summary', 'token' => $director->createToken('mix')->plainTextToken];
         $jobs[] = ['method' => 'GET', 'uri' => '/api/v1/admin/dashboard', 'token' => $admin->createToken('mix')->plainTextToken];
         foreach (array_slice($party, 0, 5) as $row) {
+            $this->approveEvaluationPeriod($row['internship'], $row['faculty']);
             $jobs[] = [
                 'method' => 'POST',
                 'uri' => '/api/v1/supervisor/evaluations/'.$row['internship']->id,

@@ -191,9 +191,11 @@ const WeeklyInternshipJournal = ({
   };
 
   return (
-    <div className="a4-page page-break portfolio-document" data-toc-id={weekNumber ? `week-${weekNumber}` : 'week-1'}>
-      <div className="a4-page page-break position-relative" style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-        
+    <div
+      className="a4-page page-break portfolio-document position-relative"
+      data-toc-id={weekNumber ? `week-${weekNumber}` : 'week-1'}
+      style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+    >
         <div style={{ width: '100%' }}>
           
           <div style={styles.docMeta}>
@@ -202,9 +204,8 @@ const WeeklyInternshipJournal = ({
 
           <PageHeader companyLogoPath={companyLogoPath} />
 
-          {/* Gray Background Title */}
           <div style={styles.formTitleContainer}>
-            <h3 style={styles.formTitle}>WEEKLY STUDENT INTERNSHIP JOURNAL</h3>
+            <div style={styles.formTitle}>WEEKLY STUDENT INTERNSHIP JOURNAL</div>
           </div>
 
           {/* Structured Information Box */}
@@ -276,7 +277,6 @@ const WeeklyInternshipJournal = ({
         </div>
 
         <div className="page-number">{nextPg ? nextPg() : ''}</div>
-      </div>
     </div>
   );
 };
@@ -292,7 +292,10 @@ const styles = {
     fontSize: '10pt', 
     margin: 0, 
     color: '#000', 
-    fontFamily: 'Arial, sans-serif' 
+    fontFamily: 'Arial, sans-serif',
+    textAlign: 'right',
+    textIndent: 0,
+    lineHeight: 1.2
   },
   
   // Title Styles
@@ -300,6 +303,8 @@ const styles = {
     backgroundColor: '#cccccc', 
     padding: '6px 0', 
     marginBottom: '10px',
+    overflow: 'hidden',
+    position: 'relative',
     WebkitPrintColorAdjust: 'exact',
     printColorAdjust: 'exact'
   },
@@ -308,7 +313,10 @@ const styles = {
     fontSize: '11pt', 
     fontWeight: 'bold', 
     margin: '0', 
-    color: '#000' 
+    color: '#000',
+    lineHeight: 1.2,
+    textShadow: 'none',
+    textIndent: 0
   },
   
   // Info Box Styles

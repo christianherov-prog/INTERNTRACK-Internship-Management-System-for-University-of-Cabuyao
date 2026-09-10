@@ -287,10 +287,7 @@ class StudentPortfolioController extends Controller
         return in_array($type, [
             'ojt_photo', 'ojt_photos', 'training_documentation', 'exam_documentation',
             'work_samples', 'experience_photos', 'lesson_plan',
-            'org_chart', 'registration_form', 'medical_result', 'psychological_result',
-            'application_letter', 'student_cv', 'recommendation_request',
-            'acceptance_form', 'consent_form', 'training_plan', 'moa_document',
-            'visitation_form', 'completion_certificate',
+            'org_chart',
             'training_certificate', 'training_test_result', 'exam_certificate', 'exam_test_result',
         ], true);
     }

@@ -309,7 +309,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                           }}
                           title="View Submissions"
                         >
-                          <i className="fa fa-users"></i>
+                          <i className="fa fa-users"></i> View Submissions
                         </button>
                       </div>
                     </td>

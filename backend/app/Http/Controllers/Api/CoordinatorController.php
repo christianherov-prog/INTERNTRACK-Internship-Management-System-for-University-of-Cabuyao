@@ -19,6 +19,7 @@ use App\Models\Program;
 use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\AbsorptionService;
+use App\Services\InternshipAnalyticsService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
 use App\Services\ProgramRequirementService;
@@ -611,6 +612,11 @@ class CoordinatorController extends Controller
         ]);
 
         return response()->json(['message' => 'Absorption outcome saved.', 'internship' => $updated]);
+    }
+
+    public function analytics(Request $request)
+    {
+        return response()->json(app(InternshipAnalyticsService::class)->build($request));
     }
 
     /** GET /api/v1/coordinator/reports/overview — lightweight owned-internship stats */

@@ -9,6 +9,7 @@ use App\Models\Evaluation;
 use App\Models\Internship;
 use App\Models\User;
 use App\Services\AbsorptionService;
+use App\Services\InternshipAnalyticsService;
 use App\Services\InternshipProgressService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
@@ -20,11 +21,6 @@ use Illuminate\Support\Facades\DB;
 class DirectorController extends Controller
 {
     public function dashboard(Request $request)
-    {
-        return $this->analytics($request);
-    }
-
-    public function analytics(Request $request)
     {
         $activeInterns = Internship::whereIn('status', ['ongoing', 'active'])->count();
         $partnerCompanies = Company::where('is_active', true)->count();
@@ -65,6 +61,11 @@ class DirectorController extends Controller
             'eval_breakdown' => $evalBreakdown,
             'absorption' => AbsorptionService::analytics(),
         ]);
+    }
+
+    public function analytics(Request $request)
+    {
+        return response()->json(app(InternshipAnalyticsService::class)->build($request));
     }
 
     public function companies(Request $request)

@@ -5,16 +5,20 @@ namespace Database\Seeders;
 use App\Models\AttendanceLog;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\HteRequest;
 use App\Models\Internship;
+use App\Models\InternshipApplication;
 use App\Models\Program;
 use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\FacultySectionAssignmentService;
+use App\Services\InternshipProgressService;
 use App\Services\ProgramRequirementService;
 use App\Support\DepartmentScope;
 use App\Support\InternshipProvisioning;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Known student accounts for the capstone team & demo walkthroughs.
@@ -22,8 +26,9 @@ use Illuminate\Support\Facades\Hash;
  * Login credential: username = student_number, password = interntrack123
  *
  * Seeded accounts:
- *   - 2300600: Christian Hero Valinado (BSIT, 4IT-D)
+ *   - 2300600: Christian Hero Valinado (BSIT, 4IT-D) — fresh enrollee / pending placement
  *   - 2300590: John Taac-Taac (BSIT, 4IT-D) — fresh enrollee / pending placement
+ *   - 2300500: Mark Joseph V. Taduran (BSIT, 4IT-D) — fresh enrollee / pending placement
  *   - 2300592: Clarence Montealegre (BSIT, 4IT-D) — progressed profile at TechCorp PH
  *
  * Soft-deleted users are restored so re-seed never fails unique constraints.
@@ -88,6 +93,7 @@ class StudentAccountsSeeder extends Seeder
                     'enrollment_status' => 'Enrolled',
                 ],
                 'internship' => null, // fresh / pending_placement
+                'reset_progress' => true, // wipe leftover company / journals / DTR from older demo data
             ],
             [
                 'student_number' => '2300590',
@@ -99,6 +105,27 @@ class StudentAccountsSeeder extends Seeder
                     'last_name' => 'Taac-Taac',
                     'email' => 'john.taactaac@uc.edu.ph',
                     'contact_number' => '09175550590',
+                    'sex' => 'Male',
+                    'program' => 'Bachelor of Science in Information Technology',
+                    'department' => 'College of Computing Studies',
+                    'year_level' => 4,
+                    'section' => '4IT-D',
+                    'school_year' => '2025-2026',
+                    'semester' => '2nd Semester',
+                    'enrollment_status' => 'Enrolled',
+                ],
+                'internship' => null, // fresh / pending_placement
+            ],
+            [
+                'student_number' => '2300500',
+                'email' => 'mark.taduran@uc.edu.ph',
+                'profile' => [
+                    'student_number' => '2300500',
+                    'first_name' => 'Mark Joseph',
+                    'middle_name' => 'V',
+                    'last_name' => 'Taduran',
+                    'email' => 'mark.taduran@uc.edu.ph',
+                    'contact_number' => '09175550500',
                     'sex' => 'Male',
                     'program' => 'Bachelor of Science in Information Technology',
                     'department' => 'College of Computing Studies',
@@ -276,34 +303,38 @@ class StudentAccountsSeeder extends Seeder
 
                 $this->seedValidatedHoursIfMissing($internship, (float) ($row['internship']['total_hours_rendered'] ?? 0));
             } else {
-                $open = InternshipProvisioning::openForStudent($user->id);
-                if ($open) {
-                    $patch = [];
-                    if ($facultyId && (int) $open->faculty_id !== (int) $facultyId) {
-                        $patch['faculty_id'] = $facultyId;
-                    }
-                    if ($coordId && (int) $open->coordinator_id !== (int) $coordId) {
-                        $patch['coordinator_id'] = $coordId;
-                    } elseif (! $open->coordinator_id && $coordId) {
-                        $patch['coordinator_id'] = $coordId;
-                    }
-                    if ($patch !== []) {
-                        $open->forceFill($patch)->saveQuietly();
-                    }
+                if (! empty($row['reset_progress'])) {
+                    $this->resetToFreshEnrollee($user, $profile, $facultyId, $coordId, $programHours, $ay, $sem);
                 } else {
-                    InternshipProvisioning::createPendingIfNone($user, [
-                        'status' => 'pending_placement',
-                        'school_year' => $ay,
-                        'semester' => $sem,
-                        'term' => "AY {$ay}, {$sem}",
-                        'program' => $profile->program?->name,
-                        'company_id' => null,
-                        'supervisor_id' => null,
-                        'faculty_id' => $facultyId,
-                        'coordinator_id' => $coordId,
-                        'target_hours' => $programHours,
-                        'total_hours_rendered' => 0,
-                    ]);
+                    $open = InternshipProvisioning::openForStudent($user->id);
+                    if ($open) {
+                        $patch = [];
+                        if ($facultyId && (int) $open->faculty_id !== (int) $facultyId) {
+                            $patch['faculty_id'] = $facultyId;
+                        }
+                        if ($coordId && (int) $open->coordinator_id !== (int) $coordId) {
+                            $patch['coordinator_id'] = $coordId;
+                        } elseif (! $open->coordinator_id && $coordId) {
+                            $patch['coordinator_id'] = $coordId;
+                        }
+                        if ($patch !== []) {
+                            $open->forceFill($patch)->saveQuietly();
+                        }
+                    } else {
+                        InternshipProvisioning::createPendingIfNone($user, [
+                            'status' => 'pending_placement',
+                            'school_year' => $ay,
+                            'semester' => $sem,
+                            'term' => "AY {$ay}, {$sem}",
+                            'program' => $profile->program?->name,
+                            'company_id' => null,
+                            'supervisor_id' => null,
+                            'faculty_id' => $facultyId,
+                            'coordinator_id' => $coordId,
+                            'target_hours' => $programHours,
+                            'total_hours_rendered' => 0,
+                        ]);
+                    }
                 }
             }
         }
@@ -311,6 +342,7 @@ class StudentAccountsSeeder extends Seeder
         $this->command?->info('✅ Student accounts seeded:');
         $this->command?->info('  2300600 (Christian Valinado) — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300590 (John Taac-Taac)     — interntrack123 (Fresh/Pending)');
+        $this->command?->info('  2300500 (Mark Joseph Taduran) — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300592 (Clarence Montealegre) — interntrack123 (Populated: TechCorp PH)');
         $this->command?->info('  2300601 (COED Student)       — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300602 (COE Civil Eng)      — interntrack123 (Fresh/Pending)');
@@ -346,6 +378,80 @@ class StudentAccountsSeeder extends Seeder
             'Bachelor of Science in Accountancy' => 'BSA',
             default => null,
         };
+    }
+
+    /**
+     * Wipe leftover placement, journals, and DTR so a previously populated demo
+     * student matches the fresh-enrollee state used by 2300590.
+     */
+    private function resetToFreshEnrollee(
+        User $user,
+        StudentProfile $profile,
+        ?int $facultyId,
+        ?int $coordId,
+        int $programHours,
+        string $ay,
+        string $sem
+    ): void {
+        $internships = Internship::withTrashed()->where('student_id', $user->id)->orderByDesc('id')->get();
+
+        foreach ($internships as $internship) {
+            $internship->journals()->withTrashed()->forceDelete();
+            $internship->attendance()->withTrashed()->forceDelete();
+            $internship->documents()->withTrashed()->forceDelete();
+            $internship->evaluations()->delete();
+            $internship->overtimeEntries()->delete();
+            $internship->correctionRequests()->delete();
+            $internship->workSchedules()->delete();
+            $internship->portfolio()->delete();
+            $internship->forceFill(['current_placement_id' => null])->saveQuietly();
+            if (Schema::hasTable('internship_placements')) {
+                $internship->placements()->delete();
+            }
+        }
+
+        InternshipApplication::where('student_id', $user->id)->delete();
+        HteRequest::where('student_id', $user->id)->delete();
+
+        $keep = $internships->first(fn ($row) => ! $row->trashed())
+            ?? $internships->first();
+
+        $pending = [
+            'status' => 'pending_placement',
+            'company_id' => null,
+            'supervisor_id' => null,
+            'current_placement_id' => null,
+            'faculty_id' => $facultyId,
+            'coordinator_id' => $coordId,
+            'school_year' => $ay,
+            'semester' => $sem,
+            'term' => "AY {$ay}, {$sem}",
+            'program' => $profile->program?->name,
+            'target_hours' => $programHours,
+            'total_hours_rendered' => 0,
+            'start_date' => null,
+            'end_date' => null,
+        ];
+
+        if ($keep) {
+            if ($keep->trashed()) {
+                $keep->restore();
+            }
+            foreach ($internships as $internship) {
+                if ((int) $internship->id === (int) $keep->id) {
+                    continue;
+                }
+                if (! $internship->trashed()) {
+                    $internship->forceFill(['status' => 'cancelled'])->saveQuietly();
+                }
+            }
+            $keep->forceFill($pending)->save();
+            InternshipProgressService::synchronize($keep->fresh());
+
+            return;
+        }
+
+        InternshipProvisioning::createPendingIfNone($user, $pending);
     }
 
     /**

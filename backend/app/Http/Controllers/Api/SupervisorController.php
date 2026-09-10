@@ -420,6 +420,8 @@ class SupervisorController extends Controller
             ->with(['student.studentProfile', 'coordinator'])
             ->findOrFail($internshipId);
 
+        $internship->abortUnlessEvaluationPeriodApproved();
+
         $period = $request->input('evaluation_period');
 
         $formType = $request->input('form_type');

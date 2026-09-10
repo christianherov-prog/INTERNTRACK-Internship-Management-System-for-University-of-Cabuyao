@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Hash;
  *   Director    → username: DIR-1001
  *   Coordinator → username: COR-1001
  *   Faculty     → username: FAC-1001
- *   Student     → username: 2300600 (Valinado), 2300590 (Taac-Taac), 2300592 (Montealegre)
+ *   Student     → username: 2300600 (Valinado), 2300590 (Taac-Taac), 2300500 (Taduran), 2300592 (Montealegre)
  */
 class DatabaseSeeder extends Seeder
 {
@@ -253,7 +253,7 @@ class DatabaseSeeder extends Seeder
         // ─── 4. Faculty accounts + section assignments ────────────────────────
         $this->call(FacultySectionAssignmentSeeder::class);
 
-        // ─── 5. Student accounts (2300600, 2300590, 2300592) ──────────────────
+        // ─── 5. Student accounts (2300600, 2300590, 2300500, 2300592) ──────────
         $this->call(StudentAccountsSeeder::class);
         $this->call(AcademicCollegeAccountsSeeder::class);
         // Re-assert 4IT sections on FAC-1001 (Marvin Bicua) after college dummy accounts seed.
@@ -286,6 +286,7 @@ class DatabaseSeeder extends Seeder
   Supervisor    SUP-0001               {$demoPassword} (Patrick Bateman)
   Stud (CCS)    2300600                {$demoPassword} (Fresh/Pending)
   Stud (CCS)    2300590                {$demoPassword} (Fresh/Pending)
+  Stud (CCS)    2300500                {$demoPassword} (Fresh/Pending)
   Stud (CCS)    2300592                {$demoPassword} (Populated: TechCorp PH)
   Stud (COED)   2300601                {$demoPassword} (Fresh/Pending)
   Stud (COE)    2300602                {$demoPassword} (Fresh/Pending)

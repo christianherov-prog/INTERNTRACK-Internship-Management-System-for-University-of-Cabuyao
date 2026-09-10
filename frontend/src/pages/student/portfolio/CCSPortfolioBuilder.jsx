@@ -226,7 +226,16 @@ function PortfolioBuilder() {
     { type: 'exam_test_result', label: 'Exam Test Result' },
     { type: 'exam_documentation', label: 'Exam Documentation' },
     { type: 'registration_form', label: 'Registration Form' },
+    { type: 'medical_result', label: 'Medical Result' },
+    { type: 'psychological_result', label: 'Psychological Test Result' },
+    { type: 'application_letter', label: 'Application Letter' },
+    { type: 'student_cv', label: 'Student Curriculum Vitae' },
+    { type: 'recommendation_request', label: 'Recommendation Letter Request' },
+    { type: 'acceptance_form', label: 'Internship Acceptance Form' },
+    { type: 'consent_form', label: 'Internship Consent Form' },
+    { type: 'training_plan', label: 'Internship Training Plan' },
     { type: 'visitation_form', label: 'Visitation Form' },
+    { type: 'completion_certificate', label: 'Certification of Completion' },
     { type: 'hte_evaluation', label: 'HTE Evaluation' },
     { type: 'program_evaluation', label: 'Program Evaluation' },
   ]
@@ -650,6 +659,29 @@ function PortfolioBuilder() {
                 {renderFileList('exam_certificate', 'Certification', false, false, DOC_ACCEPT)}
                 {renderFileList('exam_test_result', 'Pre and Post Test Result', false, false, DOC_ACCEPT)}
                 {renderFileList('exam_documentation', 'Documentation of Preparation', false, true, 'image/*')}
+              </div>
+            </div>
+
+            <div className="portfolio-appendix-group">
+              <h6 className="portfolio-appendix-group-title">Pre-Internship Requirements</h6>
+              <div className="portfolio-upload-grid">
+                {renderFileList('registration_form', 'Registration Form (Duly signed by the registrar)', false, false, DOC_ACCEPT)}
+                {renderFileList('medical_result', 'Medical Result', false, false, DOC_ACCEPT)}
+                {renderFileList('psychological_result', 'Psychological Test Result', false, false, DOC_ACCEPT)}
+                {renderFileList('application_letter', 'Application Letter', false, false, DOC_ACCEPT)}
+                {renderFileList('student_cv', 'Student Curriculum Vitae — PNC-AA-FO-27', false, false, DOC_ACCEPT)}
+              </div>
+            </div>
+
+            <div className="portfolio-appendix-group">
+              <h6 className="portfolio-appendix-group-title">Internship Agreement &amp; Completion</h6>
+              <div className="portfolio-upload-grid">
+                {renderFileList('recommendation_request', 'Internship Host Establishment Request for Recommendation Letter — PNC-AA-FO-26', false, false, DOC_ACCEPT)}
+                {renderFileList('acceptance_form', 'Student Internship Acceptance Form — PNC-AA-FO-29', false, false, DOC_ACCEPT)}
+                {renderFileList('consent_form', 'Student Internship Consent Form — PNC-AA-FO-28', false, false, DOC_ACCEPT)}
+                {renderFileList('training_plan', 'Internship Training Plan — PNC-AA-FO-25.3', false, false, DOC_ACCEPT)}
+                {renderFileList('visitation_form', 'Internship / OJT Visitation Form', false, false, DOC_ACCEPT)}
+                {renderFileList('completion_certificate', 'Certification of Completion', false, false, DOC_ACCEPT)}
               </div>
             </div>
 

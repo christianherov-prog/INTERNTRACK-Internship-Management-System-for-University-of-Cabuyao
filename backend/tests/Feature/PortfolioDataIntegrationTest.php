@@ -152,6 +152,7 @@ class PortfolioDataIntegrationTest extends TestCase
         $party = $this->party();
         Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', 'sig');
         Storage::disk('local')->put('signatures/'.$party['faculty']->id.'_processed.png', 'sig');
+        $this->approveEvaluationPeriod($party['internship'], $party['faculty']);
 
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/evaluations', [

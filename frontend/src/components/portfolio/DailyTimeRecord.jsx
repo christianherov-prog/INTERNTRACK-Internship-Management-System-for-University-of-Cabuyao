@@ -37,7 +37,7 @@ export function PageHeader({ companyLogoPath }) {
       fontSize: '11pt',
       textIndent: 0,
       textAlign: 'center',
-      lineHeight: '0'
+      lineHeight: 1.2
     },
     university: {
       margin: '2px 0',

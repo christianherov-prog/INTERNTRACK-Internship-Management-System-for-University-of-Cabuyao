@@ -19,6 +19,7 @@ import StudentSettings from './pages/student/StudentSettings'
 import StudentCompanies from './pages/student/StudentCompanies'
 
 import DirectorDashboard from './pages/director/DirectorDashboard'
+import InternshipAnalytics from './pages/shared/InternshipAnalytics'
 import DirectorCompanies from './pages/director/DirectorCompanies'
 import DirectorMoaHub from './pages/director/DirectorMoaHub'
 import DirectorReports from './pages/director/DirectorReports'
@@ -63,6 +64,7 @@ import MisdSyncMonitor from './pages/admin/MisdSyncMonitor'
 import MisdSettings from './pages/admin/MisdSettings'
 import SupervisorRegisterPage from './pages/public/SupervisorRegisterPage'
 import ChangePasswordConfirmPage from './pages/public/ChangePasswordConfirmPage'
+import DemoApp from './demo/DemoApp'
 import StudentMessages from './pages/student/StudentMessages'
 import SupervisorMessages from './pages/supervisor/SupervisorMessages'
 import FacultyMessages from './pages/faculty/FacultyMessages'
@@ -81,6 +83,7 @@ function App() {
               <Route path="/" element={<LoginPage />} />
               <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />
               <Route path="/change-password-confirm" element={<ChangePasswordConfirmPage />} />
+              <Route path="/demo/*" element={<DemoApp />} />
 
               <Route path="/student/dashboard" element={<ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>} />
               <Route path="/student/attendance" element={<ProtectedRoute role="student"><StudentAttendanceHub /></ProtectedRoute>} />
@@ -98,7 +101,7 @@ function App() {
               <Route path="/student/settings" element={<ProtectedRoute role="student"><StudentSettings /></ProtectedRoute>} />
 
               <Route path="/director/dashboard" element={<ProtectedRoute role="director"><DirectorDashboard /></ProtectedRoute>} />
-              <Route path="/director/analytics" element={<Navigate to="/director/dashboard" replace />} />
+              <Route path="/director/analytics" element={<ProtectedRoute role="director"><InternshipAnalytics apiBase="/director" bodyClass="director-page" evaluationsPath="/director/hte-evaluations" reportsPath="/director/reports" /></ProtectedRoute>} />
               <Route path="/director/companies" element={<ProtectedRoute role="director"><DirectorCompanies /></ProtectedRoute>} />
               <Route path="/director/moa" element={<ProtectedRoute role="director"><DirectorMoaHub /></ProtectedRoute>} />
               <Route path="/director/reports" element={<ProtectedRoute role="director"><DirectorReports /></ProtectedRoute>} />
@@ -143,6 +146,7 @@ function App() {
               <Route path="/coordinator/doc-approvals" element={<ProtectedRoute role="coordinator"><CoordDocApprovals /></ProtectedRoute>} />
               <Route path="/coordinator/logbook" element={<ProtectedRoute role="coordinator"><CoordLogbookReview /></ProtectedRoute>} />
               <Route path="/coordinator/reports" element={<ProtectedRoute role="coordinator"><CoordReports /></ProtectedRoute>} />
+              <Route path="/coordinator/analytics" element={<ProtectedRoute role="coordinator"><InternshipAnalytics apiBase="/coordinator" bodyClass="coordinator-page" evaluationsPath="/coordinator/evaluations" reportsPath="/coordinator/reports" /></ProtectedRoute>} />
               <Route path="/coordinator/evaluations" element={<ProtectedRoute role="coordinator"><CoordEvaluations /></ProtectedRoute>} />
               <Route path="/coordinator/messages" element={<ProtectedRoute role="coordinator"><CoordMessages /></ProtectedRoute>} />
               <Route path="/coordinator/meetings" element={<ProtectedRoute role="coordinator"><MeetingsPage bodyClass="coordinator-page" canCreate /></ProtectedRoute>} />

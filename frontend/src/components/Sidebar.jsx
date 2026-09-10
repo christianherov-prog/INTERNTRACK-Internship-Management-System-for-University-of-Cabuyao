@@ -22,6 +22,7 @@ const ROLE_NAV = {
   ],
   director: [
     { section: 'MAIN', to: '/director/dashboard', icon: 'fa-chart-pie', text: 'Dashboard' },
+    { section: 'MAIN', to: '/director/analytics', icon: 'fa-chart-line', text: 'Analytics' },
     { section: 'MAIN', to: '/director/companies', icon: 'fa-building', text: 'Companies' },
     { section: 'MAIN', to: '/director/moa', icon: 'fa-file-signature', text: 'MOA Management' },
     { section: 'MAIN', to: '/director/reports', icon: 'fa-chart-bar', text: 'Reports' },
@@ -49,8 +50,6 @@ const ROLE_NAV = {
   faculty: [
     { section: 'MAIN', to: '/faculty/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/faculty/assigned-students', icon: 'fa-users', text: 'Assigned Students' },
-    { section: 'TOOLS', to: '/faculty/documents', icon: 'fa-file-alt', text: 'Documents' },
-    { section: 'TOOLS', to: '/faculty/journals', icon: 'fa-book', text: 'Journals' },
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
     { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
@@ -63,12 +62,11 @@ const ROLE_NAV = {
   coordinator: [
     // ── Department Level (Coordinator) ──────────────────────────────────
     { section: 'DEPARTMENT', to: '/coordinator/monitoring', icon: 'fa-chart-line', text: 'Dashboard' },
+    { section: 'DEPARTMENT', to: '/coordinator/analytics', icon: 'fa-chart-pie', text: 'Analytics' },
     { section: 'DEPARTMENT', to: '/coordinator/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
     { section: 'DEPARTMENT', to: '/coordinator/internship-management', icon: 'fa-briefcase', text: 'Internship Mgmt' },
     { section: 'DEPARTMENT', to: '/coordinator/requirements', icon: 'fa-file-circle-check', text: 'Requirements' },
-    { section: 'DEPARTMENT', to: '/coordinator/doc-approvals', icon: 'fa-file-alt', text: 'Doc Approvals' },
     { section: 'DEPARTMENT', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
-    { section: 'DEPARTMENT', to: '/coordinator/logbook', icon: 'fa-book', text: 'Logbook Review' },
     { section: 'DEPARTMENT', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'DEPARTMENT', to: '/coordinator/records', icon: 'fa-folder-open', text: 'Records' },
     { section: 'DEPARTMENT', to: '/coordinator/reports', icon: 'fa-chart-bar', text: 'Reports' },

@@ -7,7 +7,6 @@ import api from "../../services/api"
 import { unwrapList } from "../../utils/apiList"
 import { CURRENT_TERM } from "../../config/term"
 import { AuthenticatedFileImage, AuthenticatedFileLink } from "../../components/AuthenticatedFile"
-import { useCurrentTerm } from "../../hooks/useCurrentTerm"
 import { useCachedPage } from "../../hooks/useCachedPage"
 import FormPreviewModal from "../../components/portfolio/FormPreviewModal"
 import { formatStudentName as studentName } from "../../utils/formatName"
@@ -22,6 +21,100 @@ function studentSection(row) {
 function studentCourse(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
   return (typeof p?.program === 'string' ? p?.program : p?.program?.name || p?.program?.code) || (typeof row?.program === 'string' ? row?.program : row?.program?.name || row?.program?.code) || "—"
+}
+
+function journalSubmitterName(j) {
+  if (j?.student_name) return j.student_name
+  const intern = j?.internship
+  const fromIntern = intern ? studentName(intern) : "—"
+  if (fromIntern && fromIntern !== "—") return fromIntern
+  if (intern?.student) {
+    const fromStudent = studentName(intern.student)
+    if (fromStudent && fromStudent !== "—") return fromStudent
+  }
+  return intern?.student?.student_number || intern?.student?.email || "—"
+}
+
+function journalExcerpt(j) {
+  const raw = String(j?.activities_summary || j?.notes || j?.learnings || j?.challenges || "")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!raw) return ""
+  return raw.length > 140 ? `${raw.slice(0, 140)}…` : raw
+}
+
+function journalStatusClass(status) {
+  if (status === "approved") return "bg-success"
+  if (status === "needs_revision") return "bg-warning text-dark"
+  return "bg-secondary"
+}
+
+function journalStudentKey(j) {
+  return j.internship?.student_id || j.internship?.student?.id || `name:${journalSubmitterName(j)}`
+}
+
+function latestJournalDate(entries) {
+  return entries.reduce((latest, j) => {
+    const d = String(j.date || "")
+    return d > latest ? d : latest
+  }, "")
+}
+
+function groupItemsByStudent(items, getMeta, sortEntries) {
+  const groups = []
+  const indexByKey = new Map()
+  for (const item of items) {
+    const meta = getMeta(item)
+    let group = indexByKey.get(meta.key)
+    if (!group) {
+      group = { ...meta, entries: [] }
+      indexByKey.set(meta.key, group)
+      groups.push(group)
+    }
+    group.entries.push(item)
+  }
+  if (sortEntries) {
+    for (const group of groups) sortEntries(group.entries)
+  }
+  return groups
+}
+
+function groupJournalsByStudent(journals) {
+  return groupItemsByStudent(
+    journals,
+    (j) => ({
+      key: journalStudentKey(j),
+      studentId: j.internship?.student_id || j.internship?.student?.id,
+      name: journalSubmitterName(j),
+    }),
+    (entries) => {
+      entries.sort((a, b) => {
+        const weekDiff = Number(b.week_number ?? b.entry_number ?? 0) - Number(a.week_number ?? a.entry_number ?? 0)
+        if (weekDiff !== 0) return weekDiff
+        return String(b.date || "").localeCompare(String(a.date || ""))
+      })
+    },
+  )
+}
+
+function attendanceLogName(log) {
+  const p = log?.internship?.student?.student_profile || log?.internship?.student?.studentProfile
+  const fromProfile = p ? `${p.last_name || ""}, ${p.first_name || ""}`.trim().replace(/^,\s*|,\s*$/g, "") : ""
+  return fromProfile || log?.internship?.student?.username || "—"
+}
+
+function groupAttendanceByStudent(logs) {
+  return groupItemsByStudent(
+    logs,
+    (log) => ({
+      key: log.internship?.student_id || log.internship?.student?.id || `name:${attendanceLogName(log)}`,
+      name: attendanceLogName(log),
+      company: log.internship?.company?.company_name || "—",
+    }),
+    (entries) => {
+      entries.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    },
+  )
 }
 
 const statusBadge = (status) => {
@@ -316,7 +409,6 @@ function TabStudents() {
 
 // ─── Tab: Journal Queue ───────────────────────────────────────────────────────
 function TabJournals() {
-  const currentTerm = useCurrentTerm()
   const { loading, seed, run } = useCachedPage("faculty:assigned-journals")
   const [journals, setJournals] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
@@ -324,6 +416,9 @@ function TabJournals() {
   const [message, setMessage] = useState(null)
   const [modal, setModal] = useState(null)
   const [previewModal, setPreviewModal] = useState(null)
+  const [historyModal, setHistoryModal] = useState(null)
+  const [historyData, setHistoryData] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   const fetchJournals = () => {
     setError(null)
@@ -349,9 +444,25 @@ function TabJournals() {
     finally { setProcessing(false) }
   }
 
+  const openHistory = (studentId, studentName) => {
+    if (!studentId) {
+      alert("Cannot load history: student is missing on this journal.")
+      return
+    }
+    setHistoryModal({ studentId, studentName })
+    setLoadingHistory(true)
+    api.get(`/faculty/students/${studentId}/journals`)
+      .then(res => {
+        const rows = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+        setHistoryData(rows)
+      })
+      .catch(() => alert("Failed to load history"))
+      .finally(() => setLoadingHistory(false))
+  }
+
   const handlePreviewJournal = (j) => {
-    const profile = j.internship?.student?.studentProfile || j.internship?.student?.student_profile
-    const name = profile ? `${profile.last_name}, ${profile.first_name}` : '—'
+    const profile = j.internship?.student?.student_profile || j.internship?.student?.studentProfile
+    const name = journalSubmitterName(j)
     setPreviewModal({
       type: 'journal',
       data: {
@@ -373,6 +484,46 @@ function TabJournals() {
       {error && <PageError message={error} onRetry={fetchJournals} />}
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
       {modal && <ReviewModal journal={modal} onClose={() => setModal(null)} onSubmit={handleReview} onPreview={() => handlePreviewJournal(modal)} processing={processing} />}
+      {historyModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.45)" }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Journal History — {historyModal.studentName}</h5>
+                <button className="btn-close" onClick={() => setHistoryModal(null)}></button>
+              </div>
+              <div className="modal-body p-0">
+                {loadingHistory ? (
+                  <div className="p-5 text-center"><InternTrackLoader /></div>
+                ) : historyData.length === 0 ? (
+                  <div className="p-4 text-center text-muted">No past journals found.</div>
+                ) : (
+                  <ul className="list-group list-group-flush">
+                    {historyData.map(h => (
+                      <li key={h.id} className="list-group-item p-3">
+                        <div className="d-flex justify-content-between">
+                          <div className="fw-semibold text-primary">Week {h.week_number ?? h.entry_number}</div>
+                          <span className={`badge ${journalStatusClass(h.status)}`}>{h.status}</span>
+                        </div>
+                        <div className="text-muted small mb-2">{h.date}{h.end_date ? ` — ${h.end_date}` : ""}</div>
+                        {h.score != null && h.score !== "" && <div className="text-success small fw-bold"><i className="fa fa-check-circle me-1"></i>Score: {h.score}/100</div>}
+                        {h.faculty_feedback && (
+                          <div className="bg-light p-2 rounded small mt-2">
+                            <strong>Feedback:</strong> {h.faculty_feedback}
+                          </div>
+                        )}
+                        <button className="btn btn-sm btn-outline-secondary mt-2" onClick={() => handlePreviewJournal({ ...h, internship: h.internship || modal?.internship })}>
+                          <i className="fa fa-eye me-1"></i>Preview Form
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="content-card">
         <div className="content-card-header">
           <i className="fa fa-book"></i><h6>Pending Journal Reviews</h6>
@@ -382,20 +533,43 @@ function TabJournals() {
           {loading && journals.length === 0 ? <div className="text-center py-4"><InternTrackLoader /></div>
             : journals.length === 0 && !error ? (
               <div className="text-center py-4 text-muted"><i className="fa fa-check-circle fa-2x mb-2 d-block text-success"></i>All journals reviewed!</div>
-            ) : journals.map(j => {
-              const profile = j.internship?.student?.studentProfile
-              const name = profile ? `${profile.last_name}, ${profile.first_name}` : "—"
+            ) : groupJournalsByStudent(journals).map(group => {
+              const latestDate = latestJournalDate(group.entries)
               return (
-                <div key={j.id} className="p-3 border-bottom d-flex align-items-start justify-content-between">
-                  <div>
-                    <div className="fw-semibold mb-1">{name} · <span className="text-primary">Week {j.week_number ?? j.entry_number}</span></div>
-                    <div className="text-muted" style={{ fontSize: "0.82rem" }}>{j.date}</div>
-                    {j.notes && <p className="mt-1 mb-0 text-muted" style={{ fontSize: "0.85rem" }}>{j.notes?.substring(0, 100)}…</p>}
-                    <span className={`badge mt-1 ${j.status === "approved" ? "bg-success" : j.status === "needs_revision" ? "bg-warning text-dark" : "bg-secondary"}`}>{j.status}</span>
+                <div key={group.key} className="faculty-journal-queue-group border-bottom">
+                  <div className="faculty-journal-queue-header d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2" style={{ background: "#f8fafc" }}>
+                    <div className="fw-bold" style={{ fontSize: "0.98rem", lineHeight: 1.3 }}>{group.name}</div>
+                    <div className="d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "0.82rem" }}>
+                      {latestDate ? <span className="text-muted">Latest {latestDate}</span> : null}
+                      <span className="badge bg-warning text-dark">{group.entries.length} pending</span>
+                    </div>
                   </div>
-                  <button className="btn btn-sm btn-primary ms-3 flex-shrink-0" onClick={() => setModal(j)}>
-                    <i className="fa fa-pen me-1"></i>Review
-                  </button>
+                  {group.entries.map(j => {
+                    const weekLabel = j.week_number ?? j.entry_number
+                    const excerpt = journalExcerpt(j)
+                    return (
+                      <div key={j.id} className="faculty-journal-queue-item d-flex align-items-start justify-content-between gap-3 px-3 py-2" style={{ borderTop: "1px solid #eef2f6" }}>
+                        <div className="min-w-0">
+                          <div className="d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "0.82rem" }}>
+                            <span className="text-primary fw-semibold">Week {weekLabel}</span>
+                            {j.date && <span className="text-muted">{j.date}</span>}
+                            <span className={`badge ${journalStatusClass(j.status)}`}>{(j.status || "—").replace(/_/g, " ")}</span>
+                          </div>
+                          {excerpt ? (
+                            <p className="mt-1 mb-0 text-muted" style={{ fontSize: "0.85rem", lineHeight: 1.4 }}>{excerpt}</p>
+                          ) : null}
+                        </div>
+                        <div className="d-flex align-items-center gap-2 ms-1 flex-shrink-0">
+                          <button className="btn btn-sm btn-outline-secondary" onClick={() => openHistory(group.studentId, group.name)}>
+                            <i className="fa fa-history me-1"></i>History
+                          </button>
+                          <button className="btn btn-sm btn-primary" onClick={() => setModal(j)}>
+                            <i className="fa fa-pen me-1"></i>Review
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
@@ -539,16 +713,43 @@ function TabAttendance() {
             : rows.length === 0 ? <div className="text-center py-4 text-muted">No attendance records for the selected filters.</div>
               : (
                 <div className="table-responsive">
-                  <table className="table table-hover mb-0">
+                  <table className="table table-hover mb-0 faculty-attendance-table">
                     <thead><tr><th>Student</th><th>Company</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th><th>Correction</th><th>Overtime</th><th>Remarks</th></tr></thead>
                     <tbody>
-                      {rows.map(log => {
-                        const p = log?.internship?.student?.student_profile || log?.internship?.student?.studentProfile
-                        const name = p ? `${p.last_name || ""}, ${p.first_name || ""}`.trim() : (log?.internship?.student?.username || "—")
-                        return (
-                          <tr key={log.id}>
-                            <td className="fw-semibold">{name}</td>
-                            <td>{log.internship?.company?.company_name || "—"}</td>
+                      {groupAttendanceByStudent(rows).flatMap((group, gi) => {
+                        const latestDate = String(latestJournalDate(group.entries) || "").slice(0, 10)
+                        const groupTint = gi % 2 === 1 ? "#f7fbf8" : undefined
+                        return group.entries.map((log, i) => (
+                          <tr
+                            key={log.id}
+                            className="faculty-attendance-row"
+                            style={{
+                              background: groupTint,
+                              borderTop: i === 0 && gi > 0 ? "2px solid #d9e8dc" : undefined,
+                            }}
+                          >
+                            {i === 0 && (
+                              <>
+                                <td
+                                  rowSpan={group.entries.length}
+                                  className="faculty-attendance-group-head fw-bold"
+                                  style={{ background: "#f8fafc", verticalAlign: "top", borderRight: "1px solid #eef2f6" }}
+                                >
+                                  <div>{group.name}</div>
+                                  <div className="mt-1">
+                                    <span className="badge bg-secondary">{group.entries.length} record{group.entries.length === 1 ? "" : "s"}</span>
+                                  </div>
+                                  {latestDate ? <div className="text-muted mt-1" style={{ fontSize: "0.78rem", fontWeight: 400 }}>Latest {latestDate}</div> : null}
+                                </td>
+                                <td
+                                  rowSpan={group.entries.length}
+                                  className="faculty-attendance-group-head"
+                                  style={{ background: "#f8fafc", verticalAlign: "top" }}
+                                >
+                                  {group.company}
+                                </td>
+                              </>
+                            )}
                             <td>{log.date ? String(log.date).slice(0, 10) : "—"}</td>
                             <td>{log.clock_in || "—"}</td>
                             <td>{log.clock_out || "—"}</td>
@@ -558,7 +759,7 @@ function TabAttendance() {
                             <td>{log.overtime_status || "none"}</td>
                             <td className="text-muted" style={{ fontSize: "0.85rem", maxWidth: 180 }}>{log.remarks || "—"}</td>
                           </tr>
-                        )
+                        ))
                       })}
                     </tbody>
                   </table>

@@ -23,6 +23,7 @@ class FacultyEvaluationSubmitTest extends TestCase
         $supervisor = $this->makeUser('supervisor');
         $coordinator = $this->makeUser('coordinator');
         $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
+        $this->approveEvaluationPeriod($internship, $faculty);
 
         Sanctum::actingAs($supervisor);
         $this->postJson('/api/v1/supervisor/evaluations/'.$internship->id, [

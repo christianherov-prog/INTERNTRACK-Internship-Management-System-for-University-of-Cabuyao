@@ -53,6 +53,7 @@ class JournalWorkflowTest extends TestCase
         Sanctum::actingAs($faculty);
         $facultyList = $this->getJson('/api/v1/faculty/journals')->assertOk();
         $this->assertSame($journalId, $facultyList->json('data.0.id'));
+        $this->assertNotEmpty($facultyList->json('data.0.student_name'));
         $this->assertTrue($facultyList->json('data.0.faculty_can_review'));
         $this->assertFalse($facultyList->json('data.0.awaiting_supervisor'));
         $this->patchJson('/api/v1/faculty/journals/'.$journalId.'/review', [
