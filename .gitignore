@@ -61,3 +61,7 @@ tinker_check.php
 backend/storage/audit_discover.php
 backend/php-local.ini
 /logo.jpg
+
+# Orphan root lockfile (frontend lockfile lives in frontend/)
+/package-lock.json
+
