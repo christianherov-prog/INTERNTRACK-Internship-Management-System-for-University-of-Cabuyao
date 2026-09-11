@@ -3,14 +3,12 @@ import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
-import { AuthenticatedFileImage, AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { formatStudentName } from '../../utils/formatName'
-import { displayLabel } from '../../utils/displayLabel'
 import InternTrackLoader from '../../components/InternTrackLoader'
-import { openOfficialFo31 } from '../../utils/officialForm'
+import { loadFacultyFo31Preview, openOfficialFo31 } from '../../utils/officialForm'
 import { formatFo31DateRange } from '../../utils/fo31DateRange'
 import { formatManilaDateTime } from '../../utils/manilaTime'
 
@@ -20,126 +18,6 @@ function journalStudentNumber(journal) {
   return journal?.student_number || profile?.student_number || student?.student_number || ''
 }
 
-function ReviewModal({ journal, onClose, onSubmit, onPreview, processing }) {
-  const [action, setAction]     = useState('approved')
-  const [feedback, setFeedback] = useState('')
-  const [score, setScore]       = useState(100)
-  const isImage = journal.file_path && !journal.file_path.endsWith('.pdf')
-  const isPdf   = journal.file_path && journal.file_path.endsWith('.pdf')
-
-  return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="modal-dialog modal-xl modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              <i className="fa fa-book me-2 text-primary"></i>
-              Review Journal — Week {journal.week_number ?? journal.entry_number}
-            </h5>
-            <button className="btn-close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            <div className="mb-3 p-3 rounded" style={{ background: '#f8fafc', fontSize: '0.88rem' }}>
-              <div className="fw-semibold mb-1">{journal.student_display_name || 'Student'}</div>
-              {journalStudentNumber(journal) ? <div className="text-muted mb-1">{journalStudentNumber(journal)}</div> : null}
-              {journal.program_name ? <div className="text-muted mb-2">{journal.program_name}</div> : null}
-              <div className="fw-semibold mb-1">Week {journal.week_number ?? journal.entry_number}</div>
-              <div className="text-muted mb-2">{formatFo31DateRange(journal.date, journal.end_date) || journal.date}</div>
-              {journal.activities_summary && (
-                <p className="mb-2"><strong>Accomplishment:</strong> {journal.activities_summary}</p>
-              )}
-              {journal.challenges && (
-                <p className="mb-2"><strong>Difficulties Encountered:</strong> {journal.challenges}</p>
-              )}
-              {journal.learnings && (
-                <p className="mb-2"><strong>New Learning / Insights:</strong> {journal.learnings}</p>
-              )}
-              {journal.notes && <p className="mb-0 text-muted"><strong>Notes:</strong> {journal.notes}</p>}
-              {journal.supervisor_feedback && (
-                <div className="mt-2 alert alert-secondary py-2 mb-0">
-                  <strong>Supervisor feedback:</strong> {journal.supervisor_feedback}
-                </div>
-              )}
-              {journal.faculty_feedback && (
-                <div className="mt-2 alert alert-info py-2 mb-0">
-                  <strong>Previous Feedback:</strong> {journal.faculty_feedback}
-                </div>
-              )}
-            </div>
-
-            <div className="mb-3 text-center">
-              <button type="button" onClick={onPreview} className="btn btn-outline-primary">
-                <i className="fa fa-eye me-2"></i>Preview Journal Form
-              </button>
-              {isPdf && (
-                <AuthenticatedFileLink path={journal.file_path} className="btn btn-outline-danger ms-2">
-                  <i className="fa fa-file-pdf me-2"></i>Open PDF
-                </AuthenticatedFileLink>
-              )}
-            </div>
-
-            {journal.file_path && isImage && (
-              <div className="mb-3 text-center">
-                <AuthenticatedFileImage
-                  path={journal.file_path}
-                  alt="Journal"
-                  style={{ maxWidth: '100%', maxHeight: '500px', border: '1px solid #ddd', borderRadius: '4px' }}
-                />
-              </div>
-            )}
-
-            {!journal.file_path && (
-              <div className="alert alert-info">No supplementary file uploaded for this journal entry.</div>
-            )}
-
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Action</label>
-              <div className="d-flex gap-3">
-                <div className="form-check">
-                  <input type="radio" className="form-check-input" id="fac_approve" checked={action === 'approved'} onChange={() => setAction('approved')} />
-                  <label className="form-check-label" htmlFor="fac_approve">✅ Approve</label>
-                </div>
-                <div className="form-check">
-                  <input type="radio" className="form-check-input" id="fac_revise" checked={action === 'needs_revision'} onChange={() => setAction('needs_revision')} />
-                  <label className="form-check-label" htmlFor="fac_revise">🔄 Needs Revision</label>
-                </div>
-              </div>
-            </div>
-            {action === 'approved' && (
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Score (0-100) <span className="text-danger">*</span></label>
-                <input type="number" className="form-control" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
-              </div>
-            )}
-            <div>
-              <label className="form-label fw-semibold">
-                Feedback {action === 'needs_revision' && <span className="text-danger">*</span>}
-              </label>
-              <textarea
-                className="form-control"
-                rows={3}
-                value={feedback}
-                onChange={e => setFeedback(e.target.value)}
-                placeholder="Feedback"
-              ></textarea>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button
-              className="btn btn-primary"
-              onClick={() => onSubmit(journal.id, action, feedback, score)}
-              disabled={processing || (action === 'needs_revision' && !feedback.trim())}
-            >
-              <i className={`fa fa-${processing ? 'spinner fa-spin' : 'check'} me-2`}></i>Submit Review
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function FacultyJournals() {
   const currentTerm = useCurrentTerm()
   const { loading, seed, run } = useCachedPage('faculty:journals')
@@ -147,8 +25,9 @@ function FacultyJournals() {
   const [error, setError]           = useState(null)
   const [processing, setProcessing] = useState(false)
   const [message, setMessage]       = useState(null)
-  const [modal, setModal]           = useState(null)
+  const [reviewJournal, setReviewJournal] = useState(null)
   const [previewModal, setPreviewModal] = useState(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [historyModal, setHistoryModal] = useState(null)
   const [historyData, setHistoryData] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -165,12 +44,18 @@ function FacultyJournals() {
 
   useEffect(() => { fetchJournals() }, [])
 
-  const handleReview = async (id, action, feedback, score) => {
+  const closePreview = () => {
+    setPreviewModal(null)
+    setReviewJournal(null)
+    setPreviewLoading(false)
+  }
+
+  const handleReview = async (id, action, feedback) => {
     setProcessing(true)
     try {
-      await api.patch(`/faculty/journals/${id}/review`, { action, feedback, score })
+      await api.patch(`/faculty/journals/${id}/review`, { action, feedback })
       setMessage({ type: action === 'approved' ? 'success' : 'info', text: `Journal ${action === 'approved' ? 'approved' : 'returned for revision'}.` })
-      setModal(null)
+      closePreview()
       fetchJournals()
     } catch (err) {
       setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Review failed.' })
@@ -191,6 +76,7 @@ function FacultyJournals() {
   }
 
   const handlePreview = (j) => {
+    setReviewJournal(null)
     const internshipId = j.internship_id || j.internship?.id
     if (!internshipId) return
     openOfficialFo31(internshipId, {
@@ -207,6 +93,18 @@ function FacultyJournals() {
     }, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))
   }
 
+  const openReview = (j) => {
+    setReviewJournal(j)
+    setPreviewLoading(true)
+    setPreviewModal({ type: 'journal', data: {} })
+    loadFacultyFo31Preview(j, setPreviewModal)
+      .catch((err) => {
+        alert(err.response?.data?.message || 'Unable to load FO-31 preview.')
+        closePreview()
+      })
+      .finally(() => setPreviewLoading(false))
+  }
+
   return (
     <Layout title="Journals" subtitle={currentTerm} icon="fa-book" bodyClass="faculty-page">
       {error && <PageError message={error} onRetry={fetchJournals} />}
@@ -217,21 +115,18 @@ function FacultyJournals() {
           <button className="btn-close" onClick={() => setMessage(null)}></button>
         </div>
       )}
-      {modal && (
-        <ReviewModal 
-          journal={modal} 
-          onClose={() => setModal(null)} 
-          onSubmit={handleReview} 
-          onPreview={() => handlePreview(modal)}
-          processing={processing} 
-        />
-      )}
       <FormPreviewModal
         isOpen={!!previewModal}
-        onClose={() => setPreviewModal(null)}
+        onClose={closePreview}
         type={previewModal?.type}
         data={previewModal?.data || {}}
         onDownload={previewModal?.onDownload}
+        loading={previewLoading}
+        review={reviewJournal ? {
+          journal: reviewJournal,
+          processing,
+          onSubmit: (action, feedback) => handleReview(reviewJournal.id, action, feedback),
+        } : null}
       />
       {historyModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
@@ -274,7 +169,7 @@ function FacultyJournals() {
                             ...h,
                             student_display_name: historyModal.studentName,
                             internship_id: h.internship_id || h.internship?.id,
-                            internship: h.internship || modal?.internship,
+                            internship: h.internship || reviewJournal?.internship,
                           })}
                         >
                           <i className="fa fa-eye me-1"></i>Preview Form
@@ -324,7 +219,7 @@ function FacultyJournals() {
                   <button className="btn btn-sm btn-outline-secondary" onClick={() => openHistory(j.internship?.student_id, name)}>
                     <i className="fa fa-history me-1"></i>History
                   </button>
-                  <button className="btn btn-sm btn-primary" onClick={() => setModal(j)}>
+                  <button className="btn btn-sm btn-primary" onClick={() => openReview(j)}>
                     <i className="fa fa-pen me-1"></i>Review
                   </button>
                 </div>

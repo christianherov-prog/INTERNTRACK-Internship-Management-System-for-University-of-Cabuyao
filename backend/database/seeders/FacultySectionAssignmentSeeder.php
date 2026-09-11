@@ -64,7 +64,18 @@ class FacultySectionAssignmentSeeder extends Seeder
                 'sex' => 'Male',
                 'department' => 'College of Computing Studies',
                 'position' => 'CCS Faculty',
-                'sections' => ['4IT-A', '4IT-B', '4IT-C', '4IT-D'],
+                'sections' => ['4IT-A', '4IT-B'],
+            ],
+            [
+                'faculty_number' => 'FAC-1002',
+                'email' => 'a.santos@uc.edu.ph',
+                'first_name' => 'Ana',
+                'middle_name' => 'L.',
+                'last_name' => 'Santos',
+                'sex' => 'Female',
+                'department' => 'College of Computing Studies',
+                'position' => 'CCS Faculty',
+                'sections' => ['4IT-C', '4IT-D'],
             ],
         ];
 
@@ -120,7 +131,7 @@ class FacultySectionAssignmentSeeder extends Seeder
         $this->assignCollegeFacultySections($ay, $sem);
         $this->restoreBsitSectionsToPrimaryFaculty($ay, $sem);
 
-        $this->command?->info('✅ Faculty section assignments seeded. Login: username=FAC-1001, password='.config('interntrack.default_password'));
+        $this->command?->info('✅ Faculty section assignments seeded. Login: FAC-1001 / FAC-1002, password='.config('interntrack.default_password'));
     }
 
     private function assignCollegeFacultySections(string $ay, string $sem): void
@@ -162,20 +173,32 @@ class FacultySectionAssignmentSeeder extends Seeder
 
     /**
      * If a previous seed gave 4IT sections to the dummy FAC-CCS-001 account,
-     * return those mappings to FAC-1001 without deleting student records.
+     * return those mappings to FAC-1001 / FAC-1002 without deleting student records.
      */
     private function restoreBsitSectionsToPrimaryFaculty(string $ay, string $sem): void
     {
-        $primary = User::where('faculty_number', 'FAC-1001')->first();
+        $primaryA = User::where('faculty_number', 'FAC-1001')->first();
+        $primaryB = User::where('faculty_number', 'FAC-1002')->first();
         $dummy = User::where('faculty_number', 'FAC-CCS-001')->first();
-        if (! $primary || ! $dummy) {
+        if (! $primaryA || ! $dummy) {
             return;
         }
+
+        $ownerBySection = [
+            '4IT-A' => $primaryA->id,
+            '4ITA' => $primaryA->id,
+            '4IT-B' => $primaryA->id,
+            '4ITB' => $primaryA->id,
+            '4IT-C' => $primaryB?->id ?? $primaryA->id,
+            '4ITC' => $primaryB?->id ?? $primaryA->id,
+            '4IT-D' => $primaryB?->id ?? $primaryA->id,
+            '4ITD' => $primaryB?->id ?? $primaryA->id,
+        ];
 
         FacultySectionAssignment::query()
             ->where(function ($q) use ($dummy) {
                 $q->where('faculty_user_id', $dummy->id)
-                    ->orWhereIn('section', ['4IT-A', '4IT-B', '4IT-C', '4IT-D', '4ITA', '4ITB', '4ITC', '4ITD']);
+                    ->orWhereIn('section', array_keys($ownerBySection));
             })
             ->where('school_year', $ay)
             ->where('semester', $sem)
@@ -184,9 +207,10 @@ class FacultySectionAssignmentSeeder extends Seeder
                     ->orWhere('section', 'like', '4IT%');
             })
             ->get()
-            ->each(function (FacultySectionAssignment $assignment) use ($primary) {
-                if ((int) $assignment->faculty_user_id !== (int) $primary->id) {
-                    $assignment->faculty_user_id = $primary->id;
+            ->each(function (FacultySectionAssignment $assignment) use ($ownerBySection, $primaryA) {
+                $ownerId = $ownerBySection[$assignment->section] ?? $primaryA->id;
+                if ((int) $assignment->faculty_user_id !== (int) $ownerId) {
+                    $assignment->faculty_user_id = $ownerId;
                     $assignment->save();
                 }
             });

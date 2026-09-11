@@ -36,7 +36,7 @@ class MockMisdRepository implements MisdRepositoryInterface
                 'department'        => 'College of Computing Studies',
                 'course_description'       => 'IT Practicum(500 hours) ',
                 'year_level'        => 4,
-                'section'           => '4ITD',
+                'section'           => '4ITA',
                 'academic_year'     => '2025-2026',
                 'semester'          => '2nd Semester',
                 'enrollment_status' => 'Enrolled',

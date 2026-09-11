@@ -22,10 +22,12 @@ class SignatureController extends Controller
 
         $user = auth()->user();
         $binary = (string) file_get_contents($request->file('signature')->getRealPath());
-        $processed = SignatureCapture::transparentPngFromBinary($binary);
 
-        $storagePath = "signatures/{$user->id}_processed.png";
-        Storage::put($storagePath, $processed);
+        try {
+            SignatureCapture::storeProcessedProfile($user, $binary);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
             'message' => 'Signature uploaded and processed successfully.',
@@ -54,11 +56,11 @@ class SignatureController extends Controller
     public function status()
     {
         $user = auth()->user();
-        $path = "signatures/{$user->id}_processed.png";
+        $path = SignatureCapture::profilePath($user);
 
         return response()->json([
-            'has_signature' => Storage::exists($path),
-            'signature_path' => Storage::exists($path) ? $path : null,
+            'has_signature' => (bool) $path,
+            'signature_path' => $path,
         ]);
     }
 
@@ -69,9 +71,9 @@ class SignatureController extends Controller
     public function view()
     {
         $user = auth()->user();
-        $path = "signatures/{$user->id}_processed.png";
+        $path = SignatureCapture::profilePath($user);
 
-        if (! Storage::exists($path)) {
+        if (! $path) {
             return response()->json(['error' => 'No signature on file.'], 404);
         }
 

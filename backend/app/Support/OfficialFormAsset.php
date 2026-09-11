@@ -26,7 +26,10 @@ final class OfficialFormAsset
                 }
 
                 $binary = Storage::disk($disk)->get($normalized);
-                if (! is_string($binary) || $binary === '') {
+                if (! is_string($binary) || $binary === '' || strlen($binary) < 24) {
+                    continue;
+                }
+                if (@imagecreatefromstring($binary) === false) {
                     continue;
                 }
 

@@ -63,12 +63,34 @@ api.interceptors.response.use(
 
     if (status === 403 && !requestUrl.includes('/files/download')) {
       const message = error.response?.data?.message || ''
-      const isAttendanceWorkflow =
-        requestUrl.includes('/student/attendance')
-        || /HTE Supervisor is approved/i.test(message)
-      if (!isAttendanceWorkflow) {
-        const detail = message || 'Access denied — different department'
-        window.dispatchEvent(new CustomEvent('access-denied', { detail }))
+      const isPasswordChangeRequired = /password change required/i.test(message)
+      if (isPasswordChangeRequired) {
+        // Do not show the department Access Restricted overlay — send the user to Settings.
+        try {
+          const raw = sessionStorage.getItem('interntrack_session')
+          const session = raw ? JSON.parse(raw) : null
+          const role = session?.role
+          const settingsByRole = {
+            student: '/student/settings',
+            director: '/director/settings',
+            supervisor: '/supervisor/settings',
+            faculty: '/faculty/settings',
+            coordinator: '/coordinator/settings',
+            admin: '/admin/settings',
+          }
+          const target = settingsByRole[role]
+          if (target && !window.location.pathname.endsWith('/settings')) {
+            window.location.assign(target)
+          }
+        } catch { /* ignore */ }
+      } else {
+        const isAttendanceWorkflow =
+          requestUrl.includes('/student/attendance')
+          || /HTE Supervisor is approved/i.test(message)
+        if (!isAttendanceWorkflow) {
+          const detail = message || 'Access denied — different department'
+          window.dispatchEvent(new CustomEvent('access-denied', { detail }))
+        }
       }
     }
 

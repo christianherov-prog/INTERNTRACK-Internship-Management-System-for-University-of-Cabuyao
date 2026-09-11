@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import Layout from './Layout'
@@ -26,6 +27,7 @@ function RoleSettings({
 }) {
   const { user, updateUserLocal, refreshUser } = useAuth()
   const toast = useToast()
+  const location = useLocation()
   const fileInputRef = useRef(null)
   const storageKey = user?.id
     ? `interntrack_notifications_${user.id}`
@@ -57,6 +59,7 @@ function RoleSettings({
   const [passwords, setPasswords] = useState({
     current_password: '',
     new_password: '',
+    new_password_confirmation: '',
   })
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' })
@@ -156,7 +159,7 @@ function RoleSettings({
     try {
       const { data } = await api.post('/auth/change-password', passwords)
       setPasswordMessage({ type: 'success', text: data.message || 'Password updated successfully.' })
-      setPasswords({ current_password: '', new_password: '' })
+      setPasswords({ current_password: '', new_password: '', new_password_confirmation: '' })
       updateUserLocal(data.user)
     } catch (err) {
       setPasswordMessage({ type: 'error', text: err.response?.data?.message || 'Failed to update password.' })
@@ -355,6 +358,14 @@ function RoleSettings({
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
+
+  useEffect(() => {
+    if (user?.must_change_password || location.state?.forcePasswordChange) {
+      const t = window.setTimeout(scrollToSecurity, 120)
+      return () => window.clearTimeout(t)
+    }
+    return undefined
+  }, [user?.must_change_password, location.state?.forcePasswordChange])
 
   return (
     <Layout title="Settings" subtitle={subtitleLabel} icon="fa-cog" bodyClass={bodyClass}>
@@ -732,7 +743,11 @@ function RoleSettings({
                 </div>
                 <div className="mb-3">
                   <label className="form-label" style={{ fontSize: '0.82rem' }}>New Password</label>
-                  <input type="password" name="new_password" value={passwords.new_password} onChange={handlePasswordChange} className="form-control form-control-sm" minLength={6} required />
+                  <input type="password" name="new_password" value={passwords.new_password} onChange={handlePasswordChange} className="form-control form-control-sm" minLength={8} required />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Confirm New Password</label>
+                  <input type="password" name="new_password_confirmation" value={passwords.new_password_confirmation} onChange={handlePasswordChange} className="form-control form-control-sm" minLength={8} required />
                 </div>
                 <button type="submit" className="btn btn-primary btn-sm w-100" disabled={directPasswordLoading}>
                   {directPasswordLoading ? 'Updating...' : 'Update Password'}
@@ -761,8 +776,8 @@ function RoleSettings({
           </div>
         </div>
 
-        {/* Children (e.g., SignatureUpload for StudentSettings) */}
-        {children}
+        {/* Children (e.g., SignatureUpload) — hide while password change is forced */}
+        {!user?.must_change_password ? children : null}
       </div >
 
       {

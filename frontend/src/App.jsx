@@ -77,8 +77,8 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <ConfirmProvider>
-            <AccessDeniedOverlay />
             <BrowserRouter>
+            <AccessDeniedOverlay />
             <Routes>
               <Route path="/" element={<LoginPage />} />
               <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />

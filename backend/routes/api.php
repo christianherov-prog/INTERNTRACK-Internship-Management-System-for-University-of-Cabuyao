@@ -252,6 +252,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/records', [CoordinatorController::class, 'records']);
             Route::patch('/students/{userId}/archive', [CoordinatorController::class, 'setStudentArchived']);
             Route::get('/students/{userId}/progress', [CoordinatorController::class, 'studentProgress']);
+            Route::patch('/students/bulk-section', [CoordinatorController::class, 'bulkUpdateStudentSection']);
+            Route::patch('/students/{userId}/section', [CoordinatorController::class, 'updateStudentSection']);
             Route::get('/placement-options', [CoordinatorController::class, 'placementOptions']);
             Route::post('/internships/{id}/place', [CoordinatorController::class, 'assignPlacement']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);

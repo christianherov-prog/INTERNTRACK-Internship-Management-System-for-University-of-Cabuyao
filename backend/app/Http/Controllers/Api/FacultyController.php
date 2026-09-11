@@ -494,6 +494,16 @@ class FacultyController extends Controller
             ->orderBy('entry_number', 'asc')
             ->get();
 
+        $journals->transform(function ($journal) {
+            $student = $journal->internship?->student;
+            $journal->setAttribute(
+                'student_signature_path',
+                $student ? SignatureCapture::profilePath($student) : null
+            );
+
+            return $journal;
+        });
+
         return response()->json($journals);
     }
 

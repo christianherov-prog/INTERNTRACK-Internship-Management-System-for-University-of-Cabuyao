@@ -5,8 +5,14 @@ import InternTrackLoader from './InternTrackLoader'
 const urlCache = new Map()
 const pendingRequests = new Map()
 
+function isInlineImageSrc(path) {
+  const value = String(path || '')
+  return value.startsWith('data:') || value.startsWith('blob:')
+}
+
 async function fetchBlobUrl(path) {
   if (!path) return ''
+  if (isInlineImageSrc(path)) return path
   if (urlCache.has(path)) {
     return urlCache.get(path)
   }
@@ -22,7 +28,12 @@ async function fetchBlobUrl(path) {
       pendingRequests.delete(path)
       throw new Error('File download failed.')
     }
-    const url = URL.createObjectURL(res.data)
+    const blob = res.data
+    if (!blob || blob.size < 24) {
+      pendingRequests.delete(path)
+      throw new Error('File download failed.')
+    }
+    const url = URL.createObjectURL(blob)
     urlCache.set(path, url)
     pendingRequests.delete(path)
     return url
@@ -32,6 +43,17 @@ async function fetchBlobUrl(path) {
   })
   pendingRequests.set(path, promise)
   return promise
+}
+
+export function invalidateAuthenticatedFileCache(pathPrefix = '') {
+  const prefix = String(pathPrefix || '')
+  for (const [path, url] of urlCache.entries()) {
+    if (prefix && !String(path).startsWith(prefix)) continue
+    if (typeof url === 'string' && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
+    }
+    urlCache.delete(path)
+  }
 }
 
 /** Opens a private storage file in a new tab using the Sanctum token. */
@@ -100,12 +122,19 @@ export function AuthenticatedFileDownload({ path, filename, children, className,
 
 /** Loads a private image via authenticated download (Bearer token). */
 export function AuthenticatedFileImage({ path, alt = '', className, style, fallback = null }) {
-  const [src, setSrc] = useState(() => (path && urlCache.has(path) ? urlCache.get(path) : ''))
+  const [src, setSrc] = useState(() => {
+    if (path && isInlineImageSrc(path)) return path
+    return path && urlCache.has(path) ? urlCache.get(path) : ''
+  })
 
   useEffect(() => {
     let active = true
     if (!path) {
       setSrc('')
+      return undefined
+    }
+    if (isInlineImageSrc(path)) {
+      setSrc(path)
       return undefined
     }
     if (urlCache.has(path)) {
@@ -126,7 +155,7 @@ export function AuthenticatedFileImage({ path, alt = '', className, style, fallb
   }, [path])
 
   if (!src) return fallback || null
-  return <img src={src} alt={alt} className={className} style={style} />
+  return <img src={src} alt={alt} className={className} style={style} onError={() => setSrc('')} />
 }
 
 /** Image or PDF preview for private storage files (faculty review). */

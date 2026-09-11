@@ -21,8 +21,8 @@ final class SignatureCapture
         if (! $request->hasFile('signature')) {
             $user = $request->user();
             if ($user) {
-                $savedPath = "signatures/{$user->id}_processed.png";
-                if (Storage::exists($savedPath)) {
+                $savedPath = self::profilePath($user);
+                if ($savedPath) {
                     $signerName = $request->input('signer_name');
                     if (! $signerName) {
                         $profile = $user->studentProfile ?? $user->facultyProfile ?? $user->coordinatorProfile ?? $user->supervisorProfile ?? $user->directorProfile ?? null;
@@ -81,7 +81,91 @@ final class SignatureCapture
 
         $path = "signatures/{$user->id}_processed.png";
 
-        return Storage::exists($path) ? $path : null;
+        return self::usableStoredPath($path);
+    }
+
+    /**
+     * Store a My Signature PNG after background removal. Keeps the original
+     * image if stripping would erase the strokes.
+     */
+    public static function storeProcessedProfile(User $user, string $binary): string
+    {
+        $processed = self::transparentPngFromBinary($binary);
+        if (! self::pngHasInk($processed) && @imagecreatefromstring($binary) !== false && strlen($binary) >= 24) {
+            $processed = $binary;
+        }
+        if (! self::pngHasInk($processed)) {
+            throw new \InvalidArgumentException('The signature image does not contain a visible signature.');
+        }
+
+        $path = "signatures/{$user->id}_processed.png";
+        Storage::put($path, $processed);
+
+        return $path;
+    }
+
+    /**
+     * Demo accounts only: write a visible ink PNG when the stored file is
+     * missing or is not a usable image (for example a 3-byte stub).
+     */
+    public static function ensureDemoProfileSignature(User $user): string
+    {
+        $existing = self::profilePath($user);
+        if ($existing) {
+            $binary = Storage::get($existing);
+            if (is_string($binary) && strlen($binary) >= 400) {
+                return $existing;
+            }
+        }
+
+        $path = "signatures/{$user->id}_processed.png";
+        Storage::put($path, self::visibleInkPng());
+
+        return $path;
+    }
+
+    public static function visibleInkPng(): string
+    {
+        $width = 360;
+        $height = 110;
+        $im = imagecreatetruecolor($width, $height);
+        imagealphablending($im, false);
+        imagesavealpha($im, true);
+        $clear = imagecolorallocatealpha($im, 0, 0, 0, 127);
+        imagefill($im, 0, 0, $clear);
+        imagealphablending($im, true);
+        $ink = imagecolorallocate($im, 18, 18, 28);
+        imagesetthickness($im, 4);
+        imagearc($im, 70, 58, 90, 70, 200, 40, $ink);
+        imageline($im, 40, 72, 310, 48, $ink);
+        imagearc($im, 180, 52, 120, 55, 150, 10, $ink);
+        imagearc($im, 250, 60, 80, 45, 200, 20, $ink);
+        imageline($im, 280, 40, 330, 75, $ink);
+        imagearc($im, 300, 78, 40, 22, 0, 180, $ink);
+        ob_start();
+        imagepng($im);
+        $png = (string) ob_get_clean();
+        imagedestroy($im);
+
+        return $png;
+    }
+
+    public static function usableStoredPath(?string $path): ?string
+    {
+        if (! filled($path) || ! Storage::exists($path)) {
+            return null;
+        }
+
+        $binary = Storage::get($path);
+        if (! is_string($binary) || strlen($binary) < 24) {
+            return null;
+        }
+
+        if (@imagecreatefromstring($binary) === false) {
+            return null;
+        }
+
+        return $path;
     }
 
     public static function delete(?string $path): void

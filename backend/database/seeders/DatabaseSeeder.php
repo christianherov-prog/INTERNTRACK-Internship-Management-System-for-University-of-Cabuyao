@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Hash;
  *   Admin       → username: ADMIN-MISD-001
  *   Director    → username: DIR-1001
  *   Coordinator → username: COR-1001
- *   Faculty     → username: FAC-1001
+ *   Faculty     → username: FAC-1001 (4IT-A/B), FAC-1002 (4IT-C/D)
  *   Student     → username: 2300600 (Valinado), 2300590 (Angel Luis Taac - Taac), 2300500 (Taduran), 2300592 (Montealegre)
  */
 class DatabaseSeeder extends Seeder
@@ -321,9 +321,12 @@ class DatabaseSeeder extends Seeder
         $this->command->info('  ROLE          USERNAME/STUDENT NO.   PASSWORD');
         $this->command->info('─────────────────────────────────────────────────────────────');
         $this->command->info("  Admin         ADMIN-MISD-001         {$demoPassword}
+  Admin         ADMIN-1001             {$demoPassword}
   Director      DIR-1001               {$demoPassword}
   Coord (CCS)   COR-CCS-001            {$demoPassword}
   Facul (CCS)   FAC-CCS-001            {$demoPassword}
+  Facul (CCS)   FAC-1001               {$demoPassword} (Marvin Bicua — 4IT-A/B)
+  Facul (CCS)   FAC-1002               {$demoPassword} (Ana Santos — 4IT-C/D)
   Coord (COED)  COR-COED-001           {$demoPassword}
   Facul (COED)  FAC-COED-001           {$demoPassword}
   Coord (COE)   COR-COE-001            {$demoPassword}

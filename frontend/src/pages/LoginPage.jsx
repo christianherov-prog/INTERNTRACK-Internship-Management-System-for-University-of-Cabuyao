@@ -70,6 +70,18 @@ function LoginPage() {
     if (result.success) {
       setRedirecting(true)
       setTimeout(() => {
+        const settingsRoutes = {
+          student: '/student/settings',
+          director: '/director/settings',
+          supervisor: '/supervisor/settings',
+          faculty: '/faculty/settings',
+          coordinator: '/coordinator/settings',
+          admin: '/admin/settings',
+        }
+        if (result.user?.must_change_password) {
+          navigate(settingsRoutes[result.user.role] || '/', { state: { forcePasswordChange: true } })
+          return
+        }
         navigate(result.user.dashRoute || '/')
       }, 800)
     } else {

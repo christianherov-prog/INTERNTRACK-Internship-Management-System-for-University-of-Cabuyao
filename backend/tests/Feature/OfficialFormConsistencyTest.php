@@ -331,7 +331,22 @@ class OfficialFormConsistencyTest extends TestCase
     {
         $faculty = file_get_contents(base_path('../frontend/src/pages/faculty/FacultyAssignedStudents.jsx'));
         $this->assertStringContainsString('openOfficialFo30', $faculty);
+        $this->assertStringContainsString('loadFacultyFo31Preview', $faculty);
+        $this->assertStringContainsString('openReview', $faculty);
+        $this->assertStringNotContainsString('Review Journal — Week', $faculty);
+        $this->assertStringNotContainsString("onPreview={() => handlePreviewJournal(modal)}", $faculty);
         $this->assertStringNotContainsString("companyLogoPath: row.company?.company_logo_path || ''", $faculty);
+        $this->assertStringNotContainsString('defaultScore', $faculty);
+        $preview = file_get_contents(base_path('../frontend/src/components/portfolio/FormPreviewModal.jsx'));
+        $this->assertIsString($preview);
+        $this->assertStringNotContainsString('Score (Optional)', $preview);
+        $this->assertStringNotContainsString('scoreRequired', $preview);
+        $this->assertStringContainsString('review.onSubmit(action, feedback)', $preview);
+        $official = file_get_contents(base_path('../frontend/src/utils/officialForm.js'));
+        $this->assertStringContainsString('identity.student_signature', $official);
+        $authFile = file_get_contents(base_path('../frontend/src/components/AuthenticatedFile.jsx'));
+        $this->assertStringContainsString('isInlineImageSrc', $authFile);
+        $this->assertStringContainsString("value.startsWith('data:')", $authFile);
         $coord = file_get_contents(base_path('../frontend/src/pages/coordinator/CoordRecords.jsx'));
         $this->assertStringContainsString('openOfficialFo30', $coord);
         $dtr = file_get_contents(base_path('../frontend/src/components/portfolio/DailyTimeRecord.jsx'));
@@ -345,5 +360,52 @@ class OfficialFormConsistencyTest extends TestCase
         $this->assertSame($party['faculty']->id, $party['otherInternship']->faculty_id);
         $this->assertSame('2300590', $party['otherStudent']->student_number);
         $this->assertSame($party['faculty']->id, $party['internship']->faculty_id);
+    }
+
+    public function test_faculty_fo31_preview_uses_saved_signature_and_stays_blank_without_one(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+
+        Sanctum::actingAs($party['student']);
+        $this->postJson('/api/v1/student/logbook', [
+            'week_number' => 1,
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
+            'activities_summary' => 'Configured interntrack DTR mapping',
+            'challenges' => 'Timezone conversion',
+            'learnings' => 'Use Asia/Manila explicitly',
+        ])->assertCreated();
+
+        Sanctum::actingAs($party['faculty']);
+        $blank = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        $this->assertNull($blank['identity']['student_signature_path']);
+        $this->assertNull($blank['identity']['student_signature'] ?? null);
+        $blankPdf = app(OfficialFormDataService::class)->pdfJournal($party['internship']);
+        $this->assertNull($blankPdf['student_signature']);
+        $blankHtml = view('pdf.form31_journal', $blankPdf)->render();
+        $this->assertStringContainsString('(signature over printed name)', $blankHtml);
+        $this->assertDoesNotMatchRegularExpression('/class="mark">\s*<img/', $blankHtml);
+
+        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
+
+        $signed = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        $path = $signed['identity']['student_signature_path'];
+        $this->assertSame('signatures/'.$party['student']->id.'_processed.png', $path);
+        $this->assertIsString($signed['identity']['student_signature'] ?? null);
+        $this->assertStringStartsWith('data:image', (string) ($signed['identity']['student_signature'] ?? ''));
+        $this->get('/api/v1/files/download?path='.urlencode($path))->assertOk();
+
+        $journals = $this->getJson('/api/v1/faculty/journals')->assertOk()->json();
+        $items = $journals['data'] ?? $journals['items'] ?? $journals;
+        $row = collect(is_array($items) ? $items : [])->first();
+        $this->assertNotNull($row);
+        $this->assertSame($path, $row['student_signature_path'] ?? null);
+
+        $signedPdf = app(OfficialFormDataService::class)->pdfJournal($party['internship']);
+        $this->assertNotNull($signedPdf['student_signature']);
+        $signedHtml = view('pdf.form31_journal', $signedPdf)->render();
+        $this->assertStringContainsString('data:image', $signedHtml);
+        $this->assertStringContainsString('(signature over printed name)', $signedHtml);
     }
 }

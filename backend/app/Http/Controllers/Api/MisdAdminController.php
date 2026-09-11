@@ -307,11 +307,12 @@ class MisdAdminController extends Controller
             ->orderBy('semester', 'desc')
             ->orderBy('section');
 
-        if ($request->filled('school_year')) {
-            $q->where('school_year', $request->query('school_year'));
+        $schoolYear = $request->query('school_year', $request->query('academic_year'));
+        if (filled($schoolYear)) {
+            $q->where('school_year', $schoolYear);
         }
         if ($request->filled('semester')) {
-            $q->where('semester', (int) $request->query('semester'));
+            $q->whereIn('semester', $this->semesterFilterVariants($request->query('semester')));
         }
         if ($request->filled('section')) {
             $q->where('section', FacultySectionAssignmentService::normalizeSection($request->query('section')));
@@ -327,7 +328,7 @@ class MisdAdminController extends Controller
 
     public function storeSectionAssignment(Request $request): JsonResponse
     {
-        $data = $this->validateSectionPayload($request);
+        $data = $this->normalizeSectionPayload($this->validateSectionPayload($request));
         $section = FacultySectionAssignmentService::normalizeSection($data['section']);
 
         $exists = FacultySectionAssignment::where('program', $data['program'] ?? null)
@@ -352,7 +353,7 @@ class MisdAdminController extends Controller
         $assignment = FacultySectionAssignment::create([
             'program'         => $data['program'] ?? null,
             'section'         => $section,
-            'school_year'   => $data['school_year'],
+            'school_year'     => $data['school_year'],
             'semester'        => $data['semester'],
             'faculty_user_id' => $faculty->id,
             'is_active'       => $data['is_active'] ?? true,
@@ -369,7 +370,7 @@ class MisdAdminController extends Controller
     public function updateSectionAssignment(Request $request, int $id): JsonResponse
     {
         $assignment = FacultySectionAssignment::findOrFail($id);
-        $data = $this->validateSectionPayload($request, true);
+        $data = $this->normalizeSectionPayload($this->validateSectionPayload($request, true), true);
 
         if (isset($data['section'])) {
             $data['section'] = FacultySectionAssignmentService::normalizeSection($data['section']);
@@ -391,7 +392,7 @@ class MisdAdminController extends Controller
         $assignment->update(array_filter([
             'program'         => $data['program'] ?? null,
             'section'         => $data['section'] ?? null,
-            'school_year'   => $data['school_year'] ?? null,
+            'school_year'     => $data['school_year'] ?? null,
             'semester'        => $data['semester'] ?? null,
             'faculty_user_id' => $data['faculty_user_id'] ?? null,
             'is_active'       => array_key_exists('is_active', $data) ? $data['is_active'] : null,
@@ -730,10 +731,64 @@ class MisdAdminController extends Controller
             'section'         => "{$required}|string|max:20",
             'school_year'     => 'sometimes|string|max:20',
             'academic_year'   => 'sometimes|string|max:20',
-            'semester'        => "{$required}|string|max:255",
+            // Accept numeric 1/2 from older UI clients; normalizeSectionPayload maps to labels.
+            'semester'        => "{$required}|max:255",
             'faculty_user_id' => "{$required}|integer|exists:users,id",
             'is_active'       => 'sometimes|boolean',
         ]);
+    }
+
+    /**
+     * Map academic_year → school_year and coerce semester 1/2 into DB label form.
+     * Scoped to MISD Admin section-assignment endpoints only.
+     */
+    private function normalizeSectionPayload(array $data, bool $partial = false): array
+    {
+        if (! array_key_exists('school_year', $data) || blank($data['school_year'] ?? null)) {
+            if (! blank($data['academic_year'] ?? null)) {
+                $data['school_year'] = $data['academic_year'];
+            } elseif (! $partial) {
+                throw ValidationException::withMessages([
+                    'academic_year' => 'Academic year is required.',
+                ]);
+            }
+        }
+
+        if (array_key_exists('semester', $data) && $data['semester'] !== null && $data['semester'] !== '') {
+            $data['semester'] = $this->normalizeSemesterLabel($data['semester']);
+        }
+
+        return $data;
+    }
+
+    private function normalizeSemesterLabel(mixed $semester): string
+    {
+        $raw = trim((string) $semester);
+        $num = (int) filter_var($raw, FILTER_SANITIZE_NUMBER_INT);
+
+        if ($num === 1 || preg_match('/^1st/i', $raw)) {
+            return '1st Semester';
+        }
+        if ($num === 2 || preg_match('/^2nd/i', $raw)) {
+            return '2nd Semester';
+        }
+
+        return $raw !== '' ? $raw : '2nd Semester';
+    }
+
+    /** @return list<string|int> */
+    private function semesterFilterVariants(mixed $semester): array
+    {
+        $label = $this->normalizeSemesterLabel($semester);
+        $num = (int) filter_var($label, FILTER_SANITIZE_NUMBER_INT);
+
+        return array_values(array_unique(array_filter([
+            $label,
+            $num ?: null,
+            (string) $num,
+            $num === 1 ? '1st Semester' : null,
+            $num === 2 ? '2nd Semester' : null,
+        ], fn ($v) => $v !== null && $v !== '')));
     }
 
     private function formatSectionAssignment(FacultySectionAssignment $a): array

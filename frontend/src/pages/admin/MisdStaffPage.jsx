@@ -43,7 +43,7 @@ function MisdStaffPage({ role }) {
   const load = () => {
     setError(null)
     run(() => api.get(listPath).then((res) => unwrapList(res.data).items))
-      .then((next) => { if (next) setRows(next) })
+      .then((next) => { if (Array.isArray(next)) setRows(next) })
       .catch((err) => setError(err.response?.data?.message || `Failed to load ${title.toLowerCase()}.`))
   }
 

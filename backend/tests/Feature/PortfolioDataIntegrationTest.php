@@ -19,6 +19,11 @@ class PortfolioDataIntegrationTest extends TestCase
     use CreatesInternshipFixtures;
     use RefreshDatabase;
 
+    private function png(): string
+    {
+        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    }
+
     private function party(string $section = '4ITD', bool $mapFaculty = true): array
     {
         $coordinator = $this->makeUser('coordinator');
@@ -107,7 +112,7 @@ class PortfolioDataIntegrationTest extends TestCase
         $this->assertFalse($dtr['validated']);
         $this->assertNull($dtr['hte_signature_path']);
 
-        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', 'sig');
+        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', $this->png());
         Sanctum::actingAs($party['supervisor']);
         $this->patchJson('/api/v1/supervisor/attendance/'.$logId.'/validate', [
             'action' => 'validated',
@@ -124,7 +129,7 @@ class PortfolioDataIntegrationTest extends TestCase
     public function test_fo31_journal_and_student_signature_path(): void
     {
         $party = $this->party();
-        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', 'sig');
+        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
         Sanctum::actingAs($party['student']);
 
         $this->postJson('/api/v1/student/logbook', [
@@ -150,8 +155,8 @@ class PortfolioDataIntegrationTest extends TestCase
     public function test_evaluations_fo22_fo23_fo24_and_fo03_without_faculty_eval(): void
     {
         $party = $this->party();
-        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', 'sig');
-        Storage::disk('local')->put('signatures/'.$party['faculty']->id.'_processed.png', 'sig');
+        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', $this->png());
+        Storage::disk('local')->put('signatures/'.$party['faculty']->id.'_processed.png', $this->png());
         $this->approveEvaluationPeriod($party['internship'], $party['faculty']);
 
         Sanctum::actingAs($party['student']);

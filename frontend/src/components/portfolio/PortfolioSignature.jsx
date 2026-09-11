@@ -10,12 +10,13 @@ export default function PortfolioSignature({
   maxHeight = 42,
   maxWidth = 180,
 }) {
+  const srcPath = typeof path === 'string' ? path.trim() : path
   return (
     <div className="portfolio-signature-stack">
       <div className="portfolio-signature-image-wrap">
-        {path ? (
+        {srcPath ? (
           <AuthenticatedFileImage
-            path={path}
+            path={srcPath}
             alt=""
             className="portfolio-signature-img"
             style={{

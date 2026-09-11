@@ -15,6 +15,9 @@ class EnsurePasswordChanged
         'GET' => [
             'api/v1/auth/user',
             'api/v1/auth/notification-preferences',
+            'api/v1/auth/signature/status',
+            'api/v1/auth/signature/view',
+            'api/v1/notifications',
         ],
         'POST' => [
             'api/v1/auth/change-password',
@@ -25,6 +28,9 @@ class EnsurePasswordChanged
         ],
         'PUT' => [
             'api/v1/auth/notification-preferences',
+        ],
+        'DELETE' => [
+            'api/v1/auth/signature',
         ],
     ];
 

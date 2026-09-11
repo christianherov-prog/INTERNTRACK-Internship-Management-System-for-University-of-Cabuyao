@@ -46,7 +46,7 @@ class ResetDatabase extends Command
 
         // Display created accounts
         $accounts = [
-            ['Role' => 'STUDENT', 'Username' => '2300600', 'Name' => 'Christian Hero Aboy Valinado', 'Section' => '4ITD'],
+            ['Role' => 'STUDENT', 'Username' => '2300600', 'Name' => 'Christian Hero Aboy Valinado', 'Section' => '4IT-A'],
             ['Role' => 'FACULTY', 'Username' => 'FAC-1001', 'Name' => 'Prof. Marvin M. Bicua', 'Section' => 'CCS'],
             ['Role' => 'COORDINATOR', 'Username' => 'COR-1001', 'Name' => 'Arcelito C. Quiatchon', 'Section' => 'CCS'],
             ['Role' => 'DIRECTOR', 'Username' => 'DIR-1001', 'Name' => 'Prof. Gina M. Oloresisimo', 'Section' => 'Director'],

@@ -7,17 +7,34 @@ import { unwrapList } from '../../utils/apiList'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 
+const SEMESTER_OPTIONS = [
+  { value: '1st Semester', label: '1st Semester' },
+  { value: '2nd Semester', label: '2nd Semester' },
+]
+
 const emptyForm = {
-  program: 'BS Information Technology',
+  program: 'Bachelor of Science in Information Technology',
   section: '',
   academic_year: '2025-2026',
-  semester: 1,
+  semester: '2nd Semester',
   faculty_user_id: '',
   is_active: true,
 }
 
+/** Normalize UI/API semester values to the DB label form. */
+function normalizeSemester(value) {
+  if (value == null || value === '') return '2nd Semester'
+  const raw = String(value).trim()
+  if (raw === '1' || /^1st/i.test(raw)) return '1st Semester'
+  if (raw === '2' || /^2nd/i.test(raw)) return '2nd Semester'
+  return raw
+}
+
 function MisdSectionMappings() {
-  const { loading, seed, run } = useCachedPage('admin:section-mappings')
+  const [filters, setFilters] = useState({ academic_year: '', semester: '', section: '' })
+  const [applied, setApplied] = useState({ academic_year: '', semester: '', section: '' })
+  const cacheKey = `admin:section-mappings:${applied.academic_year || 'all'}:${applied.semester || 'all'}:${applied.section || 'all'}`
+  const { loading, seed, run } = useCachedPage(cacheKey)
   const [rows, setRows] = useState(() => seed?.rows ?? [])
   const [faculty, setFaculty] = useState(() => seed?.faculty ?? [])
   const [unmapped, setUnmapped] = useState(() => seed?.unmapped ?? [])
@@ -27,14 +44,17 @@ function MisdSectionMappings() {
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
-  const [filters, setFilters] = useState({ academic_year: '', semester: '', section: '' })
 
   const load = () => {
     setError(null)
     const params = {}
-    if (filters.academic_year) params.academic_year = filters.academic_year
-    if (filters.semester) params.semester = filters.semester
-    if (filters.section) params.section = filters.section
+    // Backend filters on school_year; academic_year is accepted as an alias.
+    if (applied.academic_year) {
+      params.school_year = applied.academic_year
+      params.academic_year = applied.academic_year
+    }
+    if (applied.semester) params.semester = applied.semester
+    if (applied.section) params.section = applied.section
 
     run(async () => {
       const [a, f, u] = await Promise.all([
@@ -58,7 +78,11 @@ function MisdSectionMappings() {
       .catch((err) => setError(err.response?.data?.message || 'Failed to load section mappings.'))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [cacheKey])
+
+  const applyFilters = () => {
+    setApplied({ ...filters })
+  }
 
   const openCreate = (seed = null) => {
     setEditId(null)
@@ -66,7 +90,7 @@ function MisdSectionMappings() {
       ...emptyForm,
       ...(seed || {}),
       faculty_user_id: seed?.faculty_user_id || '',
-      semester: seed?.semester || 1,
+      semester: normalizeSemester(seed?.semester ?? emptyForm.semester),
       is_active: true,
     })
     setShowForm(true)
@@ -78,8 +102,8 @@ function MisdSectionMappings() {
     setForm({
       program: (typeof row.program === 'string' ? row.program : row.program?.name || row.program?.code) || '',
       section: row.section || '',
-      academic_year: row.academic_year || '',
-      semester: row.semester || 1,
+      academic_year: row.academic_year || row.school_year || '',
+      semester: normalizeSemester(row.semester),
       faculty_user_id: row.faculty_user_id || '',
       is_active: !!row.is_active,
     })
@@ -91,11 +115,15 @@ function MisdSectionMappings() {
     e.preventDefault()
     setSaving(true)
     setMessage(null)
+    const schoolYear = String(form.academic_year || '').trim()
     const payload = {
-      ...form,
-      faculty_user_id: Number(form.faculty_user_id),
-      semester: Number(form.semester),
+      program: form.program,
       section: form.section.trim().toUpperCase(),
+      academic_year: schoolYear,
+      school_year: schoolYear,
+      semester: normalizeSemester(form.semester),
+      faculty_user_id: Number(form.faculty_user_id),
+      is_active: !!form.is_active,
     }
     try {
       if (editId) {
@@ -199,7 +227,7 @@ function MisdSectionMappings() {
             value={filters.section}
             onChange={(e) => setFilters((p) => ({ ...p, section: e.target.value }))}
           />
-          <button className="btn btn-sm btn-outline-secondary" onClick={load}>Apply</button>
+          <button className="btn btn-sm btn-outline-secondary" onClick={applyFilters}>Apply</button>
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => openCreate()}>
           <i className="fa fa-plus me-1"></i>Add Mapping
@@ -221,9 +249,10 @@ function MisdSectionMappings() {
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Semester <span className="text-danger">*</span></label>
-                <select className="form-select" value={form.semester} onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}>
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
+                <select className="form-select" value={normalizeSemester(form.semester)} onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}>
+                  {SEMESTER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-6">

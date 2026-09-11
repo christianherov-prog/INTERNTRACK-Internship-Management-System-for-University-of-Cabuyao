@@ -14,8 +14,8 @@ export function fo30PreviewData(bundle = {}) {
     companyName: fo30.company_name || identity.company_name || '',
     companyLogoPath: fo30.company_logo_path || bundle.company_logo_path || identity.company_logo_path || '',
     supervisorName: fo30.supervisor_name || identity.supervisor_name || '',
-    studentSignaturePath: fo30.student_signature_path || identity.student_signature_path || '',
-    supervisorSignaturePath: fo30.supervisor_signature_path || identity.supervisor_signature_path || '',
+    studentSignaturePath: identity.student_signature || fo30.student_signature || fo30.student_signature_path || identity.student_signature_path || '',
+    supervisorSignaturePath: identity.supervisor_signature || fo30.supervisor_signature || fo30.supervisor_signature_path || identity.supervisor_signature_path || '',
     logs: fo30.logs || bundle.attendance || [],
   }
 }
@@ -27,7 +27,7 @@ export function fo31PreviewData(bundle = {}, journal = {}) {
     program: journal.program || journal.program_name || identity.program || '',
     companyName: journal.companyName || journal.company_name || identity.company_name || '',
     companyLogoPath: journal.companyLogoPath || journal.company_logo_path || bundle.company_logo_path || identity.company_logo_path || '',
-    studentSignaturePath: journal.studentSignaturePath || journal.student_signature_path || identity.student_signature_path || '',
+    studentSignaturePath: identity.student_signature || journal.studentSignaturePath || journal.student_signature_path || identity.student_signature_path || '',
     weekNumber: journal.weekNumber ?? journal.week_number ?? journal.week ?? journal.entry_number,
     date: journal.date,
     endDate: journal.endDate || journal.end_date,
@@ -67,11 +67,30 @@ export async function openOfficialFo31(internshipId, journal, setPreviewModal, e
   if (!internshipId) return
   const bundle = await fetchOfficialForm(internshipId)
   const data = fo31PreviewData(bundle, journal)
+  const weekNumber = journal?.weekNumber ?? journal?.week_number ?? journal?.entry_number
+  const pdfParams = extras.pdfParams || (weekNumber ? { week_number: weekNumber } : {})
   setPreviewModal({
     type: 'journal',
     data,
     onDownload: extras.onDownload === false
       ? undefined
-      : () => downloadOfficialPdf('journal', internshipId, `Journal_${data.studentName}.pdf`, extras.pdfParams || {}),
+      : () => downloadOfficialPdf('journal', internshipId, `Journal_${data.studentName}.pdf`, pdfParams),
   })
+}
+
+export async function loadFacultyFo31Preview(journal, setPreview, extras = {}) {
+  const internshipId = journal?.internship_id || journal?.internship?.id
+  if (!internshipId) return
+  return openOfficialFo31(internshipId, {
+    studentName: extras.studentName || journal.student_display_name || journal.student_name || '',
+    program: journal.program_name,
+    companyName: journal.internship?.company?.company_name,
+    weekNumber: journal.week_number ?? journal.entry_number,
+    date: journal.date,
+    endDate: journal.end_date,
+    accomplishment: journal.activities_summary,
+    difficulties: journal.challenges,
+    insights: journal.learnings,
+    studentSignaturePath: journal.student_signature_path,
+  }, setPreview)
 }

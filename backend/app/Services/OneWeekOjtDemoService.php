@@ -92,6 +92,8 @@ class OneWeekOjtDemoService
             throw new \RuntimeException("Student {$studentNumber} was not found. Do not create a new Clarence account.");
         }
 
+        SignatureCapture::ensureDemoProfileSignature($student);
+
         $internship = InternshipProvisioning::openForStudent($student->id)
             ?? $student->internshipsAsStudent()->latest('id')->first();
 

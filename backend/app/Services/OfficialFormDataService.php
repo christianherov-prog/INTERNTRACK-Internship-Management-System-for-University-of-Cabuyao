@@ -24,6 +24,8 @@ class OfficialFormDataService
         $viewer = $internship->student;
         $payload = $this->portfolio->payload($internship, $viewer);
         $identity = $payload['identity'] ?? [];
+        $identity['student_signature'] = OfficialFormAsset::dataUri($identity['student_signature_path'] ?? null);
+        $identity['supervisor_signature'] = OfficialFormAsset::dataUri($identity['supervisor_signature_path'] ?? null);
         $logo = $identity['company_logo_path']
             ?? ($payload['portfolio']['company_logo_path'] ?? null);
 

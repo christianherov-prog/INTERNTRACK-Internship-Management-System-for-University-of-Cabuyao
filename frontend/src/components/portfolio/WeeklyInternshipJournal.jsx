@@ -236,7 +236,7 @@ const WeeklyInternshipJournal = ({
           <div className="fo31-signature-box" style={styles.signatureBox}>
             <div style={styles.sigTop}>STUDENT-TRAINEE</div>
             <div style={styles.sigMiddle}>
-              <PortfolioSignature path={studentSignaturePath} printedName={studentName} maxHeight={40} maxWidth={180} />
+              <PortfolioSignature path={studentSignaturePath} printedName={studentName} maxHeight={48} maxWidth={200} />
             </div>
             <div style={styles.sigBottom}>(signature over printed name)</div>
           </div>

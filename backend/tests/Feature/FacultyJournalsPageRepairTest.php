@@ -20,9 +20,12 @@ class FacultyJournalsPageRepairTest extends TestCase
         $this->assertIsString($jsx);
         $this->assertStringContainsString("import InternTrackLoader from '../../components/InternTrackLoader'", $jsx);
         $this->assertStringContainsString('loading && journals.length === 0', $jsx);
-        $this->assertStringContainsString('Accomplishment:', $jsx);
-        $this->assertStringContainsString('Difficulties Encountered', $jsx);
-        $this->assertStringContainsString('New Learning / Insights', $jsx);
+        $this->assertStringContainsString('loadFacultyFo31Preview', $jsx);
+        $this->assertStringContainsString('openReview', $jsx);
+        $this->assertStringNotContainsString('scoreRequired', $jsx);
+        $this->assertStringNotContainsString('defaultScore', $jsx);
+        $this->assertStringNotContainsString('Review Journal — Week', $jsx);
+        $this->assertStringNotContainsString('onPreview={() => handlePreview(modal)}', $jsx);
         $this->assertStringContainsString('formatFo31DateRange', $jsx);
         $this->assertStringContainsString('formatManilaDateTime', $jsx);
         $this->assertStringContainsString('PageError', $jsx);

@@ -95,6 +95,8 @@ class CcsFo31OneWeekDemoTest extends TestCase
         $this->assertStringContainsString('tableLayout: \'fixed\'', $jsx);
         $this->assertStringContainsString('overflowWrap: \'break-word\'', $jsx);
         $this->assertStringContainsString('formatFo31DateRange', $jsx);
+        $this->assertStringContainsString('PortfolioSignature', $jsx);
+        $this->assertStringContainsString('studentSignaturePath', $jsx);
         $this->assertStringNotContainsString('MONTEALEGRE, CLARENCE', $jsx);
         $this->assertStringNotContainsString('2300592', $jsx);
         $this->assertSame(1, substr_count($jsx, 'className="a4-page page-break portfolio-document fo31-page"'));

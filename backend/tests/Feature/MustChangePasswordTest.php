@@ -63,6 +63,9 @@ class MustChangePasswordTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('message', 'Password change required before continuing.');
 
+        $this->getJson('/api/v1/notifications')->assertOk();
+        $this->getJson('/api/v1/auth/signature/status')->assertOk();
+
         $this->postJson('/api/v1/auth/change-password', [
             'current_password' => 'interntrack123',
             'new_password' => 'newsecure1',

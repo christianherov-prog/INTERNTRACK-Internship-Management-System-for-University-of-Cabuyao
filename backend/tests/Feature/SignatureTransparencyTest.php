@@ -51,6 +51,31 @@ class SignatureTransparencyTest extends TestCase
         $this->assertCornerTransparent(Storage::disk('local')->get($path));
     }
 
+    public function test_stub_signature_is_not_treated_as_on_file(): void
+    {
+        Storage::fake('local');
+        $student = $this->makeStudentWithSection();
+        Storage::disk('local')->put('signatures/'.$student->id.'_processed.png', 'sig');
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/v1/auth/signature/status')
+            ->assertOk()
+            ->assertJsonPath('has_signature', false)
+            ->assertJsonPath('signature_path', null);
+    }
+
+    public function test_demo_signature_replaces_stub_with_visible_ink(): void
+    {
+        Storage::fake('local');
+        $student = $this->makeStudentWithSection();
+        Storage::disk('local')->put('signatures/'.$student->id.'_processed.png', 'sig');
+
+        $path = SignatureCapture::ensureDemoProfileSignature($student);
+        $this->assertSame('signatures/'.$student->id.'_processed.png', $path);
+        $this->assertSame($path, SignatureCapture::profilePath($student));
+        $this->assertGreaterThan(400, strlen((string) Storage::disk('local')->get($path)));
+    }
+
     public function test_ccs_portfolio_builder_does_not_render_other_required_appendices(): void
     {
         $builder = file_get_contents(base_path('../frontend/src/pages/student/portfolio/CCSPortfolioBuilder.jsx'));

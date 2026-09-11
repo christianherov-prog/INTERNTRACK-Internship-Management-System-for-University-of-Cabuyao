@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+
+const SETTINGS_PATH = {
+  student: '/student/settings',
+  director: '/director/settings',
+  supervisor: '/supervisor/settings',
+  faculty: '/faculty/settings',
+  coordinator: '/coordinator/settings',
+  admin: '/admin/settings',
+}
 
 export default function AccessDeniedOverlay() {
   const [deniedMessage, setDeniedMessage] = useState(null)
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleAccessDenied = (e) => {
@@ -13,6 +26,9 @@ export default function AccessDeniedOverlay() {
   }, [])
 
   if (!deniedMessage) return null
+
+  const isPasswordGate = /password change required/i.test(String(deniedMessage))
+  const settingsPath = SETTINGS_PATH[user?.role]
 
   return (
     <div style={{
@@ -52,9 +68,13 @@ export default function AccessDeniedOverlay() {
         </div>
         <h2 style={{ margin: '0 0 16px', fontSize: '24px', fontWeight: '600' }}>Access Restricted</h2>
         <p style={{ margin: '0 0 24px', color: '#94a3b8', lineHeight: '1.6' }}>{deniedMessage}</p>
-        <button 
+        <button
           onClick={() => {
             setDeniedMessage(null)
+            if (isPasswordGate && settingsPath) {
+              navigate(settingsPath, { replace: true, state: { forcePasswordChange: true } })
+              return
+            }
             window.history.back()
           }}
           style={{
@@ -70,7 +90,7 @@ export default function AccessDeniedOverlay() {
           onMouseOver={(e) => e.target.style.background = '#dc2626'}
           onMouseOut={(e) => e.target.style.background = '#ef4444'}
         >
-          Go Back
+          {isPasswordGate && settingsPath ? 'Change Password' : 'Go Back'}
         </button>
       </div>
     </div>

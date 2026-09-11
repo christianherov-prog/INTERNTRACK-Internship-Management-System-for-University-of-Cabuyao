@@ -26,7 +26,8 @@ use Illuminate\Support\Facades\Schema;
  * Login credential: username = student_number, password = interntrack123
  *
  * Seeded accounts:
- *   - 2300600: Christian Hero Valinado (BSIT, 4IT-D) — fresh enrollee / pending placement
+ *   - 2300600: Christian Hero Valinado (BSIT, 4IT-A) — fresh enrollee / pending placement
+ *     Assigned to FAC-1001 (Marvin Bicua)
  *   - 2300590: Angel Luis Taac - Taac (BSIT, 4IT-D) — fresh enrollee / pending placement
  *   - 2300500: Mark Joseph V. Taduran (BSIT, 4IT-D) — fresh enrollee / pending placement
  *   - 2300592: Clarence Montealegre (BSIT, 4IT-D) — progressed profile at Accenture PH
@@ -88,7 +89,7 @@ class StudentAccountsSeeder extends Seeder
                     'program' => 'Bachelor of Science in Information Technology',
                     'department' => 'College of Computing Studies',
                     'year_level' => 4,
-                    'section' => '4IT-D',
+                    'section' => '4IT-A',
                     'school_year' => '2025-2026',
                     'semester' => '2nd Semester',
                     'enrollment_status' => 'Enrolled',
@@ -344,7 +345,7 @@ class StudentAccountsSeeder extends Seeder
         }
 
         $this->command?->info('✅ Student accounts seeded:');
-        $this->command?->info('  2300600 (Christian Valinado) — interntrack123 (Fresh/Pending)');
+        $this->command?->info('  2300600 (Christian Valinado) — interntrack123 (Fresh/Pending, FAC-1001 / 4IT-A)');
         $this->command?->info('  2300590 (Angel Luis Taac - Taac) — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300500 (Mark Joseph Taduran) — interntrack123 (Fresh/Pending)');
         $this->command?->info('  2300592 (Clarence Montealegre) — interntrack123 (Populated: Accenture PH / Adrian Reyes)');

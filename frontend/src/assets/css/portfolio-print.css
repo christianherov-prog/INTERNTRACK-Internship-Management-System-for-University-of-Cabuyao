@@ -17,6 +17,7 @@
 
     margin: 20px auto;
     background: #ffffff;
+    isolation: isolate;
     box-sizing: border-box;
 
     /* Microsoft Word Normal Margin */
@@ -401,14 +402,15 @@ img {
     justify-content: flex-end;
     text-align: center;
     width: 100%;
-    background: transparent;
+    background: #fff;
+    isolation: isolate;
 }
 
 .portfolio-signature-image-wrap {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    min-height: 28px;
+    min-height: 40px;
     width: 100%;
     background: transparent;
 }
@@ -416,14 +418,13 @@ img {
 .portfolio-signature-img {
     display: block;
     margin: 0 auto 2px;
-    max-height: 46px;
-    max-width: 180px;
+    max-height: 52px;
+    max-width: 200px;
     width: auto;
     height: auto;
     object-fit: contain;
     background: transparent !important;
     background-color: transparent !important;
-    mix-blend-mode: multiply;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
 }
@@ -509,8 +510,7 @@ img {
     break-inside: avoid !important;
 }
 
-.fo31-signature-box,
-.fo31-signature-box * {
+.fo31-signature-box {
     background: transparent !important;
     background-color: transparent !important;
 }
