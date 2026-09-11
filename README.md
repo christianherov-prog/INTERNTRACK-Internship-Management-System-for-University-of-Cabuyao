@@ -364,44 +364,44 @@ To support system evaluation, the current InternTrack environment includes preco
 
 > **Current Evaluation Scope:** The account set below represents the currently configured internship workflow available for evaluation under the College of Computing Studies. Additional departmental configurations are being integrated progressively and are not included in this evaluation account list.
 
-> **Evaluation Access:** The accounts below are preconfigured for the current evaluation environment. Login passwords are distributed separately to authorized evaluators and are intentionally excluded from the repository.
+> **Evaluation Access:** The accounts below are preconfigured for the current evaluation environment. Use the passwords shown in each table when signing in locally.
 
 ### Student Accounts
 
-| Name | Student Number | Program | Current Evaluation State |
-|------|----------------|---------|--------------------------|
-| Christian Hero Aboy Valinado | 2300600 | BSIT | Fresh Enrollee — no company or Industry Supervisor; Faculty = Marvin Bicua; 0 internship hours. Suitable for demonstrating Placement Hub, New HTE request, document requirements, and the start of the internship lifecycle. |
-| Clarence Montealegre | 2300592 | BSIT | Active Internship — Accenture PH; Industry Supervisor = Adrian Reyes (`SUP-0002`); Faculty = Marvin Bicua; validated attendance hours in progress. Suitable for Attendance / QR, Weekly Journal, Faculty review, and Portfolio (FO-30 / FO-31) workflows. |
+| Name | Student Number | Password | Program | Current Evaluation State |
+|------|----------------|----------|---------|--------------------------|
+| Christian Hero Aboy Valinado | 2300600 | `interntrack123` | BSIT | Fresh Enrollee — no company or Industry Supervisor; Faculty = Marvin Bicua; 0 internship hours. Suitable for demonstrating Placement Hub, New HTE request, document requirements, and the start of the internship lifecycle. |
+| Clarence Montealegre | 2300592 | `interntrack123` | BSIT | Active Internship — Accenture PH; Industry Supervisor = Adrian Reyes (`SUP-0002`); Faculty = Marvin Bicua; validated attendance hours in progress. Suitable for Attendance / QR, Weekly Journal, Faculty review, and Portfolio (FO-30 / FO-31) workflows. |
 
 ### Faculty Account
 
-| Name | Employee ID / Login ID | Role | Evaluation Coverage |
-|------|------------------------|------|---------------------|
-| Marvin M. Bicua | FAC-1001 | Faculty | Assigned Students, journal review, document review, Supervisor Acceptance Form approval/rejection, requirements, and reports |
+| Name | Employee ID / Login ID | Password | Role | Evaluation Coverage |
+|------|------------------------|----------|------|---------------------|
+| Marvin M. Bicua | FAC-1001 | `interntrack123` | Faculty | Assigned Students, journal review, document review, Supervisor Acceptance Form approval/rejection, requirements, and reports |
 
 ### Coordinator Account
 
-| Name | Employee ID / Login ID | Role | Evaluation Coverage |
-|------|------------------------|------|---------------------|
-| Arcelito C. Quiatchon | COR-CCS-001 | Coordinator | Internship monitoring, placement / HTE oversight, custom requirements, records, and reports |
+| Name | Employee ID / Login ID | Password | Role | Evaluation Coverage |
+|------|------------------------|----------|------|---------------------|
+| Arcelito C. Quiatchon | COR-CCS-001 | `interntrack123` | Coordinator | Internship monitoring, placement / HTE oversight, custom requirements, records, and reports |
 
 ### Industry Supervisor Accounts
 
-| Name | Supervisor ID | Username | Assigned Student(s) | Evaluation Coverage |
-|------|---------------|----------|---------------------|---------------------|
-| Adrian Reyes | SUP-0002 | adrian.reyes | Clarence Montealegre (2300592) | Assigned Students, Attendance QR / validation, feedback, and evaluation |
+| Name | Supervisor ID | Username | Password | Assigned Student(s) | Evaluation Coverage |
+|------|---------------|----------|----------|---------------------|---------------------|
+| Adrian Reyes | SUP-0002 | adrian.reyes | `interntrack123` | Clarence Montealegre (2300592) | Assigned Students, Attendance QR / validation, feedback, and evaluation |
 
 ### Director Account
 
-| Name | Employee ID / Login ID | Role | Evaluation Coverage |
-|------|------------------------|------|---------------------|
-| Gina M. Oloresisimo | DIR-1001 | Director | Partner companies, supervisors, MOA management, analytics, and reports |
+| Name | Employee ID / Login ID | Password | Role | Evaluation Coverage |
+|------|------------------------|----------|------|---------------------|
+| Gina M. Oloresisimo | DIR-1001 | `interntrack123` | Director | Partner companies, supervisors, MOA management, analytics, and reports |
 
 ### MISD / Administrator Account
 
-| Name | Admin ID / Login ID | Role | Evaluation Coverage |
-|------|---------------------|------|---------------------|
-| MISD Administrator | ADMIN-MISD-001 | MISD / Administrator | User management, Directors / Coordinators, recent system activity, Audit Logs, and administrative monitoring |
+| Name | Admin ID / Login ID | Password | Role | Evaluation Coverage |
+|------|---------------------|----------|------|---------------------|
+| MISD Administrator | ADMIN-MISD-001 | `interntrack123` | MISD / Administrator | User management, Directors / Coordinators, recent system activity, Audit Logs, and administrative monitoring |
 
 ### Recommended Account Sequence
 
@@ -418,16 +418,16 @@ IT evaluators can understand InternTrack by testing roles in this order:
 
 ## IT Evaluator Quick Start
 
-Assume no prior knowledge of InternTrack. Use the evaluation accounts above; passwords are provided separately by the project team.
+Assume no prior knowledge of InternTrack. Use the evaluation accounts and passwords listed above.
 
 1. Start the application (backend + frontend).
-2. Sign in as Student **2300600** (Fresh Enrollee) — review Dashboard, Settings, Placement Hub, Documents.
-3. Sign in as Student **2300592** (Active Internship) — review Attendance, Journal, Portfolio.
-4. Sign in as Faculty **FAC-1001** — Assigned Students, Journals, Documents, Supervisor Approvals.
-5. Sign in as Coordinator **COR-CCS-001** — internship monitoring, requirements, reports.
-6. Sign in as Industry Supervisor **SUP-0002** or username **adrian.reyes** — Assigned Students, Attendance Validation, Evaluations (no Journal module).
-7. Sign in as Director **DIR-1001** — companies, MOA, reporting.
-8. Sign in as Administrator **ADMIN-MISD-001** — Users, recent activity, Audit Logs.
+2. Sign in as Student **2300600** / `interntrack123` (Fresh Enrollee) — review Dashboard, Settings, Placement Hub, Documents.
+3. Sign in as Student **2300592** / `interntrack123` (Active Internship) — review Attendance, Journal, Portfolio.
+4. Sign in as Faculty **FAC-1001** / `interntrack123` — Assigned Students, Journals, Documents, Supervisor Approvals.
+5. Sign in as Coordinator **COR-CCS-001** / `interntrack123` — internship monitoring, requirements, reports.
+6. Sign in as Industry Supervisor **SUP-0002** or **adrian.reyes** / `interntrack123` — Assigned Students, Attendance Validation, Evaluations (no Journal module).
+7. Sign in as Director **DIR-1001** / `interntrack123` — companies, MOA, reporting.
+8. Sign in as Administrator **ADMIN-MISD-001** / `interntrack123` — Users, recent activity, Audit Logs.
 
 ---
 
