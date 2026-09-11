@@ -74,14 +74,19 @@ export function AuthProvider({ children }) {
       return { success: true, user: data.user }
     } catch (err) {
       const apiMessage = err.response?.data?.message
-      const message =
-        err.response?.status === 429
-          ? (typeof apiMessage === 'string' && apiMessage
-              ? apiMessage
-              : 'Too many login attempts. Please try again in a moment.')
-          : (err.response?.data?.errors?.username?.[0] ||
-              apiMessage ||
-              'Login failed. Please check your credentials.')
+      let message
+      if (!err.response) {
+        message = 'Cannot reach the InternTrack server. Make sure MySQL and the API are running, then try again.'
+      } else if (err.response?.status === 429) {
+        message = (typeof apiMessage === 'string' && apiMessage)
+          ? apiMessage
+          : 'Too many login attempts. Please try again in a moment.'
+      } else {
+        message =
+          err.response?.data?.errors?.username?.[0] ||
+          apiMessage ||
+          'Login failed. Please check your credentials.'
+      }
       setError(message)
       return { success: false, error: message }
     }
