@@ -7,6 +7,7 @@ import api from '../../services/api'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import AcceptanceFormPicker, { validateAcceptanceForm } from '../../components/AcceptanceFormPicker'
 
 function SupervisorDashboard() {
   const { loading, seed, run } = useCachedPage('supervisor:dashboard')
@@ -15,6 +16,9 @@ function SupervisorDashboard() {
   const [previewData, setPreviewData] = useState(null)
   const [pendingInvites, setPendingInvites] = useState(() => seed?.pendingInvites ?? [])
   const [inviteBusy, setInviteBusy] = useState(null)
+  const [acceptInvite, setAcceptInvite] = useState(null)
+  const [acceptanceForm, setAcceptanceForm] = useState(null)
+  const [acceptError, setAcceptError] = useState('')
 
   const load = () => {
     setError(null)
@@ -39,16 +43,55 @@ function SupervisorDashboard() {
       })
   }
 
-  const respondInvite = async (id, action) => {
-    setInviteBusy(`${action}-${id}`)
+  const openAcceptModal = (inv) => {
+    setAcceptInvite(inv)
+    setAcceptanceForm(null)
+    setAcceptError('')
+  }
+
+  const closeAcceptModal = () => {
+    if (inviteBusy) return
+    setAcceptInvite(null)
+    setAcceptanceForm(null)
+    setAcceptError('')
+  }
+
+  const submitAccept = async (e) => {
+    e.preventDefault()
+    if (!acceptInvite) return
+    const formErr = validateAcceptanceForm(acceptanceForm)
+    if (formErr) {
+      setAcceptError(formErr)
+      return
+    }
+    setInviteBusy(`accept-${acceptInvite.id}`)
+    setAcceptError('')
     try {
-      await api.post(`/supervisor/invites/${id}/${action}`)
-      if (action === 'accept') {
-        alert('Invitation accepted. Faculty Supervisor still needs to approve before the intern is linked.')
-      }
+      const formData = new FormData()
+      formData.append('acceptance_forms[]', acceptanceForm)
+      await api.post(`/supervisor/invites/${acceptInvite.id}/accept`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setAcceptInvite(null)
+      setAcceptanceForm(null)
+      alert('Submitted for Faculty Approval. The intern is not linked until Faculty approves.')
       load()
     } catch (err) {
-      alert(err.response?.data?.message || `Failed to ${action} invitation.`)
+      const fieldErr = err.response?.data?.errors?.acceptance_forms?.[0]
+        || err.response?.data?.errors?.['acceptance_forms.0']?.[0]
+      setAcceptError(fieldErr || err.response?.data?.message || 'Failed to accept invitation.')
+    } finally {
+      setInviteBusy(null)
+    }
+  }
+
+  const declineInvite = async (id) => {
+    setInviteBusy(`decline-${id}`)
+    try {
+      await api.post(`/supervisor/invites/${id}/decline`)
+      load()
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to decline invitation.')
     } finally {
       setInviteBusy(null)
     }
@@ -79,34 +122,46 @@ function SupervisorDashboard() {
               </div>
               <div className="p-3">
                 <p className="text-muted small mb-3">
-                  Accept to send this intern to Faculty Supervisor review, or decline if you are not their supervisor. The intern is not linked until faculty approves.
+                  Accept to send this intern to Faculty Supervisor review, or decline if you are not their supervisor. An Acceptance Form upload is required when accepting. The intern is not linked until faculty approves.
                 </p>
                 {pendingInvites.map((inv) => (
-                  <div key={inv.id} className="d-flex flex-wrap align-items-center justify-content-between gap-3 border rounded p-3 mb-2">
-                    <div>
-                      <div className="fw-semibold">{inv.student_name}</div>
-                      <div className="text-muted small">
-                        {inv.company_name || 'Company TBD'}
-                        {inv.term ? ` · ${inv.term}` : ''}
+                  <div key={inv.id} className="border rounded p-3 mb-2">
+                    <div className="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                      <div>
+                        <div className="fw-semibold">{inv.student_name}</div>
+                        <div className="text-muted small mt-1">
+                          {inv.student_number && <div>Student No.: {inv.student_number}</div>}
+                          {(inv.program || inv.section) && (
+                            <div>
+                              {[inv.program, inv.section].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                          <div>
+                            Company: {inv.company_name || 'Company TBD'}
+                            {inv.company_address ? ` — ${inv.company_address}` : ''}
+                          </div>
+                          {inv.term && <div>Term: {inv.term}</div>}
+                          {inv.expires_at && <div>Invite expires: {inv.expires_at}</div>}
+                        </div>
                       </div>
-                    </div>
-                    <div className="d-flex gap-2">
-                      <button
-                        type="button"
-                        className="btn-green"
-                        disabled={!!inviteBusy}
-                        onClick={() => respondInvite(inv.id, 'accept')}
-                      >
-                        {inviteBusy === `accept-${inv.id}` ? 'Accepting…' : 'Accept'}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger"
-                        disabled={!!inviteBusy}
-                        onClick={() => respondInvite(inv.id, 'decline')}
-                      >
-                        {inviteBusy === `decline-${inv.id}` ? 'Declining…' : 'Decline'}
-                      </button>
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn-green"
+                          disabled={!!inviteBusy}
+                          onClick={() => openAcceptModal(inv)}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger"
+                          disabled={!!inviteBusy}
+                          onClick={() => declineInvite(inv.id)}
+                        >
+                          {inviteBusy === `decline-${inv.id}` ? 'Declining…' : 'Decline'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -333,6 +388,57 @@ function SupervisorDashboard() {
             data={{ evalData: previewData, internship: previewData?.internship }} 
           />
         </>
+      )}
+
+      {acceptInvite && (
+        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }} role="dialog">
+          <div className="modal-dialog modal-dialog-centered">
+            <form className="modal-content" onSubmit={submitAccept}>
+              <div className="modal-header">
+                <h5 className="modal-title">Submit for Faculty Approval</h5>
+                <button type="button" className="btn-close" onClick={closeAcceptModal} aria-label="Close" disabled={!!inviteBusy}></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-light border mb-3 py-2 px-3">
+                  <div className="fw-semibold">{acceptInvite.student_name}</div>
+                  <div className="text-muted small mt-1">
+                    {acceptInvite.student_number && <div>Student No.: {acceptInvite.student_number}</div>}
+                    {(acceptInvite.program || acceptInvite.section) && (
+                      <div>{[acceptInvite.program, acceptInvite.section].filter(Boolean).join(' · ')}</div>
+                    )}
+                    <div>
+                      Company: {acceptInvite.company_name || 'Company TBD'}
+                      {acceptInvite.company_address ? ` — ${acceptInvite.company_address}` : ''}
+                    </div>
+                    {acceptInvite.term && <div>Term: {acceptInvite.term}</div>}
+                  </div>
+                </div>
+                <AcceptanceFormPicker
+                  id="supervisor-accept-form"
+                  file={acceptanceForm}
+                  onChange={(file) => {
+                    setAcceptanceForm(file)
+                    setAcceptError(file ? (validateAcceptanceForm(file) || '') : 'Acceptance Form is required.')
+                  }}
+                  onClear={() => {
+                    setAcceptanceForm(null)
+                    setAcceptError('Acceptance Form is required.')
+                  }}
+                  disabled={!!inviteBusy}
+                  error={acceptError}
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={closeAcceptModal} disabled={!!inviteBusy}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-green" disabled={!!inviteBusy || !acceptanceForm}>
+                  {inviteBusy === `accept-${acceptInvite.id}` ? 'Submitting…' : 'Submit for Faculty Approval'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </Layout>
   )

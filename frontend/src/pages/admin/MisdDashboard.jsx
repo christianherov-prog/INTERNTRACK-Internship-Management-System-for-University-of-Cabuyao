@@ -140,22 +140,33 @@ function MisdDashboard() {
             </div>
           </div>
 
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="content-card p-3 flex-grow-1 me-3" style={{ borderTop: '3px solid #0f766e' }}>
+              <div className="text-muted" style={{ fontSize: '0.8rem' }}>Activities Today</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{data.activities_today ?? 0}</div>
+            </div>
+            <Link to="/admin/audit-logs" className="btn btn-outline-primary">View full Audit Logs</Link>
+          </div>
+
           <div className="content-card">
-            <div className="content-card-header"><i className="fa fa-history"></i><h6>Recent Admin Activity</h6></div>
+            <div className="content-card-header d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center gap-2"><i className="fa fa-history"></i><h6 className="mb-0">Recent System Activity</h6></div>
+              <Link to="/admin/audit-logs" className="small">Open Audit Logs</Link>
+            </div>
             <div className="table-responsive">
               <table className="table table-hover mb-0" style={{ fontSize: '0.85rem' }}>
                 <thead className="table-light">
-                  <tr><th>When</th><th>Action</th><th>Actor</th><th>Details</th></tr>
+                  <tr><th>When</th><th>Action</th><th>Actor</th><th>Summary</th></tr>
                 </thead>
                 <tbody>
                   {(data.recent_activity || []).length === 0 ? (
-                    <tr><td colSpan={4} className="text-center text-muted py-4">No admin activity yet.</td></tr>
+                    <tr><td colSpan={4} className="text-center text-muted py-4">No recent activity yet.</td></tr>
                   ) : data.recent_activity.map((row) => (
                     <tr key={row.id}>
-                      <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
+                      <td>{row.created_at_display || (row.created_at ? new Date(row.created_at).toLocaleString() : '—')}</td>
                       <td><code>{row.action}</code></td>
-                      <td>{row.actor?.username || '—'}</td>
-                      <td className="text-muted">{row.new_values ? JSON.stringify(row.new_values) : '—'}</td>
+                      <td>{row.actor?.label || row.actor?.username || '—'}</td>
+                      <td className="text-muted">{row.summary || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

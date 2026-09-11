@@ -17,7 +17,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'student_number', 'faculty_number', 'email', 'password', 'role', 'sex', 'is_active', 'must_change_password',
+        'student_number', 'faculty_number', 'login_username', 'email', 'password', 'role', 'sex', 'is_active', 'must_change_password',
         'last_login_at', 'avatar_path', 'notification_preferences',
     ];
 
@@ -135,6 +135,17 @@ class User extends Authenticatable
     }
 
     public function getUsernameAttribute(): ?string
+    {
+        // Prefer supervisor-chosen login username when present; otherwise campus IDs / email.
+        if (filled($this->attributes['login_username'] ?? null)) {
+            return $this->attributes['login_username'];
+        }
+
+        return $this->student_number ?? $this->faculty_number ?? $this->email;
+    }
+
+    /** Stable employee/supervisor ID (SUP-####), never the chosen login_username. */
+    public function getAccountIdAttribute(): ?string
     {
         return $this->student_number ?? $this->faculty_number ?? $this->email;
     }

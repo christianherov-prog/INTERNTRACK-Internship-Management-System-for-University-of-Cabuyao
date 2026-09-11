@@ -24,6 +24,7 @@ use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
 use App\Services\OfficialFormDataService;
 use App\Services\ProgramRequirementService;
+use App\Services\SupervisorDirectoryService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
@@ -689,33 +690,37 @@ class CoordinatorController extends Controller
     /** GET /api/v1/coordinator/reports/compliance */
     public function reportCompliance(Request $request)
     {
-        $query = Internship::inDepartment()->with(['student.studentProfile.program', 'documents', 'company']);
+        $query = Internship::inDepartment()->with(['student.studentProfile.program', 'company']);
         $this->applyReportFilters($query, $request);
         $internships = $query->get();
 
-        $requiredTypes = RequiredDocuments::types();
-        $requiredCount = RequiredDocuments::count();
+        $students = $internships
+            ->map(fn ($i) => $i->student)
+            ->filter()
+            ->unique('id')
+            ->values();
 
-        $rows = $internships->map(fn ($i) => [
-            'student_name' => trim(optional($i->student?->studentProfile)->last_name.', '.optional($i->student?->studentProfile)->first_name),
-            'program' => $i->student?->studentProfile?->program?->name ?? '—',
-            'industry' => $i->company?->industry ?? '—',
-            'approved_docs' => $i->documents->where('status', 'approved')->count(),
-            'required_docs' => $requiredCount,
-            'compliance_pct' => $requiredCount > 0 ? min(100, round($i->documents->where('status', 'approved')->count() / $requiredCount * 100)) : 0,
-            'missing_docs' => collect($requiredTypes)->diff($i->documents->where('status', 'approved')->pluck('document_type'))->values(),
-        ]);
+        $report = app(\App\Services\DocumentComplianceService::class)->reportForStudents($students);
+        $report['filters'] = $this->reportFilterOptions();
+        $report['applied'] = [
+            'program' => $request->input('program'),
+            'industry' => $request->input('industry'),
+        ];
 
-        return response()->json([
-            'rows' => $rows,
-            'required_types' => $requiredTypes,
-            'filters' => $this->reportFilterOptions(),
-            'applied' => [
-                'program' => $request->input('program'),
-                'industry' => $request->input('industry'),
-            ],
-            'generated_at' => now()->toDateTimeString(),
-        ]);
+        // Preserve industry field used by coordinator CSV when internship/company is known.
+        $byStudent = $internships->keyBy('student_id');
+        $report['rows'] = collect($report['rows'])->map(function ($row) use ($byStudent) {
+            $match = $byStudent->first(function ($i) use ($row) {
+                $name = trim(optional($i->student?->studentProfile)->last_name.', '.optional($i->student?->studentProfile)->first_name);
+
+                return $name === ($row['student_name'] ?? null);
+            });
+            $row['industry'] = $match?->company?->industry ?? '—';
+
+            return $row;
+        })->values()->all();
+
+        return response()->json($report);
     }
 
     /** GET /api/v1/coordinator/reports/performance */
@@ -1124,12 +1129,17 @@ class CoordinatorController extends Controller
                     $company = Company::create([
                         'company_name' => $req->company_name,
                         'address' => $req->address,
+                        'organization_type' => \App\Support\OrganizationTypes::sanitize($req->organization_type),
                         'contact_person' => $req->contact_person,
                         'contact_email' => $req->contact_email,
                         'contact_number' => $req->contact_number,
                         'moa_status' => 'on-process',
                         'is_active' => true,
                         'slots_available' => 0,
+                    ]);
+                } elseif (blank($company->organization_type) && filled($req->organization_type)) {
+                    $company->update([
+                        'organization_type' => \App\Support\OrganizationTypes::sanitize($req->organization_type),
                     ]);
                 }
 
@@ -1166,5 +1176,17 @@ class CoordinatorController extends Controller
             'request' => $req,
             'company' => $company,
         ]);
+    }
+
+    /** GET /api/v1/coordinator/supervisors */
+    public function supervisors(Request $request, SupervisorDirectoryService $directory)
+    {
+        return $directory->listFor($request->user(), SupervisorDirectoryService::SCOPE_COORDINATOR);
+    }
+
+    /** GET /api/v1/coordinator/supervisors/{id} */
+    public function showSupervisor(Request $request, int $id, SupervisorDirectoryService $directory)
+    {
+        return $directory->showFor($request->user(), SupervisorDirectoryService::SCOPE_COORDINATOR, $id);
     }
 }

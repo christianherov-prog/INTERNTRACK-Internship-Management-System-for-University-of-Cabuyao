@@ -15,10 +15,31 @@ final class RequiredDocuments
     public static function types(): array
     {
         return Cache::remember('ojt_requirements_types', 3600, function () {
-            if (Schema::hasTable('ojt_requirement_templates')) {
-                return OjtRequirementTemplate::active()->pluck('name')->toArray();
+            if (! Schema::hasTable('ojt_requirement_templates')) {
+                return self::canonicalTypeNames();
             }
-            return [];
+
+            // Prefer system templates; include unique custom names without duplicating system codes.
+            $templates = OjtRequirementTemplate::active()
+                ->orderByDesc('is_system')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'name', 'is_system', 'system_code']);
+
+            $seen = [];
+            $names = [];
+            foreach ($templates as $template) {
+                $key = $template->system_code
+                    ? 'code:'.$template->system_code
+                    : 'name:'.strtolower(trim((string) $template->name));
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $names[] = $template->name;
+            }
+
+            return $names !== [] ? $names : self::canonicalTypeNames();
         });
     }
 
@@ -47,11 +68,20 @@ final class RequiredDocuments
     public static function defaultTypes(): array
     {
         $types = self::types();
-        if (!empty($types)) {
+        if (! empty($types)) {
             return $types;
         }
 
-        // Fallback list reflecting common OJT / portfolio documents.
+        return self::canonicalTypeNames();
+    }
+
+    /**
+     * Canonical system template names (always the fixed InternTrack set).
+     *
+     * @return list<string>
+     */
+    public static function canonicalTypeNames(): array
+    {
         return [
             'Application Letter',
             'Curriculum Vitae',

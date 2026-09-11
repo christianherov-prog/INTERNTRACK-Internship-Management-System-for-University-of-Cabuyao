@@ -24,6 +24,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/director/dashboard', icon: 'fa-chart-pie', text: 'Dashboard' },
     { section: 'MAIN', to: '/director/analytics', icon: 'fa-chart-line', text: 'Analytics' },
     { section: 'MAIN', to: '/director/companies', icon: 'fa-building', text: 'Companies' },
+    { section: 'MAIN', to: '/director/supervisors', icon: 'fa-user-tie', text: 'Supervisors' },
     { section: 'MAIN', to: '/director/moa', icon: 'fa-file-signature', text: 'MOA Management' },
     { section: 'MAIN', to: '/director/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'MAIN', to: '/director/hte-evaluations', icon: 'fa-star', text: 'HTE Evaluations' },
@@ -50,6 +51,7 @@ const ROLE_NAV = {
   faculty: [
     { section: 'MAIN', to: '/faculty/dashboard', icon: 'fa-chart-line', text: 'Dashboard' },
     { section: 'MAIN', to: '/faculty/assigned-students', icon: 'fa-users', text: 'Assigned Students' },
+    { section: 'MAIN', to: '/faculty/supervisors', icon: 'fa-user-tie', text: 'Supervisors' },
     { section: 'TOOLS', to: '/faculty/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/faculty/requirements', icon: 'fa-file-circle-check', text: 'Manage Requirements' },
     { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
@@ -65,6 +67,7 @@ const ROLE_NAV = {
     { section: 'DEPARTMENT', to: '/coordinator/analytics', icon: 'fa-chart-pie', text: 'Analytics' },
     { section: 'DEPARTMENT', to: '/coordinator/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
     { section: 'DEPARTMENT', to: '/coordinator/internship-management', icon: 'fa-briefcase', text: 'Internship Mgmt' },
+    { section: 'DEPARTMENT', to: '/coordinator/supervisors', icon: 'fa-user-tie', text: 'Supervisors' },
     { section: 'DEPARTMENT', to: '/coordinator/requirements', icon: 'fa-file-circle-check', text: 'Requirements' },
     { section: 'DEPARTMENT', to: '/coordinator/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'DEPARTMENT', to: '/coordinator/absorption', icon: 'fa-user-check', text: 'Absorption' },
@@ -84,6 +87,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/admin/section-mappings', icon: 'fa-sitemap', text: 'Section Mappings' },
     { section: 'MAIN', to: '/admin/users', icon: 'fa-users', text: 'Users' },
     { section: 'MAIN', to: '/admin/sync', icon: 'fa-sync', text: 'MISD Sync' },
+    { section: 'MAIN', to: '/admin/audit-logs', icon: 'fa-clipboard-list', text: 'Audit Logs' },
     { section: 'ACCOUNT', to: '/admin/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ]

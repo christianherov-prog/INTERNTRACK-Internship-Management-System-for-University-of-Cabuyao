@@ -12,6 +12,7 @@ class AttendanceLog extends Model
     protected $fillable = [
         'internship_id', 'placement_id', 'date',
         'clock_in', 'clock_out',
+        'break_start', 'break_end', 'on_break',
         'am_time_in', 'am_time_out', 'pm_time_in', 'pm_time_out',
         'hours_rendered', 'overtime_hours', 'status', 'remarks',
         'validated_by', 'validated_at',
@@ -23,6 +24,9 @@ class AttendanceLog extends Model
 
     protected $casts = [
         'date' => 'date',
+        'break_start' => 'datetime',
+        'break_end' => 'datetime',
+        'on_break' => 'boolean',
         'validated_at' => 'datetime',
         'student_signed_at' => 'datetime',
         'student_privacy_accepted_at' => 'datetime',

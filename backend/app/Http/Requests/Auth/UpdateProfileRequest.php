@@ -29,6 +29,7 @@ class UpdateProfileRequest extends FormRequest
             'company'        => ['sometimes', 'nullable', 'string', 'max:255'],
             'company_id'     => ['sometimes', 'nullable', 'exists:companies,id'],
             'sex'            => SexOptions::validationRule(false),
+            'login_username' => ['sometimes', 'nullable', 'string', 'max:50'],
         ];
     }
 }

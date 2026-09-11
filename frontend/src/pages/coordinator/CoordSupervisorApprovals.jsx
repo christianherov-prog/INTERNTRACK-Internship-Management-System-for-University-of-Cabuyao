@@ -274,22 +274,34 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                 <div className="sup-reg-summary-group">
                   <h6>Supervisor</h6>
                   <SummaryField label="Name" value={reviewName} />
-                  <SummaryField label="Email" value={reviewTarget.email} />
-                  <SummaryField label="Contact" value={reviewTarget.contact_number} />
+                  <SummaryField label="Supervisor ID" value={reviewTarget.supervisor_code} />
+                  <SummaryField label="Username" value={reviewTarget.login_username} />
+                  <SummaryField label="Email" value={reviewTarget.registered_email || reviewTarget.email} />
+                  <SummaryField label="Contact Number" value={reviewTarget.contact_number} />
                   <SummaryField label="Position" value={reviewTarget.position} />
                 </div>
                 <div className="sup-reg-summary-group">
-                  <h6>Supervision</h6>
-                  <SummaryField label="HTE / Company" value={reviewTarget.company?.company_name} />
+                  <h6>Student / Invitation</h6>
+                  <SummaryField label="Company / HTE" value={reviewTarget.company?.company_name} />
                   <SummaryField label="Inviting Student" value={studentLabel(reviewTarget)} />
+                  <SummaryField label="Student Number" value={reviewTarget.student_number} />
                   <SummaryField label="Program" value={reviewTarget.student_program} />
                   <SummaryField label="Department" value={reviewTarget.student_department} />
+                  <SummaryField
+                    label="Submission Date"
+                    value={reviewTarget.submitted_at || reviewTarget.updated_at
+                      ? new Date(reviewTarget.submitted_at || reviewTarget.updated_at).toLocaleString('en-PH')
+                      : null}
+                  />
                 </div>
               </div>
 
               <div className="sup-reg-status-row">
                 <span className="text-muted">Status:</span>
                 {statusBadge(reviewTarget)}
+                {reviewTarget.acceptance_form_status ? (
+                  <span className="ms-2 small text-muted">Acceptance Form: {reviewTarget.acceptance_form_status}</span>
+                ) : null}
               </div>
 
               <div className="sup-reg-form-section">
@@ -384,10 +396,10 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
             {confirmAction && (
               <div className="sup-reg-confirm-overlay">
                 <div className="sup-reg-confirm-card">
-                  <h6>{confirmAction === 'approve' ? 'Approve Supervisor Registration?' : 'Reject Supervisor Registration?'}</h6>
+                  <h6>{confirmAction === 'approve' ? 'Approve Supervisor Assignment?' : 'Reject Supervisor Registration?'}</h6>
                   <SummaryField label="Supervisor" value={reviewName} />
                   <SummaryField label="Student" value={studentLabel(reviewTarget)} />
-                  <SummaryField label="HTE" value={reviewTarget.company?.company_name} />
+                  <SummaryField label="Company" value={reviewTarget.company?.company_name} />
                   {confirmAction === 'reject' ? (
                     <p className="small text-muted mt-2 mb-0">This supervisor will not gain active student access.</p>
                   ) : null}

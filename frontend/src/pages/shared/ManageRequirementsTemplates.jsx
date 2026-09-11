@@ -137,8 +137,9 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
     if (submitting) return
 
     const targetItems = formData.selectedTargets.map(id => ({ type: formData.targetType, id }))
+    const isSystemEdit = !!(editingReq?.is_system)
 
-    if (targetItems.length === 0) {
+    if (!isSystemEdit && targetItems.length === 0) {
       toast.error('Please specify at least one target.')
       return
     }
@@ -150,10 +151,12 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
     if (formData.deadline) {
       form.append('deadline', formData.deadline)
     }
-    targetItems.forEach((t, i) => {
-      form.append(`targets[${i}][type]`, t.type)
-      form.append(`targets[${i}][id]`, t.id)
-    })
+    if (!isSystemEdit) {
+      targetItems.forEach((t, i) => {
+        form.append(`targets[${i}][type]`, t.type)
+        form.append(`targets[${i}][id]`, t.id)
+      })
+    }
 
     if (formData.templateFiles && formData.templateFiles.length > 0) {
       formData.templateFiles.forEach(file => {
@@ -265,7 +268,10 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                 {requirements.map((req) => (
                   <tr key={req.id}>
                     <td>
-                      <div className="fw-bold text-dark">{req.name}</div>
+                      <div className="fw-bold text-dark">
+                        {req.name}
+                        {req.is_system ? <span className="badge bg-primary-subtle text-primary ms-2">Standard</span> : null}
+                      </div>
                       {req.description && (
                         <div className="text-muted small mt-1" style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {req.description}
@@ -274,15 +280,18 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                     </td>
                     <td>
                       <span className="badge bg-secondary text-capitalize">
-                        {req.targets?.[0]?.target_type || 'Unknown'}
+                        {req.target_type_label || req.targets?.[0]?.target_type || (req.is_system ? 'All eligible students' : 'Unknown')}
                       </span>
                     </td>
                     <td>
                       <div className="small text-muted fw-medium">
-                        {req.targets?.length || 0} {req.targets?.length === 1 ? 'target' : 'targets'}
+                        {req.total_assigned ?? req.targets?.length ?? 0}{' '}
+                        {(req.total_assigned ?? req.targets?.length ?? 0) === 1 ? 'student' : 'students'}
                       </div>
                       <div className="small text-dark" style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={(req.targets || []).map(t => t.label || t.target_id).join(', ')}>
-                        {(req.targets || []).map(t => t.target_type === 'section' ? (formatYearSection(t.label || t.target_id) || t.target_id) : (t.label || t.target_id)).join(', ') || '—'}
+                        {req.is_system || !(req.targets || []).length
+                          ? 'Auto-applies to eligible students'
+                          : (req.targets || []).map(t => t.target_type === 'section' ? (formatYearSection(t.label || t.target_id) || t.target_id) : (t.label || t.target_id)).join(', ')}
                       </div>
                     </td>
                     <td>
@@ -351,13 +360,15 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                       >
                         <i className="fa fa-edit"></i>
                       </button>
-                      <button
-                        className="btn btn-sm btn-light text-danger"
-                        onClick={() => handleDelete(req.id)}
-                        title="Delete Requirement"
-                      >
-                        <i className="fa fa-trash"></i>
-                      </button>
+                      {!req.is_system && (
+                        <button
+                          className="btn btn-sm btn-light text-danger"
+                          onClick={() => handleDelete(req.id)}
+                          title="Delete Requirement"
+                        >
+                          <i className="fa fa-trash"></i>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -415,6 +426,11 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                       ></textarea>
                     </div>
 
+                    {editingReq?.is_system ? (
+                      <div className="alert alert-light border small mb-3">
+                        This is a <strong>standard</strong> InternTrack requirement. It automatically applies to all eligible students in your scope. Targeting is not required.
+                      </div>
+                    ) : (
                     <div className="row mb-3">
                       <div className="col-md-12 mb-3">
                         <label className="form-label fw-semibold">Target By</label>
@@ -490,6 +506,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                         )}
                       </div>
                     </div>
+                    )}
 
                     <div className="mb-3">
                       <label className="form-label fw-semibold">File Upload <span className="text-muted fw-normal">(Optional)</span></label>

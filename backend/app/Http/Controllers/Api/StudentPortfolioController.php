@@ -180,9 +180,7 @@ class StudentPortfolioController extends Controller
                 'max:60',
             ],
         ], [
-            'file.mimes' => $this->isImageOnlyType($docType)
-                ? 'Please upload a JPG, PNG, WEBP, or GIF image.'
-                : 'Please upload a PDF or image file (JPG, PNG, WEBP, GIF).',
+            'file.mimes' => 'Please upload a JPG, PNG, WEBP, or GIF image only.',
             'file.max' => 'The file must not be larger than '.(int) config('interntrack.upload_max_mb', 10).' MB.',
             'week_number.required' => 'Please enter a week number for this photo.',
         ]);

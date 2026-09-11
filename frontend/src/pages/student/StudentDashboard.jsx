@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import Chart from 'chart.js/auto'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
@@ -154,18 +153,6 @@ function StudentDashboard() {
       {internship?.status_reason && (
         <div className="alert alert-light border mb-3" style={{ fontSize: '0.88rem' }}>
           <strong>Status note:</strong> {internship.status_reason}
-        </div>
-      )}
-
-      {(data?.incomplete_dtr_days || []).length > 0 && (
-        <div className="alert alert-warning mb-3">
-          <strong><i className="fa fa-exclamation-triangle me-2"></i>Incomplete entry — action needed.</strong>
-          <div className="mt-1" style={{ fontSize: '0.88rem' }}>
-            {(data.incomplete_dtr_days).map((d) => (
-              <span key={d.date} className="me-2">{d.date}{d.reason ? ` (${d.reason})` : ''}</span>
-            ))}
-          </div>
-          <Link to="/student/attendance" className="btn btn-sm btn-outline-dark mt-2">Review attendance</Link>
         </div>
       )}
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipPlacementService;
 use App\Support\DepartmentScope;
+use App\Support\InternshipStatuses;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
@@ -71,11 +72,32 @@ class Internship extends Model
             return (bool) $this->currentPlacement?->supervisor_id;
         }
 
-        if ($this->current_placement_id && Schema::hasTable('internship_placements')) {
+        if ($this->current_placement_id && \App\Support\SchemaCache::hasTable('internship_placements')) {
             return (bool) $this->currentPlacement()->value('supervisor_id');
         }
 
         return false;
+    }
+
+    /**
+     * Human-readable reason attendance/DTR is locked, or null when unlocked.
+     * Distinguishes fresh "not yet placed" students from "supervisor pending approval".
+     */
+    public function attendanceLockReason(): ?string
+    {
+        if ($this->hasApprovedHteSupervisor()) {
+            return null;
+        }
+
+        $status = InternshipStatuses::normalize($this->status);
+        $notPlaced = in_array($status, ['pending_placement', 'pending'], true)
+            || ! $this->company_id;
+
+        if ($notPlaced) {
+            return 'Attendance is unavailable until you complete company placement and an Industry Supervisor is assigned.';
+        }
+
+        return 'Attendance tracking is locked until your HTE Supervisor is approved.';
     }
 
     public function faculty()
@@ -205,7 +227,7 @@ class Internship extends Model
             ->sum('hours_rendered');
 
         $placementHours = 0.0;
-        if (Schema::hasTable('internship_placements')) {
+        if (\App\Support\SchemaCache::hasTable('internship_placements')) {
             $placementHours = (float) $this->placements()->sum('accumulated_hours');
         }
 
@@ -222,7 +244,7 @@ class Internship extends Model
 
     public function refreshTotalHours(): void
     {
-        if (Schema::hasTable('internship_placements')) {
+        if (\App\Support\SchemaCache::hasTable('internship_placements')) {
             $this->loadMissing('placements');
 
             foreach ($this->placements as $placement) {

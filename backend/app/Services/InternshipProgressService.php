@@ -28,7 +28,7 @@ class InternshipProgressService
     public static function snapshot(Internship $internship): array
     {
         $relations = ['company', 'student.studentProfile.program'];
-        $hasPlacements = Schema::hasTable('internship_placements');
+        $hasPlacements = \App\Support\SchemaCache::hasTable('internship_placements');
         if ($hasPlacements) {
             $relations[] = 'placements.company';
             $relations[] = 'placements.supervisor';

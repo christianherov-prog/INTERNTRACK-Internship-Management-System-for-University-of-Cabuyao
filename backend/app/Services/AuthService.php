@@ -6,6 +6,7 @@ use App\Mail\PasswordChangeMail;
 use App\Models\Notification;
 use App\Models\User;
 use App\Support\IenrollProfileLock;
+use App\Support\LoginUsername;
 use App\Support\NotificationPreferences;
 use App\Support\SexOptions;
 use Carbon\Carbon;
@@ -58,8 +59,10 @@ class AuthService
         $user = User::query()
             ->with(['facultyProfile', 'studentProfile'])
             ->where(function ($q) use ($raw, $upper, $looksLikeEmail) {
+                $normalizedLogin = strtolower($raw);
                 $q->where('student_number', $upper)
                     ->orWhere('faculty_number', $upper)
+                    ->orWhereRaw('LOWER(login_username) = ?', [$normalizedLogin])
                     ->orWhereHas('facultyProfile', fn ($p) => $p->where('faculty_number', $upper))
                     ->orWhereHas('studentProfile', fn ($p) => $p->where('student_number', $upper));
                 if ($looksLikeEmail) {
@@ -433,6 +436,17 @@ class AuthService
             }
 
             $user->supervisorProfile->fill($payload)->save();
+
+            if (array_key_exists('login_username', $data) && filled($data['login_username'])) {
+                if (filled($user->login_username)) {
+                    throw ValidationException::withMessages([
+                        'login_username' => ['Username is already set and cannot be changed.'],
+                    ]);
+                }
+                $user->forceFill([
+                    'login_username' => LoginUsername::validateOrFail($data['login_username'], $user->id),
+                ])->save();
+            }
         } else {
             abort(422, 'No editable profile record found for this account.');
         }

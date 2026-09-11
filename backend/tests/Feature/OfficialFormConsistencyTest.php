@@ -266,6 +266,15 @@ class OfficialFormConsistencyTest extends TestCase
             'learnings' => 'Use Asia/Manila explicitly',
         ])->assertCreated();
 
+        // Faculty must unlock the evaluation period before FO-24 can be submitted.
+        $party['internship']->update([
+            'evaluation_period_status' => 'approved',
+            'evaluation_period_approved_by' => $party['faculty']->id,
+            'evaluation_period_approved_at' => now(),
+            'target_hours' => 40,
+        ]);
+        \App\Services\InternshipProgressService::synchronize($party['internship']->fresh());
+
         Sanctum::actingAs($party['supervisor']);
         $this->postJson('/api/v1/supervisor/evaluations/'.$party['internship']->id, [
             'evaluation_period' => 'final',

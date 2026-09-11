@@ -10,6 +10,7 @@ class HteRequest extends Model
         'student_id',
         'company_name',
         'address',
+        'organization_type',
         'contact_person',
         'contact_email',
         'contact_number',
@@ -19,6 +20,15 @@ class HteRequest extends Model
         'moa_original_name',
         'coordinator_remarks',
     ];
+
+    protected $appends = [
+        'organization_type_label',
+    ];
+
+    public function getOrganizationTypeLabelAttribute(): string
+    {
+        return \App\Support\OrganizationTypes::label($this->organization_type ?? null);
+    }
 
     public function student()
     {

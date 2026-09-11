@@ -7,9 +7,8 @@ import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { useCachedPage } from '../../hooks/useCachedPage'
-import { cacheDelete, invalidateStudentPortfolio } from '../../utils/pageCache'
+import { invalidateStudentAttendance } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
-import ConfirmModal from '../../components/modals/ConfirmModal'
 import { formatManilaTime } from '../../utils/manilaTime'
 
 function fmtTime(t) {
@@ -29,6 +28,13 @@ function overtimeLabel(status) {
   if (status === 'rejected') return 'Rejected'
   return 'None'
 }
+
+const CORRECTION_TYPES = [
+  { value: 'clock_in', label: 'Clock In', field: 'requested_clock_in' },
+  { value: 'clock_out', label: 'Clock Out', field: 'requested_clock_out' },
+  { value: 'break_start', label: 'Break Start', field: 'requested_break_start' },
+  { value: 'break_end', label: 'Break End', field: 'requested_break_end' },
+]
 
 function StudentAttendance({ embedded = false }) {
   const currentTerm = useCurrentTerm()
@@ -97,7 +103,7 @@ function StudentAttendance({ embedded = false }) {
           ? 'Overtime submitted for supervisor approval.'
           : 'Excess time discarded. It was not added to your DTR.',
       })
-      invalidateStudentPortfolio()
+      invalidateStudentAttendance()
       fetchAttendance()
     } catch (e) {
       setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Could not save overtime decision.' })
@@ -110,7 +116,7 @@ function StudentAttendance({ embedded = false }) {
     try {
       await api.post('/student/attendance/clock-in')
       setMessage({ type: 'success', text: 'Clocked in successfully!' })
-      invalidateStudentPortfolio()
+      invalidateStudentAttendance()
       fetchAttendance()
     } catch (e) {
       setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Clock-in failed.' })
@@ -131,15 +137,34 @@ function StudentAttendance({ embedded = false }) {
     setClockOutError(null)
   }
 
-  const confirmClockOut = async () => {
+  const confirmTakeBreak = async () => {
     if (clocking) return
     setClocking(true)
     setClockOutError(null)
     setMessage(null)
     try {
-      const res = await api.post('/student/attendance/clock-out')
+      await api.post('/student/attendance/break-start')
       setClockOutOpen(false)
-      invalidateStudentPortfolio()
+      setMessage({ type: 'success', text: 'Break started. Resume when you return.' })
+      invalidateStudentAttendance()
+      fetchAttendance()
+    } catch (e) {
+      setClockOutError(e.response?.data?.message ?? 'Could not start break.')
+      setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Could not start break.' })
+    } finally {
+      setClocking(false)
+    }
+  }
+
+  const confirmEndDay = async () => {
+    if (clocking) return
+    setClocking(true)
+    setClockOutError(null)
+    setMessage(null)
+    try {
+      const res = await api.post('/student/attendance/clock-out', { action: 'end_day' })
+      setClockOutOpen(false)
+      invalidateStudentAttendance()
       setMessage({ type: 'success', text: 'Clocked out successfully!' })
       if (res.data?.overtime_detected) {
         const yes = await confirm({
@@ -169,12 +194,28 @@ function StudentAttendance({ embedded = false }) {
     }
   }
 
+  const handleResumeAttendance = async () => {
+    if (clocking) return
+    setClocking(true)
+    setMessage(null)
+    try {
+      await api.post('/student/attendance/break-end')
+      setMessage({ type: 'success', text: 'Break ended. Attendance resumed.' })
+      invalidateStudentAttendance()
+      fetchAttendance()
+    } catch (e) {
+      setMessage({ type: 'danger', text: e.response?.data?.message ?? 'Could not resume attendance.' })
+    } finally {
+      setClocking(false)
+    }
+  }
+
   const handleUndo = async () => {
     setClocking(true)
     setMessage(null)
     try {
       await api.post('/student/attendance/undo-clock-out')
-      invalidateStudentPortfolio()
+      invalidateStudentAttendance()
       setMessage({ type: 'success', text: 'Clock-out undone. You are clocked in again.' })
       fetchAttendance()
     } catch (e) {
@@ -215,8 +256,11 @@ function StudentAttendance({ embedded = false }) {
   const openCorrection = (day) => {
     setCorrectionForm({
       date: day?.date || '',
+      correction_type: 'clock_in',
       requested_clock_in: '08:00',
       requested_clock_out: '17:00',
+      requested_break_start: '12:00',
+      requested_break_end: '13:00',
       reason: '',
     })
   }
@@ -225,12 +269,22 @@ function StudentAttendance({ embedded = false }) {
     e.preventDefault()
     setSavingCorrection(true)
     try {
-      await api.post('/student/attendance/corrections', correctionForm)
+      const typeMeta = CORRECTION_TYPES.find((t) => t.value === correctionForm.correction_type)
+      const payload = {
+        date: correctionForm.date,
+        correction_type: correctionForm.correction_type,
+        reason: correctionForm.reason,
+        [typeMeta.field]: correctionForm[typeMeta.field],
+      }
+      await api.post('/student/attendance/corrections', payload)
       setMessage({ type: 'success', text: 'Correction request submitted. Supervisor review comes first, then faculty.' })
       setCorrectionForm(null)
       fetchAttendance()
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Could not submit correction request.' })
+      const fieldErr = err.response?.data?.errors
+        ? Object.values(err.response.data.errors).flat()[0]
+        : null
+      setMessage({ type: 'danger', text: fieldErr || err.response?.data?.message || 'Could not submit correction request.' })
     } finally {
       setSavingCorrection(false)
     }
@@ -242,6 +296,7 @@ function StudentAttendance({ embedded = false }) {
   const showPlacementColumn = uniquePlacements.size > 1
   const undoStillOpen = data?.can_undo_clock_out && data?.undo_expires_at && new Date(data.undo_expires_at).getTime() > nowTick
   const incompleteDays = data?.incomplete_dtr_days ?? []
+  const activeCorrectionType = CORRECTION_TYPES.find((t) => t.value === correctionForm?.correction_type)
 
   const statusBadge = (s) => {
     if (s === 'validated') return <span className="badge-status badge-active">Validated</span>
@@ -256,13 +311,6 @@ function StudentAttendance({ embedded = false }) {
   return (
     <Wrapper {...wrapperProps}>
       {error && <PageError message={error} onRetry={fetchAttendance} />}
-
-      {incompleteDays.length > 0 && (
-        <div className="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-3">
-          <span><i className="fa fa-exclamation-triangle me-2"></i><strong>Incomplete entry — action needed.</strong> File a correction for missing or incomplete days.</span>
-          <button type="button" className="btn btn-sm btn-outline-dark ms-auto" onClick={() => openCorrection(incompleteDays[0])}>Request correction</button>
-        </div>
-      )}
 
       <div className="content-card mb-4">
         <div className="content-card-header flex-wrap">
@@ -340,7 +388,10 @@ function StudentAttendance({ embedded = false }) {
           <i className="fa fa-fingerprint"></i>
           <h6>Daily Time Record</h6>
           <span className="ms-auto" style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })}
+            {(data?.today_date
+              ? new Date(`${data.today_date}T12:00:00+08:00`)
+              : new Date()
+            ).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })}
           </span>
         </div>
         <div className="p-4 text-center">
@@ -353,13 +404,21 @@ function StudentAttendance({ embedded = false }) {
           )}
           {todayStatus === 'clocked_in' && (
             <button type="button" className="btn btn-danger px-5 py-2" onClick={handleClockOut} disabled={clocking}>
-              <i className="fa fa-stop-circle me-2"></i>{clocking && clockOutOpen ? 'Clocking Out...' : 'Clock Out'}
+              <i className="fa fa-stop-circle me-2"></i>{clocking && clockOutOpen ? 'Processing…' : 'Clock Out'}
             </button>
+          )}
+          {todayStatus === 'on_break' && (
+            <div>
+              <p className="text-warning mb-3"><i className="fa fa-coffee me-2"></i>You are currently on a break.</p>
+              <button type="button" className="btn btn-primary px-5 py-2" onClick={handleResumeAttendance} disabled={clocking}>
+                <i className="fa fa-play me-2"></i>{clocking ? 'Resuming…' : 'Resume Attendance'}
+              </button>
+            </div>
           )}
           {todayStatus === 'clocked_out' && (
             <div className="text-success">
               <i className="fa fa-check-circle fa-2x mb-2 d-block"></i>
-              You have completed today's attendance.
+              You have completed today&apos;s attendance.
               {undoStillOpen && (
                 <div className="mt-3">
                   <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleUndo} disabled={clocking}>
@@ -423,7 +482,7 @@ function StudentAttendance({ embedded = false }) {
                         </td>
                       )}
                       <td>{fmtTime(log.clock_in_display || log.clock_in)}</td>
-                      <td>{(log.clock_out_display || log.clock_out) ? fmtTime(log.clock_out_display || log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
+                      <td>{(log.clock_out_display || log.clock_out) ? fmtTime(log.clock_out_display || log.clock_out) : (log.on_break ? <span className="badge bg-info text-dark">On Break</span> : <span className="badge bg-warning text-dark">Still In</span>)}</td>
                       <td>{fmtHours(log.scheduled_hours)}</td>
                       <td>{fmtHours(log.actual_hours ?? log.hours_rendered)}</td>
                       <td>{overtimeLabel(log.overtime_status)}{log.correction_status_label ? <div className="text-muted" style={{ fontSize: '0.75rem' }}>{log.correction_status_label}</div> : null}</td>
@@ -448,6 +507,7 @@ function StudentAttendance({ embedded = false }) {
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>Type</th>
                   <th>Original</th>
                   <th>Requested</th>
                   <th>Status</th>
@@ -457,6 +517,7 @@ function StudentAttendance({ embedded = false }) {
                 {corrections.map((c) => (
                   <tr key={c.id}>
                     <td>{c.date}</td>
+                    <td>{c.correction_type || '—'}</td>
                     <td>{fmtTime(c.original_clock_in)}–{fmtTime(c.original_clock_out)}</td>
                     <td>{fmtTime(c.requested_clock_in)}–{fmtTime(c.requested_clock_out)}</td>
                     <td>{c.status_label || c.status}</td>
@@ -478,20 +539,33 @@ function StudentAttendance({ embedded = false }) {
               </div>
               <div className="modal-body">
                 <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  For missing or incomplete days only (within the last 3 days). This does not change the official DTR until supervisor and faculty both approve.
+                  Choose one correction type. This does not change the official DTR until supervisor and faculty both approve.
                 </p>
                 <label className="form-label">Date</label>
                 <input type="date" className="form-control mb-2" value={correctionForm.date} onChange={(e) => setCorrectionForm({ ...correctionForm, date: e.target.value })} required />
-                <div className="row g-2">
-                  <div className="col-6">
-                    <label className="form-label">Clock in</label>
-                    <input type="time" className="form-control" value={correctionForm.requested_clock_in} onChange={(e) => setCorrectionForm({ ...correctionForm, requested_clock_in: e.target.value })} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label">Clock out</label>
-                    <input type="time" className="form-control" value={correctionForm.requested_clock_out} onChange={(e) => setCorrectionForm({ ...correctionForm, requested_clock_out: e.target.value })} />
-                  </div>
-                </div>
+                <label className="form-label">Correction Type</label>
+                <select
+                  className="form-select mb-2"
+                  value={correctionForm.correction_type}
+                  onChange={(e) => setCorrectionForm({ ...correctionForm, correction_type: e.target.value })}
+                  required
+                >
+                  {CORRECTION_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+                {activeCorrectionType && (
+                  <>
+                    <label className="form-label">{activeCorrectionType.label} time</label>
+                    <input
+                      type="time"
+                      className="form-control"
+                      value={correctionForm[activeCorrectionType.field]}
+                      onChange={(e) => setCorrectionForm({ ...correctionForm, [activeCorrectionType.field]: e.target.value })}
+                      required
+                    />
+                  </>
+                )}
                 <label className="form-label mt-2">Reason</label>
                 <textarea className="form-control" rows={2} value={correctionForm.reason} onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })} />
               </div>
@@ -503,6 +577,35 @@ function StudentAttendance({ embedded = false }) {
           </div>
         </div>
       )}
+
+      {clockOutOpen && (
+        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Clock Out</h5>
+                <button type="button" className="btn-close" onClick={cancelClockOut} disabled={clocking}></button>
+              </div>
+              <div className="modal-body text-center">
+                <p className="mb-3">Choose what you want to do.</p>
+                <div className="text-muted" style={{ fontSize: '0.82rem' }}>Current Time</div>
+                <div className="fw-semibold mb-3" style={{ fontSize: '1.15rem' }}>{formatManilaTime(nowTick)}</div>
+                {clockOutError && <div className="alert alert-danger py-2">{clockOutError}</div>}
+              </div>
+              <div className="modal-footer flex-wrap justify-content-center gap-2">
+                <button type="button" className="btn btn-secondary" onClick={cancelClockOut} disabled={clocking}>Cancel</button>
+                <button type="button" className="btn btn-warning" onClick={confirmTakeBreak} disabled={clocking}>
+                  {clocking ? 'Working…' : 'Take a Break'}
+                </button>
+                <button type="button" className="btn btn-danger" onClick={confirmEndDay} disabled={clocking}>
+                  {clocking ? 'Working…' : 'End Attendance for the Day'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .wh-schedule-row {
           display: grid;
@@ -534,25 +637,6 @@ function StudentAttendance({ embedded = false }) {
           }
         }
       `}</style>
-      <ConfirmModal
-        open={clockOutOpen}
-        title="Clock Out?"
-        message="Are you sure you want to end your attendance session?"
-        confirmLabel="Clock Out"
-        cancelLabel="Cancel"
-        variant="danger"
-        loading={clocking}
-        loadingLabel="Clocking Out..."
-        error={clockOutError}
-        onCancel={cancelClockOut}
-        onConfirm={confirmClockOut}
-      >
-        <div className="text-center">
-          <div className="text-muted" style={{ fontSize: '0.82rem' }}>Current Time</div>
-          <div className="fw-semibold" style={{ fontSize: '1.15rem' }}>{formatManilaTime(nowTick)}</div>
-          <div className="text-muted" style={{ fontSize: '0.75rem' }}>Asia/Manila</div>
-        </div>
-      </ConfirmModal>
     </Wrapper>
   )
 }

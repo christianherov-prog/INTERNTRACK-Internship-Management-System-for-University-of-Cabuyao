@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AbsorptionService;
 use App\Services\InternshipAnalyticsService;
 use App\Services\InternshipProgressService;
+use App\Services\SupervisorDirectoryService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
 use App\Support\InternshipStatuses;
@@ -81,6 +82,7 @@ class DirectorController extends Controller
             'company_name' => 'required|string|max:255',
             'address' => 'nullable|string|max:500',
             'industry' => 'nullable|string|max:255',
+            'organization_type' => \App\Support\OrganizationTypes::validationRule(false),
             'contact_person' => 'nullable|string|max:255',
             'contact_email' => 'nullable|email|max:255',
             'contact_number' => 'nullable|string|max:30',
@@ -90,6 +92,13 @@ class DirectorController extends Controller
             'slots_available' => 'nullable|integer|min:0',
             'notes' => 'nullable|string',
         ]);
+        $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($validated['organization_type'] ?? null);
+        if (! $resolvedType['ok']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'organization_type' => [$resolvedType['message']],
+            ]);
+        }
+        $validated['organization_type'] = $resolvedType['value'];
         $company = Company::create($validated);
         audit_log($request->user()->id, 'create_company', ['company_name' => $request->company_name]);
 
@@ -102,6 +111,7 @@ class DirectorController extends Controller
             'company_name' => 'sometimes|required|string|max:255',
             'address' => 'nullable|string|max:500',
             'industry' => 'nullable|string|max:255',
+            'organization_type' => \App\Support\OrganizationTypes::validationRule(false),
             'contact_person' => 'nullable|string|max:255',
             'contact_email' => 'nullable|email|max:255',
             'contact_number' => 'nullable|string|max:30',
@@ -112,6 +122,15 @@ class DirectorController extends Controller
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
         ]);
+        if (array_key_exists('organization_type', $validated)) {
+            $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($validated['organization_type']);
+            if (! $resolvedType['ok']) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'organization_type' => [$resolvedType['message']],
+                ]);
+            }
+            $validated['organization_type'] = $resolvedType['value'];
+        }
         $company = Company::findOrFail($id);
         $company->update($validated);
         audit_log($request->user()->id, 'update_company', ['company_id' => $id]);
@@ -691,5 +710,17 @@ class DirectorController extends Controller
             'filters' => ['school_year' => $year, 'semester' => $semester],
             'generated_at' => now()->toDateTimeString(),
         ]);
+    }
+
+    /** GET /api/v1/director/supervisors — university-wide (matches DepartmentScope director behavior). */
+    public function supervisors(Request $request, SupervisorDirectoryService $directory)
+    {
+        return $directory->listFor($request->user(), SupervisorDirectoryService::SCOPE_DIRECTOR);
+    }
+
+    /** GET /api/v1/director/supervisors/{id} */
+    public function showSupervisor(Request $request, int $id, SupervisorDirectoryService $directory)
+    {
+        return $directory->showFor($request->user(), SupervisorDirectoryService::SCOPE_DIRECTOR, $id);
     }
 }

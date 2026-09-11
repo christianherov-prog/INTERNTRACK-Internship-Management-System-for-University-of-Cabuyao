@@ -240,18 +240,27 @@ class DtrWorkflowTest extends TestCase
         Sanctum::actingAs($party['student']);
 
         $yesterday = Carbon::parse('2026-09-04')->toDateString();
+        AttendanceLog::create([
+            'internship_id' => $party['internship']->id,
+            'date' => $yesterday,
+            'clock_in' => '08:00:00',
+            'am_time_in' => '08:00:00',
+            'status' => 'pending',
+        ]);
+
         $this->postJson('/api/v1/student/attendance/corrections', [
             'date' => $yesterday,
-            'requested_clock_in' => '08:00',
+            'correction_type' => 'clock_out',
             'requested_clock_out' => '17:00',
-            'reason' => 'Forgot to clock.',
+            'reason' => 'Forgot to clock out.',
         ])->assertCreated()->assertJsonPath('correction.status', 'pending_supervisor');
 
         $requestId = AttendanceCorrectionRequest::first()->id;
 
-        $this->assertDatabaseMissing('attendance_logs', [
+        $this->assertDatabaseHas('attendance_logs', [
             'internship_id' => $party['internship']->id,
             'date' => $yesterday,
+            'clock_out' => null,
         ]);
 
         Sanctum::actingAs($party['faculty']);
@@ -264,10 +273,7 @@ class DtrWorkflowTest extends TestCase
             'action' => 'approved',
         ])->assertOk()->assertJsonPath('correction.status', 'pending_faculty');
 
-        $this->assertDatabaseMissing('attendance_logs', [
-            'internship_id' => $party['internship']->id,
-            'date' => $yesterday,
-        ]);
+        $this->assertNull(AttendanceLog::where('internship_id', $party['internship']->id)->whereDate('date', $yesterday)->value('clock_out'));
 
         Sanctum::actingAs($party['faculty']);
         $this->patchJson("/api/v1/faculty/dtr/corrections/{$requestId}", [
@@ -282,7 +288,8 @@ class DtrWorkflowTest extends TestCase
         ]);
 
         $correction = AttendanceCorrectionRequest::find($requestId);
-        $this->assertNull($correction->original_clock_in);
+        $this->assertSame('clock_out', $correction->correction_type);
+        $this->assertSame('08:00:00', $correction->original_clock_in);
         $this->assertNull($correction->original_clock_out);
         $this->assertSame('08:00:00', $correction->applied_clock_in);
         $this->assertSame('17:00:00', $correction->applied_clock_out);
@@ -299,8 +306,8 @@ class DtrWorkflowTest extends TestCase
 
         $this->postJson('/api/v1/student/attendance/corrections', [
             'date' => '2026-09-01',
+            'correction_type' => 'clock_in',
             'requested_clock_in' => '08:00',
-            'requested_clock_out' => '17:00',
         ])->assertStatus(422);
 
         Carbon::setTestNow();

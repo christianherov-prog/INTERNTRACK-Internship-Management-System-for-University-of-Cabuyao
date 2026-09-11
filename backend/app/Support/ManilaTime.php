@@ -24,6 +24,14 @@ final class ManilaTime
     }
 
     /**
+     * Current calendar date in Asia/Manila (authoritative "today" for attendance).
+     */
+    public static function todayDateString(?CarbonInterface $at = null): string
+    {
+        return ($at ?? self::now())->timezone(self::TZ)->toDateString();
+    }
+
+    /**
      * Combine a calendar date + clock time stored in app TZ and convert to Manila.
      */
     public static function fromStoredDateAndTime(mixed $date, ?string $time): ?CarbonInterface

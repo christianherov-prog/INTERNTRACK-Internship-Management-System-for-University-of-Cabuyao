@@ -5,6 +5,7 @@ import { SUFFIX_OPTIONS, suffixToApi } from '../../utils/nameSuffix'
 import { InternTrackMark } from '../../components/InternTrackLogo'
 import { useAuth } from '../../contexts/AuthContext'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import AcceptanceFormPicker, { validateAcceptanceForm } from '../../components/AcceptanceFormPicker'
 
 function SupervisorRegisterPage() {
   const [searchParams] = useSearchParams()
@@ -35,10 +36,12 @@ function SupervisorRegisterPage() {
     position: '',
     sex: '',
     company_id: '',
+    login_username: '',
     password: '',
     password_confirmation: '',
   })
-  const [acceptanceForms, setAcceptanceForms] = useState([])
+  const [acceptanceForm, setAcceptanceForm] = useState(null)
+  const [acceptanceError, setAcceptanceError] = useState('')
   const [errors, setErrors] = useState({})
   const bindAttempted = useRef(false)
 
@@ -106,8 +109,15 @@ function SupervisorRegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const formErr = validateAcceptanceForm(acceptanceForm)
+    if (formErr) {
+      setAcceptanceError(formErr)
+      setErrors((prev) => ({ ...prev, acceptance_forms: [formErr] }))
+      return
+    }
     setSubmitting(true)
     setErrors({})
+    setAcceptanceError('')
     setErrorMsg('')
     try {
       const formData = new FormData()
@@ -124,9 +134,9 @@ function SupervisorRegisterPage() {
       })
       formData.append('token', token)
 
-      acceptanceForms.forEach((file) => {
-        formData.append('acceptance_forms[]', file)
-      })
+      if (acceptanceForm) {
+        formData.append('acceptance_forms[]', acceptanceForm)
+      }
 
       const res = await api.post('/supervisor-register', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -140,6 +150,9 @@ function SupervisorRegisterPage() {
         setErrorMsg(err.response?.data?.message || 'Registration could not be completed.')
       } else if (err.response?.status === 422 && err.response?.data?.errors) {
         setErrors(err.response.data.errors)
+        const af = err.response.data.errors.acceptance_forms?.[0]
+          || err.response.data.errors['acceptance_forms.0']?.[0]
+        if (af) setAcceptanceError(af)
       } else {
         setErrorMsg(err.response?.data?.message || 'Registration failed. Please try again.')
       }
@@ -206,17 +219,20 @@ function SupervisorRegisterPage() {
               <>
                 {inviteBanner}
                 <h6 className="fw-bold mb-2"><i className="fa fa-sign-in-alt me-2 text-success"></i>Sign in to accept this invite</h6>
+                <div className="alert alert-light border small py-2 mb-3">
+                  After signing in you must upload a signed <strong>Acceptance Form (PDF)</strong> for this student before Faculty can approve the invitation.
+                </div>
                 
                 {loginError && <div className="alert alert-danger py-2 small">{loginError}</div>}
                 <form onSubmit={handleLogin}>
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Supervisor ID</label>
+                    <label className="form-label small fw-semibold">Username / Supervisor ID / Email</label>
                     <input
                       type="text"
                       className="form-control"
                       value={loginId}
                       onChange={(e) => setLoginId(e.target.value)}
-                      placeholder="Supervisor ID"
+                      placeholder="Username, Supervisor ID, or Email"
                       required
                       autoFocus
                     />
@@ -339,18 +355,25 @@ function SupervisorRegisterPage() {
                       )}
                       {errors.company_id && <div className="invalid-feedback">{errors.company_id[0]}</div>}
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label small fw-semibold">Acceptance Form (Proof of Placement) <span className="text-danger">*</span></label>
-                      <input
-                        type="file"
-                        className={`form-control ${errors.acceptance_forms ? 'is-invalid' : ''}`}
-                        onChange={(e) => setAcceptanceForms(Array.from(e.target.files))}
-                        multiple
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        required
+                    <div className="col-12">
+                      <AcceptanceFormPicker
+                        id="supervisor-register-acceptance"
+                        file={acceptanceForm}
+                        onChange={(file) => {
+                          setAcceptanceForm(file)
+                          setAcceptanceError('')
+                          if (file) {
+                            const err = validateAcceptanceForm(file)
+                            setAcceptanceError(err || '')
+                          }
+                        }}
+                        onClear={() => {
+                          setAcceptanceForm(null)
+                          setAcceptanceError('Acceptance Form is required.')
+                        }}
+                        disabled={submitting}
+                        error={acceptanceError || errors.acceptance_forms?.[0]}
                       />
-                      <div className="form-text">You can upload multiple files (PDF or images) as proof of the student&apos;s placement in your company.</div>
-                      {errors.acceptance_forms && <div className="invalid-feedback">{errors.acceptance_forms[0]}</div>}
                     </div>
                   </div>
 
@@ -358,6 +381,23 @@ function SupervisorRegisterPage() {
                   <h6 className="registration-section-title"><i className="fa fa-lock me-2 text-success"></i>Account security</h6>
 
                   <div className="row">
+                    <div className="col-md-12 mb-3">
+                      <label className="form-label small fw-semibold">Username <span className="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        name="login_username"
+                        className={`form-control ${errors.login_username ? 'is-invalid' : ''}`}
+                        value={form.login_username}
+                        onChange={handleChange}
+                        placeholder="Choose a username for login"
+                        minLength={3}
+                        maxLength={40}
+                        required
+                        autoComplete="username"
+                      />
+                      <div className="form-text">Letters, numbers, dots, underscores, and hyphens only. You can also sign in with your Supervisor ID or email.</div>
+                      {errors.login_username && <div className="invalid-feedback">{errors.login_username[0]}</div>}
+                    </div>
                     <div className="col-md-6">
                       <label className="form-label small fw-semibold">Password <span className="text-danger">*</span></label>
                       <input type="password" name="password" className={`form-control ${errors.password ? 'is-invalid' : ''}`} value={form.password} onChange={handleChange} placeholder="Password" minLength={8} required />
@@ -376,10 +416,10 @@ function SupervisorRegisterPage() {
                         Sign in instead
                       </button>
                     </span>
-                    <button type="submit" className="btn-green py-2 px-4" disabled={submitting}>
+                    <button type="submit" className="btn-green py-2 px-4" disabled={submitting || !acceptanceForm}>
                       {submitting
                         ? <><i className="fa fa-spinner fa-spin me-2"></i>Submitting...</>
-                        : <><i className="fa fa-paper-plane me-2"></i>Submit Registration</>
+                        : <><i className="fa fa-paper-plane me-2"></i>Submit for Faculty Approval</>
                       }
                     </button>
                   </div>

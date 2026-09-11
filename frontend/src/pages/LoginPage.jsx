@@ -234,7 +234,7 @@ function LoginPage() {
                         id="forgotIdentifier"
                         value={forgotIdentifier}
                         onChange={(e) => setForgotIdentifier(e.target.value)}
-                        placeholder="Student Number, Employee ID, Supervisor ID, or Email"
+                        placeholder="Username, Student Number, Employee ID, Supervisor ID, or Email"
                         required
                         autoFocus
                       />
@@ -284,7 +284,7 @@ function LoginPage() {
                   <strong>Smart account detection</strong>
                 </div>
                 <p className="smart-detection-text">
-                  Use your student number, employee ID, supervisor ID, or registered email to enter the correct workspace.
+                  Use your username, student number, employee ID, supervisor ID, or registered email to enter the correct workspace.
                 </p>
               </div>
 
@@ -297,7 +297,7 @@ function LoginPage() {
                     id="studentNumber"
                     value={studentNumber}
                     onChange={(e) => setStudentNumber(e.target.value)}
-                    placeholder="Student Number, Employee ID, Supervisor ID, or Email"
+                    placeholder="Username, Student Number, Employee ID, Supervisor ID, or Email"
                     required
                   />
                 </div>

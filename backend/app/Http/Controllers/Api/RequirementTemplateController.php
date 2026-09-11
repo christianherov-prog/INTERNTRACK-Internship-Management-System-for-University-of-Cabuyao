@@ -20,9 +20,16 @@ class RequirementTemplateController extends Controller
     {
         $user = $request->user();
 
-        // 1. Fetch requirements created by this user
+        // Faculty: own customs + system standards.
+        // Coordinator: own customs ONLY (standards remain faculty-side).
         $requirements = OjtRequirementTemplate::with(['targets', 'attachments'])
-            ->where('created_by', $user->id)
+            ->where(function ($q) use ($user) {
+                $q->where('created_by', $user->id);
+                if ($user->isFaculty() && ! $user->isCoordinator()) {
+                    $q->orWhere('is_system', true);
+                }
+            })
+            ->orderByDesc('is_system')
             ->orderBy('sort_order')
             ->get();
 
@@ -45,7 +52,7 @@ class RequirementTemplateController extends Controller
             $handledStudents[] = [
                 'id' => $student->id,
                 'name' => $profile ? trim(($profile->last_name ?? '') . ', ' . ($profile->first_name ?? '')) : $student->username,
-                'id_number' => $profile?->id_number,
+                'id_number' => $profile?->id_number ?? $student->student_number,
                 'initials' => $profile ? strtoupper(substr($profile->first_name ?? '', 0, 1) . substr($profile->last_name ?? '', 0, 1)) : strtoupper(substr($student->username, 0, 2)),
                 'section_name' => $profile?->section,
                 'program_name' => $profile?->program?->name,
@@ -55,7 +62,12 @@ class RequirementTemplateController extends Controller
 
         // 3. For each requirement, determine assigned students
         $requirements->transform(function ($req) use ($handledStudents) {
-            $assignedStudents = collect($handledStudents)->filter(function ($hs) use ($req) {
+            $hasTargets = $req->targets->isNotEmpty();
+            $assignedStudents = collect($handledStudents)->filter(function ($hs) use ($req, $hasTargets) {
+                // Empty targets = system-wide / all students in reviewer scope
+                if (! $hasTargets) {
+                    return true;
+                }
                 foreach ($req->targets as $t) {
                     if ($t->target_type === 'student' && (string)$t->target_id === (string)$hs['id']) return true;
                     if ($t->target_type === 'section' && $t->target_id === $hs['section_name']) return true;
@@ -68,8 +80,16 @@ class RequirementTemplateController extends Controller
 
             $submissions = collect();
             if ($validStudentIds->isNotEmpty()) {
+                $aliases = \App\Services\DocumentComplianceService::aliasesForCode($req->system_code, $req->name);
                 $submissions = Document::with(['internship', 'reviewer.facultyProfile', 'attachments'])
-                    ->where('document_type', $req->name)
+                    ->where(function ($q) use ($req, $aliases) {
+                        $q->where('document_type', $req->name);
+                        foreach ($aliases as $alias) {
+                            if ($alias !== $req->name) {
+                                $q->orWhere('document_type', $alias);
+                            }
+                        }
+                    })
                     ->whereHas('internship', fn ($q) => $q->whereIn('student_id', $validStudentIds))
                     ->orderByDesc('submitted_at')
                     ->orderByDesc('id')
@@ -101,7 +121,7 @@ class RequirementTemplateController extends Controller
                     'section' => $hs['section_name'],
                     'status' => $status,
                     'submitted_at' => $doc?->submitted_at ? clone $doc->submitted_at : null,
-                    'file_url' => null, // Kept for backwards compatibility if needed, but not used now
+                    'file_url' => null,
                     'file_path' => null,
                     'file_name' => null,
                     'attachments' => $doc ? $doc->attachments->map(function ($a) {
@@ -127,9 +147,17 @@ class RequirementTemplateController extends Controller
                 $target->setAttribute('label', $this->labelForTarget($target, $handledStudents));
             }
 
+            $req->setAttribute('requirement_type', $req->is_system ? 'standard' : 'custom');
+            $req->setAttribute('target_type_label', $hasTargets
+                ? ($req->targets->pluck('target_type')->unique()->implode(', '))
+                : 'All eligible students');
             $req->submissions = $mappedSubmissions;
             $req->total_assigned = $assignedStudents->count();
             $req->completed_count = $mappedSubmissions->whereIn('status', ['approved', 'completed'])->count();
+            $req->pending_count = $mappedSubmissions->filter(fn ($s) => in_array($s['status'], [
+                'pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted', 'submitted',
+            ], true))->count();
+            $req->missing_count = max(0, $req->total_assigned - $req->completed_count - $req->pending_count);
 
             return $req;
         });
@@ -219,7 +247,7 @@ class RequirementTemplateController extends Controller
             'description' => 'nullable|string',
             'category' => 'nullable|string',
             'is_active' => 'boolean',
-            'targets' => 'required|array',
+            'targets' => 'required|array|min:1',
             'template_files.*' => 'nullable|file|mimes:doc,docx,pdf,jpg,jpeg,png|max:10240',
             'drive_link' => 'nullable|url',
         ]);
@@ -230,6 +258,7 @@ class RequirementTemplateController extends Controller
                 'description' => $request->description,
                 'category' => $request->category ?? 'general',
                 'is_active' => $request->boolean('is_active', true),
+                'is_system' => false,
                 'deadline' => $request->deadline,
                 'drive_link' => $request->drive_link,
                 'created_by' => $request->user()->id,
@@ -246,6 +275,13 @@ class RequirementTemplateController extends Controller
             }
 
             $this->syncTargets($requirement, $request->input('targets'));
+            \App\Support\RequiredDocuments::clearCache();
+
+            audit_log($request->user()->id, 'requirement_created', [
+                'requirement_id' => $requirement->id,
+                'name' => $requirement->name,
+                'is_system' => false,
+            ]);
 
             return response()->json([
                 'message' => 'Requirement template created successfully.',
@@ -256,22 +292,42 @@ class RequirementTemplateController extends Controller
 
     /**
      * Update an existing requirement.
+     * System standards: faculty may edit display metadata (not system_code / is_system).
+     * Custom: owner only; targets required.
      */
     public function update(Request $request, $id)
     {
-        $requirement = OjtRequirementTemplate::where('created_by', $request->user()->id)->findOrFail($id);
+        $requirement = OjtRequirementTemplate::findOrFail($id);
+        $user = $request->user();
 
-        $request->validate([
+        if ($requirement->is_system) {
+            if (! $user->isFaculty() || $user->isCoordinator()) {
+                return response()->json([
+                    'message' => 'Only Faculty may edit standard system requirements.',
+                ], 403);
+            }
+        } elseif ((int) $requirement->created_by !== (int) $user->id) {
+            abort(403, 'You may only edit requirement templates you created.');
+        }
+
+        $rules = [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category' => 'nullable|string',
             'is_active' => 'boolean',
-            'targets' => 'required|array',
             'template_files.*' => 'nullable|file|mimes:doc,docx,pdf,jpg,jpeg,png|max:10240',
             'drive_link' => 'nullable|url',
             'remove_attachments' => 'nullable|array',
-            'remove_attachments.*' => 'integer|exists:requirement_template_attachments,id'
-        ]);
+            'remove_attachments.*' => 'integer|exists:requirement_template_attachments,id',
+        ];
+
+        if (! $requirement->is_system) {
+            $rules['targets'] = 'required|array|min:1';
+        } else {
+            $rules['targets'] = 'nullable|array';
+        }
+
+        $request->validate($rules);
 
         return DB::transaction(function () use ($request, $requirement) {
             if ($request->has('remove_attachments')) {
@@ -291,36 +347,47 @@ class RequirementTemplateController extends Controller
                 }
             }
 
-            $oldDeadline = $requirement->deadline?->toIso8601String();
+            $old = [
+                'name' => $requirement->name,
+                'description' => $requirement->description,
+                'deadline' => $requirement->deadline?->toIso8601String(),
+                'is_active' => $requirement->is_active,
+            ];
 
-            $requirement->update([
+            $payload = [
                 'name' => $request->name,
                 'description' => $request->description,
-                'category' => $request->category ?? 'general',
+                'category' => $request->category ?? $requirement->category ?? 'general',
                 'is_active' => $request->boolean('is_active', true),
                 'deadline' => $request->deadline,
                 'drive_link' => $request->has('drive_link') ? $request->drive_link : $requirement->drive_link,
-            ]);
+            ];
+            // Never allow clients to alter identity of system templates.
+            unset($payload['is_system'], $payload['system_code'], $payload['created_by']);
 
-            if ($request->has('deadline') && $oldDeadline != $request->deadline) {
-                AuditLog::create([
-                    'user_id' => $request->user()->id,
-                    'action' => 'extend_deadline',
-                    'model_type' => OjtRequirementTemplate::class,
-                    'model_id' => $requirement->id,
-                    'old_values' => ['deadline' => $oldDeadline],
-                    'new_values' => ['deadline' => $request->deadline],
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'created_at' => now(),
-                ]);
+            $requirement->update($payload);
+
+            if (! $requirement->is_system && $request->has('targets')) {
+                $this->syncTargets($requirement, $request->input('targets', []));
             }
 
-            $this->syncTargets($requirement, $request->input('targets'));
+            \App\Support\RequiredDocuments::clearCache();
+
+            audit_log($request->user()->id, 'requirement_updated', [
+                'requirement_id' => $requirement->id,
+                'system_code' => $requirement->system_code,
+                'old' => $old,
+                'new' => [
+                    'name' => $requirement->name,
+                    'description' => $requirement->description,
+                    'deadline' => $requirement->deadline?->toIso8601String(),
+                    'is_active' => $requirement->is_active,
+                ],
+            ]);
 
             return response()->json([
                 'message' => 'Requirement template updated successfully.',
-                'requirement' => $requirement->load('targets', 'attachments')
+                'requirement' => $requirement->fresh()->load('targets', 'attachments')
             ]);
         });
     }
@@ -330,11 +397,19 @@ class RequirementTemplateController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        $requirement = OjtRequirementTemplate::where('created_by', $request->user()->id)
-            ->with('attachments')
-            ->findOrFail($id);
+        $requirement = OjtRequirementTemplate::with('attachments')->findOrFail($id);
 
-        return DB::transaction(function () use ($requirement) {
+        if ($requirement->is_system) {
+            return response()->json([
+                'message' => 'System requirement templates cannot be deleted.',
+            ], 422);
+        }
+
+        if ((int) $requirement->created_by !== (int) $request->user()->id) {
+            abort(403, 'You may only delete requirement templates you created.');
+        }
+
+        return DB::transaction(function () use ($requirement, $request) {
             if ($requirement->template_file_path) {
                 Storage::disk('local')->delete($requirement->template_file_path);
             }
@@ -345,7 +420,15 @@ class RequirementTemplateController extends Controller
                 $attachment->delete();
             }
             $requirement->targets()->delete();
+            $name = $requirement->name;
+            $id = $requirement->id;
             $requirement->delete();
+            \App\Support\RequiredDocuments::clearCache();
+
+            audit_log($request->user()->id, 'requirement_deleted', [
+                'requirement_id' => $id,
+                'name' => $name,
+            ]);
 
             return response()->json(['message' => 'Requirement template deleted successfully.']);
         });

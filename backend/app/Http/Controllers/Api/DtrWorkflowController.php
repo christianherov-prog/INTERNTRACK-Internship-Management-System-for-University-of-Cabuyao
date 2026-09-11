@@ -20,8 +20,20 @@ class DtrWorkflowController extends Controller
     public function undoClockOut(Request $request)
     {
         $internship = $this->studentInternship($request);
-        $today = now()->toDateString();
-        $log = $internship->attendance()->whereDate('date', $today)->whereNotNull('clock_out')->firstOrFail();
+        $today = $this->dtr->manilaToday();
+        $log = $internship->attendance()
+            ->whereDate('date', $today)
+            ->whereNotNull('clock_out')
+            ->first();
+
+        if (! $log) {
+            // Same-session undo when UTC/Manila calendar day differs mid-shift.
+            $log = $internship->attendance()
+                ->whereNotNull('clock_out')
+                ->orderByDesc('date')
+                ->orderByDesc('id')
+                ->firstOrFail();
+        }
 
         $record = $this->dtr->undoClockOut($log, $request->user());
 
@@ -29,6 +41,7 @@ class DtrWorkflowController extends Controller
             'message' => 'Clock-out undone. You are clocked in again.',
             'record' => $record,
             'today_status' => 'clocked_in',
+            'today_date' => $today,
         ]);
     }
 
@@ -101,10 +114,14 @@ class DtrWorkflowController extends Controller
 
     public function submitCorrection(Request $request)
     {
+        $timeRule = ['nullable', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'];
         $request->validate([
             'date' => 'required|date',
-            'requested_clock_in' => ['nullable', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
-            'requested_clock_out' => ['nullable', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
+            'correction_type' => 'required|in:clock_in,clock_out,break_start,break_end',
+            'requested_clock_in' => $timeRule,
+            'requested_clock_out' => $timeRule,
+            'requested_break_start' => $timeRule,
+            'requested_break_end' => $timeRule,
             'reason' => 'nullable|string|max:1000',
         ]);
 
@@ -113,8 +130,11 @@ class DtrWorkflowController extends Controller
             $internship,
             $request->user(),
             $request->input('date'),
+            $request->input('correction_type'),
             $request->input('requested_clock_in'),
             $request->input('requested_clock_out'),
+            $request->input('requested_break_start'),
+            $request->input('requested_break_end'),
             $request->input('reason')
         );
 
@@ -346,11 +366,16 @@ class DtrWorkflowController extends Controller
             'internship_id' => $r->internship_id,
             'attendance_log_id' => $r->attendance_log_id,
             'date' => $r->date?->toDateString(),
+            'correction_type' => $r->correction_type,
             'original_clock_in' => $this->dtr->timeString($r->original_clock_in),
             'original_clock_out' => $this->dtr->timeString($r->original_clock_out),
+            'original_break_start' => optional($r->original_break_start)?->toIso8601String(),
+            'original_break_end' => optional($r->original_break_end)?->toIso8601String(),
             'original_hours_rendered' => $r->original_hours_rendered,
             'requested_clock_in' => $this->dtr->timeString($r->requested_clock_in),
             'requested_clock_out' => $this->dtr->timeString($r->requested_clock_out),
+            'requested_break_start' => optional($r->requested_break_start)?->toIso8601String(),
+            'requested_break_end' => optional($r->requested_break_end)?->toIso8601String(),
             'reason' => $r->reason,
             'status' => $r->status,
             'status_label' => $r->statusLabel(),
@@ -388,8 +413,8 @@ class DtrWorkflowController extends Controller
             abort(404, 'No internship found.');
         }
         $internship->loadMissing('currentPlacement');
-        if (! $internship->hasApprovedHteSupervisor()) {
-            abort(403, 'Attendance tracking is locked until your HTE Supervisor is approved.');
+        if ($reason = $internship->attendanceLockReason()) {
+            abort(403, $reason);
         }
 
         return $internship;

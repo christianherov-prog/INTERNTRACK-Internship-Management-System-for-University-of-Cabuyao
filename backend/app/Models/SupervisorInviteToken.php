@@ -55,6 +55,7 @@ class SupervisorInviteToken extends Model
                     'path' => $item['path'] ?? null,
                     'name' => $item['name'] ?? basename((string) ($item['path'] ?? '')),
                     'mime' => $item['mime'] ?? null,
+                    'review_status' => $item['review_status'] ?? null,
                 ];
             }, $stored));
         }

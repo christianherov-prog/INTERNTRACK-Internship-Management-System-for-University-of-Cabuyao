@@ -62,6 +62,18 @@ export function invalidateStudentPortfolio() {
   cacheDelete('student:portfolio')
 }
 
+/** Invalidate attendance-related student caches after clock/break/correction mutations. */
+export function invalidateStudentAttendance() {
+  const keys = []
+  store.forEach((_, key) => {
+    if (key === 'student:attendance' || key.startsWith('student:attendance:') || key === 'student:attendance-hub' || key === 'student:dashboard' || key === 'student:records') {
+      keys.push(key)
+    }
+  })
+  keys.forEach(cacheDelete)
+  invalidateOfficialFormCaches()
+}
+
 export function invalidateOfficialFormCaches() {
   invalidateStudentPortfolio()
   const keys = []

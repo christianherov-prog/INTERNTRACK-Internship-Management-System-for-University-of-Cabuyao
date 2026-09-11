@@ -68,6 +68,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call(AcademicCollegesSeeder::class);
         $this->call(ProgramHteRequirementsSeeder::class);
+        $this->call(StandardRequirementTemplatesSeeder::class);
 
         // ─── 1. Staff users (faculty_number = employee/faculty number) ──────────────
         $admin    = User::updateOrCreate(['faculty_number' => 'ADMIN-MISD-001'], ['email' => 'misd.admin@uc.edu.ph',     'password' => $pw, 'role' => 'admin',       'is_active' => true]);
@@ -350,7 +351,7 @@ class DatabaseSeeder extends Seeder
   Facul (CBAA)  FAC-CBAA-001           {$demoPassword}
   Stud (BSBAMM) 2300605                {$demoPassword} (Fresh/Pending)
   Stud (BSBAFM) 2300606                {$demoPassword} (Fresh/Pending)
-  Stud (BSA)    2300607                {$demoPassword} (Fresh/Pending)');
+  Stud (BSA)    2300607                {$demoPassword} (Fresh/Pending)");
         $this->command->info('─────────────────────────────────────────────────────────────');
     }
 }

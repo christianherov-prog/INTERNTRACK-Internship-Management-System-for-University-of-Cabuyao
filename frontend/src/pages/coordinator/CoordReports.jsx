@@ -76,7 +76,7 @@ function StudentSummaryTable({ data }) {
               </td>
               <td>{r.validated_days}</td>
               <td>{r.approved_journals}</td>
-              <td>{r.approved_docs}/9</td>
+              <td>{r.approved_docs}/{r.required_docs}</td>
             </tr>
           ))}
         </tbody>

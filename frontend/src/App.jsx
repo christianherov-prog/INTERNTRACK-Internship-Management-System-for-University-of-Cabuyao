@@ -21,6 +21,7 @@ import StudentCompanies from './pages/student/StudentCompanies'
 import DirectorDashboard from './pages/director/DirectorDashboard'
 import InternshipAnalytics from './pages/shared/InternshipAnalytics'
 import DirectorCompanies from './pages/director/DirectorCompanies'
+import DirectorSupervisors from './pages/director/DirectorSupervisors'
 import DirectorMoaHub from './pages/director/DirectorMoaHub'
 import DirectorReports from './pages/director/DirectorReports'
 import DirectorSettings from './pages/director/DirectorSettings'
@@ -36,6 +37,7 @@ import SupervisorFeedback from './pages/supervisor/SupervisorFeedback'
 import SupervisorSettings from './pages/supervisor/SupervisorSettings'
 import FacultyDashboard from './pages/faculty/FacultyDashboard'
 import FacultyAssignedStudents from './pages/faculty/FacultyAssignedStudents'
+import FacultySupervisors from './pages/faculty/FacultySupervisors'
 import FacultyJournals from './pages/faculty/FacultyJournals'
 import FacultyEvaluations from './pages/faculty/FacultyEvaluations'
 import FacultyDocuments from './pages/faculty/FacultyDocuments'
@@ -47,6 +49,7 @@ import DirectorHTEEvaluations from './pages/director/DirectorHTEEvaluations'
 import CoordMonitoring from './pages/coordinator/CoordMonitoring'
 import CoordAnnouncements from './pages/coordinator/CoordAnnouncements'
 import CoordRecords from './pages/coordinator/CoordRecords'
+import CoordSupervisors from './pages/coordinator/CoordSupervisors'
 import CoordReports from './pages/coordinator/CoordReports'
 import CoordSettings from './pages/coordinator/CoordSettings'
 import ManageRequirements from './pages/shared/ManageRequirementsTemplates'
@@ -62,6 +65,7 @@ import MisdUsers from './pages/admin/MisdUsers'
 import MisdSectionMappings from './pages/admin/MisdSectionMappings'
 import MisdSyncMonitor from './pages/admin/MisdSyncMonitor'
 import MisdSettings from './pages/admin/MisdSettings'
+import MisdAuditLogs from './pages/admin/MisdAuditLogs'
 import SupervisorRegisterPage from './pages/public/SupervisorRegisterPage'
 import ChangePasswordConfirmPage from './pages/public/ChangePasswordConfirmPage'
 import DemoApp from './demo/DemoApp'
@@ -103,6 +107,7 @@ function App() {
               <Route path="/director/dashboard" element={<ProtectedRoute role="director"><DirectorDashboard /></ProtectedRoute>} />
               <Route path="/director/analytics" element={<ProtectedRoute role="director"><InternshipAnalytics apiBase="/director" bodyClass="director-page" evaluationsPath="/director/hte-evaluations" reportsPath="/director/reports" /></ProtectedRoute>} />
               <Route path="/director/companies" element={<ProtectedRoute role="director"><DirectorCompanies /></ProtectedRoute>} />
+              <Route path="/director/supervisors" element={<ProtectedRoute role="director"><DirectorSupervisors /></ProtectedRoute>} />
               <Route path="/director/moa" element={<ProtectedRoute role="director"><DirectorMoaHub /></ProtectedRoute>} />
               <Route path="/director/reports" element={<ProtectedRoute role="director"><DirectorReports /></ProtectedRoute>} />
               <Route path="/director/hte-evaluations" element={<ProtectedRoute role="director"><DirectorHTEEvaluations /></ProtectedRoute>} />
@@ -128,6 +133,7 @@ function App() {
               {/* Faculty workspace — coordinators may also act as faculty supervisors with the same login. */}
               <Route path="/faculty/dashboard" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyDashboard /></ProtectedRoute>} />
               <Route path="/faculty/assigned-students" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyAssignedStudents /></ProtectedRoute>} />
+              <Route path="/faculty/supervisors" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultySupervisors /></ProtectedRoute>} />
               <Route path="/faculty/journals" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyJournals /></ProtectedRoute>} />
               <Route path="/faculty/evaluations" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyEvaluations /></ProtectedRoute>} />
               <Route path="/faculty/requirements" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><ManageRequirements /></ProtectedRoute>} />
@@ -142,6 +148,7 @@ function App() {
               <Route path="/coordinator/internship-management" element={<ProtectedRoute role="coordinator"><CoordPlacementHub /></ProtectedRoute>} />
               <Route path="/coordinator/announcements" element={<ProtectedRoute role="coordinator"><CoordAnnouncements /></ProtectedRoute>} />
               <Route path="/coordinator/records" element={<ProtectedRoute role="coordinator"><CoordRecords /></ProtectedRoute>} />
+              <Route path="/coordinator/supervisors" element={<ProtectedRoute role="coordinator"><CoordSupervisors /></ProtectedRoute>} />
               <Route path="/coordinator/absorption" element={<ProtectedRoute role="coordinator"><CoordAbsorption /></ProtectedRoute>} />
               <Route path="/coordinator/doc-approvals" element={<ProtectedRoute role="coordinator"><CoordDocApprovals /></ProtectedRoute>} />
               <Route path="/coordinator/logbook" element={<ProtectedRoute role="coordinator"><CoordLogbookReview /></ProtectedRoute>} />
@@ -159,6 +166,7 @@ function App() {
               <Route path="/admin/users" element={<ProtectedRoute role="admin"><MisdUsers /></ProtectedRoute>} />
               <Route path="/admin/section-mappings" element={<ProtectedRoute role="admin"><MisdSectionMappings /></ProtectedRoute>} />
               <Route path="/admin/sync" element={<ProtectedRoute role="admin"><MisdSyncMonitor /></ProtectedRoute>} />
+              <Route path="/admin/audit-logs" element={<ProtectedRoute role="admin"><MisdAuditLogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute role="admin"><MisdSettings /></ProtectedRoute>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />

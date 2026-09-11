@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Support\OrganizationTypes;
 
 class Company extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'company_name', 'address', 'industry', 'contact_person', 'contact_email',
+        'company_name', 'address', 'industry', 'organization_type', 'contact_person', 'contact_email',
         'contact_number', 'moa_status', 'moa_start_date', 'moa_expiry_date',
         'moa_file_path', 'slots_available', 'notes', 'is_active',
     ];
@@ -24,7 +25,13 @@ class Company extends Model
 
     protected $appends = [
         'moa_expires_in_days',
+        'organization_type_label',
     ];
+
+    public function getOrganizationTypeLabelAttribute(): string
+    {
+        return OrganizationTypes::label($this->organization_type ?? null);
+    }
 
     public function internships()
     {

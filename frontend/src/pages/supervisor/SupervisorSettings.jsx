@@ -27,7 +27,6 @@ function SupervisorSettings() {
       ]}
       defaultNotifications={{
         attendancePending: true,
-        journalReviews: true,
         evaluationDue: true,
       }}
       notificationDefs={[
@@ -35,11 +34,6 @@ function SupervisorSettings() {
           key: 'attendancePending',
           title: 'Attendance validation requests',
           description: 'Get notified when assigned interns submit DTR/attendance logs needing your validation.',
-        },
-        {
-          key: 'journalReviews',
-          title: 'Journal review reminders',
-          description: 'Alerts when weekly journals from your interns are ready for supervisor review.',
         },
         {
           key: 'evaluationDue',

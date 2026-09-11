@@ -50,18 +50,22 @@ class MisdAdminController extends Controller
         $unmapped = $this->unmappedSectionsPayload();
         $recent = [];
         try {
-            $recent = AuditLog::with('user:id,student_number,faculty_number,email,role')
-                ->where(function ($q) {
-                    $q->where('action', 'like', 'staff.%')
-                        ->orWhere('action', 'like', 'section.%')
-                        ->orWhere('action', 'like', 'misd.%');
-                })
+            $recent = AuditLog::with('user:id,student_number,faculty_number,email,role,login_username')
                 ->latest('created_at')
-                ->limit(12)
+                ->limit(15)
                 ->get()
                 ->map(fn (AuditLog $log) => $this->formatAudit($log));
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Dashboard recent activity notice: ' . $e->getMessage());
+        }
+
+        $todayCount = 0;
+        try {
+            $todayCount = AuditLog::query()
+                ->whereDate('created_at', now()->toDateString())
+                ->count();
+        } catch (\Throwable) {
+            $todayCount = 0;
         }
 
         return response()->json([
@@ -70,6 +74,7 @@ class MisdAdminController extends Controller
             'unmapped_count'    => count($unmapped),
             'misd_status'       => $this->misd->status(),
             'recent_activity'   => $recent,
+            'activities_today'  => $todayCount,
             'term'              => config('interntrack.current_term'),
         ]);
     }
@@ -571,15 +576,54 @@ class MisdAdminController extends Controller
     public function auditLog(Request $request): JsonResponse
     {
         try {
-            $q = AuditLog::with('user:id,student_number,faculty_number,email,role')
-                ->where(function ($inner) {
+            $q = AuditLog::with('user:id,student_number,faculty_number,email,role,login_username')
+                ->latest('created_at');
+
+            $scope = strtolower((string) $request->query('scope', 'all'));
+            if ($scope === 'admin') {
+                $q->where(function ($inner) {
                     $inner->where('action', 'like', 'staff.%')
                         ->orWhere('action', 'like', 'section.%')
                         ->orWhere('action', 'like', 'misd.%');
-                })
-                ->latest('created_at');
+                });
+            }
 
-            $paginator = $q->paginate((int) $request->query('per_page', 30));
+            if ($action = trim((string) $request->query('action', ''))) {
+                $q->where('action', 'like', '%'.$action.'%');
+            }
+
+            if ($module = trim((string) $request->query('module', ''))) {
+                $q->where(function ($inner) use ($module) {
+                    $inner->where('action', 'like', $module.'%')
+                        ->orWhere('action', 'like', '%'.$module.'%');
+                });
+            }
+
+            if ($role = trim((string) $request->query('role', ''))) {
+                $q->whereHas('user', fn ($u) => $u->where('role', $role));
+            }
+
+            if ($search = trim((string) $request->query('search', ''))) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('action', 'like', '%'.$search.'%')
+                        ->orWhere('new_values', 'like', '%'.$search.'%')
+                        ->orWhereHas('user', function ($u) use ($search) {
+                            $u->where('email', 'like', '%'.$search.'%')
+                                ->orWhere('student_number', 'like', '%'.$search.'%')
+                                ->orWhere('faculty_number', 'like', '%'.$search.'%')
+                                ->orWhere('login_username', 'like', '%'.$search.'%');
+                        });
+                });
+            }
+
+            if ($from = $request->query('date_from')) {
+                $q->whereDate('created_at', '>=', $from);
+            }
+            if ($to = $request->query('date_to')) {
+                $q->whereDate('created_at', '<=', $to);
+            }
+
+            $paginator = $q->paginate(min(100, max(10, (int) $request->query('per_page', 30))));
             $paginator->getCollection()->transform(fn (AuditLog $log) => $this->formatAudit($log));
 
             return ApiResponse::list($paginator);
@@ -893,19 +937,87 @@ class MisdAdminController extends Controller
 
     private function formatAudit(AuditLog $log): array
     {
+        $safeNew = $this->sanitizeAuditPayload($log->new_values);
+        $safeOld = $this->sanitizeAuditPayload($log->old_values);
+        $module = $this->moduleForAction((string) $log->action);
+
         return [
             'id'         => $log->id,
             'action'     => $log->action,
+            'module'     => $module,
+            'summary'    => $this->summarizeAudit($log, $safeNew),
             'model_type' => class_basename((string) $log->model_type),
             'model_id'   => $log->model_id,
-            'old_values' => $log->old_values,
-            'new_values' => $log->new_values,
+            'old_values' => $safeOld,
+            'new_values' => $safeNew,
             'actor'      => $log->user ? [
                 'id'       => $log->user->id,
-                'username' => $log->user->username,
+                'username' => $log->user->login_username ?: $log->user->username,
                 'role'     => $log->user->role,
+                'label'    => $log->user->faculty_number
+                    ?: $log->user->student_number
+                    ?: ($log->user->login_username ?: $log->user->email),
             ] : null,
-            'created_at' => optional($log->created_at)?->toIso8601String(),
+            'created_at' => optional($log->created_at)?->timezone(config('app.timezone', 'Asia/Manila'))->toIso8601String(),
+            'created_at_display' => optional($log->created_at)?->timezone(config('app.timezone', 'Asia/Manila'))->format('M j, Y g:i A'),
         ];
+    }
+
+    private function sanitizeAuditPayload(mixed $values): mixed
+    {
+        if (! is_array($values)) {
+            return $values;
+        }
+
+        $blocked = ['password', 'password_confirmation', 'token', 'remember_token', 'secret', 'qr_token', 'content', 'file_bytes', 'signature'];
+        $clean = [];
+        foreach ($values as $key => $value) {
+            $k = strtolower((string) $key);
+            if (in_array($k, $blocked, true) || str_contains($k, 'password') || str_contains($k, 'token')) {
+                continue;
+            }
+            $clean[$key] = is_array($value) ? $this->sanitizeAuditPayload($value) : $value;
+        }
+
+        return $clean;
+    }
+
+    private function moduleForAction(string $action): string
+    {
+        $action = strtolower($action);
+        return match (true) {
+            str_starts_with($action, 'staff.') || str_starts_with($action, 'misd.') => 'Admin',
+            str_starts_with($action, 'section.') => 'Sections',
+            str_contains($action, 'document') => 'Documents',
+            str_contains($action, 'requirement') || str_contains($action, 'deadline') => 'Requirements',
+            str_contains($action, 'attendance') || str_contains($action, 'clock') || str_contains($action, 'break') => 'Attendance',
+            str_contains($action, 'supervisor') || str_contains($action, 'invite') => 'Supervisor',
+            str_contains($action, 'journal') => 'Journals',
+            str_contains($action, 'evaluation') => 'Evaluations',
+            str_contains($action, 'login') || str_contains($action, 'logout') || str_contains($action, 'password') => 'Authentication',
+            str_contains($action, 'company') || str_contains($action, 'hte') || str_contains($action, 'placement') => 'Placement',
+            default => 'System',
+        };
+    }
+
+    private function summarizeAudit(AuditLog $log, mixed $safeNew): string
+    {
+        $actor = $log->user
+            ? ($log->user->faculty_number ?: $log->user->student_number ?: ($log->user->login_username ?: 'User'))
+            : 'System';
+        $action = str_replace(['_', '.'], ' ', (string) $log->action);
+        $extra = '';
+        if (is_array($safeNew)) {
+            if (! empty($safeNew['document_type'])) {
+                $extra = ' — '.$safeNew['document_type'];
+                if (! empty($safeNew['student_number'])) {
+                    $extra .= ' ('.$safeNew['student_number'].')';
+                }
+            } elseif (! empty($safeNew['name'])) {
+                $extra = ' — '.$safeNew['name'];
+            }
+        }
+
+        return trim($actor.' '.$action.$extra);
     }
 }

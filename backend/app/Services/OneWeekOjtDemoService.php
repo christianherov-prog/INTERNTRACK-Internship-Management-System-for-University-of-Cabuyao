@@ -37,7 +37,7 @@ class OneWeekOjtDemoService
 
     public const LUNCH_IN = '13:00';
 
-    public const ACCOMPLISHMENT = 'During my first week of internship, I became familiar with the company\'s work environment, policies, communication practices, and daily workflow. I attended orientation activities, reviewed basic workplace procedures, and completed introductory tasks assigned to me. I also practiced organizing work-related information and following established instructions while coordinating with the people around me.';
+    public const ACCOMPLISHMENT = 'During my first week of internship, I became familiar with the company\'s work environment, policies, communication practices, and daily workflow. I attended orientation activities, reviewed workplace procedures, and completed introductory tasks assigned to me. I also practiced organizing work-related information and following established instructions while coordinating with the people around me.';
 
     public const DIFFICULTIES = 'My main challenge during the first week was adjusting to a new professional environment and becoming familiar with workplace procedures and expectations. Some tasks and processes were initially unfamiliar, so I needed to review instructions carefully and ask appropriate questions before proceeding.';
 
@@ -112,14 +112,24 @@ class OneWeekOjtDemoService
         ]);
 
         $supervisor = $internship->supervisor;
-        if (! $supervisor) {
-            throw new \RuntimeException('Clarence has no supervisor_id. Resolve Adrian Reyes (SUP-0002) from the existing relationship before changing internship data.');
+        $adrian = User::with('supervisorProfile')
+            ->where('role', 'supervisor')
+            ->where('faculty_number', 'SUP-0002')
+            ->first();
+
+        if (! $adrian) {
+            throw new \RuntimeException('Adrian Reyes (SUP-0002) was not found. Do not create a duplicate supervisor.');
+        }
+
+        // Authoritative FK repair: internship/placement must use SUP-0002 by ID, never by first-name match.
+        if (! $supervisor || (int) $supervisor->id !== (int) $adrian->id) {
+            $internship->update(['supervisor_id' => $adrian->id]);
+            $internship->setRelation('supervisor', $adrian);
+            $supervisor = $adrian;
         }
 
         $supervisorName = NameParts::fromProfile($supervisor->supervisorProfile);
-        $isAdrian = str_contains(mb_strtolower($supervisorName), 'reyes')
-            || str_contains(mb_strtolower($supervisorName), 'adrian')
-            || strcasecmp((string) $supervisor->faculty_number, 'SUP-0002') === 0;
+        $isAdrian = strcasecmp((string) $supervisor->faculty_number, 'SUP-0002') === 0;
         if (! $isAdrian) {
             throw new \RuntimeException("Refusing to continue: current supervisor is [{$supervisorName}] (user #{$supervisor->id}), not Adrian Reyes / SUP-0002.");
         }
@@ -200,11 +210,13 @@ class OneWeekOjtDemoService
         $htePath = SignatureCapture::profilePath($supervisor);
         $hteName = NameParts::fromProfile($supervisor->supervisorProfile);
 
-        $internship->attendance()
+        AttendanceLog::withTrashed()
+            ->where('internship_id', $internship->id)
             ->whereNotIn('date', $keep)
             ->get()
-            ->each
-            ->delete();
+            ->each(function (AttendanceLog $log) {
+                $log->forceDelete();
+            });
 
         if (Schema::hasTable('attendance_correction_requests')) {
             AttendanceCorrectionRequest::query()

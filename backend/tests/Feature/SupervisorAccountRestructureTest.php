@@ -257,6 +257,7 @@ class SupervisorAccountRestructureTest extends TestCase
 
         $this->post('/api/v1/supervisor-register', [
             'token' => $token,
+            'login_username' => 'arthur.existing',
             'first_name' => 'Arthur',
             'last_name' => 'Morgan',
             'email' => $map['arthur']->email,

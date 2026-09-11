@@ -30,6 +30,7 @@ use App\Support\UniqueWrite;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\SchemaCache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -87,7 +88,7 @@ class StudentController extends Controller
             'faculty.facultyProfile',
             'coordinator.facultyProfile',
         ];
-        if (Schema::hasTable('internship_placements')) {
+        if (SchemaCache::hasTable('internship_placements')) {
             $with[] = 'placements';
             $with[] = 'currentPlacement';
         }
@@ -179,7 +180,7 @@ class StudentController extends Controller
         $profile = $user->studentProfile;
         $progress = InternshipProgressService::snapshot($internship);
         $load = ['company'];
-        if (Schema::hasTable('internship_placements')) {
+        if (SchemaCache::hasTable('internship_placements')) {
             $load = array_merge($load, ['placements.company', 'placements.supervisor.supervisorProfile', 'currentPlacement']);
         }
         $internship->load($load);
@@ -304,7 +305,7 @@ class StudentController extends Controller
                     ?: ($internship->supervisor?->username),
                 'supervisor_faculty_number' => $internship->supervisor?->faculty_number,
                 'start_date' => $internship->start_date?->toDateString(),
-                'placements' => Schema::hasTable('internship_placements')
+                'placements' => SchemaCache::hasTable('internship_placements')
                     ? $internship->placements->map(fn ($p) => [
                         'id' => $p->id,
                         'sequence_order' => $p->sequence_order,
@@ -334,8 +335,8 @@ class StudentController extends Controller
     public function attendance(Request $request)
     {
         $internship = $this->internship($request);
-        if (! $internship->hasApprovedHteSupervisor()) {
-            return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
         }
         $logs = $internship->attendance()
             ->with('placement')
@@ -344,8 +345,9 @@ class StudentController extends Controller
 
         $this->dtr->decorateLogs(collect($logs->items()));
 
-        $today = now()->toDateString();
-        $todayRecord = $internship->attendance()->whereDate('date', $today)->first();
+        $manilaToday = $this->dtr->manilaToday();
+        $todayState = $this->dtr->todayState($internship, $manilaToday);
+        $todayRecord = $todayState['today_record'];
         $canUndo = $todayRecord ? $this->dtr->canUndoClockOut($todayRecord) : false;
         $undoExpires = null;
         if ($todayRecord?->clock_out) {
@@ -361,13 +363,12 @@ class StudentController extends Controller
         return response()->json([
             'attendance' => $logs,
             'today_record' => $todayRecord,
-            'today_status' => $todayRecord
-                ? ($todayRecord->clock_out ? 'clocked_out' : 'clocked_in')
-                : 'not_clocked_in',
+            'today_status' => $todayState['today_status'],
+            'today_date' => $manilaToday,
             'can_undo_clock_out' => $canUndo,
             'undo_expires_at' => $canUndo ? $undoExpires : null,
             'overtime_prompt' => $overtimePrompt,
-            'active_schedule' => $this->dtr->serializeSchedule($this->dtr->activeScheduleFor($internship, now())),
+            'active_schedule' => $this->dtr->serializeSchedule($this->dtr->activeScheduleFor($internship, $manilaToday)),
             'pending_schedule' => $this->dtr->serializeSchedule($this->dtr->pendingScheduleFor($internship)),
             'schedule_history' => $this->dtr->scheduleHistory($internship)->map(fn ($s) => $this->dtr->serializeSchedule($s))->values(),
             'incomplete_dtr_days' => $this->dtr->incompleteDays($internship),
@@ -381,30 +382,15 @@ class StudentController extends Controller
     public function clockIn(Request $request)
     {
         $internship = $this->internship($request);
-        if (! $internship->hasApprovedHteSupervisor()) {
-            return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
         }
 
         try {
             $log = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
-                $today = now()->toDateString();
-
-                if ($internship->attendance()->whereDate('date', $today)->exists()) {
-                    throw new \RuntimeException('You have already clocked in today.');
-                }
-
-                $clockIn = now()->toTimeString();
-                $log = $internship->attendance()->create([
-                    'date' => $today,
-                    'placement_id' => $internship->current_placement_id,
-                    'clock_in' => $clockIn,
-                    'am_time_in' => $clockIn,
-                    'status' => 'pending',
-                    'clock_in_location' => $request->location ?? null,
-                ]);
-
-                audit_log($request->user()->id, 'clock_in', ['date' => $today]);
+                $log = $this->dtr->clockIn($internship, $request->location ?? null);
+                audit_log($request->user()->id, 'clock_in', ['date' => $this->dtr->manilaToday()]);
 
                 return $log;
             }));
@@ -423,18 +409,20 @@ class StudentController extends Controller
     /** POST /api/v1/student/attendance/clock-out */
     public function clockOut(Request $request)
     {
+        $request->validate([
+            'action' => 'nullable|in:end_day',
+            'location' => 'nullable|string|max:255',
+        ]);
+
         $internship = $this->internship($request);
-        if (! $internship->hasApprovedHteSupervisor()) {
-            return response()->json(['message' => 'Attendance tracking is locked until your HTE Supervisor is approved.'], 403);
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
         }
-        $today = now()->toDateString();
+        $today = $this->dtr->manilaToday();
         try {
             $result = UniqueWrite::retry(fn () => DB::transaction(function () use ($internship, $today, $request) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
-                $open = $internship->attendance()
-                    ->whereDate('date', $today)
-                    ->lockForUpdate()
-                    ->first();
+                $open = $this->dtr->openSessionFor($internship, $today);
                 if (! $open || ! $open->clock_in) {
                     throw new \RuntimeException('No open clock-in was found for today.');
                 }
@@ -448,12 +436,15 @@ class StudentController extends Controller
             }));
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         }
 
         audit_log($request->user()->id, 'clock_out', [
             'date' => $today,
             'hours' => $result['record']->hours_rendered,
             'overtime_detected' => $result['overtime_detected'],
+            'action' => $request->input('action', 'end_day'),
         ]);
 
         return response()->json([
@@ -466,6 +457,87 @@ class StudentController extends Controller
             'clocked_out_at' => $result['record']->clock_out,
             'server_now_display' => ManilaTime::clockDisplay(),
             'server_timezone' => ManilaTime::TZ,
+        ]);
+    }
+
+    /** POST /api/v1/student/attendance/break-start */
+    public function breakStart(Request $request)
+    {
+        $internship = $this->internship($request);
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
+        }
+        $today = $this->dtr->manilaToday();
+
+        try {
+            $log = UniqueWrite::retry(fn () => DB::transaction(function () use ($internship, $today) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $open = $this->dtr->openSessionFor($internship, $today);
+                if (! $open || ! $open->clock_in) {
+                    throw new \RuntimeException('No open clock-in was found for today.');
+                }
+                if ($open->clock_out) {
+                    throw new \RuntimeException('You have already clocked out today.');
+                }
+
+                return $this->dtr->startBreak($open);
+            }));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?: 'Could not start break.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        audit_log($request->user()->id, 'break_start', ['date' => $today, 'log_id' => $log->id]);
+
+        return response()->json([
+            'message' => 'Break started. Resume when you return.',
+            'record' => $log,
+        ]);
+    }
+
+    /** POST /api/v1/student/attendance/break-end */
+    public function breakEnd(Request $request)
+    {
+        $internship = $this->internship($request);
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
+        }
+        $today = $this->dtr->manilaToday();
+
+        try {
+            $log = UniqueWrite::retry(fn () => DB::transaction(function () use ($internship, $today) {
+                Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+                $open = $this->dtr->openSessionFor($internship, $today);
+                if (! $open || ! $open->clock_in) {
+                    throw new \RuntimeException('No open clock-in was found for today.');
+                }
+                if ($open->clock_out) {
+                    throw new \RuntimeException('You have already clocked out today.');
+                }
+                if (! $open->on_break) {
+                    throw new \RuntimeException('You are not currently on break.');
+                }
+
+                return $this->dtr->endBreak($open);
+            }));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?: 'Could not end break.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        audit_log($request->user()->id, 'break_end', ['date' => $today, 'log_id' => $log->id]);
+
+        return response()->json([
+            'message' => 'Break ended. Attendance resumed.',
+            'record' => $log,
         ]);
     }
 
@@ -534,6 +606,28 @@ class StudentController extends Controller
         ]);
 
         $internship = $this->internship($request);
+
+        $newStart = $request->date;
+        $newEnd = $request->end_date;
+        $existingWeek = $internship->journals()
+            ->academic()
+            ->where('week_number', $request->week_number)
+            ->first();
+
+        $overlap = $internship->journals()
+            ->academic()
+            ->when($existingWeek, fn ($q) => $q->where('id', '!=', $existingWeek->id))
+            ->whereNotNull('date')
+            ->whereNotNull('end_date')
+            ->whereDate('date', '<=', $newEnd)
+            ->whereDate('end_date', '>=', $newStart)
+            ->exists();
+
+        if ($overlap) {
+            return response()->json([
+                'message' => 'This journal date range overlaps another academic journal week. Choose non-overlapping dates.',
+            ], 422);
+        }
 
         try {
             $journal = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship) {
@@ -1088,12 +1182,21 @@ class StudentController extends Controller
         $data = $request->validate([
             'company_name' => 'required|string|max:255',
             'address' => 'required|string|max:500',
+            'organization_type' => \App\Support\OrganizationTypes::validationRule(false),
             'contact_person' => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',
             'contact_number' => ['required', 'string', 'max:50', 'regex:/^[0-9+\-\s()]{7,50}$/'],
             'remarks' => 'nullable|string|max:2000',
             'moa' => PlacementMoa::RULE,
         ]);
+
+        $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($data['organization_type'] ?? null);
+        if (! $resolvedType['ok']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'organization_type' => [$resolvedType['message']],
+            ]);
+        }
+        $data['organization_type'] = $resolvedType['value'];
 
         $accredited = Company::query()
             ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
@@ -1165,6 +1268,8 @@ class StudentController extends Controller
             'id' => $req->id,
             'company_name' => $req->company_name,
             'address' => $req->address,
+            'organization_type' => $req->organization_type,
+            'organization_type_label' => $req->organization_type_label,
             'contact_person' => $req->contact_person,
             'contact_email' => $req->contact_email,
             'contact_number' => $req->contact_number,

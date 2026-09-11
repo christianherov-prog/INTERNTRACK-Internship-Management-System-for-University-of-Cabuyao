@@ -12,6 +12,8 @@ class OjtRequirementTemplate extends Model
         'category',     // pre-ojt, during, post-ojt, general
         'sort_order',
         'is_active',
+        'is_system',
+        'system_code',
         'template_file_path',
         'template_file_name',
         'drive_link',
@@ -21,6 +23,7 @@ class OjtRequirementTemplate extends Model
 
     protected $casts = [
         'is_active'  => 'boolean',
+        'is_system'  => 'boolean',
         'sort_order' => 'integer',
         'deadline'   => 'datetime',
     ];

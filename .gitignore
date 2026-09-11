@@ -18,6 +18,7 @@ backend/storage/app/public/*
 # Build / cache
 **/dist/
 **/build/
+frontend/.vite/
 *.log
 
 # OS / IDE
@@ -29,6 +30,29 @@ Thumbs.db
 # Large binary assets accidentally at repo root
 *.pdf
 *.docx
+*.pptx
+
+# Local probe / debug / scratch scripts (never ship)
+backend/_*.php
+backend/_*/
+backend/_*.py
+backend/_*.json
+/fix_styles.py
+/rewrite.py
+/test_auth.py
+/test_endpoints.py
+/test_req.py
+/test_tinker.php
+/test_regex.js
+/find_*.js
+/find_*.py
+/fix_*.py
+/fix_*.js
+/generate_*.py
+
+# QA audit outputs (scripts may remain if tracked; results stay local)
+qa/**/*_results.json
+qa/**/screenshots/
 
 # Junk / local scratch files
 _docx_extract.txt

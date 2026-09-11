@@ -12,6 +12,7 @@ use App\Models\SupervisorProfile;
 use App\Models\User;
 use App\Support\DepartmentScope;
 use App\Support\InternshipProvisioning;
+use App\Support\LoginUsername;
 use App\Support\NameParts;
 use App\Support\SexOptions;
 use App\Support\SupervisorIds;
@@ -20,6 +21,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -190,6 +192,7 @@ class SupervisorRegistrationController extends Controller
     {
         $request->validate([
             'token' => 'required|string',
+            'login_username' => 'required|string|max:50',
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -201,7 +204,12 @@ class SupervisorRegistrationController extends Controller
             'company_id' => 'required|exists:companies,id',
             'password' => 'required|string|min:8|confirmed',
             'acceptance_forms' => 'required|array|min:1',
-            'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|mimetypes:application/pdf,image/jpeg,image/png|max:10240',
+        ], [
+            'acceptance_forms.required' => 'Acceptance Form is required.',
+            'acceptance_forms.min' => 'Acceptance Form is required.',
+            'acceptance_forms.*.mimes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
+            'acceptance_forms.*.mimetypes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -228,6 +236,11 @@ class SupervisorRegistrationController extends Controller
                 ], 409);
             }
 
+            $loginUsername = LoginUsername::validateOrFail(
+                $request->input('login_username'),
+                $existing?->id
+            );
+
             $reapplied = false;
             try {
                 if ($existing && $this->supervisorMayReapply($existing)) {
@@ -240,11 +253,13 @@ class SupervisorRegistrationController extends Controller
                         'password' => Hash::make($request->password),
                         'role' => 'supervisor',
                         'is_active' => false,
+                        'login_username' => $loginUsername,
                     ]);
                     $user = $existing->fresh();
                 } else {
                     $user = User::create([
                         'faculty_number' => null,
+                        'login_username' => $loginUsername,
                         'email' => $request->email,
                         'password' => Hash::make($request->password),
                         'role' => 'supervisor',
@@ -381,24 +396,40 @@ class SupervisorRegistrationController extends Controller
         $invite = SupervisorInviteToken::where('status', 'registered')->findOrFail($id);
         $this->assertFacultyMayReview($request->user(), $invite);
 
-        return DB::transaction(function () use ($request, $invite) {
+        $result = DB::transaction(function () use ($request, $invite) {
             $lockedInvite = SupervisorInviteToken::whereKey($invite->id)->lockForUpdate()->firstOrFail();
             if ($lockedInvite->status !== 'registered') {
-                return response()->json(['message' => 'This registration has already been reviewed.'], 409);
+                return [
+                    'response' => response()->json(['message' => 'This registration has already been reviewed.'], 409),
+                    'notice' => null,
+                ];
             }
 
             $supervisorUser = $this->resolveSupervisorUser($lockedInvite);
             if (! $supervisorUser) {
-                return response()->json([
-                    'message' => 'This registration is missing a supervisor account. Ask the supervisor to register or sign in again.',
-                ], 422);
+                return [
+                    'response' => response()->json([
+                        'message' => 'This registration is missing a supervisor account. Ask the supervisor to register or sign in again.',
+                    ], 422),
+                    'notice' => null,
+                ];
             }
+
+            $supervisorUser->loadMissing('supervisorProfile');
+            $wasAlreadyActive = (bool) $supervisorUser->is_active;
+            $hadPriorAssignment = Internship::where('supervisor_id', $supervisorUser->id)
+                ->where('id', '!=', $lockedInvite->internship_id)
+                ->exists();
+            $isExistingSupervisor = $wasAlreadyActive || $hadPriorAssignment;
 
             $supervisorUser->update(['is_active' => true]);
 
             $internship = Internship::whereKey($lockedInvite->internship_id)->lockForUpdate()->firstOrFail();
             if ($internship->supervisor_id && (int) $internship->supervisor_id !== (int) $supervisorUser->id) {
-                return response()->json(['message' => 'This student already has an assigned supervisor.'], 409);
+                return [
+                    'response' => response()->json(['message' => 'This student already has an assigned supervisor.'], 409),
+                    'notice' => null,
+                ];
             }
 
             $internshipPayload = [
@@ -418,36 +449,43 @@ class SupervisorRegistrationController extends Controller
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
                 'review_remarks' => $request->remarks,
+                'acceptance_form_paths' => $this->markAcceptanceFormsReviewStatus(
+                    $lockedInvite->acceptance_form_paths,
+                    'approved'
+                ),
             ]);
-            $invite = $lockedInvite;
 
-            // Notify the student
-            Notification::notify(
-                $invite->student_id,
-                'supervisor_approved',
-                'Supervisor Approved',
-                "Your supervisor {$invite->last_name}, {$invite->first_name} has been approved and assigned to your internship.",
-                '/student/attendance'
-            );
+            $invite = $lockedInvite->fresh([
+                'student.studentProfile.program',
+                'company',
+            ]);
 
-            // Notify the supervisor
-            Notification::notify(
-                $supervisorUser->id,
-                'account_activated',
-                'Account Activated',
-                "Your InternTrack account has been approved. You can now log in with your ID: {$supervisorUser->username}",
-                '/supervisor/dashboard'
-            );
+            $context = $this->buildDecisionContext($invite, $supervisorUser);
+            $context['is_existing_supervisor'] = $isExistingSupervisor;
 
             audit_log($request->user()->id, 'approve_supervisor', [
                 'invite_id' => $invite->id,
                 'supervisor_id' => $supervisorUser->id,
             ]);
 
-            return response()->json([
-                'message' => "Supervisor {$invite->last_name}, {$invite->first_name} approved and assigned successfully.",
-            ]);
+            return [
+                'response' => response()->json([
+                    'message' => "Supervisor {$invite->last_name}, {$invite->first_name} approved and assigned successfully.",
+                ]),
+                'notice' => ['decision' => 'approved', 'context' => $context],
+            ];
         });
+
+        if (! empty($result['notice'])) {
+            // Registered inside the completed transaction path: Laravel runs this after commit
+            // (or immediately if somehow outside a transaction). Never before durable approval.
+            $this->dispatchDecisionNotices(
+                $result['notice']['decision'],
+                $result['notice']['context']
+            );
+        }
+
+        return $result['response'];
     }
 
     // ─── FACULTY: Reject a supervisor registration ────────────────────────────
@@ -459,26 +497,347 @@ class SupervisorRegistrationController extends Controller
         $invite = SupervisorInviteToken::where('status', 'registered')->findOrFail($id);
         $this->assertFacultyMayReview($request->user(), $invite);
 
-        $invite->update([
-            'status' => 'rejected',
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-            'review_remarks' => $request->remarks,
-        ]);
+        $result = DB::transaction(function () use ($request, $invite) {
+            $lockedInvite = SupervisorInviteToken::whereKey($invite->id)->lockForUpdate()->firstOrFail();
+            if ($lockedInvite->status !== 'registered') {
+                return [
+                    'response' => response()->json(['message' => 'This registration has already been reviewed.'], 409),
+                    'notice' => null,
+                ];
+            }
 
-        // Notify the student
+            $lockedInvite->update([
+                'status' => 'rejected',
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+                'review_remarks' => $request->remarks,
+                'acceptance_form_paths' => $this->markAcceptanceFormsReviewStatus(
+                    $lockedInvite->acceptance_form_paths,
+                    'rejected'
+                ),
+            ]);
+
+            $invite = $lockedInvite->fresh([
+                'student.studentProfile.program',
+                'company',
+            ]);
+
+            $supervisorUser = $this->resolveSupervisorUser($invite);
+            $context = $this->buildDecisionContext($invite, $supervisorUser);
+            $context['remarks'] = trim((string) $request->remarks);
+
+            audit_log($request->user()->id, 'reject_supervisor', ['invite_id' => $invite->id]);
+
+            return [
+                'response' => response()->json([
+                    'message' => 'Supervisor registration rejected.',
+                ]),
+                'notice' => ['decision' => 'rejected', 'context' => $context],
+            ];
+        });
+
+        if (! empty($result['notice'])) {
+            $this->dispatchDecisionNotices(
+                $result['notice']['decision'],
+                $result['notice']['context']
+            );
+        }
+
+        return $result['response'];
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $paths
+     * @return array<int, array<string, mixed>>
+     */
+    private function markAcceptanceFormsReviewStatus(?array $paths, string $status): array
+    {
+        if (! is_array($paths) || $paths === []) {
+            return [];
+        }
+
+        return array_values(array_map(function ($item) use ($status) {
+            if (is_string($item)) {
+                return [
+                    'path' => $item,
+                    'name' => basename($item),
+                    'mime' => null,
+                    'review_status' => $status,
+                ];
+            }
+
+            $item['review_status'] = $status;
+
+            return $item;
+        }, $paths));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDecisionContext(SupervisorInviteToken $invite, ?User $supervisorUser): array
+    {
+        $profile = $invite->student?->studentProfile;
+        $studentName = NameParts::display(
+            $profile?->first_name,
+            $profile?->middle_name,
+            $profile?->last_name,
+            $profile?->suffix
+        ) ?: ($invite->student?->student_number ?: 'the student');
+
+        $supervisorName = NameParts::display(
+            $invite->first_name,
+            $invite->middle_name,
+            $invite->last_name,
+            $invite->suffix
+        ) ?: ($supervisorUser?->name ?: 'Supervisor');
+
+        $program = $profile?->program?->name
+            ?: ($profile?->program?->code ?: ($profile?->course_name ?: '—'));
+
+        return [
+            'invite_id' => $invite->id,
+            'student_id' => $invite->student_id,
+            'student_name' => $studentName,
+            'student_number' => $invite->student?->student_number ?: $profile?->student_number,
+            'program' => $program,
+            'company_name' => $invite->company?->company_name ?: 'the HTE',
+            'supervisor_user_id' => $supervisorUser?->id,
+            'supervisor_name' => $supervisorName,
+            'supervisor_email' => $supervisorUser?->email,
+            'login_username' => $supervisorUser?->login_username ?: $supervisorUser?->username,
+            'supervisor_code' => $supervisorUser?->faculty_number,
+            'is_active' => (bool) ($supervisorUser?->is_active),
+        ];
+    }
+
+    /**
+     * In-app + email notices. Must run only after a successful commit.
+     * Email failure never throws — approval/rejection remains durable.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function dispatchDecisionNotices(string $decision, array $context): void
+    {
+        $studentName = $context['student_name'] ?? 'the student';
+        $supervisorName = $context['supervisor_name'] ?? 'Supervisor';
+        $companyName = $context['company_name'] ?? 'the HTE';
+        $program = $context['program'] ?? '—';
+        $studentNumber = $context['student_number'] ?? null;
+        $loginUsername = $context['login_username'] ?? null;
+        $supervisorCode = $context['supervisor_code'] ?? null;
+        $remarks = $context['remarks'] ?? null;
+        $loginUrl = rtrim((string) config('app.frontend_url', config('app.url')), '/').'/login';
+
+        // Idempotency: one decision email/notification set per invite decision.
+        $alreadySent = Notification::query()
+            ->whereIn('type', ['supervisor_approved', 'supervisor_rejected', 'account_activated'])
+            ->where('data->invite_id', $context['invite_id'] ?? 0)
+            ->exists();
+        if ($alreadySent) {
+            return;
+        }
+
+        if ($decision === 'approved') {
+            Notification::notify(
+                (int) $context['student_id'],
+                'supervisor_approved',
+                'Supervisor Approved',
+                "Your Industry Supervisor {$supervisorName} has been approved.",
+                '/student/attendance',
+                ['invite_id' => $context['invite_id'] ?? null],
+                false
+            );
+
+            if (! empty($context['supervisor_user_id'])) {
+                $isExisting = (bool) ($context['is_existing_supervisor'] ?? false);
+                $emailTitle = 'InternTrack Supervision Request Approved';
+
+                if ($isExisting) {
+                    $inAppMessage = "Your supervision request for {$studentName} has been approved.";
+                    $emailBody = $this->formatApprovalEmailBody(
+                        supervisorName: $supervisorName,
+                        studentName: $studentName,
+                        studentNumber: $studentNumber,
+                        program: $program,
+                        companyName: $companyName,
+                        loginUsername: $loginUsername,
+                        supervisorCode: $supervisorCode,
+                        loginUrl: $loginUrl,
+                        isNewAccount: false
+                    );
+                } else {
+                    $inAppMessage = 'Your InternTrack Supervisor account and supervision request have been approved.';
+                    $emailBody = $this->formatApprovalEmailBody(
+                        supervisorName: $supervisorName,
+                        studentName: $studentName,
+                        studentNumber: $studentNumber,
+                        program: $program,
+                        companyName: $companyName,
+                        loginUsername: $loginUsername,
+                        supervisorCode: $supervisorCode,
+                        loginUrl: $loginUrl,
+                        isNewAccount: true
+                    );
+                }
+
+                Notification::notify(
+                    (int) $context['supervisor_user_id'],
+                    $isExisting ? 'supervisor_approved' : 'account_activated',
+                    $emailTitle,
+                    $inAppMessage,
+                    $isExisting ? '/supervisor/assigned-interns' : '/login',
+                    [
+                        'invite_id' => $context['invite_id'] ?? null,
+                        'email_body' => $emailBody,
+                        'email_subject' => $emailTitle,
+                    ],
+                    true
+                );
+            } else {
+                Log::warning('Supervisor email unavailable after approval.', [
+                    'invite_id' => $context['invite_id'] ?? null,
+                ]);
+            }
+
+            return;
+        }
+
+        // Rejected
+        $rejectRemark = $remarks ? " Reason: {$remarks}" : '';
+
         Notification::notify(
-            $invite->student_id,
+            (int) $context['student_id'],
             'supervisor_rejected',
-            'Supervisor Registration Rejected',
-            "The supervisor registration for {$invite->last_name}, {$invite->first_name} was rejected: {$request->remarks}",
-            '/student/attendance'
+            'Supervisor Request Rejected',
+            "Your Supervisor request was rejected.{$rejectRemark}",
+            '/student/attendance',
+            ['invite_id' => $context['invite_id'] ?? null],
+            false
         );
 
-        audit_log($request->user()->id, 'reject_supervisor', ['invite_id' => $invite->id]);
+        if (! empty($context['supervisor_user_id'])) {
+            $emailTitle = 'InternTrack Supervision Request Update';
+            $emailBody = $this->formatRejectionEmailBody(
+                supervisorName: $supervisorName,
+                studentName: $studentName,
+                companyName: $companyName,
+                remarks: (string) $remarks
+            );
 
-        return response()->json([
-            'message' => 'Supervisor registration rejected.',
+            Notification::notify(
+                (int) $context['supervisor_user_id'],
+                'supervisor_rejected',
+                $emailTitle,
+                "Your supervision request for {$studentName} was rejected.{$rejectRemark}",
+                ! empty($context['is_active']) ? '/supervisor/dashboard' : '/login',
+                [
+                    'invite_id' => $context['invite_id'] ?? null,
+                    'email_body' => $emailBody,
+                    'email_subject' => $emailTitle,
+                ],
+                true
+            );
+        } else {
+            Log::warning('Supervisor email unavailable after rejection.', [
+                'invite_id' => $context['invite_id'] ?? null,
+            ]);
+        }
+    }
+
+    private function formatApprovalEmailBody(
+        string $supervisorName,
+        string $studentName,
+        ?string $studentNumber,
+        string $program,
+        string $companyName,
+        ?string $loginUsername,
+        ?string $supervisorCode,
+        string $loginUrl,
+        bool $isNewAccount
+    ): string {
+        $intro = $isNewAccount
+            ? "Your InternTrack Supervisor account and supervision request have been approved."
+            : "Your supervision request for {$studentName} has been approved by the assigned Faculty.";
+
+        $lines = [
+            "Hello {$supervisorName},",
+            '',
+            $intro,
+            '',
+            'Student:',
+            $studentName,
+        ];
+
+        if ($studentNumber) {
+            $lines[] = '';
+            $lines[] = 'Student Number:';
+            $lines[] = $studentNumber;
+        }
+
+        $lines = array_merge($lines, [
+            '',
+            'Program:',
+            $program,
+            '',
+            'Host Training Establishment:',
+            $companyName,
+            '',
+            'Approval Status:',
+            'Approved',
+            '',
+            'You may now sign in to InternTrack and access the Student through your Assigned Students page.',
+        ]);
+
+        if ($loginUsername) {
+            $lines[] = '';
+            $lines[] = 'Username:';
+            $lines[] = $loginUsername;
+        }
+
+        if ($supervisorCode) {
+            $lines[] = '';
+            $lines[] = 'Supervisor ID:';
+            $lines[] = $supervisorCode;
+        }
+
+        $lines = array_merge($lines, [
+            '',
+            'Open InternTrack:',
+            $loginUrl,
+            '',
+            'Thank you.',
+        ]);
+
+        return implode("\n", $lines);
+    }
+
+    private function formatRejectionEmailBody(
+        string $supervisorName,
+        string $studentName,
+        string $companyName,
+        string $remarks
+    ): string {
+        return implode("\n", [
+            "Hello {$supervisorName},",
+            '',
+            "Your supervision request for {$studentName} was reviewed by the assigned Faculty.",
+            '',
+            'Student:',
+            $studentName,
+            '',
+            'Host Training Establishment:',
+            $companyName,
+            '',
+            'Status:',
+            'Rejected',
+            '',
+            'Faculty Remarks:',
+            $remarks !== '' ? $remarks : '—',
+            '',
+            'This does not terminate your InternTrack account if you already supervise other students. Please coordinate with the Student or Faculty if you wish to resubmit.',
+            '',
+            'Thank you.',
         ]);
     }
 
@@ -635,7 +994,7 @@ class SupervisorRegistrationController extends Controller
     {
         $invites = SupervisorInviteToken::where('supervisor_user_id', $request->user()->id)
             ->where('status', 'pending_accept')
-            ->with(['internship.company', 'student.studentProfile'])
+            ->with(['internship.company', 'student.studentProfile.program'])
             ->orderByDesc('updated_at')
             ->get()
             ->map(fn ($invite) => $this->formatPendingInvite($invite));
@@ -648,6 +1007,16 @@ class SupervisorRegistrationController extends Controller
     {
         $invite = SupervisorInviteToken::where('status', 'pending_accept')->findOrFail($id);
         $this->assertInviteOwner($request->user(), $invite);
+
+        $request->validate([
+            'acceptance_forms' => 'required|array|min:1',
+            'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|mimetypes:application/pdf,image/jpeg,image/png|max:10240',
+        ], [
+            'acceptance_forms.required' => 'Acceptance Form is required.',
+            'acceptance_forms.min' => 'Acceptance Form is required.',
+            'acceptance_forms.*.mimes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
+            'acceptance_forms.*.mimetypes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
+        ]);
 
         return DB::transaction(function () use ($request, $invite) {
             $internship = Internship::whereKey($invite->internship_id)->lockForUpdate()->firstOrFail();
@@ -664,10 +1033,21 @@ class SupervisorRegistrationController extends Controller
                 $profile?->suffix
             ) ?: 'Supervisor';
 
+            $forms = [];
+            foreach ($request->file('acceptance_forms') as $file) {
+                $forms[] = [
+                    'path' => $file->store("internships/{$invite->internship_id}/supervisor-invites/{$invite->id}", 'local'),
+                    'name' => $file->getClientOriginalName(),
+                    'mime' => $file->getClientMimeType(),
+                ];
+            }
+
             $invite->update([
                 'status' => 'registered',
                 'supervisor_user_id' => $request->user()->id,
                 'company_id' => $invite->company_id ?? $internship->company_id ?? $profile?->company_id,
+                'fo29_file_path' => $forms[0]['path'] ?? null,
+                'acceptance_form_paths' => $forms,
                 'reviewed_by' => null,
                 'reviewed_at' => null,
                 'review_remarks' => null,
@@ -795,6 +1175,7 @@ class SupervisorRegistrationController extends Controller
     private function formatPendingInvite(SupervisorInviteToken $invite): array
     {
         $studentProfile = $invite->student?->studentProfile;
+        $company = $invite->internship?->company;
 
         return [
             'id' => $invite->id,
@@ -802,8 +1183,14 @@ class SupervisorRegistrationController extends Controller
             'student_name' => $studentProfile
                 ? trim("{$studentProfile->last_name}, {$studentProfile->first_name}")
                 : $invite->student?->username,
+            'student_number' => $studentProfile?->student_number,
+            'program' => $studentProfile?->program?->name
+                ?? $studentProfile?->program?->code
+                ?? $studentProfile?->course_name,
+            'section' => $studentProfile?->section,
             'term' => $invite->internship?->term,
-            'company_name' => $invite->internship?->company?->company_name,
+            'company_name' => $company?->company_name,
+            'company_address' => $company?->address,
             'expires_at' => optional($invite->expires_at)?->toDateTimeString(),
         ];
     }
@@ -861,8 +1248,19 @@ class SupervisorRegistrationController extends Controller
 
         $payload = $invite->toArray();
         $payload['inviting_student_name'] = $studentName ?: null;
+        $payload['student_number'] = $invite->student?->student_number ?: $profile?->student_number;
         $payload['student_program'] = $program?->code ?: $program?->name;
         $payload['student_department'] = $department?->code ?: $department?->name;
+        $payload['supervisor_code'] = $invite->supervisor?->faculty_number;
+        $payload['login_username'] = $invite->supervisor?->login_username ?: $invite->supervisor?->username;
+        $payload['registered_email'] = $invite->supervisor?->email ?: $invite->email;
+        $payload['submitted_at'] = optional($invite->updated_at)?->toIso8601String();
+        $payload['acceptance_form_status'] = match ($invite->status) {
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'registered' => 'Pending Faculty Approval',
+            default => $invite->status ? ucwords(str_replace('_', ' ', $invite->status)) : null,
+        };
         $payload['status_label'] = match ($invite->status) {
             'registered' => 'Pending Faculty Approval',
             'approved' => 'Approved',

@@ -44,20 +44,38 @@ class DocumentReviewController extends Controller
             \App\Support\DepartmentScope::abortUnlessInternshipInDepartment($request->user(), $internship);
         }
 
-        // Authorization: confirm the reviewer created the requirement template
-        // Match by name AND created_by so we never cross role boundaries.
+        // Authorization: owner-created custom template, system template in dept scope,
+        // or internship assigned to the reviewer.
         $template = OjtRequirementTemplate::where('name', $document->document_type)
-            ->where('created_by', $request->user()->id)
+            ->where(function ($q) use ($request) {
+                $q->where('created_by', $request->user()->id)
+                    ->orWhere('is_system', true);
+            })
             ->first();
 
-        if (!$template) {
-            // Fallback: allow if the internship is directly assigned to the reviewer
-            $internship = $document->internship;
+        if (! $template) {
+            // Alias match for renamed / legacy document_type labels against system codes
+            foreach (\App\Services\DocumentComplianceService::systemCodeCatalog() as $row) {
+                $aliases = \App\Services\DocumentComplianceService::aliasesForCode($row['code'], $row['name']);
+                if (in_array($document->document_type, $aliases, true)) {
+                    $template = OjtRequirementTemplate::query()
+                        ->where('is_system', true)
+                        ->where(function ($q) use ($row) {
+                            $q->where('system_code', $row['code'])
+                                ->orWhere('name', $row['name']);
+                        })
+                        ->first();
+                    break;
+                }
+            }
+        }
+
+        if (!$template || (! $template->is_system && (int) $template->created_by !== (int) $request->user()->id)) {
             $isAssigned = $internship &&
                 ($internship->faculty_id === $request->user()->id ||
                  $internship->coordinator_id === $request->user()->id);
 
-            if (!$isAssigned) {
+            if (!$isAssigned && ! ($template && $template->is_system)) {
                 return response()->json(['message' => 'Unauthorized to review this document.'], 403);
             }
         }
@@ -120,6 +138,16 @@ class DocumentReviewController extends Controller
         }
 
         $document->refresh();
+
+        $student = $document->internship?->student;
+        audit_log($request->user()->id, $newStatus === 'approved' ? 'document_approved' : 'document_rejected', [
+            'document_id' => $document->id,
+            'document_type' => $document->document_type,
+            'student_id' => $student?->id,
+            'student_number' => $student?->student_number,
+            'internship_id' => $document->internship_id,
+            'remarks' => $request->remarks,
+        ]);
 
         return response()->json([
             'message'  => 'Document ' . $newStatus . ' successfully.',

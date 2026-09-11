@@ -23,6 +23,121 @@ class DtrWorkflowService
 
     public const CORRECTION_MAX_DAYS = 3;
 
+    /** Authoritative attendance calendar day (Asia/Manila). */
+    public function manilaToday(): string
+    {
+        return ManilaTime::todayDateString();
+    }
+
+    /**
+     * Today's attendance row for an internship (active only).
+     */
+    public function todayLog(Internship $internship, ?string $manilaDate = null): ?AttendanceLog
+    {
+        $day = $manilaDate ?: $this->manilaToday();
+
+        return $internship->attendance()
+            ->whereDate('date', $day)
+            ->first();
+    }
+
+    /**
+     * Resolve today's status for the student attendance UI.
+     *
+     * @return array{today_record: ?AttendanceLog, today_status: string}
+     */
+    public function todayState(Internship $internship, ?string $manilaDate = null): array
+    {
+        $todayRecord = $this->todayLog($internship, $manilaDate);
+
+        $status = 'not_clocked_in';
+        if ($todayRecord) {
+            if ($todayRecord->clock_out) {
+                $status = 'clocked_out';
+            } elseif ($todayRecord->on_break) {
+                $status = 'on_break';
+            } else {
+                $status = 'clocked_in';
+            }
+        }
+
+        return [
+            'today_record' => $todayRecord,
+            'today_status' => $status,
+        ];
+    }
+
+    /**
+     * Create today's clock-in. Soft-deleted same-day rows (unique index leftovers)
+     * are permanently removed so they cannot block a legitimate new session.
+     * Does not restore historical soft-deleted completed days into FO-30.
+     */
+    public function clockIn(Internship $internship, ?string $location = null): AttendanceLog
+    {
+        $today = $this->manilaToday();
+
+        $existing = $internship->attendance()
+            ->withTrashed()
+            ->whereDate('date', $today)
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing && ! $existing->trashed()) {
+            throw new \RuntimeException('You have already clocked in today.');
+        }
+
+        if ($existing && $existing->trashed()) {
+            $existing->forceDelete();
+        }
+
+        $clockIn = now()->toTimeString();
+
+        return $internship->attendance()->create([
+            'date' => $today,
+            'placement_id' => $internship->current_placement_id,
+            'clock_in' => $clockIn,
+            'am_time_in' => $clockIn,
+            'status' => 'pending',
+            'clock_in_location' => $location,
+            'on_break' => false,
+            'break_start' => null,
+            'break_end' => null,
+            'clock_out' => null,
+            'am_time_out' => null,
+            'pm_time_in' => null,
+            'pm_time_out' => null,
+            'hours_rendered' => null,
+        ]);
+    }
+
+    /**
+     * Active open attendance session for clock-out / break actions.
+     * Prefers the Manila calendar day, then any incomplete session for the internship.
+     */
+    public function openSessionFor(Internship $internship, ?string $manilaDate = null): ?AttendanceLog
+    {
+        $day = $manilaDate ?: $this->manilaToday();
+
+        $todayOpen = $internship->attendance()
+            ->whereDate('date', $day)
+            ->whereNotNull('clock_in')
+            ->whereNull('clock_out')
+            ->lockForUpdate()
+            ->first();
+
+        if ($todayOpen) {
+            return $todayOpen;
+        }
+
+        return $internship->attendance()
+            ->whereNotNull('clock_in')
+            ->whereNull('clock_out')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
     public function activeScheduleFor(Internship $internship, Carbon|string $date): ?WorkSchedule
     {
         $day = Carbon::parse($date)->toDateString();
@@ -201,11 +316,67 @@ class DtrWorkflowService
         return now();
     }
 
+    public function startBreak(AttendanceLog $log): AttendanceLog
+    {
+        if (! $log->clock_in || $log->clock_out) {
+            throw ValidationException::withMessages([
+                'break' => 'You must be clocked in (and not yet clocked out) to take a break.',
+            ]);
+        }
+
+        if ($log->break_start && $log->break_end) {
+            throw ValidationException::withMessages([
+                'break' => 'Only one break is allowed per day.',
+            ]);
+        }
+
+        if ($log->on_break || ($log->break_start && ! $log->break_end)) {
+            throw ValidationException::withMessages([
+                'break' => 'You are already on a break. Resume attendance before ending the day.',
+            ]);
+        }
+
+        $log->update([
+            'break_start' => now(),
+            'break_end' => null,
+            'on_break' => true,
+        ]);
+
+        return $log->fresh();
+    }
+
+    public function endBreak(AttendanceLog $log): AttendanceLog
+    {
+        if (! $log->on_break || ! $log->break_start) {
+            throw ValidationException::withMessages([
+                'break' => 'You are not currently on a break.',
+            ]);
+        }
+
+        if ($log->break_end) {
+            throw ValidationException::withMessages([
+                'break' => 'This break has already ended.',
+            ]);
+        }
+
+        $log->update([
+            'break_end' => now(),
+            'on_break' => false,
+        ]);
+
+        return $log->fresh();
+    }
+
     /**
      * @return array{record: AttendanceLog, overtime_detected: bool, excess_minutes: int, undo_expires_at: string, can_undo_clock_out: bool}
      */
     public function finalizeClockOut(AttendanceLog $log, Carbon $clockOut, ?string $location = null): array
     {
+        if ($log->on_break && $log->break_start && ! $log->break_end) {
+            $log->break_end = $clockOut;
+            $log->on_break = false;
+        }
+
         $clockOutTime = $clockOut->format('H:i:s');
         $clockIn = $this->combineDateAndTime($log->date, $log->clock_in);
         $schedule = $this->activeScheduleFor($log->internship, $log->date);
@@ -227,11 +398,17 @@ class DtrWorkflowService
             }
         }
 
+        $breakMinutes = $this->breakMinutesFor($log);
+        $baseMinutes = max(0, $baseMinutes - $breakMinutes);
+
         $hoursRendered = round($baseMinutes / 60, 2);
 
         $log->update([
             'clock_out' => $clockOutTime,
             'am_time_out' => $clockOutTime,
+            'break_start' => $log->break_start,
+            'break_end' => $log->break_end,
+            'on_break' => false,
             'hours_rendered' => $hoursRendered,
             'overtime_hours' => $log->overtime_hours ?: 0,
             'clock_out_location' => $location,
@@ -246,6 +423,22 @@ class DtrWorkflowService
             'undo_expires_at' => $undoExpires->toIso8601String(),
             'can_undo_clock_out' => true,
         ];
+    }
+
+    public function breakMinutesFor(AttendanceLog $log): int
+    {
+        if (! $log->break_start || ! $log->break_end) {
+            return 0;
+        }
+
+        $start = $log->break_start instanceof Carbon
+            ? $log->break_start->copy()
+            : Carbon::parse($log->break_start);
+        $end = $log->break_end instanceof Carbon
+            ? $log->break_end->copy()
+            : Carbon::parse($log->break_end);
+
+        return $this->minutesBetween($start, $end);
     }
 
     public function canUndoClockOut(AttendanceLog $log, ?Carbon $now = null): bool
@@ -503,10 +696,20 @@ class DtrWorkflowService
         Internship $internship,
         User $student,
         string $date,
+        string $correctionType,
         ?string $requestedClockIn,
         ?string $requestedClockOut,
+        ?string $requestedBreakStart,
+        ?string $requestedBreakEnd,
         ?string $reason
     ): AttendanceCorrectionRequest {
+        $allowedTypes = ['clock_in', 'clock_out', 'break_start', 'break_end'];
+        if (! in_array($correctionType, $allowedTypes, true)) {
+            throw ValidationException::withMessages([
+                'correction_type' => 'Correction type must be clock_in, clock_out, break_start, or break_end.',
+            ]);
+        }
+
         $day = Carbon::parse($date)->startOfDay();
         $today = now()->startOfDay();
         $minDate = $today->copy()->subDays(self::CORRECTION_MAX_DAYS);
@@ -531,24 +734,30 @@ class DtrWorkflowService
 
         $in = $requestedClockIn ? $this->normalizeTime($requestedClockIn) : null;
         $out = $requestedClockOut ? $this->normalizeTime($requestedClockOut) : null;
+        $breakStart = $requestedBreakStart ? $this->combineDateAndTime($day, $requestedBreakStart) : null;
+        $breakEnd = $requestedBreakEnd ? $this->combineDateAndTime($day, $requestedBreakEnd) : null;
 
-        if (! $in && ! $out) {
+        $requiredField = match ($correctionType) {
+            'clock_in' => ['value' => $in, 'key' => 'requested_clock_in', 'label' => 'clock-in'],
+            'clock_out' => ['value' => $out, 'key' => 'requested_clock_out', 'label' => 'clock-out'],
+            'break_start' => ['value' => $breakStart, 'key' => 'requested_break_start', 'label' => 'break start'],
+            'break_end' => ['value' => $breakEnd, 'key' => 'requested_break_end', 'label' => 'break end'],
+        };
+
+        if (! $requiredField['value']) {
             throw ValidationException::withMessages([
-                'requested_clock_in' => 'Enter the clock-in and/or clock-out time you believe is correct.',
+                $requiredField['key'] => 'Enter the '.$requiredField['label'].' time you believe is correct.',
             ]);
         }
 
         $log = $internship->attendance()->whereDate('date', $day->toDateString())->first();
 
-        if ($log && $log->clock_in && $log->clock_out) {
+        if (in_array($correctionType, ['clock_in', 'clock_out'], true)
+            && $log
+            && $log->clock_in
+            && $log->clock_out) {
             throw ValidationException::withMessages([
-                'date' => 'That day already has a complete clock-in and clock-out. Correction requests are only for missing or incomplete entries.',
-            ]);
-        }
-
-        if (! $log && (! $in || ! $out)) {
-            throw ValidationException::withMessages([
-                'requested_clock_out' => 'Missing days require both a clock-in and a clock-out time.',
+                'date' => 'That day already has a complete clock-in and clock-out. Use a break correction if you need to adjust break times.',
             ]);
         }
 
@@ -569,17 +778,24 @@ class DtrWorkflowService
 
         $originalIn = $log ? $this->timeString($log->clock_in) : null;
         $originalOut = $log ? $this->timeString($log->clock_out) : null;
+        $originalBreakStart = $log?->break_start;
+        $originalBreakEnd = $log?->break_end;
 
         $request = AttendanceCorrectionRequest::create([
             'internship_id' => $internship->id,
             'student_id' => $student->id,
             'attendance_log_id' => $log?->id,
             'date' => $day->toDateString(),
+            'correction_type' => $correctionType,
             'original_clock_in' => $originalIn,
             'original_clock_out' => $originalOut,
+            'original_break_start' => $originalBreakStart,
+            'original_break_end' => $originalBreakEnd,
             'original_hours_rendered' => $log?->hours_rendered,
-            'requested_clock_in' => $in ?: $originalIn,
-            'requested_clock_out' => $out ?: $originalOut,
+            'requested_clock_in' => $correctionType === 'clock_in' ? $in : $originalIn,
+            'requested_clock_out' => $correctionType === 'clock_out' ? $out : $originalOut,
+            'requested_break_start' => $correctionType === 'break_start' ? $breakStart : $originalBreakStart,
+            'requested_break_end' => $correctionType === 'break_end' ? $breakEnd : $originalBreakEnd,
             'reason' => $reason,
             'status' => AttendanceCorrectionRequest::STATUS_PENDING_SUPERVISOR,
         ]);
@@ -588,11 +804,16 @@ class DtrWorkflowService
             'original_state' => [
                 'clock_in' => $originalIn,
                 'clock_out' => $originalOut,
+                'break_start' => optional($originalBreakStart)?->toDateTimeString(),
+                'break_end' => optional($originalBreakEnd)?->toDateTimeString(),
                 'hours_rendered' => $log?->hours_rendered,
             ],
             'requested_values' => [
+                'correction_type' => $correctionType,
                 'clock_in' => $request->requested_clock_in,
                 'clock_out' => $request->requested_clock_out,
+                'break_start' => optional($request->requested_break_start)?->toDateTimeString(),
+                'break_end' => optional($request->requested_break_end)?->toDateTimeString(),
                 'reason' => $reason,
             ],
         ]);
@@ -602,7 +823,7 @@ class DtrWorkflowService
                 (int) $internship->supervisor_id,
                 'attendance_correction_pending',
                 'DTR correction request pending',
-                $this->studentName($internship).' submitted a correction request for '.$day->toDateString().'.',
+                $this->studentName($internship).' submitted a '.$correctionType.' correction for '.$day->toDateString().'.',
                 '/supervisor/attendance-validation',
                 ['correction_request_id' => $request->id]
             );
@@ -611,6 +832,7 @@ class DtrWorkflowService
         audit_log($student->id, 'dtr_correction_submitted', [
             'request_id' => $request->id,
             'date' => $day->toDateString(),
+            'correction_type' => $correctionType,
         ]);
 
         return $request;
@@ -744,7 +966,7 @@ class DtrWorkflowService
 
     public function incompleteDays(Internship $internship): array
     {
-        $today = now()->startOfDay();
+        $today = ManilaTime::now()->startOfDay();
         $from = $today->copy()->subDays(self::CORRECTION_MAX_DAYS);
         $days = [];
 
@@ -764,13 +986,19 @@ class DtrWorkflowService
             ->map(fn ($d) => Carbon::parse($d)->toDateString())
             ->all();
 
+        $logsByDate = $internship->attendance()
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<', $today->toDateString())
+            ->get()
+            ->keyBy(fn (AttendanceLog $log) => Carbon::parse($log->date)->toDateString());
+
         for ($d = $from->copy(); $d->lt($today); $d->addDay()) {
             $date = $d->toDateString();
             if ($internship->start_date && $d->lt(Carbon::parse($internship->start_date)->startOfDay())) {
                 continue;
             }
 
-            $log = $internship->attendance()->whereDate('date', $date)->first();
+            $log = $logsByDate->get($date);
             $open = $openByDate->get($date);
             $reason = null;
 
@@ -986,37 +1214,56 @@ class DtrWorkflowService
             $log->restore();
         }
 
-        $clockIn = $request->requested_clock_in;
-        $clockOut = $request->requested_clock_out;
-        $hours = $this->hoursForTimes($internship, $date, $clockIn, $clockOut);
+        $clockIn = $request->requested_clock_in ?: ($log ? $this->timeString($log->clock_in) : null);
+        $clockOut = $request->requested_clock_out ?: ($log ? $this->timeString($log->clock_out) : null);
+        $breakStart = $request->requested_break_start ?: $log?->break_start;
+        $breakEnd = $request->requested_break_end ?: $log?->break_end;
+
+        if ($request->correction_type === 'clock_in') {
+            $clockIn = $request->requested_clock_in;
+        } elseif ($request->correction_type === 'clock_out') {
+            $clockOut = $request->requested_clock_out;
+        } elseif ($request->correction_type === 'break_start') {
+            $breakStart = $request->requested_break_start;
+        } elseif ($request->correction_type === 'break_end') {
+            $breakEnd = $request->requested_break_end;
+        }
+
+        $hours = $this->hoursForTimes($internship, $date, $clockIn, $clockOut, $breakStart, $breakEnd);
+
+        $payload = [
+            'clock_in' => $clockIn,
+            'clock_out' => $clockOut,
+            'am_time_in' => $clockIn,
+            'am_time_out' => $clockOut,
+            'break_start' => $breakStart,
+            'break_end' => $breakEnd,
+            'on_break' => false,
+            'hours_rendered' => $hours,
+        ];
 
         if (! $log) {
-            $log = $internship->attendance()->create([
+            $log = $internship->attendance()->create(array_merge($payload, [
                 'date' => $date,
                 'placement_id' => $internship->current_placement_id,
-                'clock_in' => $clockIn,
-                'clock_out' => $clockOut,
-                'am_time_in' => $clockIn,
-                'am_time_out' => $clockOut,
-                'hours_rendered' => $hours,
                 'overtime_hours' => 0,
                 'status' => 'pending',
-            ]);
+            ]));
         } else {
-            $log->update([
-                'clock_in' => $clockIn,
-                'clock_out' => $clockOut,
-                'am_time_in' => $clockIn,
-                'am_time_out' => $clockOut,
-                'hours_rendered' => $hours,
-            ]);
+            $log->update($payload);
         }
 
         return $log->fresh();
     }
 
-    private function hoursForTimes(Internship $internship, string $date, ?string $clockIn, ?string $clockOut): ?float
-    {
+    private function hoursForTimes(
+        Internship $internship,
+        string $date,
+        ?string $clockIn,
+        ?string $clockOut,
+        mixed $breakStart = null,
+        mixed $breakEnd = null
+    ): ?float {
         if (! $clockIn || ! $clockOut) {
             return null;
         }
@@ -1026,16 +1273,22 @@ class DtrWorkflowService
         $schedule = $this->activeScheduleFor($internship, $date);
 
         if (! $schedule) {
-            return round($this->minutesBetween($in, $out) / 60, 2);
+            $minutes = $this->minutesBetween($in, $out);
+        } else {
+            $schedStart = $this->combineDateAndTime($date, $schedule->start_time);
+            $schedEnd = $this->combineDateAndTime($date, $schedule->end_time);
+            $overlapStart = $in->greaterThan($schedStart) ? $in : $schedStart;
+            $overlapEnd = $out->lessThan($schedEnd) ? $out : $schedEnd;
+            $minutes = $overlapEnd->greaterThan($overlapStart)
+                ? $this->minutesBetween($overlapStart, $overlapEnd)
+                : 0;
         }
 
-        $schedStart = $this->combineDateAndTime($date, $schedule->start_time);
-        $schedEnd = $this->combineDateAndTime($date, $schedule->end_time);
-        $overlapStart = $in->greaterThan($schedStart) ? $in : $schedStart;
-        $overlapEnd = $out->lessThan($schedEnd) ? $out : $schedEnd;
-        $minutes = $overlapEnd->greaterThan($overlapStart)
-            ? $this->minutesBetween($overlapStart, $overlapEnd)
-            : 0;
+        if ($breakStart && $breakEnd) {
+            $bStart = $breakStart instanceof Carbon ? $breakStart->copy() : Carbon::parse($breakStart);
+            $bEnd = $breakEnd instanceof Carbon ? $breakEnd->copy() : Carbon::parse($breakEnd);
+            $minutes = max(0, $minutes - $this->minutesBetween($bStart, $bEnd));
+        }
 
         return round($minutes / 60, 2);
     }
@@ -1160,8 +1413,11 @@ class DtrWorkflowService
     private function correctionRequestedValues(AttendanceCorrectionRequest $request): array
     {
         return [
+            'correction_type' => $request->correction_type,
             'clock_in' => $this->timeString($request->requested_clock_in),
             'clock_out' => $this->timeString($request->requested_clock_out),
+            'break_start' => optional($request->requested_break_start)?->toDateTimeString(),
+            'break_end' => optional($request->requested_break_end)?->toDateTimeString(),
             'reason' => $request->reason,
         ];
     }

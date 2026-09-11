@@ -79,6 +79,8 @@ class UserResource extends JsonResource
             // Identity
             'id' => $this->id,
             'username' => $this->username,
+            'login_username' => $this->attributes['login_username'] ?? null,
+            'account_id' => $this->account_id,
             'role' => $this->role,
             'name' => $name,
             'first_name' => $firstName,

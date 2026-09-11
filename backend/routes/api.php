@@ -118,6 +118,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/attendance', [StudentController::class, 'attendance']);
             Route::post('/attendance/clock-in', [StudentController::class, 'clockIn']);
             Route::post('/attendance/clock-out', [StudentController::class, 'clockOut']);
+            Route::post('/attendance/break-start', [StudentController::class, 'breakStart']);
+            Route::post('/attendance/break-end', [StudentController::class, 'breakEnd']);
             Route::post('/attendance/undo-clock-out', [DtrWorkflowController::class, 'undoClockOut']);
             Route::post('/attendance/overtime-decision', [DtrWorkflowController::class, 'decideOvertime']);
             Route::get('/attendance/schedules', [DtrWorkflowController::class, 'studentSchedules']);
@@ -190,9 +192,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/internships/{id}/end-supervision', [SupervisorController::class, 'endSupervision']);
             // Absorption finalize is Director-only; stub route removed from supervisor API surface.
 
-            // PDF generation for supervisor
+            // PDF generation for supervisor (attendance / FO-30 only — journals are faculty-reviewed)
             Route::get('/dtr/generate', [DtrPdfController::class, 'generate']);
-            Route::get('/journal/generate', [JournalPdfController::class, 'generate']);
         });
 
         // Faculty (coordinators may also act as faculty supervisors on their advisees)
@@ -210,6 +211,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/journals', [FacultyController::class, 'journals']);
             Route::patch('/journals/{id}/review', [FacultyController::class, 'reviewJournal']);
             Route::get('/supervisor-feedback', [FacultyController::class, 'supervisorFeedback']);
+            Route::get('/supervisors', [FacultyController::class, 'supervisors']);
+            Route::get('/supervisors/{id}', [FacultyController::class, 'showSupervisor']);
             Route::get('/evaluations', [FacultyController::class, 'evaluations']);
             Route::post('/evaluations/{internshipId}/approve-period', [FacultyController::class, 'approveEvaluationPeriod']);
             Route::post('/evaluations/{internshipId}', [FacultyController::class, 'submitEvaluation']);
@@ -271,6 +274,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/performance', [CoordinatorController::class, 'reportPerformance']);
             Route::get('/evaluations', [CoordinatorController::class, 'evaluations']);
             Route::get('/supervisor-feedback', [CoordinatorController::class, 'supervisorFeedback']);
+            Route::get('/supervisors', [CoordinatorController::class, 'supervisors']);
+            Route::get('/supervisors/{id}', [CoordinatorController::class, 'showSupervisor']);
             Route::get('/logbook', [CoordinatorController::class, 'logbook']);
             Route::patch('/logbook/{id}/review', [CoordinatorController::class, 'reviewLogbook']);
             Route::get('/documents', [CoordinatorController::class, 'documents']);
@@ -299,6 +304,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies', [DirectorController::class, 'companies']);
             Route::post('/companies', [DirectorController::class, 'storeCompany']);
             Route::put('/companies/{id}', [DirectorController::class, 'updateCompany']);
+            Route::get('/supervisors', [DirectorController::class, 'supervisors']);
+            Route::get('/supervisors/{id}', [DirectorController::class, 'showSupervisor']);
             Route::get('/moa-monitoring', [DirectorController::class, 'moaMonitoring']);
             Route::get('/reports/placement-trends', [DirectorController::class, 'placementTrends']);
             Route::get('/reports/ched-data', [DirectorController::class, 'chedReportData']);

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Events\NotificationCreated;
 use App\Mail\InternTrackNotificationMail;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class Notification extends Model
@@ -38,12 +39,13 @@ class Notification extends Model
 
         return match ($role) {
             'student' => match (true) {
-                in_array($type, ['document_approved', 'document_rejected'], true) => null,
+                in_array($type, ['document_approved', 'document_rejected', 'supervisor_approved', 'supervisor_rejected'], true) => null,
                 str_contains($type, 'attendance') => 'attendanceAlerts',
                 str_contains($type, 'evaluation') => 'evaluationReminders',
                 default => 'emailReminders',
             },
             'supervisor' => match (true) {
+                in_array($type, ['supervisor_approved', 'supervisor_rejected', 'account_activated'], true) => null,
                 str_contains($type, 'attendance') => 'attendancePending',
                 str_contains($type, 'journal') => 'journalReviews',
                 str_contains($type, 'evaluation') || str_contains($type, 'absorption') => 'evaluationDue',
@@ -90,9 +92,18 @@ class Notification extends Model
     /**
      * Create a notification for a user, respecting their stored preferences.
      * Returns null when the user has opted out of this notification type.
+     *
+     * @param  bool  $sendEmail  When false, only the in-app notification is created.
      */
-    public static function notify(int $userId, string $type, string $title, string $message, ?string $link = null, ?array $data = null): ?static
-    {
+    public static function notify(
+        int $userId,
+        string $type,
+        string $title,
+        string $message,
+        ?string $link = null,
+        ?array $data = null,
+        bool $sendEmail = true
+    ): ?static {
         $user = User::query()->find($userId);
         if (!$user) {
             return null;
@@ -117,29 +128,51 @@ class Notification extends Model
             // Broadcasting is optional (e.g. no Reverb / queue in tests).
         }
 
-        // Send immediately so students are informed without a queue worker.
         $emailTypes = [
             'document_rejected',
             'document_approved',
             'supervisor_approved',
             'supervisor_rejected',
+            'account_activated',
             'placement_assigned',
             'journal_needs_revision',
             'evaluation_submitted',
         ];
 
-        if (in_array(strtolower($type), $emailTypes, true) && $user->email) {
-            $absoluteLink = $link;
-            if ($link && ! preg_match('#^https?://#i', $link)) {
-                $absoluteLink = rtrim((string) config('app.frontend_url', config('app.url')), '/').'/'.ltrim($link, '/');
-            }
+        $shouldEmail = $sendEmail && in_array(strtolower($type), $emailTypes, true);
+        if (! $shouldEmail) {
+            return $notification;
+        }
 
-            try {
-                Mail::to($user->email)
-                    ->send(new InternTrackNotificationMail($title, $message, $absoluteLink));
-            } catch (\Throwable) {
-                // Email delivery is non-blocking — never fail the request.
-            }
+        $email = trim((string) $user->email);
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Log::warning('Supervisor email unavailable.', [
+                'user_id' => $userId,
+                'type' => $type,
+                'notification_id' => $notification->id,
+            ]);
+
+            return $notification;
+        }
+
+        $absoluteLink = $link;
+        if ($link && ! preg_match('#^https?://#i', $link)) {
+            $absoluteLink = rtrim((string) config('app.frontend_url', config('app.url')), '/').'/'.ltrim($link, '/');
+        }
+
+        $emailTitle = is_string($data['email_subject'] ?? null) ? $data['email_subject'] : $title;
+        $emailBody = is_string($data['email_body'] ?? null) ? $data['email_body'] : $message;
+
+        try {
+            Mail::to($email)
+                ->send(new InternTrackNotificationMail($emailTitle, $emailBody, $absoluteLink));
+        } catch (\Throwable $e) {
+            Log::warning('Notification email delivery failed.', [
+                'user_id' => $userId,
+                'type' => $type,
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $notification;

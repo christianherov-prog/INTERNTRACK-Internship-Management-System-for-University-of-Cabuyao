@@ -18,6 +18,7 @@ use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
 use App\Services\OfficialFormDataService;
 use App\Services\ProgramRequirementService;
+use App\Services\SupervisorDirectoryService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
@@ -826,8 +827,6 @@ class FacultyController extends Controller
     /** GET /api/v1/faculty/reports/compliance */
     public function reportCompliance(Request $request)
     {
-        $requiredTypes = RequiredDocuments::types();
-        $requiredCount = RequiredDocuments::count();
         $facultyId = $request->user()->id;
         $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
 
@@ -840,29 +839,12 @@ class FacultyController extends Controller
                         $i->where('faculty_id', $facultyId);
                     });
             })
-            ->with(['studentProfile.program', 'activeInternship.documents'])
+            ->with(['studentProfile.program', 'activeInternship'])
             ->get();
 
-        $rows = $users->map(function ($u) use ($requiredCount, $requiredTypes) {
-            $i = $u->activeInternship;
-            $approvedDocsCount = $i ? $i->documents->where('status', 'approved')->count() : 0;
-            $approvedDocTypes = $i ? $i->documents->where('status', 'approved')->pluck('document_type') : collect([]);
+        $report = app(\App\Services\DocumentComplianceService::class)->reportForStudents($users);
 
-            return [
-                'student_name' => trim((optional($u->studentProfile)->last_name ?? '').', '.(optional($u->studentProfile)->first_name ?? '')),
-                'program' => $u->studentProfile?->program?->name ?? '-',
-                'approved_docs' => $approvedDocsCount,
-                'required_docs' => $requiredCount,
-                'compliance_pct' => $requiredCount > 0 ? round($approvedDocsCount / $requiredCount * 100) : 0,
-                'missing_docs' => collect($requiredTypes)->diff($approvedDocTypes)->values(),
-            ];
-        });
-
-        return response()->json([
-            'rows' => $rows,
-            'required_types' => $requiredTypes,
-            'generated_at' => now()->toDateTimeString(),
-        ]);
+        return response()->json($report);
     }
 
     /** GET /api/v1/faculty/reports/performance */
@@ -927,5 +909,17 @@ class FacultyController extends Controller
             'eval_averages' => $evalAvg,
             'generated_at' => now()->toDateTimeString(),
         ]);
+    }
+
+    /** GET /api/v1/faculty/supervisors */
+    public function supervisors(Request $request, SupervisorDirectoryService $directory)
+    {
+        return $directory->listFor($request->user(), SupervisorDirectoryService::SCOPE_FACULTY);
+    }
+
+    /** GET /api/v1/faculty/supervisors/{id} */
+    public function showSupervisor(Request $request, int $id, SupervisorDirectoryService $directory)
+    {
+        return $directory->showFor($request->user(), SupervisorDirectoryService::SCOPE_FACULTY, $id);
     }
 }

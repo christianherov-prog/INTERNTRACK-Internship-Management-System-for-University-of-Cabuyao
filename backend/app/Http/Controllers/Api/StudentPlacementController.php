@@ -8,6 +8,7 @@ use App\Http\Requests\Student\StoreHteRequest;
 use App\Models\Company;
 use App\Models\HteRequest;
 use App\Models\InternshipApplication;
+use App\Support\OrganizationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -96,6 +97,7 @@ class StudentPlacementController extends Controller
             'student_id' => $request->user()->id,
             'company_name' => $request->company_name,
             'address' => $request->address,
+            'organization_type' => OrganizationTypes::sanitize($request->organization_type),
             'contact_person' => $request->contact_person,
             'contact_email' => $request->contact_email,
             'contact_number' => $request->contact_number,

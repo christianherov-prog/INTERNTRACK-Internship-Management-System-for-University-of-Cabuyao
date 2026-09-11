@@ -7,11 +7,18 @@ import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { cacheDelete } from '../../utils/pageCache'
 import MoaFilePicker, { validateMoaFile } from '../../components/MoaFilePicker'
+import OrganizationTypeField, {
+  ORG_TYPE_SPECIFY,
+  resolveOrganizationTypeForApi,
+  validateOrganizationType,
+} from '../../components/OrganizationTypeField'
 import InternTrackLoader from '../../components/InternTrackLoader'
 
 const EMPTY_HTE = {
   company_name: '',
   address: '',
+  organization_type_select: '',
+  organization_type_custom: '',
   contact_person: '',
   contact_email: '',
   contact_number: '',
@@ -129,6 +136,11 @@ function StudentCompanies() {
       setError('Company name and address are required.')
       return
     }
+    const orgErr = validateOrganizationType(newHte.organization_type_select, newHte.organization_type_custom)
+    if (orgErr) {
+      setError(orgErr)
+      return
+    }
     const accredited = companies.some(
       (c) => String(c.company_name || '').trim().toLowerCase() === name.toLowerCase()
     )
@@ -148,7 +160,16 @@ function StudentCompanies() {
     setError(null)
     try {
       const form = new FormData()
-      Object.entries(newHte).forEach(([key, value]) => form.append(key, value ?? ''))
+      form.append('company_name', newHte.company_name ?? '')
+      form.append('address', newHte.address ?? '')
+      form.append(
+        'organization_type',
+        resolveOrganizationTypeForApi(newHte.organization_type_select, newHte.organization_type_custom) || ''
+      )
+      form.append('contact_person', newHte.contact_person ?? '')
+      form.append('contact_email', newHte.contact_email ?? '')
+      form.append('contact_number', newHte.contact_number ?? '')
+      form.append('remarks', newHte.remarks ?? '')
       if (hteMoa) form.append('moa', hteMoa)
       await api.post('/student/hte-requests', form)
       setSuccessMsg('Request Sent')
@@ -158,7 +179,7 @@ function StudentCompanies() {
       cacheDelete('coordinator:hte-requests')
       loadData()
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.errors?.moa?.[0] || err.response?.data?.errors?.contact_email?.[0] || err.response?.data?.errors?.contact_number?.[0] || 'Failed to submit HTE request.')
+      setError(err.response?.data?.message || err.response?.data?.errors?.organization_type?.[0] || err.response?.data?.errors?.moa?.[0] || err.response?.data?.errors?.contact_email?.[0] || err.response?.data?.errors?.contact_number?.[0] || 'Failed to submit HTE request.')
     } finally {
       setSubmitting(false)
     }
@@ -236,6 +257,8 @@ function StudentCompanies() {
                     <thead>
                       <tr>
                         <th>Company Name</th>
+                        <th>Organization</th>
+                        <th>Contact</th>
                         <th>Address</th>
                         <th className="text-center">Available Slots</th>
                         <th className="text-center">Action</th>
@@ -251,6 +274,14 @@ function StudentCompanies() {
                           <td>
                             <div className="fw-semibold text-dark">{c.company_name}</div>
                             {c.industry && <div className="text-muted small">{c.industry}</div>}
+                          </td>
+                          <td className="text-muted small">
+                            {c.organization_type_label || c.organization_type || '—'}
+                          </td>
+                          <td className="small">
+                            <div className="fw-semibold text-dark">{c.contact_person || '—'}</div>
+                            {c.contact_email && <div className="text-muted">{c.contact_email}</div>}
+                            {c.contact_number && <div className="text-muted">{c.contact_number}</div>}
                           </td>
                           <td className="text-muted">{c.address || '—'}</td>
                           <td className="text-center">
@@ -410,7 +441,7 @@ function StudentCompanies() {
                         disabled={submitting}
                       />
                     </div>
-                    <div className="mb-0">
+                    <div className="mb-3">
                       <label className="form-label fw-semibold" htmlFor="hte-company-address">Company Address <span className="text-danger">*</span></label>
                       <input
                         id="hte-company-address"
@@ -420,6 +451,20 @@ function StudentCompanies() {
                         value={newHte.address}
                         onChange={e => setNewHte({...newHte, address: e.target.value})}
                         placeholder="Company Address"
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="mb-0">
+                      <OrganizationTypeField
+                        id="hte-org-type"
+                        selectValue={newHte.organization_type_select}
+                        customType={newHte.organization_type_custom}
+                        onSelectChange={(v) => setNewHte({
+                          ...newHte,
+                          organization_type_select: v,
+                          organization_type_custom: v === ORG_TYPE_SPECIFY ? newHte.organization_type_custom : '',
+                        })}
+                        onCustomChange={(v) => setNewHte({ ...newHte, organization_type_custom: v })}
                         disabled={submitting}
                       />
                     </div>

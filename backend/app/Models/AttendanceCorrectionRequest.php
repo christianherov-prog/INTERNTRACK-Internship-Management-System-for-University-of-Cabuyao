@@ -12,9 +12,9 @@ class AttendanceCorrectionRequest extends Model
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
-        'internship_id', 'student_id', 'attendance_log_id', 'date',
-        'original_clock_in', 'original_clock_out', 'original_hours_rendered',
-        'requested_clock_in', 'requested_clock_out', 'reason', 'status',
+        'internship_id', 'student_id', 'attendance_log_id', 'date', 'correction_type',
+        'original_clock_in', 'original_clock_out', 'original_break_start', 'original_break_end', 'original_hours_rendered',
+        'requested_clock_in', 'requested_clock_out', 'requested_break_start', 'requested_break_end', 'reason', 'status',
         'supervisor_reviewed_by', 'supervisor_reviewed_at', 'supervisor_remarks', 'supervisor_decision',
         'faculty_reviewed_by', 'faculty_reviewed_at', 'faculty_remarks', 'faculty_decision',
         'rejected_by_role', 'rejected_at',
@@ -25,6 +25,10 @@ class AttendanceCorrectionRequest extends Model
         'date' => 'date',
         'original_hours_rendered' => 'decimal:2',
         'applied_hours_rendered' => 'decimal:2',
+        'original_break_start' => 'datetime',
+        'original_break_end' => 'datetime',
+        'requested_break_start' => 'datetime',
+        'requested_break_end' => 'datetime',
         'supervisor_reviewed_at' => 'datetime',
         'faculty_reviewed_at' => 'datetime',
         'rejected_at' => 'datetime',

@@ -6,12 +6,10 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { resolveTargetHours } from '../../config/hours'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
-import { useAuth } from '../../contexts/AuthContext'
 import { formatStudentName } from '../../utils/formatName'
-import { displayLabel } from '../../utils/displayLabel'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
-import { openOfficialFo30, openOfficialFo31 } from '../../utils/officialForm'
+import { openOfficialFo30 } from '../../utils/officialForm'
 
 function statusBadge(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -23,38 +21,16 @@ function statusBadge(status) {
 }
 
 function SupervisorAssignedInterns() {
-  const { user } = useAuth()
   const { loading, seed, run } = useCachedPage('supervisor:assigned-interns')
   const [interns, setInterns] = useState(() => seed ?? [])
   const [error, setError] = useState(null)
   const [previewModal, setPreviewModal] = useState(null)
-  const [downloading, setDownloading] = useState(false)
+  const [downloading] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [endingId, setEndingId] = useState(null)
   const [endReason, setEndReason] = useState('')
   const [ending, setEnding] = useState(false)
-
-  const downloadPdf = async (docType, internshipId, studentName) => {
-    setDownloading(true);
-    try {
-      const endpoint = docType === 'dtr' ? '/supervisor/dtr/generate' : '/supervisor/journal/generate';
-      const params = docType === 'dtr' 
-        ? { internship_id: internshipId, month: new Date().toISOString().slice(0, 7) }
-        : { internship_id: internshipId };
-      const res = await api.get(endpoint, { params, responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${docType === 'dtr' ? 'DTR' : 'Journal'}_${studentName}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(`Failed to download ${docType === 'dtr' ? 'DTR' : 'Journal'} PDF.`);
-    } finally {
-      setDownloading(false);
-    }
-  };
 
   const load = () => {
     setError(null)
@@ -166,18 +142,6 @@ function SupervisorAssignedInterns() {
                               onClick={() => openOfficialFo30(i.id, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-30 preview.'))}
                             >
                               <i className="fa fa-eye me-1"></i>DTR (FO-30)
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-outline-secondary"
-                              style={{ fontSize: '0.78rem', padding: '2px 8px' }}
-                              onClick={() => openOfficialFo31(i.id, {
-                                studentName: name,
-                                program: displayLabel(profile?.program || profile?.course_name, '—'),
-                                companyName: i.company?.company_name || '—',
-                              }, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))}
-                            >
-                              <i className="fa fa-eye me-1"></i>Journal (FO-31)
                             </button>
                           </div>
                         </td>

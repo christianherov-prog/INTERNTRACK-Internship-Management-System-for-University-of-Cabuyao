@@ -17,7 +17,10 @@ function SupervisorProfileEditor() {
     position: user?.position || '',
     company_id: user?.company_id ? String(user.company_id) : '',
     sex: user?.sex || '',
+    login_username: user?.login_username || '',
   })
+
+  const usernameLocked = Boolean(user?.login_username)
 
   useEffect(() => {
     setForm({
@@ -27,8 +30,9 @@ function SupervisorProfileEditor() {
       position: user?.position || '',
       company_id: user?.company_id ? String(user.company_id) : '',
       sex: user?.sex || '',
+      login_username: user?.login_username || '',
     })
-  }, [user?.id, user?.name, user?.email, user?.contact, user?.position, user?.company_id, user?.sex])
+  }, [user?.id, user?.name, user?.email, user?.contact, user?.position, user?.company_id, user?.sex, user?.login_username])
 
   useEffect(() => {
     setCompaniesLoading(true)
@@ -53,14 +57,18 @@ function SupervisorProfileEditor() {
     e.preventDefault()
     setSaving(true)
     try {
-      const res = await api.put('/auth/profile', {
+      const payload = {
         name: form.name,
         email: form.email,
         contact: form.contact,
         position: form.position,
         company_id: form.company_id || null,
         sex: form.sex || undefined,
-      })
+      }
+      if (!usernameLocked && form.login_username?.trim()) {
+        payload.login_username = form.login_username.trim()
+      }
+      const res = await api.put('/auth/profile', payload)
       if (res.data?.user) updateUserLocal(res.data.user)
       await refreshUser()
       toast.success('Profile saved successfully')
@@ -89,6 +97,26 @@ function SupervisorProfileEditor() {
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Email</label>
             <input type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
+          </div>
+          <div className="col-md-6">
+            <label className="form-label small fw-semibold">Username</label>
+            <input
+              name="login_username"
+              className="form-control"
+              value={form.login_username}
+              onChange={handleChange}
+              placeholder={usernameLocked ? undefined : 'Choose a username for login'}
+              readOnly={usernameLocked}
+              disabled={usernameLocked}
+              minLength={3}
+              maxLength={40}
+              autoComplete="username"
+            />
+            <small className="text-muted">
+              {usernameLocked
+                ? 'Username is set and cannot be changed. You can still sign in with Supervisor ID or email.'
+                : 'Optional while blank — set it once here. Letters, numbers, dots, underscores, and hyphens only.'}
+            </small>
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Contact Number</label>

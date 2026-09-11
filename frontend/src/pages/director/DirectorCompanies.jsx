@@ -2,10 +2,32 @@ import { useState, useEffect } from 'react'
 import Layout from '../../components/Layout'
 import EmptyState from '../../components/EmptyState'
 import PageError from '../../components/PageError'
+import OrganizationTypeField, {
+  ORG_TYPE_SPECIFY,
+  splitOrganizationType,
+  resolveOrganizationTypeForApi,
+  validateOrganizationType,
+} from '../../components/OrganizationTypeField'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+
+const emptyForm = () => ({
+  company_name: '',
+  address: '',
+  industry: '',
+  organization_type_select: '',
+  organization_type_custom: '',
+  contact_person: '',
+  contact_email: '',
+  contact_number: '',
+  moa_status: 'active',
+  moa_start_date: '',
+  moa_expiry_date: '',
+  slots_available: 0,
+  notes: '',
+})
 
 function DirectorCompanies() {
   const { loading, seed, run } = useCachedPage('director:companies')
@@ -15,7 +37,8 @@ function DirectorCompanies() {
   const [editItem, setEditItem] = useState(null)
   const [saving, setSaving]   = useState(false)
   const [message, setMessage] = useState(null)
-  const [form, setForm] = useState({ company_name: '', address: '', industry: '', contact_person: '', contact_email: '', contact_number: '', moa_status: 'active', moa_start_date: '', moa_expiry_date: '', slots_available: 0, notes: '' })
+  const [orgTypeError, setOrgTypeError] = useState(null)
+  const [form, setForm] = useState(emptyForm)
 
   const fetchCompanies = () => {
     setError(null)
@@ -31,34 +54,79 @@ function DirectorCompanies() {
 
   const openCreate = () => {
     setEditItem(null)
-    setForm({ company_name: '', address: '', industry: '', contact_person: '', contact_email: '', contact_number: '', moa_status: 'active', moa_start_date: '', moa_expiry_date: '', slots_available: 0, notes: '' })
+    setOrgTypeError(null)
+    setForm(emptyForm())
     setShowForm(true)
   }
 
   const openEdit = (c) => {
     setEditItem(c)
-    setForm({ company_name: c.company_name, address: c.address ?? '', industry: c.industry ?? '', contact_person: c.contact_person ?? '', contact_email: c.contact_email ?? '', contact_number: c.contact_number ?? '', moa_status: c.moa_status, moa_start_date: c.moa_start_date ?? '', moa_expiry_date: c.moa_expiry_date ?? '', slots_available: c.slots_available ?? 0, notes: c.notes ?? '' })
+    setOrgTypeError(null)
+    const split = splitOrganizationType(c.organization_type)
+    setForm({
+      company_name: c.company_name,
+      address: c.address ?? '',
+      industry: c.industry ?? '',
+      organization_type_select: split.selectValue,
+      organization_type_custom: split.customType,
+      contact_person: c.contact_person ?? '',
+      contact_email: c.contact_email ?? '',
+      contact_number: c.contact_number ?? '',
+      moa_status: c.moa_status,
+      moa_start_date: c.moa_start_date ?? '',
+      moa_expiry_date: c.moa_expiry_date ?? '',
+      slots_available: c.slots_available ?? 0,
+      notes: c.notes ?? '',
+    })
     setShowForm(true)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true); setMessage(null)
+    const orgErr = validateOrganizationType(form.organization_type_select, form.organization_type_custom)
+    if (orgErr) {
+      setOrgTypeError(orgErr)
+      setSaving(false)
+      return
+    }
+    setOrgTypeError(null)
+    const payload = {
+      company_name: form.company_name,
+      address: form.address,
+      industry: form.industry,
+      organization_type: resolveOrganizationTypeForApi(form.organization_type_select, form.organization_type_custom) || null,
+      contact_person: form.contact_person,
+      contact_email: form.contact_email,
+      contact_number: form.contact_number,
+      moa_status: form.moa_status,
+      moa_start_date: form.moa_start_date || null,
+      moa_expiry_date: form.moa_expiry_date || null,
+      slots_available: form.slots_available,
+      notes: form.notes,
+    }
     try {
       if (editItem) {
-        await api.put(`/director/companies/${editItem.id}`, form)
+        await api.put(`/director/companies/${editItem.id}`, payload)
         setMessage({ type: 'success', text: 'Company updated successfully.' })
       } else {
-        await api.post('/director/companies', form)
+        await api.post('/director/companies', payload)
         setMessage({ type: 'success', text: 'Company added successfully.' })
       }
       setShowForm(false); fetchCompanies()
     } catch (err) {
+      const typeMsg = err.response?.data?.errors?.organization_type?.[0]
+      if (typeMsg) setOrgTypeError(typeMsg)
       setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Failed to save.' })
     } finally { setSaving(false) }
   }
 
   const moaBadge = { active: 'badge-active', pending: 'badge-pending', expired: 'badge-inactive', for_renewal: 'badge-pending', 'on-process': 'badge-pending' }
   const moaLabel = { active: 'Active', pending: 'Pending', expired: 'Expired', for_renewal: 'For Renewal', 'on-process': 'On-Process' }
+
+  const needsSpec = (c) => {
+    const t = (c.organization_type || '').toLowerCase()
+    return t === 'other' || c.organization_type_label === 'Needs Specification'
+  }
 
   return (
     <Layout title="Partner Companies" subtitle="MOA Management" icon="fa-building" bodyClass="director-page">
@@ -77,7 +145,29 @@ function DirectorCompanies() {
           <form className="p-3" onSubmit={handleSubmit}>
             <div className="row g-3">
               <div className="col-md-6"><label className="form-label fw-semibold">Company Name <span className="text-danger">*</span></label><input className="form-control" value={form.company_name} onChange={e => setForm(p => ({...p, company_name: e.target.value}))} required /></div>
-              <div className="col-md-6"><label className="form-label fw-semibold">Industry</label><input className="form-control" value={form.industry} onChange={e => setForm(p => ({...p, industry: e.target.value}))} /></div>
+              <div className="col-md-3"><label className="form-label fw-semibold">Industry</label><input className="form-control" value={form.industry} onChange={e => setForm(p => ({...p, industry: e.target.value}))} /></div>
+              <div className="col-md-3">
+                <OrganizationTypeField
+                  selectValue={form.organization_type_select}
+                  customType={form.organization_type_custom}
+                  onSelectChange={(v) => {
+                    setOrgTypeError(null)
+                    setForm(p => ({
+                      ...p,
+                      organization_type_select: v,
+                      organization_type_custom: v === ORG_TYPE_SPECIFY ? p.organization_type_custom : '',
+                    }))
+                  }}
+                  onCustomChange={(v) => {
+                    setOrgTypeError(null)
+                    setForm(p => ({ ...p, organization_type_custom: v }))
+                  }}
+                  error={orgTypeError}
+                />
+                {editItem && needsSpec(editItem) && (
+                  <div className="form-text text-warning">Needs Specification — enter the actual organization type.</div>
+                )}
+              </div>
               <div className="col-12"><label className="form-label fw-semibold">Address</label><input className="form-control" value={form.address} onChange={e => setForm(p => ({...p, address: e.target.value}))} /></div>
               <div className="col-md-4"><label className="form-label fw-semibold">Contact Person</label><input className="form-control" value={form.contact_person} onChange={e => setForm(p => ({...p, contact_person: e.target.value}))} /></div>
               <div className="col-md-4"><label className="form-label fw-semibold">Contact Email</label><input type="email" className="form-control" value={form.contact_email} onChange={e => setForm(p => ({...p, contact_email: e.target.value}))} /></div>
@@ -112,11 +202,18 @@ function DirectorCompanies() {
           ) : data.length === 0 ? null : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">
-                <thead><tr><th>Company</th><th>Industry</th><th>Contact</th><th>MOA Status</th><th>Expiry</th><th>Slots</th><th className="text-center">Actions</th></tr></thead>
+                <thead><tr><th>Company</th><th>Type</th><th>Industry</th><th>Contact</th><th>MOA Status</th><th>Expiry</th><th>Slots</th><th className="text-center">Actions</th></tr></thead>
                 <tbody>
                   {data.map(c => (
                     <tr key={c.id}>
                       <td className="fw-semibold">{c.company_name}</td>
+                      <td style={{fontSize:'0.82rem'}}>
+                        {needsSpec(c) ? (
+                          <span className="badge bg-warning text-dark">Needs Specification</span>
+                        ) : (
+                          c.organization_type_label || '—'
+                        )}
+                      </td>
                       <td style={{fontSize:'0.82rem'}}>{c.industry ?? '—'}</td>
                       <td style={{fontSize:'0.82rem'}}>{c.contact_person ?? '—'}</td>
                       <td><span className={`badge-status ${moaBadge[c.moa_status]}`}>{moaLabel[c.moa_status]}</span></td>
