@@ -6,7 +6,9 @@ use App\Models\JournalEntry;
 use App\Models\SupervisorProfile;
 use App\Models\User;
 use App\Support\LoginUsername;
+use App\Support\ManilaTime;
 use App\Support\OrganizationTypes;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\Support\CreatesInternshipFixtures;
@@ -19,6 +21,18 @@ class SystemWideWorkflowRepairTest extends TestCase
 {
     use CreatesInternshipFixtures;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-09-12 12:00:00', ManilaTime::TZ));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
 
     public function test_login_username_normalizes_and_rejects_duplicates(): void
     {
@@ -88,6 +102,7 @@ class SystemWideWorkflowRepairTest extends TestCase
         $company = $this->makeEligibleCompany();
         $coordinator = $this->makeUser('coordinator', 'COR-CCS-001');
         $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
+        $internship->forceFill(['start_date' => '2026-08-01', 'status' => 'ongoing'])->save();
 
         JournalEntry::create([
             'internship_id' => $internship->id,
@@ -100,12 +115,23 @@ class SystemWideWorkflowRepairTest extends TestCase
             'learnings' => 'y',
             'status' => 'submitted',
         ]);
+        JournalEntry::create([
+            'internship_id' => $internship->id,
+            'entry_number' => 2,
+            'week_number' => 2,
+            'date' => '2026-08-08',
+            'end_date' => '2026-08-12',
+            'activities_summary' => 'Week 2',
+            'challenges' => 'x',
+            'learnings' => 'y',
+            'status' => 'submitted',
+        ]);
 
         $this->actingAs($student, 'sanctum')
             ->postJson('/api/v1/student/logbook', [
-                'week_number' => 2,
+                'week_number' => 3,
                 'date' => '2026-08-04',
-                'end_date' => '2026-08-08',
+                'end_date' => '2026-08-10',
                 'activities_summary' => 'Overlap',
                 'challenges' => 'x',
                 'learnings' => 'y',

@@ -18,6 +18,7 @@ use App\Services\CertificateEligibilityService;
 use App\Services\DtrWorkflowService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
+use App\Services\JournalPeriodValidator;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
@@ -551,6 +552,7 @@ class StudentController extends Controller
         $profile = $student->studentProfile;
         $companyLogoPath = app(\App\Services\PortfolioDataService::class)->companyLogoPath($internship);
         $studentSignaturePath = \App\Support\SignatureCapture::profilePath($student);
+        $period = app(JournalPeriodValidator::class)->bounds($internship);
         $journals->getCollection()->transform(function (JournalEntry $journal) use ($profile, $student, $internship, $companyLogoPath, $studentSignaturePath) {
             $journal->setAttribute('date', $journal->date?->toDateString());
             $journal->setAttribute('end_date', $journal->end_date?->toDateString());
@@ -574,6 +576,7 @@ class StudentController extends Controller
         $payload['intern_feedback'] = app(SupervisorFeedbackService::class)->serialize(
             app(SupervisorFeedbackService::class)->noteForInternship($internship)
         );
+        $payload['journal_period'] = $period;
 
         return response()->json($payload);
     }
@@ -596,7 +599,8 @@ class StudentController extends Controller
     public function submitJournal(Request $request)
     {
         $request->validate([
-            'week_number' => 'required|integer|min:1|max:52',
+            'journal_id' => 'nullable|integer',
+            'week_number' => 'nullable|integer|min:1',
             'date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:date',
             'activities_summary' => 'required_without_all:challenges,learnings|string|nullable',
@@ -606,50 +610,82 @@ class StudentController extends Controller
         ]);
 
         $internship = $this->internship($request);
+        $validator = app(JournalPeriodValidator::class);
 
-        $newStart = $request->date;
-        $newEnd = $request->end_date;
-        $existingWeek = $internship->journals()
-            ->academic()
-            ->where('week_number', $request->week_number)
-            ->first();
-
-        $overlap = $internship->journals()
-            ->academic()
-            ->when($existingWeek, fn ($q) => $q->where('id', '!=', $existingWeek->id))
-            ->whereNotNull('date')
-            ->whereNotNull('end_date')
-            ->whereDate('date', '<=', $newEnd)
-            ->whereDate('end_date', '>=', $newStart)
-            ->exists();
-
-        if ($overlap) {
-            return response()->json([
-                'message' => 'This journal date range overlaps another academic journal week. Choose non-overlapping dates.',
-            ], 422);
+        $existingWeek = null;
+        if ($request->filled('journal_id')) {
+            $existingWeek = $validator->findEditableJournal(
+                $internship,
+                (int) $request->journal_id,
+                null
+            );
+            if (! $existingWeek) {
+                return response()->json(['message' => 'Journal entry not found for this internship.'], 404);
+            }
         }
 
         try {
-            $journal = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship) {
+            $resolved = $validator->validateAndResolveWeek(
+                $internship,
+                $request->date,
+                $request->end_date,
+                $existingWeek?->id
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => collect($e->errors())->flatten()->first() ?: 'Invalid journal period.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $weekNumber = $resolved['week_number'];
+        if (! $existingWeek && ! empty($resolved['upsert_journal_id'])) {
+            $existingWeek = $internship->journals()->academic()->whereKey($resolved['upsert_journal_id'])->first();
+        }
+
+        try {
+            $journal = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship, $existingWeek, $weekNumber, $resolved) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
-                $journal = $internship->journals()
-                    ->withTrashed()
-                    ->where('week_number', $request->week_number)
-                    ->first();
+
+                $journal = $existingWeek;
+                if (! $journal) {
+                    $journal = $internship->journals()
+                        ->withTrashed()
+                        ->where('week_number', $weekNumber)
+                        ->first();
+                }
 
                 if ($journal?->trashed()) {
-                    $journal->restore();
+                    // Soft-deleted approved rows must not block recreating the same chronological week.
+                    if ($journal->status === 'approved') {
+                        $journal->forceDelete();
+                        $journal = null;
+                    } else {
+                        $journal->restore();
+                    }
                 }
 
                 if ($journal && $journal->status === 'approved') {
                     throw new \RuntimeException('Approved journals cannot be edited.');
                 }
 
+                // Re-check week-slot uniqueness inside the lock when moving an existing row.
+                if ($journal && (int) $journal->week_number !== (int) $weekNumber) {
+                    $slotTaken = $internship->journals()
+                        ->academic()
+                        ->where('week_number', $weekNumber)
+                        ->where('id', '!=', $journal->id)
+                        ->exists();
+                    if ($slotTaken) {
+                        throw new \RuntimeException('A journal already exists for internship week '.$weekNumber.'. Edit that entry instead.');
+                    }
+                }
+
                 $data = [
-                    'entry_number' => $request->week_number,
-                    'week_number' => $request->week_number,
-                    'date' => $request->date,
-                    'end_date' => $request->end_date,
+                    'entry_number' => $weekNumber,
+                    'week_number' => $weekNumber,
+                    'date' => $resolved['start'],
+                    'end_date' => $resolved['end'],
                     'activities_summary' => $request->activities_summary,
                     'challenges' => $request->challenges,
                     'learnings' => $request->learnings,
@@ -666,13 +702,13 @@ class StudentController extends Controller
                     $journal = $internship->journals()->create($data);
                 }
 
-                audit_log($request->user()->id, 'submit_journal', ['week_number' => $request->week_number]);
+                audit_log($request->user()->id, 'submit_journal', ['week_number' => $weekNumber]);
 
                 return $journal->fresh();
             }));
         } catch (QueryException $e) {
             if (UniqueWrite::isDuplicate($e)) {
-                $journal = $internship->journals()->where('week_number', $request->week_number)->first();
+                $journal = $internship->journals()->where('week_number', $weekNumber)->first();
 
                 return response()->json(['message' => 'Weekly journal submitted successfully.', 'journal' => $journal], 201);
             }

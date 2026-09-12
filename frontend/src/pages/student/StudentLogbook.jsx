@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
@@ -39,6 +39,19 @@ function canEditJournal(journal) {
   return journal && journal.status !== 'approved' && journal.editable !== false
 }
 
+function daysBetween(startIso, endIso) {
+  const a = new Date(`${startIso}T00:00:00`)
+  const b = new Date(`${endIso}T00:00:00`)
+  return Math.round((b - a) / 86400000)
+}
+
+function chronologicalWeekNumber(internshipStart, journalStart) {
+  if (!internshipStart || !journalStart) return ''
+  const days = daysBetween(internshipStart, journalStart)
+  if (Number.isNaN(days) || days < 0) return ''
+  return Math.floor(days / 7) + 1
+}
+
 const EMPTY_FORM = {
   week_number:        '',
   date:               '',
@@ -54,6 +67,7 @@ function StudentLogbook() {
   const { loading, seed, run } = useCachedPage('student:logbook')
   const [journals, setJournals]       = useState(() => seed?.items ?? seed ?? [])
   const [internFeedback, setInternFeedback] = useState(() => seed?.internFeedback ?? null)
+  const [journalPeriod, setJournalPeriod] = useState(() => seed?.journalPeriod ?? null)
   const [error, setError]             = useState(null)
   const [submitting, setSubmitting]   = useState(false)
   const [generating, setGenerating]   = useState(null) // week_number being generated
@@ -63,16 +77,26 @@ function StudentLogbook() {
   const [form, setForm]               = useState(EMPTY_FORM)
   const [previewModal, setPreviewModal] = useState(null)
 
+  const dateMin = journalPeriod?.min_date || journalPeriod?.start_date || undefined
+  const dateMax = journalPeriod?.max_date || journalPeriod?.today || undefined
+
+  const derivedWeek = useMemo(
+    () => chronologicalWeekNumber(journalPeriod?.start_date, form.date),
+    [journalPeriod?.start_date, form.date]
+  )
+
   const fetchJournals = () => {
     setError(null)
     run(() => api.get('/student/logbook').then(res => ({
       items: unwrapList(res.data).items,
       internFeedback: res.data.intern_feedback || null,
+      journalPeriod: res.data.journal_period || null,
     })))
       .then((next) => {
         if (next) {
           setJournals(next.items)
           setInternFeedback(next.internFeedback)
+          setJournalPeriod(next.journalPeriod)
         }
       })
       .catch(err => {
@@ -86,6 +110,13 @@ function StudentLogbook() {
   // ── Form helpers ──────────────────────────────────────────────────────────
 
   const openNewEntry = () => {
+    if (journalPeriod && journalPeriod.can_create === false) {
+      setMessage({
+        type: 'danger',
+        text: journalPeriod.reason || 'An active internship is required before creating a weekly journal.',
+      })
+      return
+    }
     setForm(EMPTY_FORM)
     setEditEntry(null)
     setShowForm(true)
@@ -112,8 +143,17 @@ function StudentLogbook() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleChange = e =>
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  const handleChange = e => {
+    const { name, value } = e.target
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'date' && journalPeriod?.start_date) {
+        const week = chronologicalWeekNumber(journalPeriod.start_date, value)
+        if (week !== '') next.week_number = week
+      }
+      return next
+    })
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -121,13 +161,27 @@ function StudentLogbook() {
       setMessage({ type: 'danger', text: 'Please fill in at least one journal field.' })
       return
     }
+    if (dateMin && form.date && form.date < dateMin) {
+      setMessage({ type: 'danger', text: 'Journal dates cannot be earlier than your internship start date.' })
+      return
+    }
+    if (dateMax && ((form.date && form.date > dateMax) || (form.end_date && form.end_date > dateMax))) {
+      setMessage({ type: 'danger', text: 'Journal entries cannot be submitted for a future period.' })
+      return
+    }
     setSubmitting(true)
     setMessage(null)
+    const payload = {
+      ...form,
+      week_number: derivedWeek || form.week_number,
+    }
+    if (editEntry?.id) payload.journal_id = editEntry.id
     try {
-      await api.post('/student/logbook', form)
+      const res = await api.post('/student/logbook', payload)
+      const savedWeek = res.data?.journal?.week_number ?? payload.week_number
       invalidateStudentPortfolio()
       invalidateOfficialFormCaches()
-      setMessage({ type: 'success', text: `Week ${form.week_number} journal saved successfully!` })
+      setMessage({ type: 'success', text: `Week ${savedWeek} journal saved successfully!` })
       setShowForm(false)
       setForm(EMPTY_FORM)
       setEditEntry(null)
@@ -210,6 +264,17 @@ function StudentLogbook() {
             <h6>{editEntry ? `Edit — Week ${editEntry.week_number}` : 'New Weekly Journal Entry'}</h6>
           </div>
           <form className="p-3 p-md-4" onSubmit={handleSubmit}>
+            {journalPeriod?.start_date && (
+              <div className="alert alert-light border mb-3 py-2 small">
+                Internship Start: <strong>{formatDisplayDate(journalPeriod.start_date)}</strong>
+                {journalPeriod.end_date ? (
+                  <> · End: <strong>{formatDisplayDate(journalPeriod.end_date)}</strong></>
+                ) : null}
+                <div className="text-muted mt-1">
+                  Journal dates must fall within your active internship period and cannot be in the future.
+                </div>
+              </div>
+            )}
             <div className="row g-3 mb-3">
               <div className="col-md-3">
                 <label className="form-label fw-semibold">
@@ -217,9 +282,11 @@ function StudentLogbook() {
                 </label>
                 <input
                   type="number" name="week_number" className="form-control"
-                  placeholder="Week Number" min={1} max={52}
-                  value={form.week_number} onChange={handleChange} required
+                  placeholder="Auto" min={1} max={52}
+                  value={derivedWeek || form.week_number} readOnly
+                  required
                 />
+                <small className="text-muted">Auto-calculated from internship start</small>
               </div>
               <div className="col-md-9">
                 <label className="form-label fw-semibold">
@@ -229,11 +296,13 @@ function StudentLogbook() {
                   <input
                     type="date" name="date" className="form-control"
                     value={form.date} onChange={handleChange} required
+                    min={dateMin} max={dateMax}
                   />
                   <span className="text-muted">to</span>
                   <input
                     type="date" name="end_date" className="form-control"
                     value={form.end_date} onChange={handleChange} required
+                    min={form.date || dateMin} max={dateMax}
                   />
                 </div>
               </div>

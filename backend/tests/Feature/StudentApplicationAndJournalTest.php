@@ -38,13 +38,14 @@ class StudentApplicationAndJournalTest extends TestCase
         $supervisor = $this->makeUser('supervisor');
         $coordinator = $this->makeUser('coordinator');
         $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
+        $internship->forceFill(['start_date' => '2026-08-24', 'status' => 'ongoing'])->save();
 
         JournalEntry::create([
             'internship_id' => $internship->id,
             'week_number' => 1,
             'entry_number' => 1,
-            'date' => '2026-08-31',
-            'end_date' => '2026-09-04',
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
             'activities_summary' => 'Original work',
             'status' => 'submitted',
         ]);
@@ -53,22 +54,22 @@ class StudentApplicationAndJournalTest extends TestCase
 
         $this->postJson('/api/v1/student/logbook', [
             'week_number' => 1,
-            'date' => '2026-08-31',
-            'end_date' => '2026-09-04',
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
             'activities_summary' => 'Corrected work',
         ])->assertCreated()
             ->assertJsonPath('journal.activities_summary', 'Corrected work');
 
         $list = $this->getJson('/api/v1/student/logbook')->assertOk();
-        $this->assertSame('2026-08-31', $list->json('data.0.date'));
+        $this->assertSame('2026-08-24', $list->json('data.0.date'));
         $this->assertTrue($list->json('data.0.editable'));
 
         JournalEntry::where('internship_id', $internship->id)->update(['status' => 'approved']);
 
         $this->postJson('/api/v1/student/logbook', [
             'week_number' => 1,
-            'date' => '2026-08-31',
-            'end_date' => '2026-09-04',
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
             'activities_summary' => 'Should not save',
         ])->assertStatus(422);
 

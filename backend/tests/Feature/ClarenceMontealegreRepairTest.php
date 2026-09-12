@@ -230,8 +230,8 @@ class ClarenceMontealegreRepairTest extends TestCase
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/logbook', [
             'week_number' => 3,
-            'date' => '2026-08-26',
-            'end_date' => '2026-08-30',
+            'date' => '2026-08-27',
+            'end_date' => '2026-09-02',
             'activities_summary' => 'Overlap attempt',
             'challenges' => 'x',
             'learnings' => 'y',
@@ -370,17 +370,16 @@ class ClarenceMontealegreRepairTest extends TestCase
         JournalEntry::where('internship_id', $party['internship']->id)->academic()->delete();
 
         foreach ([
-            [3, '2026-09-08', '2026-09-11', 'Week three activities'],
-            [4, '2026-09-14', '2026-09-18', 'Week four activities'],
-            [5, '2026-09-21', '2026-09-25', 'Week five activities'],
-        ] as [$week, $start, $end, $summary]) {
+            ['2026-08-24', '2026-08-28', 'Week one activities'],
+            ['2026-08-31', '2026-09-04', 'Week two activities'],
+            ['2026-09-07', '2026-09-11', 'Week three activities'],
+        ] as [$start, $end, $summary]) {
             $this->postJson('/api/v1/student/logbook', [
-                'week_number' => $week,
                 'date' => $start,
                 'end_date' => $end,
                 'activities_summary' => $summary,
-                'challenges' => 'Challenge '.$week,
-                'learnings' => 'Learning '.$week,
+                'challenges' => 'Challenge',
+                'learnings' => 'Learning',
             ])->assertCreated();
         }
 
@@ -397,7 +396,7 @@ class ClarenceMontealegreRepairTest extends TestCase
         $portfolio = $this->getJson('/api/v1/student/portfolio')->assertOk()->json();
         $journals = collect($portfolio['internship']['journals'] ?? [])->sortBy('week_number')->values();
         $this->assertCount(3, $journals);
-        $this->assertSame([3, 4, 5], $journals->pluck('week_number')->map(fn ($w) => (int) $w)->all());
-        $this->assertSame('Week five activities', $journals[2]['activities_summary']);
+        $this->assertSame([1, 2, 3], $journals->pluck('week_number')->map(fn ($w) => (int) $w)->all());
+        $this->assertSame('Week three activities', $journals[2]['activities_summary']);
     }
 }
