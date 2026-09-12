@@ -10,6 +10,7 @@ use App\Models\Internship;
 use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\ManilaAttendanceClock;
 use App\Support\ManilaTime;
 use App\Support\NameParts;
 use App\Support\SignatureCapture;
@@ -110,10 +111,16 @@ class PortfolioDataService
             ->orderBy('week_number')
             ->get()
             ->map(fn (JournalEntry $j) => $this->serializeJournal($j));
-        $attendance = AttendanceLog::where('internship_id', $internship->id)
+        $rawAttendance = AttendanceLog::where('internship_id', $internship->id)
             ->orderBy('date')
-            ->get()
-            ->map(fn (AttendanceLog $log) => $this->serializeAttendance($log, $identity));
+            ->get();
+        $attendance = $rawAttendance
+            ->map(fn (AttendanceLog $log) => $this->serializeAttendance($log, $identity))
+            ->values()
+            ->all();
+        $attendance = app(AttendanceDayResolver::class)
+            ->mergeFo30Attendance($internship, $attendance, $rawAttendance);
+        $attendance = collect($attendance);
         $evaluations = Evaluation::where('internship_id', $internship->id)
             ->where('form_type', '!=', 'faculty_eval')
             ->with(['evaluator.supervisorProfile', 'evaluator.facultyProfile', 'evaluator.studentProfile'])
@@ -236,46 +243,20 @@ class PortfolioDataService
     }
 
     /**
-     * Single continuous clock session is mapped onto AM and/or PM columns
-     * from the actual Manila timestamp. A second session is never invented.
+     * FO-30 AM/PM columns come from ManilaAttendanceClock::fo30Columns —
+     * one shared mapper for every role preview / print / PDF / portfolio.
      *
-     * - Both punches before noon → AM in / AM out
-     * - Both punches at/after noon → PM in / PM out
-     * - Spans noon → AM in + PM out (AM out / PM in stay blank)
-     * - Explicit pm_time_* on the attendance row are used as stored
+     * Hours stay on AttendanceLog.hours_rendered (canonical credited hours).
      */
     public function serializeAttendance(AttendanceLog $log, array $identity = []): array
     {
         $inRaw = $log->clock_in ?: $log->am_time_in;
-        $outRaw = $log->clock_out ?: $log->pm_time_out ?: $log->am_time_out;
         $inAt = ManilaTime::fromStoredDateAndTime($log->date, $inRaw);
-        $outAt = ManilaTime::fromStoredDateAndTime($log->date, $outRaw);
         $manilaDate = ManilaTime::dateString($log->date)
             ?: ManilaTime::manilaDateString($log->date)
             ?: $inAt?->toDateString();
 
-        $amIn = ManilaTime::clockHm(ManilaTime::fromStoredDateAndTime($log->date, $log->am_time_in));
-        $amOut = ManilaTime::clockHm(ManilaTime::fromStoredDateAndTime($log->date, $log->am_time_out));
-        $pmIn = ManilaTime::clockHm(ManilaTime::fromStoredDateAndTime($log->date, $log->pm_time_in));
-        $pmOut = ManilaTime::clockHm(ManilaTime::fromStoredDateAndTime($log->date, $log->pm_time_out));
-
-        if (! $pmIn && ! $pmOut && $inAt && ! $log->pm_time_in && ! $log->pm_time_out) {
-            $inIsAm = $inAt->hour < 12;
-            $outIsAm = $outAt ? $outAt->hour < 12 : $inIsAm;
-            $amIn = $inIsAm ? ManilaTime::clockHm($inAt) : null;
-            $pmIn = $inIsAm ? null : ManilaTime::clockHm($inAt);
-            if ($outAt) {
-                if ($inIsAm && $outIsAm) {
-                    $amOut = ManilaTime::clockHm($outAt);
-                } elseif (! $inIsAm && ! $outIsAm) {
-                    $pmOut = ManilaTime::clockHm($outAt);
-                } else {
-                    $amOut = null;
-                    $pmIn = $pmIn ?: null;
-                    $pmOut = ManilaTime::clockHm($outAt);
-                }
-            }
-        }
+        $columns = ManilaAttendanceClock::fo30Columns($log);
 
         $validated = $log->status === 'validated';
         $htePath = $log->hte_signature_path
@@ -287,10 +268,12 @@ class PortfolioDataService
             'id' => $log->id,
             'date' => $manilaDate,
             'timezone' => ManilaTime::TZ,
-            'am_time_in' => $amIn,
-            'am_time_out' => $amOut,
-            'pm_time_in' => $pmIn,
-            'pm_time_out' => $pmOut,
+            'am_time_in' => $columns['am_time_in'],
+            'am_time_out' => $columns['am_time_out'],
+            'pm_time_in' => $columns['pm_time_in'],
+            'pm_time_out' => $columns['pm_time_out'],
+            'am_absent' => false,
+            'day_absent' => false,
             'hours_rendered' => $log->hours_rendered !== null ? (float) $log->hours_rendered : null,
             'status' => $log->status,
             'validated' => $validated,

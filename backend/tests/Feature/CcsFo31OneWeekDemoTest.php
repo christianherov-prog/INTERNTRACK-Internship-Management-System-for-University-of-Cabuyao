@@ -104,19 +104,19 @@ class CcsFo31OneWeekDemoTest extends TestCase
         $this->assertStringContainsString('table-layout: fixed', $css);
     }
 
-    public function test_five_validated_days_are_forty_of_five_hundred_and_eight_percent(): void
+    public function test_ten_validated_days_are_eighty_of_five_hundred_and_sixteen_percent(): void
     {
         $party = $this->party();
         $logs = app(OneWeekOjtDemoService::class)->syncAttendance($party['internship'], $party['supervisor']);
-        $this->assertCount(5, $logs);
-        $this->assertEquals(40.0, collect($logs)->sum(fn ($log) => (float) $log->hours_rendered));
+        $this->assertCount(10, $logs);
+        $this->assertEquals(80.0, collect($logs)->sum(fn ($log) => (float) $log->hours_rendered));
 
         InternshipProgressService::synchronize($party['internship']);
         $snap = InternshipProgressService::snapshot($party['internship']->fresh());
-        $this->assertEquals(40.0, $snap['hours_rendered']);
+        $this->assertEquals(80.0, $snap['hours_rendered']);
         $this->assertEquals(500.0, $snap['target_hours']);
-        $this->assertEquals(460.0, $snap['remaining_hours']);
-        $this->assertEquals(8.0, $snap['progress_pct']);
+        $this->assertEquals(420.0, $snap['remaining_hours']);
+        $this->assertEquals(16.0, $snap['progress_pct']);
 
         $eligibility = InternshipProgressService::evaluationEligibility($party['internship']->fresh());
         $this->assertSame('not_yet_eligible', $eligibility['status']);
@@ -133,7 +133,7 @@ class CcsFo31OneWeekDemoTest extends TestCase
         Sanctum::actingAs($party['student']);
         $studentAttendance = $this->getJson('/api/v1/student/attendance')->assertOk();
         $rows = collect($studentAttendance->json('attendance.data') ?? $studentAttendance->json('data') ?? []);
-        $this->assertCount(5, $rows);
+        $this->assertCount(10, $rows);
         $monday = $rows->firstWhere('date_display', '2026-08-24') ?? $rows->firstWhere('date', '2026-08-24');
         $this->assertNotNull($monday);
         $this->assertSame(ManilaTime::TZ, $monday['timezone'] ?? $studentAttendance->json('timezone'));
@@ -146,17 +146,17 @@ class CcsFo31OneWeekDemoTest extends TestCase
         $this->assertSame('07:58', $wednesday['clock_in_display']);
         $this->assertSame('16:58', $wednesday['clock_out_display']);
         $this->assertEquals(8.0, (float) ($wednesday['actual_hours'] ?? $wednesday['hours_rendered']));
-        $this->assertEquals(40.0, $rows->sum(fn ($row) => (float) ($row['actual_hours'] ?? $row['hours_rendered'])));
+        $this->assertEquals(80.0, $rows->sum(fn ($row) => (float) ($row['actual_hours'] ?? $row['hours_rendered'])));
 
         $dashboard = $this->getJson('/api/v1/student/dashboard')->assertOk();
-        $this->assertEquals(40.0, (float) $dashboard->json('stats.hours_rendered'));
+        $this->assertEquals(80.0, (float) $dashboard->json('stats.hours_rendered'));
         $this->assertEquals(500.0, (float) $dashboard->json('stats.target_hours'));
-        $this->assertEquals(8.0, (float) $dashboard->json('stats.progress_percent'));
+        $this->assertEquals(16.0, (float) $dashboard->json('stats.progress_percent'));
 
         $records = $this->getJson('/api/v1/student/records')->assertOk();
         $record = collect($records->json('data'))->firstWhere('id', $party['internship']->id);
         $this->assertNotNull($record);
-        $this->assertEquals(40.0, (float) $record['total_hours_rendered']);
+        $this->assertEquals(80.0, (float) $record['total_hours_rendered']);
         $this->assertEquals(500.0, (float) $record['target_hours']);
 
         $portfolio = $this->getJson('/api/v1/student/portfolio')->assertOk()->json();
@@ -164,28 +164,28 @@ class CcsFo31OneWeekDemoTest extends TestCase
         $this->assertSame('Bachelor of Science in Information Technology', $portfolio['identity']['program']);
         $this->assertSame('REYES, ADRIAN', strtoupper($portfolio['identity']['supervisor_name']));
         $this->assertSame('SUP-0002', $portfolio['identity']['supervisor_faculty_number']);
-        $this->assertCount(5, $portfolio['internship']['attendance']);
+        $this->assertCount(10, $portfolio['internship']['attendance']);
         $this->assertSame('2026-08-24', $portfolio['internship']['attendance'][0]['date']);
         $this->assertSame('08:00', $portfolio['internship']['attendance'][0]['am_time_in']);
         $this->assertSame('17:00', $portfolio['internship']['attendance'][0]['pm_time_out']);
         $this->assertSame('2026-08-26', $portfolio['internship']['attendance'][2]['date']);
         $this->assertSame('07:58', $portfolio['internship']['attendance'][2]['am_time_in']);
         $this->assertSame('16:58', $portfolio['internship']['attendance'][2]['pm_time_out']);
-        $this->assertEquals(40.0, collect($portfolio['internship']['attendance'])->sum('hours_rendered'));
+        $this->assertEquals(80.0, collect($portfolio['internship']['attendance'])->sum('hours_rendered'));
 
         Sanctum::actingAs($party['supervisor']);
         $assigned = $this->getJson('/api/v1/supervisor/assigned-interns')->assertOk();
         $intern = collect($assigned->json('data'))->firstWhere('id', $party['internship']->id);
         $this->assertNotNull($intern);
-        $this->assertEquals(40.0, (float) $intern['total_hours_rendered']);
+        $this->assertEquals(80.0, (float) $intern['total_hours_rendered']);
         $this->assertEquals(500.0, (float) $intern['target_hours']);
         $this->assertSame('Not Yet Eligible', $intern['evaluation_eligibility']['label']);
-        $this->assertCount(5, $intern['attendance_logs']);
+        $this->assertCount(10, $intern['attendance_logs']);
 
         $dash = $this->getJson('/api/v1/supervisor/dashboard')->assertOk();
         $row = collect($dash->json('assigned_interns'))->firstWhere('id', $party['internship']->id);
         $this->assertSame('Montealegre, Clarence', $row['student']);
-        $this->assertEquals(40.0, (float) $row['hours_rendered']);
+        $this->assertEquals(80.0, (float) $row['hours_rendered']);
 
         Sanctum::actingAs($party['faculty']);
         $facultyRoster = $this->getJson('/api/v1/faculty/assigned-students')->assertOk();
@@ -197,7 +197,7 @@ class CcsFo31OneWeekDemoTest extends TestCase
             return $number === '2300592';
         });
         $this->assertNotNull($facultyRow);
-        $this->assertEquals(40.0, (float) $facultyRow['total_hours_rendered']);
+        $this->assertEquals(80.0, (float) $facultyRow['total_hours_rendered']);
         $this->assertEquals(500.0, (float) $facultyRow['target_hours']);
         $this->assertSame('TechCorp PH', $facultyRow['company']['company_name'] ?? $facultyRow['company']);
         $this->assertStringContainsString('Reyes', (string) (

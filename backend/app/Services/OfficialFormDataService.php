@@ -44,12 +44,14 @@ class OfficialFormDataService
     {
         $identity = $this->portfolio->identity($internship);
         $logo = $identity['company_logo_path'] ?? $this->portfolio->companyLogoPath($internship);
-        $logs = AttendanceLog::where('internship_id', $internship->id)
+        $raw = AttendanceLog::where('internship_id', $internship->id)
             ->orderBy('date')
-            ->get()
+            ->get();
+        $logs = $raw
             ->map(fn (AttendanceLog $log) => $this->portfolio->serializeAttendance($log, $identity))
             ->values()
             ->all();
+        $logs = app(AttendanceDayResolver::class)->mergeFo30Attendance($internship, $logs, $raw);
 
         return $this->fo30From($identity, $logs, $logo);
     }
@@ -150,6 +152,8 @@ class OfficialFormDataService
                 'am_time_out' => $log['am_time_out'] ?? null,
                 'pm_time_in' => $log['pm_time_in'] ?? null,
                 'pm_time_out' => $log['pm_time_out'] ?? null,
+                'am_absent' => (bool) ($log['am_absent'] ?? false),
+                'day_absent' => (bool) ($log['day_absent'] ?? false),
                 'hours_rendered' => $log['hours_rendered'] ?? null,
                 'validated' => $validated,
                 'hte_signature_path' => $htePath,

@@ -369,17 +369,17 @@ function LoginPage() {
             </>
           )}
 
-          <div className="login-features">
-            <div className="feature-badge" title="Protected by 256-bit encrypted authentication">
-              <i className="fa fa-shield-alt"></i>
+          <div className="login-features" role="list" aria-label="Platform highlights">
+            <div className="feature-badge" role="listitem" title="Protected by 256-bit encrypted authentication">
+              <i className="fa fa-shield-alt" aria-hidden="true"></i>
               <span>Secure Access</span>
             </div>
-            <div className="feature-badge" title="Tailored portals for Students, Faculty, Supervisors, and Admin">
-              <i className="fa fa-sitemap"></i>
+            <div className="feature-badge" role="listitem" title="Tailored portals for Students, Faculty, Supervisors, and Admin">
+              <i className="fa fa-sitemap" aria-hidden="true"></i>
               <span>Role-Based Access</span>
             </div>
-            <div className="feature-badge" title="Real-time DTR, Journal & Milestone Monitoring">
-              <i className="fa fa-tasks"></i>
+            <div className="feature-badge" role="listitem" title="Real-time DTR, Journal & Milestone Monitoring">
+              <i className="fa fa-tasks" aria-hidden="true"></i>
               <span>Internship Tracking</span>
             </div>
           </div>

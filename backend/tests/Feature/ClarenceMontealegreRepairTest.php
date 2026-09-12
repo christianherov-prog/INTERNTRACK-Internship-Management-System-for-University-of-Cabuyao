@@ -170,15 +170,15 @@ class ClarenceMontealegreRepairTest extends TestCase
         $this->assertSame('SUP-0002', $dash->json('internship.supervisor_faculty_number'));
 
         $logs = AttendanceLog::where('internship_id', $party['internship']->id)->orderBy('date')->get();
-        $this->assertCount(5, $logs);
-        $this->assertEquals(40.0, (float) $logs->sum('hours_rendered'));
+        $this->assertCount(10, $logs);
+        $this->assertEquals(80.0, (float) $logs->sum('hours_rendered'));
         $this->assertTrue($logs->every(fn ($l) => (int) $l->validated_by === $party['adrian']->id));
 
         $snap = InternshipProgressService::snapshot($party['internship']->fresh());
-        $this->assertSame(40, (int) $snap['hours_rendered']);
+        $this->assertSame(80, (int) $snap['hours_rendered']);
         $this->assertSame(500, (int) $snap['target_hours']);
-        $this->assertSame(460, (int) $snap['remaining_hours']);
-        $this->assertSame(8, (int) $snap['progress_pct']);
+        $this->assertSame(420, (int) $snap['remaining_hours']);
+        $this->assertSame(16, (int) $snap['progress_pct']);
     }
 
     public function test_adrian_sees_attendance_unrelated_denied(): void
@@ -200,23 +200,36 @@ class ClarenceMontealegreRepairTest extends TestCase
         }
     }
 
-    public function test_week1_journal_faculty_only_and_no_overlap(): void
+    public function test_week1_and_week2_journals_faculty_only_and_no_overlap(): void
     {
         $party = $this->party();
-        $journal = JournalEntry::where('internship_id', $party['internship']->id)
+        $week1 = JournalEntry::where('internship_id', $party['internship']->id)
             ->where('week_number', 1)
             ->first();
+        $week2 = JournalEntry::where('internship_id', $party['internship']->id)
+            ->where('week_number', 2)
+            ->first();
 
-        $this->assertNotNull($journal);
-        $this->assertSame('2026-08-24', $journal->date?->format('Y-m-d') ?? (string) $journal->getRawOriginal('date'));
-        $end = $journal->end_date?->format('Y-m-d') ?? (string) $journal->getRawOriginal('end_date');
-        $this->assertSame('2026-08-28', substr($end, 0, 10));
-        $this->assertSame('approved', $journal->status);
-        $this->assertSame(OneWeekOjtDemoService::ACCOMPLISHMENT, $journal->activities_summary);
+        $this->assertNotNull($week1);
+        $this->assertSame('2026-08-24', $week1->date?->format('Y-m-d') ?? (string) $week1->getRawOriginal('date'));
+        $end1 = $week1->end_date?->format('Y-m-d') ?? (string) $week1->getRawOriginal('end_date');
+        $this->assertSame('2026-08-28', substr($end1, 0, 10));
+        $this->assertSame('approved', $week1->status);
+        $this->assertSame(OneWeekOjtDemoService::ACCOMPLISHMENT, $week1->activities_summary);
+
+        $this->assertNotNull($week2);
+        $this->assertSame('2026-08-31', $week2->date?->format('Y-m-d') ?? (string) $week2->getRawOriginal('date'));
+        $end2 = $week2->end_date?->format('Y-m-d') ?? (string) $week2->getRawOriginal('end_date');
+        $this->assertSame('2026-09-04', substr($end2, 0, 10));
+        $this->assertSame('approved', $week2->status);
+        $this->assertSame(OneWeekOjtDemoService::WEEK2_ACCOMPLISHMENT, $week2->activities_summary);
+        $this->assertSame(OneWeekOjtDemoService::WEEK2_DIFFICULTIES, $week2->challenges);
+        $this->assertSame(OneWeekOjtDemoService::WEEK2_INSIGHTS, $week2->learnings);
+        $this->assertSame((int) $party['faculty']->id, (int) $week2->faculty_reviewed_by);
 
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/logbook', [
-            'week_number' => 2,
+            'week_number' => 3,
             'date' => '2026-08-26',
             'end_date' => '2026-08-30',
             'activities_summary' => 'Overlap attempt',
@@ -227,7 +240,7 @@ class ClarenceMontealegreRepairTest extends TestCase
         Sanctum::actingAs($party['adrian']);
         $this->getJson('/api/v1/supervisor/journals')->assertNotFound();
         $this->getJson('/api/v1/supervisor/journal/generate')->assertNotFound();
-        $this->patchJson('/api/v1/supervisor/journals/'.$journal->id.'/review', [
+        $this->patchJson('/api/v1/supervisor/journals/'.$week1->id.'/review', [
             'action' => 'approved',
         ])->assertNotFound();
     }
@@ -252,6 +265,16 @@ class ClarenceMontealegreRepairTest extends TestCase
         $this->assertSame(OneWeekOjtDemoService::ACCOMPLISHMENT, $journal['activities_summary']);
         $this->assertSame('2026-08-24', $journal['date']);
         $this->assertSame('2026-08-28', $journal['end_date']);
+
+        $journals = collect($portfolio['internship']['journals'] ?? [])->sortBy('week_number')->values();
+        $this->assertGreaterThanOrEqual(2, $journals->count());
+        $week2 = $journals->firstWhere('week_number', 2);
+        $this->assertNotNull($week2);
+        $this->assertSame('2026-08-31', $week2['date']);
+        $this->assertSame('2026-09-04', $week2['end_date']);
+        $this->assertSame(OneWeekOjtDemoService::WEEK2_ACCOMPLISHMENT, $week2['activities_summary']);
+        $this->assertSame(OneWeekOjtDemoService::WEEK2_DIFFICULTIES, $week2['challenges']);
+        $this->assertSame(OneWeekOjtDemoService::WEEK2_INSIGHTS, $week2['learnings']);
     }
 
     public function test_feedback_visibility_and_evaluation_not_yet_eligible(): void
@@ -337,5 +360,44 @@ class ClarenceMontealegreRepairTest extends TestCase
             in_array($res->status(), [422, 400], true),
             'PDF must be rejected in portfolio builder, got '.$res->status().': '.$res->getContent()
         );
+    }
+
+    public function test_portfolio_lists_n_journals_dynamically_without_clarence_hardcoding(): void
+    {
+        $party = $this->party();
+        Sanctum::actingAs($party['student']);
+
+        JournalEntry::where('internship_id', $party['internship']->id)->academic()->delete();
+
+        foreach ([
+            [3, '2026-09-08', '2026-09-11', 'Week three activities'],
+            [4, '2026-09-14', '2026-09-18', 'Week four activities'],
+            [5, '2026-09-21', '2026-09-25', 'Week five activities'],
+        ] as [$week, $start, $end, $summary]) {
+            $this->postJson('/api/v1/student/logbook', [
+                'week_number' => $week,
+                'date' => $start,
+                'end_date' => $end,
+                'activities_summary' => $summary,
+                'challenges' => 'Challenge '.$week,
+                'learnings' => 'Learning '.$week,
+            ])->assertCreated();
+        }
+
+        Sanctum::actingAs($party['faculty']);
+        $ids = JournalEntry::where('internship_id', $party['internship']->id)->academic()->orderBy('week_number')->pluck('id');
+        foreach ($ids as $id) {
+            $this->patchJson('/api/v1/faculty/journals/'.$id.'/review', [
+                'action' => 'approved',
+                'feedback' => 'Approved',
+            ])->assertOk();
+        }
+
+        Sanctum::actingAs($party['student']);
+        $portfolio = $this->getJson('/api/v1/student/portfolio')->assertOk()->json();
+        $journals = collect($portfolio['internship']['journals'] ?? [])->sortBy('week_number')->values();
+        $this->assertCount(3, $journals);
+        $this->assertSame([3, 4, 5], $journals->pluck('week_number')->map(fn ($w) => (int) $w)->all());
+        $this->assertSame('Week five activities', $journals[2]['activities_summary']);
     }
 }

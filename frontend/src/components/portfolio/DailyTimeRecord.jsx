@@ -189,6 +189,9 @@ const DailyTimeRecord = ({
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
     const raw = String(timeStr).trim();
+    if (!raw) return '';
+    if (/^absent$/i.test(raw)) return 'Absent';
+    if (/^(—|–|-)$/.test(raw)) return '—';
     if (/[ap]m/i.test(raw)) return raw;
     const [h, m] = raw.split(':');
     let hr = parseInt(h, 10);
@@ -196,6 +199,29 @@ const DailyTimeRecord = ({
     const ampm = hr >= 12 ? 'PM' : 'AM';
     hr = hr % 12 || 12;
     return `${hr}:${(m || '00').slice(0, 2)} ${ampm}`;
+  };
+
+  const amCell = (log, field, isWeekend) => {
+    if (!log) return isWeekend ? '—' : '';
+    if (log.day_absent || log.status === 'absent') {
+      if (field === 'am_time_in') return 'Absent';
+      return '—';
+    }
+    if (log.am_absent) {
+      if (field === 'am_time_in') return 'Absent';
+      if (field === 'am_time_out') return '—';
+    }
+    const value = log?.[field];
+    if (value) return formatTime(value);
+    return isWeekend ? '—' : '';
+  };
+
+  const pmCell = (log, field, isWeekend) => {
+    if (!log) return isWeekend ? '—' : '';
+    if (log.day_absent || log.status === 'absent') return '—';
+    const value = log?.[field];
+    if (value) return formatTime(value);
+    return isWeekend ? '—' : '';
   };
 
   const formatDateLabel = (ymd) => {
@@ -237,11 +263,15 @@ const DailyTimeRecord = ({
       pageRows.push(
         <tr key={dateStr} style={isWeekend ? { backgroundColor: '#f9f9f9' } : {}}>
           <td style={styles.tdDTR}>{formatDateLabel(dateStr)}</td>
-          <td style={styles.tdDTR}>{log?.am_time_in ? formatTime(log.am_time_in) : (isWeekend ? '—' : '')}</td>
-          <td style={styles.tdDTR}>{log?.am_time_out ? formatTime(log.am_time_out) : (isWeekend ? '—' : '')}</td>
-          <td style={styles.tdDTR}>{log?.pm_time_in ? formatTime(log.pm_time_in) : (isWeekend ? '—' : '')}</td>
-          <td style={styles.tdDTR}>{log?.pm_time_out ? formatTime(log.pm_time_out) : (isWeekend ? '—' : '')}</td>
-          <td style={styles.tdDTR}>{log?.hours_rendered != null && log?.hours_rendered !== '' ? parseFloat(log.hours_rendered).toFixed(2) : ''}</td>
+          <td style={styles.tdDTR}>{amCell(log, 'am_time_in', isWeekend)}</td>
+          <td style={styles.tdDTR}>{amCell(log, 'am_time_out', isWeekend)}</td>
+          <td style={styles.tdDTR}>{pmCell(log, 'pm_time_in', isWeekend)}</td>
+          <td style={styles.tdDTR}>{pmCell(log, 'pm_time_out', isWeekend)}</td>
+          <td style={styles.tdDTR}>{
+            log?.day_absent || log?.status === 'absent'
+              ? '0.00'
+              : (log?.hours_rendered != null && log?.hours_rendered !== '' ? parseFloat(log.hours_rendered).toFixed(2) : '')
+          }</td>
           <td style={styles.tdDTR}>
             {rowSig ? (
               <AuthenticatedFileImage path={rowSig} alt="" className="portfolio-signature-img" style={{ height: '18px', maxWidth: '70px', objectFit: 'contain', background: 'transparent' }} />

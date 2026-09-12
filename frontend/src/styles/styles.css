@@ -1247,37 +1247,50 @@ a { color: inherit; }
   cursor: not-allowed;
 }
 
-/* Feature Badges */
+/* Feature Badges — always one horizontal row; shrink on small screens */
 .login-features {
   display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(0.35rem, 2.2vw, 0.85rem);
   margin-top: 1.6rem;
   padding-top: 1.45rem;
   border-top: 1px solid rgba(26, 122, 63, 0.12);
+  width: 100%;
 }
 
 .feature-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  flex: 1;
+  justify-content: center;
+  gap: 0.3rem;
+  flex: 1 1 0;
+  min-width: 0;
   text-align: center;
   font-family: 'Raleway', sans-serif;
-  font-size: 0.78rem;
+  font-size: clamp(0.58rem, 2.15vw, 0.78rem);
   font-weight: 600;
   color: var(--text-mid);
-  line-height: 1.2;
+  line-height: 1.15;
   cursor: default;
   user-select: none;
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), color 180ms ease;
 }
 
 .feature-badge i {
-  font-size: 1.3rem;
+  font-size: clamp(0.95rem, 3.2vw, 1.3rem);
   color: var(--green-main);
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), color 180ms ease;
+}
+
+.feature-badge span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .feature-badge:hover {
@@ -2934,21 +2947,60 @@ textarea.form-control { min-height: auto; }
   .brand-intern, .brand-track { font-size: 1.65rem; }
   .campus-access-pill         { min-width: 0; }
   
-  /* Redesigned Login Responsive */
+  /* Redesigned Login Responsive — center card; reuse PNC campus background */
+  .login-page-redesign {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    background-image: url('/assets/pnc.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .login-page-redesign::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      165deg,
+      rgba(10, 92, 46, 0.55) 0%,
+      rgba(26, 122, 63, 0.48) 45%,
+      rgba(8, 48, 28, 0.58) 100%
+    );
+  }
+
   .login-split-left {
     display: none;
   }
   
   .login-split-right {
-    flex: 1;
-    padding: 0.65rem 0.9rem;
-    align-items: flex-start;
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: clamp(0.85rem, 3.5vh, 1.75rem) 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    box-sizing: border-box;
   }
   
   .login-right-card {
     padding: 1.15rem 1.15rem 1.1rem;
     margin-top: 0;
     margin-bottom: 0;
+    width: min(100%, 460px);
+    box-shadow: 0 12px 40px rgba(8, 40, 22, 0.28);
   }
 
   .login-header {
@@ -3014,15 +3066,30 @@ textarea.form-control { min-height: auto; }
   .login-features {
     margin-top: 0.85rem;
     padding-top: 0.85rem;
-    flex-direction: column;
-    gap: 0.35rem;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(0.28rem, 1.8vw, 0.55rem);
   }
 
   .feature-badge {
-    flex-direction: row;
-    justify-content: flex-start;
-    text-align: left;
-    gap: 0.75rem;
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 0.22rem;
+    min-width: 0;
+  }
+
+  .feature-badge i {
+    font-size: clamp(0.9rem, 3vw, 1.05rem);
+  }
+
+  .feature-badge span {
+    font-size: clamp(0.55rem, 2vw, 0.68rem);
+    white-space: nowrap;
   }
 
   .login-footer-grid { grid-template-columns: 1fr; }
@@ -3052,11 +3119,13 @@ textarea.form-control { min-height: auto; }
   .settings-toggle-card .form-check { justify-content: flex-start; }
 }
 
-/* Short phones: keep error + form fully usable without a nested panel scrollbar */
+/* Short phones: keep card usable; still center when space allows, scroll when not */
 @media (max-width: 768px) and (max-height: 720px) {
   .login-split-right {
-    padding-top: 0.4rem;
-    padding-bottom: 0.4rem;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
   }
 
   .login-right-card {

@@ -190,7 +190,7 @@ class SupervisorAccountRestructureTest extends TestCase
         $this->assertSame('SUP-0002', $fo30['identity']['supervisor_faculty_number']);
         $this->assertStringContainsString('REYES', strtoupper((string) $fo30['fo30']['supervisor_name']));
         $this->assertStringNotContainsString('MORGAN', strtoupper((string) $fo30['fo30']['supervisor_name']));
-        $this->assertEquals(40.0, collect($fo30['fo30']['logs'])->sum('hours_rendered'));
+        $this->assertEquals(80.0, collect($fo30['fo30']['logs'])->sum('hours_rendered'));
         $this->assertSame('signatures/'.$map['adrian']->id.'_processed.png', $fo30['fo30']['logs'][0]['hte_signature_path']);
         $this->assertSame(ManilaTime::TZ, $fo30['timezone']);
 

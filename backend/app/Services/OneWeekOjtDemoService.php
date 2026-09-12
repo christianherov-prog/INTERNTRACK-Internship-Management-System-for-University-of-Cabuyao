@@ -12,11 +12,13 @@ use App\Models\Message;
 use App\Models\Notification;
 use App\Models\StudentPortfolio;
 use App\Models\User;
+use App\Models\WorkSchedule;
 use App\Support\InternshipProvisioning;
 use App\Support\InternshipStatuses;
 use App\Support\ManilaAttendanceClock;
 use App\Support\NameParts;
 use App\Support\SignatureCapture;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -31,6 +33,18 @@ class OneWeekOjtDemoService
         ['date' => '2026-08-26', 'in' => '07:58', 'out' => '16:58'],
         ['date' => '2026-08-27', 'in' => '08:02', 'out' => '17:02'],
         ['date' => '2026-08-28', 'in' => '08:00', 'out' => '17:00'],
+        // Controlled second week (Aug 31–Sep 4). Sep 7 is intentionally omitted
+        // so FO-30 derives full-day Absent after the scheduled shift ends.
+        ['date' => '2026-08-31', 'in' => '08:00', 'out' => '17:00'],
+        ['date' => '2026-09-01', 'in' => '08:00', 'out' => '17:00'],
+        ['date' => '2026-09-02', 'in' => '08:00', 'out' => '17:00'],
+        ['date' => '2026-09-03', 'in' => '08:00', 'out' => '17:00'],
+        ['date' => '2026-09-04', 'in' => '08:00', 'out' => '17:00'],
+    ];
+
+    /** Dates that must remain without attendance punches (derived Absent). */
+    public const ABSENT_DATES = [
+        '2026-09-07',
     ];
 
     public const LUNCH_OUT = '12:00';
@@ -53,6 +67,12 @@ class OneWeekOjtDemoService
         'assessment_recommendations' => 'I recommend maintaining clear communication among students, Faculty, Coordinators, and Industry Supervisors throughout the internship. Providing clear requirements and regular monitoring can help students complete their internship responsibilities more effectively.',
         'assessment_advice' => 'Future interns should be willing to learn, communicate professionally, manage their time responsibly, and remain open to feedback. They should also document their activities regularly and ask appropriate questions whenever instructions are unclear.',
     ];
+
+    public const WEEK2_ACCOMPLISHMENT = 'During the second week of the internship, I continued performing assigned tasks while becoming more familiar with the company\'s workflow and procedures. I applied the instructions introduced during the first week, organized assigned work more independently, maintained proper documentation, and coordinated with the appropriate personnel when clarification was required.';
+
+    public const WEEK2_DIFFICULTIES = 'Some tasks required additional familiarity with the company\'s internal processes and expected work procedures. I addressed these challenges by reviewing previous instructions, verifying task requirements, and asking for clarification when necessary before proceeding.';
+
+    public const WEEK2_INSIGHTS = 'The second week strengthened my understanding of professional communication, task organization, documentation, time management, and the importance of following established procedures. I also became more confident in handling assigned responsibilities while maintaining accuracy and coordination with other personnel.';
 
     public const PORTFOLIO_IMAGE_TYPES = [
         'company_logo',
@@ -166,8 +186,10 @@ class OneWeekOjtDemoService
             'status' => $status === 'completed' ? 'ongoing' : $status,
         ]);
 
+        $this->syncApprovedSchedule($internship, $student, $supervisor);
         $attendance = $this->syncAttendance($internship, $supervisor);
         $journal = $this->syncWeek1Journal($internship, $student);
+        $week2Journal = $this->syncWeek2Journal($internship, $student);
         $feedback = $this->syncFeedback($internship, $supervisor);
         $portfolio = $this->syncPortfolioText($internship, $student);
         $uploads = $this->syncPortfolioImages($internship);
@@ -192,6 +214,7 @@ class OneWeekOjtDemoService
             'supervisor_name' => $supervisorName,
             'attendance' => $attendance,
             'journal' => $journal,
+            'week2_journal' => $week2Journal,
             'feedback' => $feedback,
             'portfolio' => $portfolio,
             'uploads' => $uploads,
@@ -241,6 +264,9 @@ class OneWeekOjtDemoService
                 'date' => $day['date'],
                 'clock_in' => ManilaAttendanceClock::storedTime($day['in']),
                 'clock_out' => ManilaAttendanceClock::storedTime($day['out']),
+                'break_start' => Carbon::parse($day['date'].' '.ManilaAttendanceClock::storedTime(self::LUNCH_OUT), config('app.timezone', 'UTC')),
+                'break_end' => Carbon::parse($day['date'].' '.ManilaAttendanceClock::storedTime(self::LUNCH_IN), config('app.timezone', 'UTC')),
+                'on_break' => false,
                 'am_time_in' => ManilaAttendanceClock::storedTime($day['in']),
                 'am_time_out' => ManilaAttendanceClock::storedTime(self::LUNCH_OUT),
                 'pm_time_in' => ManilaAttendanceClock::storedTime(self::LUNCH_IN),
@@ -272,6 +298,48 @@ class OneWeekOjtDemoService
         }
 
         return $rows;
+    }
+
+    /**
+     * Ensure Clarence (and demo reconcile) has an approved 08:00–17:00 Manila schedule
+     * covering the controlled attendance window so Sep 7 can resolve as Absent.
+     */
+    public function syncApprovedSchedule(Internship $internship, User $student, User $supervisor): WorkSchedule
+    {
+        WorkSchedule::query()
+            ->where('internship_id', $internship->id)
+            ->where('status', 'approved')
+            ->update([
+                'status' => 'superseded',
+                'effective_to' => '2026-08-23',
+            ]);
+
+        $existing = WorkSchedule::query()
+            ->where('internship_id', $internship->id)
+            ->where('status', 'approved')
+            ->whereDate('effective_from', '2026-08-24')
+            ->first();
+
+        $payload = [
+            'internship_id' => $internship->id,
+            'proposed_by' => $student->id,
+            'start_time' => '08:00:00',
+            'end_time' => '17:00:00',
+            'status' => 'approved',
+            'effective_from' => '2026-08-24',
+            'effective_to' => null,
+            'reviewed_by' => $supervisor->id,
+            'reviewed_at' => now(),
+            'review_remarks' => 'Controlled demo schedule (Asia/Manila 8:00 AM–5:00 PM).',
+        ];
+
+        if ($existing) {
+            $existing->update($payload);
+
+            return $existing->fresh();
+        }
+
+        return WorkSchedule::create($payload);
     }
 
     public function syncWeek1Journal(Internship $internship, User $student): JournalEntry
@@ -308,10 +376,58 @@ class OneWeekOjtDemoService
             $journal = $internship->journals()->create($payload);
         }
 
+        if ($internship->faculty_id) {
+            Notification::notify(
+                (int) $student->id,
+                'journal_reviewed',
+                'Journal Approved by Faculty',
+                'Your Week 1 journal was approved by your faculty supervisor.',
+                '/student/logbook',
+                ['journal_id' => $journal->id, 'week_number' => 1, 'action' => 'approved']
+            );
+        }
+
+        return $journal->fresh();
+    }
+
+    public function syncWeek2Journal(Internship $internship, User $student): JournalEntry
+    {
+        $payload = [
+            'entry_number' => 2,
+            'week_number' => 2,
+            'date' => '2026-08-31',
+            'end_date' => '2026-09-04',
+            'activities_summary' => self::WEEK2_ACCOMPLISHMENT,
+            'challenges' => self::WEEK2_DIFFICULTIES,
+            'learnings' => self::WEEK2_INSIGHTS,
+            'status' => 'approved',
+            'faculty_reviewed_by' => $internship->faculty_id,
+            'faculty_reviewed_at' => now(),
+            'score' => 94,
+            'faculty_feedback' => 'Week 2 journal is complete and reflects continued internship progress.',
+        ];
+
+        $journal = JournalEntry::withTrashed()
+            ->where('internship_id', $internship->id)
+            ->where('week_number', 2)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', SupervisorFeedbackService::NOTE_STATUS);
+            })
+            ->first();
+
+        if ($journal) {
+            if ($journal->trashed()) {
+                $journal->restore();
+            }
+            $journal->update($payload);
+        } else {
+            $journal = $internship->journals()->create($payload);
+        }
+
+        // Keep only controlled Week 1–2 academic journals for this demo account.
         $internship->journals()
             ->academic()
-            ->where('id', '!=', $journal->id)
-            ->where('week_number', '!=', 1)
+            ->whereNotIn('week_number', [1, 2])
             ->get()
             ->each
             ->delete();
@@ -321,9 +437,9 @@ class OneWeekOjtDemoService
                 (int) $student->id,
                 'journal_reviewed',
                 'Journal Approved by Faculty',
-                'Your Week 1 journal was approved by your faculty supervisor.',
+                'Your Week 2 journal was approved by your faculty supervisor.',
                 '/student/logbook',
-                ['journal_id' => $journal->id, 'week_number' => 1, 'action' => 'approved']
+                ['journal_id' => $journal->id, 'week_number' => 2, 'action' => 'approved']
             );
         }
 

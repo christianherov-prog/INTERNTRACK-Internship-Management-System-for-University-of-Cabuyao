@@ -151,7 +151,7 @@ class OfficialFormConsistencyTest extends TestCase
         $this->assertSame(ManilaTime::TZ, $ids['student']['tz']);
         $this->assertSame('08:00', $ids['student']['am']);
         $this->assertSame('17:00', $ids['student']['pm']);
-        $this->assertEquals(40.0, $ids['student']['hours']);
+        $this->assertEquals(80.0, $ids['student']['hours']);
         $this->assertSame('signatures/'.$party['supervisor']->id.'_processed.png', $ids['student']['hte']);
         $this->assertStringContainsString('MONTEALEGRE', strtoupper($ids['student']['name']));
         $this->assertStringContainsString('REYES', strtoupper($ids['student']['supervisor']));
