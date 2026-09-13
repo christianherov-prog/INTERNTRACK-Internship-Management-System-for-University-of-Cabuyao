@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="INTERNTRACK">
+  <rect width="32" height="32" rx="7" fill="#1A7A3F"/>
+  <path d="M6 22 H18.5 L25.5 10" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="9" cy="22" r="1.85" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <circle cx="13.8" cy="22" r="1.85" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <circle cx="18.5" cy="22" r="1.85" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <circle cx="25.5" cy="10" r="2.5" fill="#FFFFFF"/>
+</svg>

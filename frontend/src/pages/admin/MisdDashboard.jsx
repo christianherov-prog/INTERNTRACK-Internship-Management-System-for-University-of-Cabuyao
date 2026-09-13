@@ -1,0 +1,182 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
+import RoleSummaryPanel from '../../components/RoleSummaryPanel'
+import api from '../../services/api'
+import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { prefetchPage } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
+
+const ROLE_META = [
+  { key: 'student', label: 'Students', to: '/admin/users?role=student', color: '#0f766e' },
+  { key: 'faculty', label: 'Faculty', to: '/admin/users?role=faculty', color: '#1d4ed8' },
+  { key: 'director', label: 'Directors', to: '/admin/directors', color: '#b45309' },
+  { key: 'coordinator', label: 'Coordinators', to: '/admin/coordinators', color: '#7c3aed' },
+  { key: 'supervisor', label: 'Supervisors', to: '/admin/users?role=supervisor', color: '#be123c' },
+]
+
+function MisdDashboard() {
+  const { loading, seed, run } = useCachedPage('admin:dashboard')
+  const [data, setData] = useState(seed ?? null)
+  const [error, setError] = useState(null)
+
+  const load = () => {
+    setError(null)
+    run(() => api.get('/admin/dashboard').then((res) => res.data))
+      .then((next) => {
+        if (next) {
+          setData(next)
+          prefetchPage('admin:users:all:all:q:', () =>
+            api.get('/admin/users', { params: { page: 1, per_page: 25 } }).then((res) => {
+              const { items, meta } = unwrapList(res.data)
+              return { rows: items, meta }
+            })
+          )
+        }
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Failed to load MISD dashboard.'))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const counts = data?.users_by_role || {}
+  const status = data?.misd_status
+
+  return (
+    <Layout title="MISD Dashboard" subtitle="Enrollment & Staff Administration" icon="fa-server" bodyClass="admin-page">
+      <RoleSummaryPanel showMetrics={false} />
+      {error && <PageError message={error} onRetry={load} />}
+
+      {loading ? (
+        <div className="text-center py-5"><InternTrackLoader /></div>
+      ) : data && (
+        <>
+          <div className="row g-3 mb-4">
+            {ROLE_META.map((r) => (
+              <div className="col-6 col-md-4 col-xl" key={r.key}>
+                <Link to={r.to} className="text-decoration-none">
+                  <div className="content-card h-100 p-3" style={{ borderTop: `3px solid ${r.color}` }}>
+                    <div className="text-muted" style={{ fontSize: '0.8rem' }}>{r.label}</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: r.color }}>
+                      {counts[r.key]?.active ?? 0}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {counts[r.key]?.total ?? 0} total
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            ))}
+            <div className="col-6 col-md-4 col-xl">
+              <Link to="/admin/section-mappings" className="text-decoration-none">
+                <div className="content-card h-100 p-3" style={{ borderTop: '3px solid #dc2626' }}>
+                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>Unmapped Sections</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#dc2626' }}>
+                    {data.unmapped_count ?? 0}
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>need faculty mapping</div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          <div className="row g-3 mb-4">
+            <div className="col-lg-5">
+              <div className="content-card h-100">
+                <div className="content-card-header"><i className="fa fa-plug"></i><h6>MISD Integration</h6></div>
+                <div className="p-3">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Mode</span>
+                    <span className={`badge ${status?.use_mock ? 'bg-warning text-dark' : 'bg-success'}`}>
+                      {status?.use_mock ? 'Mock iEnroll' : 'Live API'}
+                    </span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Reachable</span>
+                    <span className={`badge ${status?.reachable ? 'bg-success' : 'bg-danger'}`}>
+                      {status?.reachable ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Latency</span>
+                    <span>{status?.latency_ms != null ? `${status.latency_ms} ms` : '—'}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Cache TTL</span>
+                    <span>{status?.cache_ttl ?? '—'} s</span>
+                  </div>
+                  <div className="text-muted mt-2" style={{ fontSize: '0.78rem', wordBreak: 'break-all' }}>
+                    {status?.base_url}
+                  </div>
+                  {status?.error && <div className="alert alert-warning mt-3 mb-0 py-2">{status.error}</div>}
+                  <Link to="/admin/sync" className="btn btn-outline-primary btn-sm mt-3">
+                    Open Sync Monitor
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-lg-7">
+              <div className="content-card h-100">
+                <div className="content-card-header"><i className="fa fa-bolt"></i><h6>Quick Actions</h6></div>
+                <div className="p-3 d-flex flex-wrap gap-2">
+                  <Link to="/admin/directors" className="btn btn-primary"><i className="fa fa-user-tie me-2"></i>Assign Director</Link>
+                  <Link to="/admin/coordinators" className="btn btn-outline-primary"><i className="fa fa-user-check me-2"></i>Manage Coordinators</Link>
+                  <Link to="/admin/section-mappings" className="btn btn-outline-primary"><i className="fa fa-sitemap me-2"></i>Section Mappings</Link>
+                  <Link to="/admin/users" className="btn btn-outline-secondary"><i className="fa fa-users me-2"></i>All Users</Link>
+                  <Link to="/admin/sync" className="btn btn-outline-secondary"><i className="fa fa-sync me-2"></i>Sync Student</Link>
+                </div>
+                {(data.unmapped_sections?.length > 0) && (
+                  <div className="px-3 pb-3">
+                    <div className="alert alert-warning mb-0">
+                      <strong>{data.unmapped_count}</strong> section group(s) have students without a faculty mapping.
+                      <Link to="/admin/section-mappings" className="ms-2">Fix mappings</Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="content-card p-3 flex-grow-1 me-3" style={{ borderTop: '3px solid #0f766e' }}>
+              <div className="text-muted" style={{ fontSize: '0.8rem' }}>Activities Today</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{data.activities_today ?? 0}</div>
+            </div>
+            <Link to="/admin/audit-logs" className="btn btn-outline-primary">View full Audit Logs</Link>
+          </div>
+
+          <div className="content-card">
+            <div className="content-card-header d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center gap-2"><i className="fa fa-history"></i><h6 className="mb-0">Recent System Activity</h6></div>
+              <Link to="/admin/audit-logs" className="small">Open Audit Logs</Link>
+            </div>
+            <div className="table-responsive">
+              <table className="table table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+                <thead className="table-light">
+                  <tr><th>When</th><th>Action</th><th>Actor</th><th>Summary</th></tr>
+                </thead>
+                <tbody>
+                  {(data.recent_activity || []).length === 0 ? (
+                    <tr><td colSpan={4} className="text-center text-muted py-4">No recent activity yet.</td></tr>
+                  ) : data.recent_activity.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.created_at_display || (row.created_at ? new Date(row.created_at).toLocaleString() : '—')}</td>
+                      <td><code>{row.action}</code></td>
+                      <td>{row.actor?.label || row.actor?.username || '—'}</td>
+                      <td className="text-muted">{row.summary || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </Layout>
+  )
+}
+
+export default MisdDashboard
