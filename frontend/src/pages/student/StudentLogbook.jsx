@@ -1,0 +1,491 @@
+import { useState, useEffect, useMemo } from 'react'
+import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
+import api from '../../services/api'
+import { unwrapList } from '../../utils/apiList'
+import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import { useAuth } from '../../contexts/AuthContext'
+import { displayLabel } from '../../utils/displayLabel'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateOfficialFormCaches, invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
+import { openOfficialFo31 } from '../../utils/officialForm'
+
+const STATUS_MAP = {
+  submitted:      { cls: 'badge-pending',  label: 'Submitted' },
+  approved:       { cls: 'badge-active',   label: 'Approved' },
+  needs_revision: { cls: 'badge-inactive', label: 'Needs Revision' },
+  draft:          { cls: 'badge-pending',  label: 'Draft' },
+}
+
+function toDateInput(value) {
+  if (!value) return ''
+  return String(value).slice(0, 10)
+}
+
+function formatDisplayDate(value) {
+  const iso = toDateInput(value)
+  if (!iso) return ''
+  const [year, month, day] = iso.split('-')
+  if (!year || !month || !day) return iso
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('en-PH', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function canEditJournal(journal) {
+  return journal && journal.status !== 'approved' && journal.editable !== false
+}
+
+function daysBetween(startIso, endIso) {
+  const a = new Date(`${startIso}T00:00:00`)
+  const b = new Date(`${endIso}T00:00:00`)
+  return Math.round((b - a) / 86400000)
+}
+
+function chronologicalWeekNumber(internshipStart, journalStart) {
+  if (!internshipStart || !journalStart) return ''
+  const days = daysBetween(internshipStart, journalStart)
+  if (Number.isNaN(days) || days < 0) return ''
+  return Math.floor(days / 7) + 1
+}
+
+const EMPTY_FORM = {
+  week_number:        '',
+  date:               '',
+  end_date:           '',
+  activities_summary: '',   // ACCOMPLISHMENT
+  challenges:         '',   // DIFFICULTIES ENCOUNTERED
+  learnings:          '',   // NEW LEARNING / INSIGHTS
+  notes:              '',
+}
+
+function StudentLogbook() {
+  const { user } = useAuth()
+  const { loading, seed, run } = useCachedPage('student:logbook')
+  const [journals, setJournals]       = useState(() => seed?.items ?? seed ?? [])
+  const [internFeedback, setInternFeedback] = useState(() => seed?.internFeedback ?? null)
+  const [journalPeriod, setJournalPeriod] = useState(() => seed?.journalPeriod ?? null)
+  const [error, setError]             = useState(null)
+  const [submitting, setSubmitting]   = useState(false)
+  const [generating, setGenerating]   = useState(null) // week_number being generated
+  const [message, setMessage]         = useState(null)
+  const [showForm, setShowForm]       = useState(false)
+  const [editEntry, setEditEntry]     = useState(null) // journal entry being edited
+  const [form, setForm]               = useState(EMPTY_FORM)
+  const [previewModal, setPreviewModal] = useState(null)
+
+  const dateMin = journalPeriod?.min_date || journalPeriod?.start_date || undefined
+  const dateMax = journalPeriod?.max_date || journalPeriod?.today || undefined
+
+  const derivedWeek = useMemo(
+    () => chronologicalWeekNumber(journalPeriod?.start_date, form.date),
+    [journalPeriod?.start_date, form.date]
+  )
+
+  const fetchJournals = () => {
+    setError(null)
+    run(() => api.get('/student/logbook').then(res => ({
+      items: unwrapList(res.data).items,
+      internFeedback: res.data.intern_feedback || null,
+      journalPeriod: res.data.journal_period || null,
+    })))
+      .then((next) => {
+        if (next) {
+          setJournals(next.items)
+          setInternFeedback(next.internFeedback)
+          setJournalPeriod(next.journalPeriod)
+        }
+      })
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load journals.')
+        setJournals([])
+      })
+  }
+
+  useEffect(() => { fetchJournals() }, [])
+
+  // ── Form helpers ──────────────────────────────────────────────────────────
+
+  const openNewEntry = () => {
+    if (journalPeriod && journalPeriod.can_create === false) {
+      setMessage({
+        type: 'danger',
+        text: journalPeriod.reason || 'An active internship is required before creating a weekly journal.',
+      })
+      return
+    }
+    setForm(EMPTY_FORM)
+    setEditEntry(null)
+    setShowForm(true)
+    setMessage(null)
+  }
+
+  const openEditEntry = (j) => {
+    if (!canEditJournal(j)) {
+      setMessage({ type: 'danger', text: j.lock_reason || 'Approved journals cannot be edited.' })
+      return
+    }
+    setForm({
+      week_number:        j.week_number ?? '',
+      date:               toDateInput(j.date),
+      end_date:           toDateInput(j.end_date),
+      activities_summary: j.activities_summary ?? '',
+      challenges:         j.challenges ?? '',
+      learnings:          j.learnings ?? '',
+      notes:              j.notes ?? '',
+    })
+    setEditEntry(j)
+    setShowForm(true)
+    setMessage(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleChange = e => {
+    const { name, value } = e.target
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'date' && journalPeriod?.start_date) {
+        const week = chronologicalWeekNumber(journalPeriod.start_date, value)
+        if (week !== '') next.week_number = week
+      }
+      return next
+    })
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.activities_summary && !form.challenges && !form.learnings) {
+      setMessage({ type: 'danger', text: 'Please fill in at least one journal field.' })
+      return
+    }
+    if (dateMin && form.date && form.date < dateMin) {
+      setMessage({ type: 'danger', text: 'Journal dates cannot be earlier than your internship start date.' })
+      return
+    }
+    if (dateMax && ((form.date && form.date > dateMax) || (form.end_date && form.end_date > dateMax))) {
+      setMessage({ type: 'danger', text: 'Journal entries cannot be submitted for a future period.' })
+      return
+    }
+    setSubmitting(true)
+    setMessage(null)
+    const payload = {
+      ...form,
+      week_number: derivedWeek || form.week_number,
+    }
+    if (editEntry?.id) payload.journal_id = editEntry.id
+    try {
+      const res = await api.post('/student/logbook', payload)
+      const savedWeek = res.data?.journal?.week_number ?? payload.week_number
+      invalidateStudentPortfolio()
+      invalidateOfficialFormCaches()
+      setMessage({ type: 'success', text: `Week ${savedWeek} journal saved successfully!` })
+      setShowForm(false)
+      setForm(EMPTY_FORM)
+      setEditEntry(null)
+      fetchJournals()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Submission failed.' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ── PDF Generation ────────────────────────────────────────────────────────
+
+  const handlePreviewJournal = (j) => {
+    const internshipId = j.internship_id
+    if (internshipId) {
+      openOfficialFo31(internshipId, j, setPreviewModal).catch((err) => alert(err.response?.data?.message || 'Unable to load FO-31 preview.'))
+      return
+    }
+    setPreviewModal({
+      type: 'journal',
+      data: {
+        studentName: j.student_name || user?.name || '',
+        program: displayLabel(j.program || user?.program, ''),
+        companyName: j.company_name || user?.company || '',
+        companyLogoPath: j.company_logo_path || '',
+        studentSignaturePath: j.student_signature_path || '',
+        weekNumber: j.week_number ?? j.entry_number,
+        date: j.date,
+        endDate: j.end_date,
+        accomplishment: j.activities_summary,
+        difficulties: j.challenges,
+        insights: j.learnings,
+      }
+    })
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  const statusBadge = (s) => {
+    const { cls, label } = STATUS_MAP[s] ?? { cls: 'badge-pending', label: s }
+    return <span className={`badge-status ${cls}`}>{label}</span>
+  }
+
+  return (
+    <Layout
+      title="Weekly Journal (Form 31)"
+      subtitle="Encode your weekly journal directly — the system generates PNC:AA-FO-31 automatically"
+      icon="fa-book-open"
+      bodyClass="student-page"
+    >
+      {error && <PageError message={error} onRetry={fetchJournals} />}
+      {message && (
+        <div className={`alert alert-${message.type} mb-3 d-flex align-items-center gap-2`}>
+          <i className={`fa fa-${message.type === 'success' ? 'check-circle' : 'exclamation-circle'}`}></i>
+          {message.text}
+        </div>
+      )}
+
+      <FormPreviewModal
+        isOpen={!!previewModal}
+        onClose={() => setPreviewModal(null)}
+        type={previewModal?.type}
+        data={previewModal?.data || {}}
+        onDownload={previewModal?.onDownload}
+      />
+
+      {/* Action bar */}
+      <div className="d-flex justify-content-end align-items-center mb-4 gap-3 flex-wrap">
+        <button className="btn btn-primary" onClick={openNewEntry}>
+          <i className="fa fa-plus me-2"></i>New Journal Entry
+        </button>
+      </div>
+
+      {/* ── Entry Form ── */}
+      {showForm && (
+        <div className="content-card mb-4">
+          <div className="content-card-header">
+            <i className="fa fa-pen-to-square"></i>
+            <h6>{editEntry ? `Edit — Week ${editEntry.week_number}` : 'New Weekly Journal Entry'}</h6>
+          </div>
+          <form className="p-3 p-md-4" onSubmit={handleSubmit}>
+            {journalPeriod?.start_date && (
+              <div className="alert alert-light border mb-3 py-2 small">
+                Internship Start: <strong>{formatDisplayDate(journalPeriod.start_date)}</strong>
+                {journalPeriod.end_date ? (
+                  <> · End: <strong>{formatDisplayDate(journalPeriod.end_date)}</strong></>
+                ) : null}
+                <div className="text-muted mt-1">
+                  Journal dates must fall within your active internship period and cannot be in the future.
+                </div>
+              </div>
+            )}
+            <div className="row g-3 mb-3">
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">
+                  Week No. <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="number" name="week_number" className="form-control"
+                  placeholder="Auto" min={1} max={52}
+                  value={derivedWeek || form.week_number} readOnly
+                  required
+                />
+                <small className="text-muted">Auto-calculated from internship start</small>
+              </div>
+              <div className="col-md-9">
+                <label className="form-label fw-semibold">
+                  Week Date Range <span className="text-danger">*</span>
+                </label>
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="date" name="date" className="form-control"
+                    value={form.date} onChange={handleChange} required
+                    min={dateMin} max={dateMax}
+                  />
+                  <span className="text-muted">to</span>
+                  <input
+                    type="date" name="end_date" className="form-control"
+                    value={form.end_date} onChange={handleChange} required
+                    min={form.date || dateMin} max={dateMax}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Three-column journal fields matching Form 31 */}
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold text-success">
+                  <i className="fa fa-check-square me-1"></i>
+                  Accomplishment <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  name="activities_summary" className="form-control" rows={8}
+                  placeholder="Accomplishments"
+                  value={form.activities_summary} onChange={handleChange} required
+                />
+                <small className="text-muted">Mapped to: "ACCOMPLISHMENT" column in Form 31</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold text-danger">
+                  <i className="fa fa-exclamation-triangle me-1"></i>
+                  Difficulties Encountered
+                </label>
+                <textarea
+                  name="challenges" className="form-control" rows={8}
+                  placeholder="Challenges"
+                  value={form.challenges} onChange={handleChange}
+                />
+                <small className="text-muted">Mapped to: "DIFFICULTIES ENCOUNTERED" column in Form 31</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold text-primary">
+                  <i className="fa fa-lightbulb me-1"></i>
+                  New Learning / Insights
+                </label>
+                <textarea
+                  name="learnings" className="form-control" rows={8}
+                  placeholder="Learnings"
+                  value={form.learnings} onChange={handleChange}
+                />
+                <small className="text-muted">Mapped to: "NEW LEARNING / INSIGHTS" column in Form 31</small>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label className="form-label fw-semibold">Notes / Remarks (Optional)</label>
+              <textarea
+                name="notes" className="form-control" rows={2}
+                placeholder="Remarks"
+                value={form.notes} onChange={handleChange}
+              />
+            </div>
+
+            <div className="mt-4 d-flex gap-2">
+              <button type="submit" className="btn btn-success" disabled={submitting}>
+                <i className="fa fa-save me-2"></i>
+                {submitting ? 'Saving…' : 'Save Journal Entry'}
+              </button>
+              <button
+                type="button" className="btn btn-outline-secondary"
+                onClick={() => { setShowForm(false); setEditEntry(null) }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {internFeedback?.feedback && (
+        <div className="content-card mb-4">
+          <div className="content-card-header">
+            <i className="fa fa-comment-dots"></i>
+            <h6>Industry Supervisor Feedback</h6>
+          </div>
+          <div className="p-3">
+            <p className="mb-1">{internFeedback.feedback}</p>
+            <div className="small text-muted">{internFeedback.supervisor_reviewed_at_manila || internFeedback.supervisor_reviewed_at}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Journal List ── */}
+      <div className="content-card">
+        <div className="content-card-header">
+          <i className="fa fa-list-ul"></i>
+          <h6>My Weekly Journal Entries</h6>
+        </div>
+        <div className="table-card">
+          {loading && journals.length === 0 ? (
+            <div className="text-center py-5">
+              <InternTrackLoader />
+            </div>
+          ) : journals.length === 0 && !error ? (
+            <div className="text-center py-5 text-muted">
+              <i className="fa fa-book-open fa-3x mb-3 d-block opacity-25"></i>
+              No journal entries yet. Click <strong>New Journal Entry</strong> to get started.
+            </div>
+          ) : journals.map(j => (
+            <div key={j.id} className="p-3 border-bottom">
+              <div className="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fw-semibold mb-1" style={{ fontSize: '1.05rem' }}>
+                    <i className="fa fa-calendar-week me-2 text-primary"></i>
+                    Week {j.week_number}
+                    {j.date && (
+                      <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.88rem' }}>
+                        — {formatDisplayDate(j.date)}
+                        {j.end_date ? ` to ${formatDisplayDate(j.end_date)}` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Preview snippets */}
+                  <div className="row g-2 mt-1">
+                    {j.activities_summary && (
+                      <div className="col-md-4">
+                        <div className="p-2 rounded" style={{ background: '#f0fdf4', fontSize: '0.82rem' }}>
+                          <strong className="text-success">Accomplishment:</strong>
+                          <p className="mb-0 text-truncate" style={{ maxWidth: 240 }}>{j.activities_summary}</p>
+                        </div>
+                      </div>
+                    )}
+                    {j.challenges && (
+                      <div className="col-md-4">
+                        <div className="p-2 rounded" style={{ background: '#fff5f5', fontSize: '0.82rem' }}>
+                          <strong className="text-danger">Difficulties:</strong>
+                          <p className="mb-0 text-truncate" style={{ maxWidth: 240 }}>{j.challenges}</p>
+                        </div>
+                      </div>
+                    )}
+                    {j.learnings && (
+                      <div className="col-md-4">
+                        <div className="p-2 rounded" style={{ background: '#eff6ff', fontSize: '0.82rem' }}>
+                          <strong className="text-primary">Insights:</strong>
+                          <p className="mb-0 text-truncate" style={{ maxWidth: 240 }}>{j.learnings}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {j.supervisor_feedback && (
+                    <div className="mt-2 p-2 rounded" style={{ background: '#f0fdf4', fontSize: '0.82rem', color: '#15803d' }}>
+                      <i className="fa fa-comment-dots me-1"></i>
+                      <strong>Industry Supervisor note:</strong> {j.supervisor_feedback}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="d-flex flex-column align-items-end gap-2 ms-2">
+                  {statusBadge(j.status)}
+                  <div className="d-flex gap-1 flex-wrap justify-content-end mt-1">
+                    {canEditJournal(j) ? (
+                      <button
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => openEditEntry(j)}
+                        title="Edit this journal entry"
+                      >
+                        <i className="fa fa-edit me-1"></i>Edit
+                      </button>
+                    ) : (
+                      <span className="small text-muted" title={j.lock_reason || 'Approved journals cannot be edited.'}>
+                        Locked
+                      </span>
+                    )}
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handlePreviewJournal(j)}
+                      title="Preview Journal Form"
+                    >
+                      <i className="fa fa-eye me-1"></i>Preview
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Layout>
+  )
+}
+
+export default StudentLogbook
