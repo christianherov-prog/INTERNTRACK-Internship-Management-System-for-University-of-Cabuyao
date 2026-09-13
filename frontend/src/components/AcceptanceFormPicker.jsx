@@ -1,10 +1,8 @@
-const ACCEPTANCE_MAX_BYTES = 10 * 1024 * 1024
+import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../config/uploads'
+import { formatFileSize } from '../utils/uploadValidation'
 
 export function formatAcceptanceFileSize(bytes) {
-  if (bytes == null) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return formatFileSize(bytes)
 }
 
 export function isAllowedAcceptance(file) {
@@ -17,7 +15,7 @@ export function isAllowedAcceptance(file) {
 export function validateAcceptanceForm(file) {
   if (!file) return 'Acceptance Form is required.'
   if (!isAllowedAcceptance(file)) return 'Acceptance Form must be a PDF or image (JPG/PNG).'
-  if (file.size > ACCEPTANCE_MAX_BYTES) return 'Acceptance Form must be 10 MB or smaller.'
+  if (file.size > UPLOAD_MAX_BYTES) return `Acceptance Form must be ${UPLOAD_MAX_MB} MB or smaller.`
   return null
 }
 
@@ -53,7 +51,7 @@ export default function AcceptanceFormPicker({
           <i className={`fa ${/\.pdf$/i.test(file.name) ? 'fa-file-pdf' : 'fa-file-image'} moa-selected-icon`} aria-hidden="true"></i>
           <div className="moa-selected-meta">
             <div className="moa-selected-name" title={file.name}>{file.name}</div>
-            <div className="moa-selected-size">{formatAcceptanceFileSize(file.size)} · PDF or JPG/PNG · Maximum 10 MB</div>
+            <div className="moa-selected-size">{formatAcceptanceFileSize(file.size)} · PDF or JPG/PNG · Maximum {UPLOAD_MAX_MB} MB</div>
           </div>
           <div className="moa-selected-actions">
             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={openPicker} disabled={disabled}>
@@ -68,7 +66,7 @@ export default function AcceptanceFormPicker({
         <label htmlFor={id} className={`upload-dropzone moa-dropzone mb-0${disabled ? ' is-disabled' : ''}`}>
           <i className="fa fa-file-upload" aria-hidden="true"></i>
           <strong>Select Acceptance Form</strong>
-          <span>PDF or JPG/PNG · Maximum 10 MB</span>
+          <span>PDF or JPG/PNG · Maximum {UPLOAD_MAX_MB} MB</span>
           <span className="moa-select-chip">Select Acceptance Form</span>
         </label>
       )}

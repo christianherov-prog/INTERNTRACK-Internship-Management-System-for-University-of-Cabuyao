@@ -9,8 +9,17 @@ import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { documentStatusConfig } from '../../utils/documentStatus'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { invalidateStudentDocuments } from '../../utils/pageCache'
+import { UPLOAD_MAX_FILES, UPLOAD_MAX_MB } from '../../config/uploads'
+import {
+  formatFileSize,
+  uploadErrorMessage,
+  uploadLimitHint,
+  validateUploadFiles,
+} from '../../utils/uploadValidation'
 
 const REVIEWABLE_STATUSES = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
+const REQUIREMENT_FILE_TYPES = 'DOC, DOCX, PDF, JPG, PNG'
 
 export default function ManageRequirementsTemplates({ embedded = false }) {
   const confirm = useConfirm()
@@ -47,8 +56,36 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   const [reviewingBusy, setReviewingBusy] = useState(false)
   const [targetSearch, setTargetSearch] = useState('')
 
+  const [fileError, setFileError] = useState(null)
   const fileInputRef = useRef(null)
   const rolePath = user?.role
+
+  const applyTemplateFiles = (incoming) => {
+    const check = validateUploadFiles(incoming)
+    if (!check.ok) {
+      setFileError(check.error)
+      toast.error(check.error)
+      // Keep only valid files so the user can remove/replace without restarting the form.
+      const valid = (Array.isArray(incoming) ? incoming : []).filter(
+        (f) => !(check.invalidFiles || []).includes(f) && (f.size || 0) <= (UPLOAD_MAX_MB * 1024 * 1024)
+      )
+      const recheck = validateUploadFiles(valid)
+      setFormData((prev) => ({ ...prev, templateFiles: recheck.ok ? recheck.files : [] }))
+      return
+    }
+    setFileError(null)
+    setFormData((prev) => ({ ...prev, templateFiles: check.files }))
+  }
+
+  const removeSelectedFile = (index) => {
+    setFormData((prev) => {
+      const next = prev.templateFiles.filter((_, i) => i !== index)
+      const check = validateUploadFiles(next)
+      setFileError(check.ok ? null : check.error)
+      return { ...prev, templateFiles: check.ok ? check.files : next }
+    })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const isTargetSelected = (id) => formData.selectedTargets.some((t) => String(t) === String(id))
 
@@ -111,6 +148,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   }
 
   const handleOpenModal = (req = null) => {
+    setFileError(null)
     if (req) {
       setEditingReq(req)
       setFormData({
@@ -159,7 +197,13 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
     }
 
     if (formData.templateFiles && formData.templateFiles.length > 0) {
-      formData.templateFiles.forEach(file => {
+      const check = validateUploadFiles(formData.templateFiles)
+      if (!check.ok) {
+        setFileError(check.error)
+        toast.error(check.error)
+        return
+      }
+      check.files.forEach((file) => {
         form.append('template_files[]', file)
       })
     }
@@ -184,9 +228,10 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
         toast.success('Requirement created successfully')
       }
       setIsModalOpen(false)
+      setFileError(null)
       fetchRequirements()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save requirement')
+      toast.error(uploadErrorMessage(err, 'Failed to save requirement'))
     } finally {
       setSubmitting(false)
     }
@@ -194,6 +239,20 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
 
   const handleReview = async (docId, action) => {
     if (!docId || reviewingBusy) return
+    const student = reviewingDoc?.student_name
+      || reviewingDoc?.student?.name
+      || reviewingDoc?.uploader_name
+      || 'this student'
+    const docLabel = reviewingDoc?.document_type || reviewingDoc?.requirement_name || 'document'
+    const verb = action === 'approve' ? 'Approve' : 'Reject'
+    const ok = await confirm({
+      title: `${verb} document submission?`,
+      message: `${verb} "${docLabel}" submitted by ${student}?`,
+      confirmLabel: verb,
+      variant: action === 'approve' ? 'primary' : 'danger',
+    })
+    if (!ok) return
+
     setReviewingBusy(true)
     try {
       await api.post(`/${rolePath}/documents/${docId}/review`, {
@@ -203,6 +262,8 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
       toast.success(`Document ${action === 'approve' ? 'approved' : 'rejected'}. The student has been notified.`)
       setReviewingDoc(null)
       setReviewRemarks('')
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       fetchRequirements()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to review document')
@@ -212,7 +273,12 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
   }
 
   const handleDelete = async (id) => {
-    if (!(await confirm({ message: 'Are you sure you want to delete this requirement?', variant: 'danger' }))) return
+    if (!(await confirm({
+      title: 'Delete requirement?',
+      message: 'Delete this requirement template? Students will no longer see it as required.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    }))) return
     try {
       await api.delete(`/${rolePath}/requirements/${id}`)
       toast.success('Requirement deleted')
@@ -509,30 +575,62 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                     )}
 
                     <div className="mb-3">
-                      <label className="form-label fw-semibold">File Upload <span className="text-muted fw-normal">(Optional)</span></label>
+                      <label className="form-label fw-semibold" htmlFor="requirement-template-files">
+                        File Upload <span className="text-muted fw-normal">(Optional)</span>
+                      </label>
                       <input
+                        id="requirement-template-files"
                         type="file"
-                        className="form-control"
+                        className={`form-control ${fileError ? 'is-invalid' : ''}`}
                         multiple
-                        onChange={e => setFormData({ ...formData, templateFiles: Array.from(e.target.files) })}
+                        onChange={(e) => applyTemplateFiles(Array.from(e.target.files || []))}
                         accept=".doc,.docx,.pdf,.jpg,.jpeg,.png"
                         ref={fileInputRef}
+                        aria-describedby="requirement-file-hint requirement-file-error"
                       />
-                      <div className="form-text small text-muted">Upload documents for students to fill out. You can select multiple files.</div>
-                      
+                      <div id="requirement-file-hint" className="form-text small text-muted">
+                        {uploadLimitHint(REQUIREMENT_FILE_TYPES)}. Up to {UPLOAD_MAX_FILES} files.
+                      </div>
+                      {fileError && (
+                        <div id="requirement-file-error" className="invalid-feedback d-block" role="alert" aria-live="polite">
+                          <i className="fa fa-triangle-exclamation me-1" aria-hidden="true"></i>
+                          {fileError}
+                        </div>
+                      )}
+
                       {/* Show newly selected files */}
                       {formData.templateFiles.length > 0 && (
                         <div className="mt-3">
                           <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Files to upload</h6>
                           <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
-                            {formData.templateFiles.map((f, i) => (
-                              <div key={i} className="d-flex align-items-center">
-                                <div className="bg-white border rounded p-1 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '30px', height: '30px' }}>
-                                  <i className="fa fa-file text-secondary"></i>
+                            {formData.templateFiles.map((f, i) => {
+                              const over = (f.size || 0) > UPLOAD_MAX_MB * 1024 * 1024
+                              return (
+                                <div key={`${f.name}-${i}`} className="d-flex align-items-center justify-content-between gap-2">
+                                  <div className="d-flex align-items-center min-w-0">
+                                    <div className="bg-white border rounded p-1 me-2 shadow-sm d-flex justify-content-center align-items-center flex-shrink-0" style={{ width: '30px', height: '30px' }}>
+                                      <i className={`fa ${over ? 'fa-triangle-exclamation text-danger' : 'fa-file text-secondary'}`} aria-hidden="true"></i>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '260px' }} title={f.name}>{f.name}</div>
+                                      <div className={`small ${over ? 'text-danger' : 'text-muted'}`}>
+                                        {formatFileSize(f.size)}
+                                        {over ? ` · Exceeds ${UPLOAD_MAX_MB} MB` : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger border-0"
+                                    onClick={() => removeSelectedFile(i)}
+                                    aria-label={`Remove ${f.name}`}
+                                    title="Remove"
+                                  >
+                                    <i className="fa fa-times" aria-hidden="true"></i>
+                                  </button>
                                 </div>
-                                <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '300px' }}>{f.name}</div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -589,7 +687,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                 </div>
                 <div className="modal-footer border-top-0 pt-0">
                   <button type="button" className="btn btn-light" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                  <button type="submit" form="requirementForm" className="btn btn-primary px-4" disabled={submitting}>
+                  <button type="submit" form="requirementForm" className="btn btn-primary px-4" disabled={submitting || !!fileError}>
                     {submitting ? 'Saving…' : (editingReq ? 'Save Changes' : 'Create Requirement')}
                   </button>
                 </div>

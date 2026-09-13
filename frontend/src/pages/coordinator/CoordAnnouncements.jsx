@@ -13,6 +13,8 @@ import {
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { CURRENT_TERM } from '../../config/term'
+import { UPLOAD_MAX_MB } from '../../config/uploads'
+import { uploadErrorMessage } from '../../utils/uploadValidation'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 
@@ -140,7 +142,7 @@ function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator
         || data?.message
         || 'Failed to save.'
       if (status === 413) {
-        setMessage({ type: 'danger', text: text || 'File is too large. Maximum size is 10 MB.' })
+        setMessage({ type: 'danger', text: text || uploadErrorMessage(err, `File is too large. Maximum size is ${UPLOAD_MAX_MB} MB.`) })
       } else {
         setMessage({ type: 'danger', text })
       }
@@ -247,7 +249,7 @@ function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator
                     <i className="fa fa-paperclip me-2" aria-hidden="true" />
                     {attachFile || showExisting ? 'Replace file' : 'Attach file or image'}
                   </button>
-                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>Max 10 MB · images &amp; PDF/DOC/XLS</span>
+                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>Max {UPLOAD_MAX_MB} MB · images &amp; PDF/DOC/XLS</span>
                 </div>
                 {attachFile && (
                   <AnnouncementAttachPreview

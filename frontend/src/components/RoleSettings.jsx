@@ -265,6 +265,12 @@ function RoleSettings({
         e.target.value = ''
         return
       }
+      const avatarMax = 5 * 1024 * 1024 // module override (UploadAvatarRequest)
+      if (file.size > avatarMax) {
+        toast.error('Profile photo must not exceed 5 MB.')
+        e.target.value = ''
+        return
+      }
       const reader = new FileReader()
       reader.onloadend = () => setCropSrc(reader.result)
       reader.readAsDataURL(file)

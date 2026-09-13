@@ -42,7 +42,7 @@ class SupervisorFeedbackService
 
         $note = DB::transaction(function () use ($internship, $supervisor, $feedback) {
             Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
-            $existing = JournalEntry::query()
+            $existing = JournalEntry::withTrashed()
                 ->where('internship_id', $internship->id)
                 ->where('status', self::NOTE_STATUS)
                 ->lockForUpdate()
@@ -60,6 +60,9 @@ class SupervisorFeedbackService
             ];
 
             if ($existing) {
+                if (method_exists($existing, 'trashed') && $existing->trashed()) {
+                    $existing->restore();
+                }
                 $existing->update($payload);
 
                 return $existing->fresh(['internship.student.studentProfile', 'internship.company', 'internship.supervisor.supervisorProfile']);

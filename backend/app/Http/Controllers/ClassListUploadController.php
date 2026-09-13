@@ -8,20 +8,21 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Program;
 use App\Models\User;
 use App\Support\DepartmentScope;
+use App\Support\UploadLimits;
 
 class ClassListUploadController extends Controller
 {
     public function upload(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv',
+            'file' => 'required|'.UploadLimits::fileRule('xlsx,xls,csv'),
             'section' => 'required|string',
             'program' => 'required|string',
             'school_year' => 'required_without:academic_year|string',
             'academic_year' => 'required_without:school_year|string',
             'semester' => 'required|string',
             'faculty_user_id' => 'required|exists:users,id',
-        ]);
+        ], UploadLimits::maxMessages('file'));
 
         $schoolYear = $request->input('school_year') ?: $request->input('academic_year');
         $semester = $this->normalizeSemester((string) $request->input('semester'));

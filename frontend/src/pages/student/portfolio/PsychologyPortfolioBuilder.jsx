@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import PageError from '../../../components/PageError'
 import api from '../../../services/api'
+import { validateUploadFiles, uploadErrorMessage } from '../../../utils/uploadValidation'
 import { cacheGet, cacheSet } from '../../../utils/pageCache'
 import { AuthenticatedFileLink } from '../../../components/AuthenticatedFile'
 import ConfirmModal from '../../../components/modals/ConfirmModal'
@@ -85,6 +86,12 @@ function PsychologyPortfolioBuilder() {
       e.target.value = ''
       return
     }
+    const sizeCheck = validateUploadFiles([file])
+    if (!sizeCheck.ok) {
+      alert(sizeCheck.error)
+      e.target.value = ''
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', type)
@@ -93,7 +100,7 @@ function PsychologyPortfolioBuilder() {
       await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       fetchPortfolio()
     } catch (err) {
-      alert('File upload failed. Please try again.')
+      alert(uploadErrorMessage(err))
     } finally {
       e.target.value = ''
     }

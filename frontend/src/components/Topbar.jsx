@@ -11,36 +11,7 @@ import {
   notificationPollMs,
 } from '../services/echo'
 import { isMultiHteProgram } from '../utils/hteProgram'
-import { useStaffWorkspace } from '../hooks/useStaffWorkspace'
-
-function StaffWorkspaceSwitcher() {
-  const { workspace, canSwitch, switchWorkspace } = useStaffWorkspace()
-
-  if (!canSwitch) return null
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-      <select
-        value={workspace}
-        onChange={(e) => switchWorkspace(e.target.value)}
-        title="Switch between your Coordinator and Faculty Supervisor workspaces"
-        aria-label="Workspace"
-        style={{
-          padding: '6px 12px',
-          borderRadius: '4px',
-          border: '1px solid #ccc',
-          backgroundColor: '#fff',
-          fontSize: '14px',
-          color: '#333',
-          cursor: 'pointer'
-        }}
-      >
-        <option value="coordinator">Coordinator</option>
-        <option value="faculty">Faculty Supervisor</option>
-      </select>
-    </div>
-  )
-}
+import RoleWorkspaceSwitcher from './RoleWorkspaceSwitcher'
 
 function StudentDeploymentSwitcher() {
   const { user } = useAuth()
@@ -360,7 +331,7 @@ function Topbar({ title, subtitle, icon }) {
         </div>
       </div>
       <div className="topbar-right" style={{ gap: '12px' }}>
-        <StaffWorkspaceSwitcher />
+        <RoleWorkspaceSwitcher />
         <StudentDeploymentSwitcher />
         <NotificationBell />
         <span className="role-badge">

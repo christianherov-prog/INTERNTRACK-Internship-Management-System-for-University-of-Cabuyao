@@ -15,12 +15,16 @@ class InternTrackNotificationMail extends Mailable
     public string $notifTitle;
     public string $notifMessage;
     public ?string $notifLink;
+    public string $logoPath;
 
     public function __construct(string $title, string $message, ?string $link = null)
     {
         $this->notifTitle   = $title;
         $this->notifMessage = $message;
         $this->notifLink    = $link;
+        $preferred = resource_path('images/pnc-logo.png');
+        $fallback = resource_path('images/fo30/pnc-seal.png');
+        $this->logoPath = file_exists($preferred) ? $preferred : $fallback;
     }
 
     public function envelope(): Envelope
@@ -34,6 +38,9 @@ class InternTrackNotificationMail extends Mailable
     {
         return new Content(
             view: 'emails.notification',
+            with: [
+                'logoPath' => $this->logoPath,
+            ],
         );
     }
 }

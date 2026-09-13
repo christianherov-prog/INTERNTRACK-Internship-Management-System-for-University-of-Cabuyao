@@ -1,10 +1,8 @@
-const MOA_MAX_BYTES = 10 * 1024 * 1024
+import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../config/uploads'
+import { formatFileSize } from '../utils/uploadValidation'
 
 export function formatMoaFileSize(bytes) {
-  if (bytes == null) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return formatFileSize(bytes)
 }
 
 export function isPdfMoa(file) {
@@ -15,7 +13,7 @@ export function isPdfMoa(file) {
 export function validateMoaFile(file) {
   if (!file) return null
   if (!isPdfMoa(file)) return 'MOA must be a PDF file.'
-  if (file.size > MOA_MAX_BYTES) return 'MOA must be 10 MB or smaller.'
+  if (file.size > UPLOAD_MAX_BYTES) return `MOA must be ${UPLOAD_MAX_MB} MB or smaller.`
   return null
 }
 
@@ -49,7 +47,7 @@ export default function MoaFilePicker({
           <i className="fa fa-file-pdf moa-selected-icon" aria-hidden="true"></i>
           <div className="moa-selected-meta">
             <div className="moa-selected-name" title={file.name}>{file.name}</div>
-            <div className="moa-selected-size">{formatMoaFileSize(file.size)} · PDF only · Maximum 10 MB</div>
+            <div className="moa-selected-size">{formatMoaFileSize(file.size)} · PDF only · Maximum {UPLOAD_MAX_MB} MB</div>
           </div>
           <div className="moa-selected-actions">
             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={openPicker} disabled={disabled}>
@@ -64,7 +62,7 @@ export default function MoaFilePicker({
         <label htmlFor={id} className={`upload-dropzone moa-dropzone mb-0${disabled ? ' is-disabled' : ''}`}>
           <i className="fa fa-file-pdf" aria-hidden="true"></i>
           <strong>Select Memorandum of Agreement</strong>
-          <span>PDF only · Maximum 10 MB</span>
+          <span>PDF only · Maximum {UPLOAD_MAX_MB} MB</span>
           <span className="moa-select-chip">Select File</span>
         </label>
       )}

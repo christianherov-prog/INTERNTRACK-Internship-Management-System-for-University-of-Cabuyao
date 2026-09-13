@@ -5,6 +5,8 @@ import PageError from '../../components/PageError'
 import EmptyState from '../../components/EmptyState'
 import api from '../../services/api'
 import ReportExportModal from '../../components/modals/ReportExportModal'
+import ComplianceApprovedProgress from '../../components/ComplianceApprovedProgress'
+import ComplianceRequirementsStatus, { formatRequirementsStatusCsv } from '../../components/ComplianceRequirementsStatus'
 import { displayLabel } from '../../utils/displayLabel'
 import { reportPrintOptions } from '../../utils/reportPrint'
 import InternTrackLoader from '../../components/InternTrackLoader'
@@ -22,7 +24,7 @@ const REPORT_TYPES = [
     title: 'Document Compliance Report',
     icon: 'fa-folder-open',
     color: 'green',
-    desc: 'Which assigned students have fully approved documents and what is still missing.',
+    desc: 'Shows every applicable requirement with Approved, Pending, Missing, or Rejected status for assigned students.',
   },
   {
     key: 'performance',
@@ -99,7 +101,7 @@ function ComplianceTable({ data }) {
     <div className="table-responsive">
       <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
-          <tr><th>#</th><th>Student</th><th>Program</th><th>Compliance</th><th>Missing Documents</th></tr>
+          <tr><th>#</th><th>Student</th><th>Program</th><th>Compliance</th><th>Requirements Status</th></tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
@@ -108,23 +110,14 @@ function ComplianceTable({ data }) {
               <td className="fw-semibold">{r.student_name}</td>
               <td>{displayLabel(r.program, '—')}</td>
               <td>
-                <div className="d-flex align-items-center gap-2">
-                  <div className="progress flex-grow-1" style={{ height: '8px' }}>
-                    <div
-                      className={`progress-bar ${r.compliance_pct >= 80 ? 'bg-success' : r.compliance_pct >= 50 ? 'bg-warning' : 'bg-danger'}`}
-                      style={{ width: `${r.compliance_pct}%` }}
-                    ></div>
-                  </div>
-                  <small>{r.compliance_pct}%</small>
-                </div>
-                <small className="text-muted">{r.approved_docs}/{r.required_docs} approved</small>
+                <ComplianceApprovedProgress
+                  pct={r.compliance_pct}
+                  approved={r.approved_docs}
+                  required={r.required_docs}
+                />
               </td>
               <td>
-                {r.missing_docs?.length > 0 ? (
-                  <ul className="mb-0 ps-3" style={{ fontSize: '0.78rem' }}>
-                    {r.missing_docs.map((d) => <li key={d} className="text-danger">{d}</li>)}
-                  </ul>
-                ) : <span className="text-success fw-semibold">Complete ✓</span>}
+                <ComplianceRequirementsStatus row={r} />
               </td>
             </tr>
           ))}
@@ -250,7 +243,7 @@ function FacultyReports() {
           'Compliance %': r.compliance_pct,
           'Approved Docs': r.approved_docs,
           'Required Docs': r.required_docs,
-          'Missing Documents': (r.missing_docs ?? []).join('; '),
+          'Requirements Status': formatRequirementsStatusCsv(r),
         })),
       })
     } else if (activeReport === 'performance') {

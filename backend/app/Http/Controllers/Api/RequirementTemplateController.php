@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
+use App\Support\UploadLimits;
 use App\Models\AuditLog;
 
 class RequirementTemplateController extends Controller
@@ -242,15 +243,17 @@ class RequirementTemplateController extends Controller
      */
     public function store(Request $request)
     {
+        $maxFiles = UploadLimits::maxFiles();
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category' => 'nullable|string',
             'is_active' => 'boolean',
             'targets' => 'required|array|min:1',
-            'template_files.*' => 'nullable|file|mimes:doc,docx,pdf,jpg,jpeg,png|max:10240',
+            'template_files' => "nullable|array|max:{$maxFiles}",
+            'template_files.*' => 'nullable|'.UploadLimits::fileRule('doc,docx,pdf,jpg,jpeg,png'),
             'drive_link' => 'nullable|url',
-        ]);
+        ], UploadLimits::maxMessages('template_files'));
 
         return DB::transaction(function () use ($request) {
             $requirement = OjtRequirementTemplate::create([
@@ -310,12 +313,14 @@ class RequirementTemplateController extends Controller
             abort(403, 'You may only edit requirement templates you created.');
         }
 
+        $maxFiles = UploadLimits::maxFiles();
         $rules = [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category' => 'nullable|string',
             'is_active' => 'boolean',
-            'template_files.*' => 'nullable|file|mimes:doc,docx,pdf,jpg,jpeg,png|max:10240',
+            'template_files' => "nullable|array|max:{$maxFiles}",
+            'template_files.*' => 'nullable|'.UploadLimits::fileRule('doc,docx,pdf,jpg,jpeg,png'),
             'drive_link' => 'nullable|url',
             'remove_attachments' => 'nullable|array',
             'remove_attachments.*' => 'integer|exists:requirement_template_attachments,id',
@@ -327,9 +332,23 @@ class RequirementTemplateController extends Controller
             $rules['targets'] = 'nullable|array';
         }
 
-        $request->validate($rules);
+        $request->validate($rules, UploadLimits::maxMessages('template_files'));
 
         return DB::transaction(function () use ($request, $requirement) {
+            // Validate new files before deleting existing attachments (replacement safety).
+            if ($request->hasFile('template_files')) {
+                foreach ($request->file('template_files') as $file) {
+                    if (! $file || ! $file->isValid()) {
+                        return response()->json([
+                            'message' => UploadLimits::oversizedMessage($file?->getClientOriginalName()),
+                            'errors' => [
+                                'template_files' => [UploadLimits::oversizedMessage($file?->getClientOriginalName())],
+                            ],
+                        ], 422);
+                    }
+                }
+            }
+
             if ($request->has('remove_attachments')) {
                 $attachmentsToRemove = $requirement->attachments()->whereIn('id', $request->remove_attachments)->get();
                 foreach ($attachmentsToRemove as $attachment) {

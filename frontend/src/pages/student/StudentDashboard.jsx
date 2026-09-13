@@ -41,7 +41,8 @@ function StudentDashboard() {
           })
           prefetchPage('student:documents', async () => {
             const res = await api.get('/student/documents')
-            return unwrapList(res.data).items
+            const list = unwrapList(res.data)
+            return { items: list.items, meta: res.data?.meta ?? list.meta ?? null }
           })
           prefetchPage('student:attendance-hub', () =>
             api.get('/student/supervisor-invite/status').then(res => res.data)
@@ -234,8 +235,8 @@ function StudentDashboard() {
           <div className="stat-card">
             <div className="stat-icon blue"><i className="fa fa-file-alt"></i></div>
             <div>
-              <div className="stat-value">{s.docs_submitted ?? 0}<span style={{ fontSize: '0.7em', fontWeight: 400 }}>/{s.docs_total ?? 13}</span></div>
-              <div className="stat-label">Docs Submitted</div>
+              <div className="stat-value">{s.docs_approved ?? s.docs_submitted ?? 0}<span style={{ fontSize: '0.7em', fontWeight: 400 }}>/{s.docs_total ?? 0}</span></div>
+              <div className="stat-label">Docs Approved</div>
             </div>
           </div>
         </div>
@@ -357,8 +358,8 @@ function StudentDashboard() {
                 const hoursRendered = s.hours_rendered ?? 0
                 const hoursPct = targetHours > 0 ? Math.min(100, Math.max(0, Math.round((hoursRendered / targetHours) * 100))) : 0
 
-                const docsTotal = s.docs_total ?? 13
-                const docsSubmitted = s.docs_submitted ?? 0
+                const docsTotal = s.docs_total ?? 0
+                const docsSubmitted = s.docs_approved ?? s.docs_submitted ?? 0
                 const docCompliance = Math.min(100, Math.max(0, s.doc_compliance ?? (docsTotal > 0 ? Math.round((docsSubmitted / docsTotal) * 100) : 0)))
 
                 const evalScore = s.evaluation_score != null ? Math.min(100, Math.max(0, Math.round(s.evaluation_score))) : null
@@ -411,7 +412,7 @@ function StudentDashboard() {
                     <div className="overview-item mb-3">
                       <div className="overview-label">Document Compliance</div>
                       <div className="overview-value-row">
-                        <span className="overview-value">{docsSubmitted} of {docsTotal} files</span>
+                        <span className="overview-value">{docsSubmitted} of {docsTotal} approved</span>
                         <span className="overview-percent">{docCompliance}%</span>
                       </div>
                       <div className="progress" style={{ height: '10px', borderRadius: '6px', marginTop: '8px' }}>

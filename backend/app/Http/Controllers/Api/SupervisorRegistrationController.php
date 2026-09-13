@@ -203,13 +203,14 @@ class SupervisorRegistrationController extends Controller
             'sex' => SexOptions::validationRule(true),
             'company_id' => 'required|exists:companies,id',
             'password' => 'required|string|min:8|confirmed',
-            'acceptance_forms' => 'required|array|min:1',
-            'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|mimetypes:application/pdf,image/jpeg,image/png|max:10240',
+            'acceptance_forms' => 'required|array|min:1|max:'.\App\Support\UploadLimits::maxFiles(),
+            'acceptance_forms.*' => \App\Support\UploadLimits::fileRule(['pdf', 'jpg', 'jpeg', 'png']).'|mimetypes:application/pdf,image/jpeg,image/png',
         ], [
             'acceptance_forms.required' => 'Acceptance Form is required.',
             'acceptance_forms.min' => 'Acceptance Form is required.',
             'acceptance_forms.*.mimes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
             'acceptance_forms.*.mimetypes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
+            'acceptance_forms.*.max' => 'Acceptance Form must not exceed '.\App\Support\UploadLimits::maxMb().' MB.',
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -1009,13 +1010,14 @@ class SupervisorRegistrationController extends Controller
         $this->assertInviteOwner($request->user(), $invite);
 
         $request->validate([
-            'acceptance_forms' => 'required|array|min:1',
-            'acceptance_forms.*' => 'file|mimes:pdf,jpg,jpeg,png|mimetypes:application/pdf,image/jpeg,image/png|max:10240',
+            'acceptance_forms' => 'required|array|min:1|max:'.\App\Support\UploadLimits::maxFiles(),
+            'acceptance_forms.*' => \App\Support\UploadLimits::fileRule(['pdf', 'jpg', 'jpeg', 'png']).'|mimetypes:application/pdf,image/jpeg,image/png',
         ], [
             'acceptance_forms.required' => 'Acceptance Form is required.',
             'acceptance_forms.min' => 'Acceptance Form is required.',
             'acceptance_forms.*.mimes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
             'acceptance_forms.*.mimetypes' => 'Acceptance Form must be a PDF or image (JPG/PNG).',
+            'acceptance_forms.*.max' => 'Acceptance Form must not exceed '.\App\Support\UploadLimits::maxMb().' MB.',
         ]);
 
         return DB::transaction(function () use ($request, $invite) {

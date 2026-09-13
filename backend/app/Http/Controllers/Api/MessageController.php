@@ -445,11 +445,11 @@ class MessageController extends Controller
             'attachment' => [
                 'nullable',
                 'file',
-                'max:'.Message::ATTACHMENT_MAX_KB,
+                'max:'.\App\Support\UploadLimits::maxKb(),
                 'mimes:'.implode(',', Message::ATTACHMENT_MIMES),
             ],
         ], [
-            'attachment.max' => 'The attachment must not be larger than 10 MB.',
+            'attachment.max' => 'The attachment must not be larger than '.\App\Support\UploadLimits::maxMb().' MB.',
             'attachment.mimes' => 'The attachment must be an image (jpg, jpeg, png, gif, webp) or document (pdf, doc, docx, xls, xlsx).',
         ]);
 

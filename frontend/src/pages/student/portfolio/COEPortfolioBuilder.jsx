@@ -7,6 +7,7 @@ import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { safeUploadError } from '../../../utils/safeApiError'
+import { validateUploadFiles, uploadErrorMessage } from '../../../utils/uploadValidation'
 import { useCachedPage } from '../../../hooks/useCachedPage'
 import InternTrackLoader from '../../../components/InternTrackLoader'
 
@@ -129,6 +130,12 @@ function COEPortfolioBuilder() {
       e.target.value = ''
       return
     }
+    const sizeCheck = validateUploadFiles([file])
+    if (!sizeCheck.ok) {
+      toast.error(sizeCheck.error)
+      e.target.value = ''
+      return
+    }
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', 'company_logo')
@@ -136,7 +143,7 @@ function COEPortfolioBuilder() {
       await api.post('/student/portfolio/photos', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       fetchPortfolio()
     } catch (err) {
-      toast.error(safeUploadError(err))
+      toast.error(uploadErrorMessage(err))
     } finally {
       e.target.value = ''
     }
@@ -151,6 +158,12 @@ function COEPortfolioBuilder() {
       e.target.value = ''
       return
     }
+    const sizeCheck = validateUploadFiles([file])
+    if (!sizeCheck.ok) {
+      toast.error(sizeCheck.error)
+      e.target.value = ''
+      return
+    }
 
     const formData = new FormData()
     formData.append('file', file)
@@ -161,7 +174,7 @@ function COEPortfolioBuilder() {
       toast.success('File uploaded.')
       fetchPortfolio()
     } catch (err) {
-      toast.error(safeUploadError(err))
+      toast.error(uploadErrorMessage(err))
     } finally {
       e.target.value = ''
     }

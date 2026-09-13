@@ -8,8 +8,11 @@ import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import AcceptanceFormPicker, { validateAcceptanceForm } from '../../components/AcceptanceFormPicker'
+import { useConfirm } from '../../contexts/ConfirmContext'
+import AsyncButton from '../../components/AsyncButton'
 
 function SupervisorDashboard() {
+  const confirm = useConfirm()
   const { loading, seed, run } = useCachedPage('supervisor:dashboard')
   const [data, setData] = useState(() => seed?.data ?? null)
   const [error, setError] = useState(null)
@@ -85,16 +88,25 @@ function SupervisorDashboard() {
     }
   }
 
-  const declineInvite = async (id) => {
-    setInviteBusy(`decline-${id}`)
-    try {
-      await api.post(`/supervisor/invites/${id}/decline`)
-      load()
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to decline invitation.')
-    } finally {
-      setInviteBusy(null)
-    }
+  const declineInvite = async (inv) => {
+    await confirm({
+      title: 'Decline student invitation?',
+      message: `Decline the supervision invitation from ${inv.student_name || 'this student'}${inv.student_number ? ` (${inv.student_number})` : ''} for ${inv.company_name || 'the listed company'}?`,
+      confirmLabel: 'Decline Invitation',
+      variant: 'danger',
+      run: async () => {
+        setInviteBusy(`decline-${inv.id}`)
+        try {
+          await api.post(`/supervisor/invites/${inv.id}/decline`)
+          load()
+        } catch (err) {
+          alert(err.response?.data?.message || 'Failed to decline invitation.')
+          throw err
+        } finally {
+          setInviteBusy(null)
+        }
+      },
+    })
   }
 
   useEffect(() => { load() }, [])
@@ -153,14 +165,15 @@ function SupervisorDashboard() {
                         >
                           Accept
                         </button>
-                        <button
-                          type="button"
+                        <AsyncButton
                           className="btn btn-outline-danger"
-                          disabled={!!inviteBusy}
-                          onClick={() => declineInvite(inv.id)}
+                          busy={inviteBusy === `decline-${inv.id}`}
+                          busyLabel="Declining…"
+                          disabled={!!inviteBusy && inviteBusy !== `decline-${inv.id}`}
+                          onClick={() => declineInvite(inv)}
                         >
-                          {inviteBusy === `decline-${inv.id}` ? 'Declining…' : 'Decline'}
-                        </button>
+                          Decline
+                        </AsyncButton>
                       </div>
                     </div>
                   </div>

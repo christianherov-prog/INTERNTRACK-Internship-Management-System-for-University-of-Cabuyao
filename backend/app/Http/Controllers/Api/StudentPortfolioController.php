@@ -9,6 +9,7 @@ use App\Models\StudentPortfolio;
 use App\Services\PortfolioDataService;
 use App\Support\InternshipAccess;
 use App\Support\InternshipProvisioning;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -162,7 +163,7 @@ class StudentPortfolioController extends Controller
     public function uploadPhoto(Request $request)
     {
         $docType = (string) $request->input('type', $request->input('document_type', 'portfolio_photo'));
-        $maxKb = max(1024, (int) config('interntrack.upload_max_mb', 10) * 1024);
+        $maxKb = UploadLimits::maxKb();
         $mimes = $this->allowedMimesForType($docType);
 
         $request->validate([
@@ -181,7 +182,7 @@ class StudentPortfolioController extends Controller
             ],
         ], [
             'file.mimes' => 'Please upload a JPG, PNG, WEBP, or GIF image only.',
-            'file.max' => 'The file must not be larger than '.(int) config('interntrack.upload_max_mb', 10).' MB.',
+            'file.max' => 'The file must not be larger than '.UploadLimits::maxMb().' MB.',
             'week_number.required' => 'Please enter a week number for this photo.',
         ]);
 

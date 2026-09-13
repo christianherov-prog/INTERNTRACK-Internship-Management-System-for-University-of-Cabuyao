@@ -12,9 +12,9 @@ use App\Models\Internship;
 use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\Notification;
-use App\Models\OjtRequirementTemplate;
 use App\Services\AbsorptionService;
 use App\Services\CertificateEligibilityService;
+use App\Services\DocumentComplianceService;
 use App\Services\DtrWorkflowService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
@@ -26,8 +26,8 @@ use App\Support\InternshipProvisioning;
 use App\Support\ManilaTime;
 use App\Support\InternshipStatuses;
 use App\Support\PlacementMoa;
-use App\Support\RequirementAudience;
 use App\Support\UniqueWrite;
+use App\Support\UploadLimits;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -195,50 +195,13 @@ class StudentController extends Controller
         // Journal stats
         $journalCount = $internship->journals()->whereIn('status', ['submitted', 'approved'])->count();
 
-        // Document compliance stats (properly scoped to logged-in student)
-        $studentTargets = [
-            ['type' => 'student', 'id' => (string) $user->id],
-        ];
-        if ($profile) {
-            if ($profile->section) {
-                $studentTargets[] = ['type' => 'section', 'id' => $profile->section];
-            }
-            $program = $profile->program?->name;
-            if ($program) {
-                $studentTargets[] = ['type' => 'program', 'id' => $program];
-            }
-        }
-
-        $matchingTemplates = OjtRequirementTemplate::where('is_active', true)
-            ->where(function ($query) use ($studentTargets) {
-                $query->whereHas('targets', function ($q) use ($studentTargets) {
-                    $q->where(function ($subQ) use ($studentTargets) {
-                        foreach ($studentTargets as $target) {
-                            $subQ->orWhere(function ($targetQ) use ($target) {
-                                $targetQ->where('target_type', $target['type'])
-                                    ->where('target_id', $target['id']);
-                            });
-                        }
-                    });
-                })->orDoesntHave('targets');
-            })
-            ->orderBy('sort_order')
-            ->get();
-
-        $requiredDocTypes = $matchingTemplates->pluck('name')->unique()->values()->toArray();
-
-        $docsTotal = count($requiredDocTypes);
-        // Avoid division by zero
-        $docsTotalForCalc = max(1, $docsTotal);
-
-        $validDocStatuses = ['pending_review', 'under_review', 'pending_faculty', 'approved', 'resubmitted', 'completed'];
-        $docsSubmitted = $internship->documents()
-            ->whereIn('document_type', $requiredDocTypes)
-            ->whereIn('status', $validDocStatuses)
-            ->distinct('document_type')
-            ->count('document_type');
-
-        $docCompliance = (int) min(100, max(0, round(($docsSubmitted / $docsTotalForCalc) * 100)));
+        // Document compliance — same authoritative resolver as Faculty/Coordinator reports.
+        $compliance = app(\App\Services\DocumentComplianceService::class)
+            ->summaryForStudent($user, $internship);
+        $docsTotal = $compliance['total'];
+        $docsSubmitted = $compliance['approved'];
+        $docCompliance = $compliance['pct'];
+        $requiredDocTypes = collect($compliance['details'])->pluck('name')->values()->all();
 
         // Evaluation score (average of both evaluations, scaled to 100%)
         $evalAvg = $internship->evaluations()->avg('average_score');
@@ -286,6 +249,7 @@ class StudentController extends Controller
                 'days_present' => $daysPresent,
                 'journal_count' => $journalCount,
                 'docs_submitted' => $docsSubmitted,
+                'docs_approved' => $compliance['approved'],
                 'docs_total' => $docsTotal,
                 'progress_percent' => $progressPercent,
                 'doc_compliance' => $docCompliance,
@@ -737,26 +701,38 @@ class StudentController extends Controller
         $internship = $this->internship($request);
         $internship->loadMissing('faculty.facultyProfile', 'coordinator.facultyProfile');
         $user = $request->user();
+        $compliance = app(DocumentComplianceService::class);
 
-        $templates = RequirementAudience::scopeTemplatesForStudent(
-            OjtRequirementTemplate::where('is_active', true)
-                ->with(['creator.facultyProfile', 'creator.supervisorProfile', 'creator.studentProfile', 'attachments']),
-            $user
-        )
-            ->orderBy('sort_order')
+        $templates = $compliance->applicableTemplatesForStudent($user)
+            ->load(['creator.facultyProfile', 'creator.supervisorProfile', 'creator.studentProfile', 'attachments']);
+
+        $submitted = $internship->documents()->with('attachments')
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
             ->get();
 
-        $submitted = $internship->documents()->with('attachments')->get()->keyBy('document_type');
+        $evaluation = $compliance->evaluateStudent($user, $internship);
+        $detailByTemplate = collect($evaluation['details'])->keyBy('template_id');
 
-        $docs = $templates->map(function ($template) use ($submitted, $internship) {
+        $docs = $templates->map(function ($template) use ($submitted, $internship, $compliance, $detailByTemplate) {
             $type = $template->name;
-            $doc = $submitted->get($type);
+            $detail = $detailByTemplate->get($template->id) ?? [];
+            $state = $compliance->resolveTemplateState($template, $internship, $submitted);
+            $doc = $compliance->bestMatchingDocument($template, $submitted);
 
-            $status = $doc?->status ?? 'not_submitted';
+            $canonical = $detail['status'] ?? $state['status'] ?? 'missing';
+            $source = $detail['source'] ?? $state['source'] ?? 'upload';
+
+            $status = match ($canonical) {
+                'approved' => $source === 'upload' ? 'approved' : 'completed',
+                'pending' => 'pending',
+                'rejected' => 'rejected',
+                default => 'not_submitted',
+            };
+
             $isMissed = false;
-
             if ($template->deadline && now()->greaterThan($template->deadline)) {
-                if (! $doc || $status === 'rejected' || $status === 'not_submitted') {
+                if (in_array($status, ['not_submitted', 'rejected'], true)) {
                     $status = 'no_submission';
                     $isMissed = true;
                 }
@@ -772,6 +748,8 @@ class StudentController extends Controller
 
             return [
                 'template_id' => $template->id,
+                'system_code' => $template->system_code,
+                'source' => $source,
                 'has_template' => $template->attachments->isNotEmpty(),
                 'template_attachments' => $template->attachments->map(function ($a) {
                     return [
@@ -789,6 +767,7 @@ class StudentController extends Controller
                     'role' => $senderRole,
                 ],
                 'status' => $status,
+                'canonical_status' => $canonical,
                 'deadline' => $template->deadline?->toIso8601String(),
                 'is_missed' => $isMissed,
                 'submitted_at' => $doc?->submitted_at?->toIso8601String() ?? null,
@@ -803,14 +782,22 @@ class StudentController extends Controller
                     ];
                 })->toArray() : [],
                 'drive_link' => $doc?->drive_link ?? null,
+                'uploadable' => $source === 'upload' || $canonical === 'missing',
             ];
         });
 
-        $docsTotal = count($templates);
-        $requiredTypes = $templates->pluck('name');
+        $docsTotal = $evaluation['required_count'];
+        $requiredTypes = $evaluation['required_types'];
 
         $payload = ApiResponse::list($docs)->getData(true);
         $payload['meta']['docs_total'] = $docsTotal;
+        $payload['meta']['docs_approved'] = $evaluation['satisfied_count'];
+        $payload['meta']['docs_pending'] = $evaluation['pending_count'];
+        $payload['meta']['docs_missing'] = $evaluation['missing_count'];
+        $payload['meta']['docs_rejected'] = $evaluation['rejected_count'];
+        $payload['meta']['compliance_pct'] = $evaluation['compliance_pct'];
+        $payload['meta']['all_requirements_approved'] = $docsTotal > 0
+            && $evaluation['satisfied_count'] === $docsTotal;
         $payload['meta']['internship_id'] = $internship->id;
         $payload['required_types'] = $requiredTypes;
 
@@ -821,25 +808,26 @@ class StudentController extends Controller
     public function uploadDocument(Request $request)
     {
         $user = $request->user();
+        $compliance = app(DocumentComplianceService::class);
 
-        $templates = RequirementAudience::scopeTemplatesForStudent(
-            OjtRequirementTemplate::where('is_active', true)->with('creator'),
-            $user
-        )->get()->keyBy('name');
+        $templates = $compliance->applicableTemplatesForStudent($user)->load('creator');
+        $templatesByName = $templates->keyBy('name');
 
-        $validTypes = $templates->keys()->toArray();
+        $validTypes = $templates->pluck('name')->values()->all();
 
+        $maxFiles = UploadLimits::maxFiles();
         $request->validate([
             'document_type' => ['required', 'string', Rule::in($validTypes)],
-            'files.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
+            'files' => "nullable|array|max:{$maxFiles}",
+            'files.*' => 'nullable|'.UploadLimits::fileRule('pdf,jpg,jpeg,png,doc,docx'),
             'drive_link' => 'nullable|url|max:2048',
-        ]);
+        ], UploadLimits::maxMessages('files'));
 
         if (! $request->hasFile('files') && empty($request->drive_link)) {
             return response()->json(['message' => 'Please provide either a file or a Google Drive link.'], 422);
         }
 
-        $template = $templates->get($request->document_type);
+        $template = $templatesByName->get($request->document_type);
 
         if ($template && $template->deadline && now()->greaterThan($template->deadline)) {
             return response()->json(['message' => 'The deadline for this requirement has expired.'], 403);
@@ -847,20 +835,22 @@ class StudentController extends Controller
 
         $internship = $this->internship($request);
         $reviewStage = $template?->creator?->role === 'faculty' ? 'faculty' : 'coordinator';
+        $documentType = $template?->name ?: $request->document_type;
 
         try {
-            $doc = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship, $reviewStage) {
+            $doc = UniqueWrite::retry(fn () => DB::transaction(function () use ($request, $internship, $reviewStage, $template, $documentType, $compliance) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
-                $existing = $internship->documents()
-                    ->withTrashed()
-                    ->where('document_type', $request->document_type)
-                    ->first();
+                $all = $internship->documents()->withTrashed()->get();
+                $existing = $template
+                    ? $compliance->bestMatchingDocument($template, $all)
+                    : $all->first(fn ($d) => $d->document_type === $documentType);
 
                 if ($existing?->trashed()) {
                     $existing->restore();
                 }
 
                 $payload = [
+                    'document_type' => $documentType,
                     'status' => 'pending',
                     'current_stage' => $reviewStage,
                     'submitted_at' => now(),
@@ -877,7 +867,6 @@ class StudentController extends Controller
                 }
 
                 return $internship->documents()->create(array_merge($payload, [
-                    'document_type' => $request->document_type,
                     'drive_link' => $request->drive_link,
                 ]));
             }));
@@ -885,8 +874,13 @@ class StudentController extends Controller
             if (! UniqueWrite::isDuplicate($e)) {
                 throw $e;
             }
-            $doc = $internship->documents()->where('document_type', $request->document_type)->firstOrFail();
+            $all = $internship->documents()->get();
+            $doc = ($template
+                ? $compliance->bestMatchingDocument($template, $all)
+                : $internship->documents()->where('document_type', $documentType)->first())
+                ?? $internship->documents()->where('document_type', $documentType)->firstOrFail();
             $doc->update([
+                'document_type' => $documentType,
                 'status' => 'pending',
                 'current_stage' => $reviewStage,
                 'submitted_at' => now(),
@@ -1122,7 +1116,7 @@ class StudentController extends Controller
     {
         $data = $request->validate([
             'company_id' => 'required|exists:companies,id',
-            'moa' => PlacementMoa::RULE,
+            'moa' => PlacementMoa::rule(),
         ]);
         $internship = $this->internship($request);
 
@@ -1223,7 +1217,7 @@ class StudentController extends Controller
             'contact_email' => 'required|email|max:255',
             'contact_number' => ['required', 'string', 'max:50', 'regex:/^[0-9+\-\s()]{7,50}$/'],
             'remarks' => 'nullable|string|max:2000',
-            'moa' => PlacementMoa::RULE,
+            'moa' => PlacementMoa::rule(),
         ]);
 
         $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($data['organization_type'] ?? null);

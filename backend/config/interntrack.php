@@ -11,7 +11,13 @@ return [
     'target_hours'     => (int) env('INTERNTRACK_TARGET_HOURS', 500),
 
     'default_password' => env('INTERNTRACK_DEFAULT_PASSWORD', 'InternTrack123!'),
-    'upload_max_mb'    => env('INTERNTRACK_UPLOAD_MAX_MB', 10),
+
+    // Global upload policy (per-file). Module MIME rules stay separate.
+    // PHP upload_max_filesize / post_max_size must be >= these values.
+    'upload_max_mb' => (int) env('INTERNTRACK_UPLOAD_MAX_MB', env('INTERNTRACK_MAX_UPLOAD_MB', 10)),
+    'upload_max_request_mb' => (int) env('INTERNTRACK_UPLOAD_MAX_REQUEST_MB', 30),
+    'upload_max_files' => (int) env('INTERNTRACK_UPLOAD_MAX_FILES', 5),
+
     'misd_use_mock'    => env('MISD_USE_MOCK', true),
     // Default-password first-login provision: on in local; elsewhere only if explicitly true.
     'allow_default_password_provision' => filter_var(
@@ -21,4 +27,8 @@ return [
     'misd_api_base_url'=> env('MISD_API_BASE_URL', 'http://localhost:8000/api/v1/mock-misd'),
     'misd_api_key'     => env('MISD_API_KEY', ''),
     'misd_cache_ttl'   => env('MISD_CACHE_TTL', 3600),
+
+    // Industry Supervisor narrative feedback (journal_entries.supervisor_feedback is TEXT).
+    'supervisor_feedback_min_length' => (int) env('INTERNTRACK_FEEDBACK_MIN_LENGTH', 5),
+    'supervisor_feedback_max_length' => (int) env('INTERNTRACK_FEEDBACK_MAX_LENGTH', 1000),
 ];

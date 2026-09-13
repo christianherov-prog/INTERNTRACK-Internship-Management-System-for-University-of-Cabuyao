@@ -140,6 +140,21 @@ class SupervisorFeedbackFlowTest extends TestCase
         $this->assertTrue($weeks->every(fn ($j) => (int) ($j['week_number'] ?? $j['week'] ?? 1) >= 1));
     }
 
+    public function test_feedback_rejects_over_limit_and_accepts_max_length(): void
+    {
+        $party = $this->party();
+        Sanctum::actingAs($party['supervisor']);
+
+        $this->postJson('/api/v1/supervisor/feedback/'.$party['internship']->id, [
+            'feedback' => str_repeat('a', 1001),
+        ])->assertStatus(422);
+
+        $max = str_repeat('b', 1000);
+        $this->postJson('/api/v1/supervisor/feedback/'.$party['internship']->id, [
+            'feedback' => $max,
+        ])->assertOk()->assertJsonPath('feedback.supervisor_feedback', $max);
+    }
+
     private function actingAsFaculty(User $faculty): self
     {
         Sanctum::actingAs($faculty);

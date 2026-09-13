@@ -8,6 +8,8 @@ import ConfirmModal from '../../../components/modals/ConfirmModal'
 import { useConfirm } from '../../../contexts/ConfirmContext'
 import { useToast } from '../../../contexts/ToastContext'
 import { safeUploadError } from '../../../utils/safeApiError'
+import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../../../config/uploads'
+import { uploadErrorMessage, validateUploadFiles } from '../../../utils/uploadValidation'
 
 /** Per-field limit for Chapter III (now dynamically paginated across A4 sheets without clipping). */
 const CHAPTER3_MAX = 5000
@@ -141,6 +143,13 @@ function PortfolioBuilder() {
       return
     }
 
+    const sizeCheck = validateUploadFiles([file])
+    if (!sizeCheck.ok) {
+      toast.error(sizeCheck.error)
+      e.target.value = ''
+      return
+    }
+
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', type)
@@ -171,7 +180,7 @@ function PortfolioBuilder() {
       invalidateOfficialFormCaches()
       fetchPortfolio()
     } catch (err) {
-      toast.error(safeUploadError(err))
+      toast.error(uploadErrorMessage(err))
     } finally {
       setUploadingType(null)
       e.target.value = ''

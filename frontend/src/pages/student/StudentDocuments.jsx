@@ -8,7 +8,14 @@ import { documentStatusConfig } from '../../utils/documentStatus'
 import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useCachedPage } from '../../hooks/useCachedPage'
-import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import { invalidateStudentDocuments } from '../../utils/pageCache'
+import { UPLOAD_MAX_MB } from '../../config/uploads'
+import {
+  formatFileSize,
+  uploadErrorMessage,
+  uploadLimitHint,
+  validateUploadFiles,
+} from '../../utils/uploadValidation'
 import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REVIEWABLE = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
@@ -24,7 +31,8 @@ function fileIcon(name = '') {
 function StudentDocuments() {
   const currentTerm = useCurrentTerm()
   const { loading, seed, run } = useCachedPage('student:documents')
-  const [documents, setDocuments]     = useState(() => seed ?? [])
+  const [documents, setDocuments]     = useState(() => Array.isArray(seed) ? seed : (seed?.items ?? []))
+  const [summary, setSummary]         = useState(() => (seed && !Array.isArray(seed) ? seed.meta : null))
   const [error, setError]         = useState(null)
   const [uploading, setUploading]     = useState(null) // type being uploaded
   const [message, setMessage]         = useState(null)
@@ -33,19 +41,37 @@ function StudentDocuments() {
   const [showModal, setShowModal]     = useState(false)
   const [selectedFiles, setSelectedFiles] = useState([])
   const [driveLink, setDriveLink]     = useState('')
+  const [fileError, setFileError]     = useState(null)
+
+  const onSelectFiles = (files) => {
+    const list = Array.from(files || [])
+    const check = validateUploadFiles(list)
+    if (!check.ok) {
+      setFileError(check.error)
+      setSelectedFiles(list.filter((f) => (f.size || 0) <= UPLOAD_MAX_MB * 1024 * 1024))
+      return
+    }
+    setFileError(null)
+    setSelectedFiles(check.files)
+  }
 
   const fetchDocuments = useCallback((opts = {}) => {
     if (!opts.silent) setError(null)
-    run(() => api.get('/student/documents').then(res => unwrapList(res.data).items))
-      .then((items) => {
-        if (items) {
-          setDocuments(items)
+    run(() => api.get('/student/documents').then((res) => {
+      const list = unwrapList(res.data)
+      return { items: list.items, meta: res.data?.meta ?? list.meta ?? null }
+    }))
+      .then((payload) => {
+        if (payload) {
+          setDocuments(payload.items || [])
+          setSummary(payload.meta || null)
           setError(null)
         }
       })
       .catch(err => {
         setError(err.response?.data?.message || 'Failed to load documents.')
         setDocuments([])
+        setSummary(null)
       })
   }, [run])
 
@@ -70,6 +96,7 @@ function StudentDocuments() {
     setActiveType(type)
     setSelectedFiles([])
     setDriveLink('')
+    setFileError(null)
     setShowModal(true)
   }
 
@@ -78,6 +105,7 @@ function StudentDocuments() {
     setActiveType(null)
     setSelectedFiles([])
     setDriveLink('')
+    setFileError(null)
   }
 
   const handleSubmit = async (e) => {
@@ -86,30 +114,38 @@ function StudentDocuments() {
       alert("Please provide either a file or a Google Drive link.")
       return
     }
+    const check = validateUploadFiles(selectedFiles)
+    if (!check.ok) {
+      setFileError(check.error)
+      return
+    }
 
     const formData = new FormData()
     formData.append('document_type', activeType)
-    if (selectedFiles.length > 0) { selectedFiles.forEach(file => formData.append('files[]', file)) }
+    if (check.files.length > 0) { check.files.forEach(file => formData.append('files[]', file)) }
     if (driveLink) formData.append('drive_link', driveLink)
 
     setUploading(activeType); setMessage(null)
     handleCloseModal()
     try {
       await api.post('/student/documents/upload', formData)
-      invalidateStudentPortfolio()
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       setMessage({ type: 'success', text: `"${activeType}" submitted successfully!` })
       fetchDocuments()
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Submission failed.' })
+      setMessage({ type: 'danger', text: uploadErrorMessage(err, 'Submission failed.') })
     } finally {
       setUploading(null)
     }
   }
 
-  const approved = documents.filter(d => d.status === 'completed' || d.status === 'approved').length
-  const pendingReview = documents.filter(d => REVIEWABLE.includes(d.status)).length
-  const needsAction = documents.filter(d => NEEDS_UPLOAD.includes(d.status)).length
-  const total = documents.length
+  const approved = summary?.docs_approved ?? documents.filter(d => d.status === 'completed' || d.status === 'approved').length
+  const pendingReview = summary?.docs_pending ?? documents.filter(d => REVIEWABLE.includes(d.status)).length
+  const needsAction = summary
+    ? (Number(summary.docs_missing) || 0) + (Number(summary.docs_rejected) || 0)
+    : documents.filter(d => NEEDS_UPLOAD.includes(d.status)).length
+  const total = summary?.docs_total ?? documents.length
 
   return (
     <Layout title="Documents & Requirements" subtitle={currentTerm} icon="fa-folder-open" bodyClass="student-page">
@@ -130,8 +166,19 @@ function StudentDocuments() {
                 <form id="submissionForm" onSubmit={handleSubmit}>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">File Upload (Optional)</label>
-                    <input type="file" className="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => setSelectedFiles(Array.from(e.target.files))} />
-                    <div className="form-text">Max size: 10MB per file. You can select multiple files.</div>
+                    <input type="file" className="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => onSelectFiles(e.target.files)} />
+                    <div className="form-text">{uploadLimitHint('PDF, JPG, PNG, DOC, DOCX')}. You can select multiple files.</div>
+                    {fileError && <div className="text-danger small mt-1" role="alert">{fileError}</div>}
+                    {selectedFiles.length > 0 && (
+                      <ul className="list-unstyled small mt-2 mb-0">
+                        {selectedFiles.map((f, i) => (
+                          <li key={`${f.name}-${i}`} className="d-flex justify-content-between gap-2">
+                            <span className="text-truncate" title={f.name}>{f.name}</span>
+                            <span className="text-muted flex-shrink-0">{formatFileSize(f.size)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Google Drive Link (Optional)</label>

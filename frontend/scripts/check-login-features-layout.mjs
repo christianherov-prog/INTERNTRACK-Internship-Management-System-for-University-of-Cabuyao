@@ -24,6 +24,13 @@ const checks = [
   ['mobile keeps features flex-direction row', /\.login-features\s*\{[^}]*flex-direction:\s*row/s.test(mobileBlock)],
   ['mobile features nowrap', /\.login-features\s*\{[^}]*flex-wrap:\s*nowrap/s.test(css)],
   ['uses clamp for feature font', /font-size:\s*clamp\(/.test(css)],
+  ['smart-detection uses clamp padding', /\.smart-detection-box[\s\S]*?padding:\s*clamp\(/.test(css)],
+  ['smart-detection uses clamp title size', /\.smart-detection-header[\s\S]*?font-size:\s*clamp\(/.test(css)],
+  ['smart-detection uses clamp body size', /\.smart-detection-text[\s\S]*?font-size:\s*clamp\(/.test(css)],
+  ['smart-detection has reduced-motion guard', /prefers-reduced-motion[\s\S]*smart-detection-box/.test(css)],
+  ['tablet smart-detection media present', /@media \(max-width: 1024px\) and \(min-width: 769px\)[\s\S]*smart-detection-box/.test(css)],
+  ['jsx keeps Smart account detection wording', /Smart account detection/.test(jsx)],
+  ['jsx keeps username/student number guidance', /username, student number, employee ID, supervisor ID, or registered email/.test(jsx)],
 ]
 
 let failed = 0

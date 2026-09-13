@@ -8,6 +8,7 @@ import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { formatStudentName } from '../../utils/formatName'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { invalidateStudentDocuments } from '../../utils/pageCache'
 
 function CoordDocApprovals() {
   const { loading, seed, run } = useCachedPage('coordinator:doc-approvals')
@@ -83,6 +84,8 @@ function CoordDocApprovals() {
       setMessage({ type: 'success', text: `Document "${approveModal.document_type}" approved and forwarded to faculty.` })
       setSelected(prev => prev.filter(x => x !== approveModal.id))
       setApproveModal(null)
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       fetchDocs()
     } catch { setMessage({ type: 'danger', text: 'Failed to approve.' }) }
     finally { setProcessing(null) }
@@ -108,6 +111,8 @@ function CoordDocApprovals() {
         setSelected(prev => prev.filter(x => x !== remarkModal.id))
       }
       setRemarkModal(null)
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       fetchDocs()
     } catch { setMessage({ type: 'danger', text: 'Failed to reject.' }) }
     finally { setProcessing(null) }
@@ -123,6 +128,8 @@ function CoordDocApprovals() {
       setMessage({ type: 'success', text: `${selected.length} document(s) approved and forwarded to faculty.` })
       setSelected([])
       setBulkApproveOpen(false)
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       fetchDocs()
     } catch { setMessage({ type: 'danger', text: 'Failed to approve selected documents.' }) }
     finally { setProcessing(null) }

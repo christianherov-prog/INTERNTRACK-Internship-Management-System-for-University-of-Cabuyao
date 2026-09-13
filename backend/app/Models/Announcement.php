@@ -117,15 +117,17 @@ class Announcement extends Model
         return [
             'nullable',
             'file',
-            'max:'.self::ATTACHMENT_MAX_KB,
+            'max:'.\App\Support\UploadLimits::maxKb(),
             'mimes:'.implode(',', self::ATTACHMENT_MIMES),
         ];
     }
 
     public static function attachmentValidationMessages(): array
     {
+        $mb = \App\Support\UploadLimits::maxMb();
+
         return [
-            'attachment.max'   => 'The attachment must not be larger than 10 MB.',
+            'attachment.max'   => "The attachment must not be larger than {$mb} MB.",
             'attachment.mimes' => 'The attachment must be an image (jpg, jpeg, png, gif, webp) or document (pdf, doc, docx, xls, xlsx).',
         ];
     }

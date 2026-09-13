@@ -191,6 +191,7 @@ class SupervisorController extends Controller
     {
         $internshipIds = Internship::where('supervisor_id', $request->user()->id)->pluck('id');
         $notes = JournalEntry::whereIn('internship_id', $internshipIds)
+            ->where('status', SupervisorFeedbackService::NOTE_STATUS)
             ->whereNotNull('supervisor_feedback')
             ->with(['internship.student.studentProfile', 'internship.company', 'internship.supervisor.supervisorProfile'])
             ->orderByDesc('supervisor_reviewed_at')
@@ -212,12 +213,16 @@ class SupervisorController extends Controller
      */
     public function submitFeedback(Request $request, int $internshipId)
     {
-        $request->validate(['feedback' => 'required|string|min:5|max:2000']);
+        $min = (int) config('interntrack.supervisor_feedback_min_length', 5);
+        $max = (int) config('interntrack.supervisor_feedback_max_length', 1000);
+        $request->validate([
+            'feedback' => "required|string|min:{$min}|max:{$max}",
+        ]);
 
         $internship = Internship::with('student.studentProfile')->findOrFail($internshipId);
         $service = app(SupervisorFeedbackService::class);
         $service->assertAssignedSupervisor($request->user(), $internship);
-        $note = $service->upsert($internship, $request->user(), $request->feedback);
+        $note = $service->upsert($internship, $request->user(), trim((string) $request->feedback));
 
         audit_log($request->user()->id, 'submit_supervisor_feedback', ['internship_id' => $internshipId, 'journal_id' => $note->id]);
 
@@ -231,10 +236,14 @@ class SupervisorController extends Controller
     /** PATCH /api/v1/supervisor/feedback/{id} */
     public function updateFeedback(Request $request, int $id)
     {
-        $request->validate(['feedback' => 'required|string|min:5|max:2000']);
+        $min = (int) config('interntrack.supervisor_feedback_min_length', 5);
+        $max = (int) config('interntrack.supervisor_feedback_max_length', 1000);
+        $request->validate([
+            'feedback' => "required|string|min:{$min}|max:{$max}",
+        ]);
         $note = JournalEntry::with('internship.student.studentProfile')->findOrFail($id);
         $service = app(SupervisorFeedbackService::class);
-        $updated = $service->updateNote($note, $request->user(), $request->feedback);
+        $updated = $service->updateNote($note, $request->user(), trim((string) $request->feedback));
         audit_log($request->user()->id, 'update_supervisor_feedback', ['journal_id' => $id]);
 
         return response()->json([

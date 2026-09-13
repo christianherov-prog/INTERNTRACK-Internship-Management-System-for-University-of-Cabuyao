@@ -16,6 +16,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 final class PlacementMoa
 {
+    public static function rule(): string
+    {
+        return 'nullable|'.UploadLimits::fileRule('pdf');
+    }
+
+    /** @deprecated Prefer rule() */
     public const RULE = 'nullable|file|mimes:pdf|max:10240';
 
     public static function store(UploadedFile $file, string $kind, int $ownerId): string

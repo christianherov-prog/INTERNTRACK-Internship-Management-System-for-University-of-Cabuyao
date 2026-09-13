@@ -1,5 +1,6 @@
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
+import { resolveApiOrigin } from '../utils/apiBase'
 
 let echoInstance = null
 let liveStatus = 'polling' // 'live' | 'polling' | 'unavailable'
@@ -14,8 +15,7 @@ function notifyStatus(next) {
 
 /** Resolve API origin (without /api/v1) for broadcasting auth. */
 function apiOrigin() {
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1'
-  return base.replace(/\/api\/v1\/?$/, '')
+  return resolveApiOrigin()
 }
 
 /**

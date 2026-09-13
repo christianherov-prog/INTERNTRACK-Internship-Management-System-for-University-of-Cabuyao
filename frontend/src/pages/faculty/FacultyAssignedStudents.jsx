@@ -11,6 +11,9 @@ import FormPreviewModal from "../../components/portfolio/FormPreviewModal"
 import { formatStudentName as studentName } from "../../utils/formatName"
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { loadFacultyFo31Preview, openOfficialFo30, openOfficialFo31 } from "../../utils/officialForm"
+import { useConfirm } from '../../contexts/ConfirmContext'
+import AsyncButton from '../../components/AsyncButton'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 function studentSection(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
@@ -525,6 +528,7 @@ function TabJournals() {
 
 // ─── Tab: Attendance Monitor ──────────────────────────────────────────────────
 function TabAttendance() {
+  const confirm = useConfirm()
   const [statusFilter, setStatusFilter] = useState("all")
   const [internshipId, setInternshipId] = useState("")
   const { loading, seed, run } = useCachedPage(`faculty:assigned-attendance:${statusFilter}:${internshipId || 'all'}`)
@@ -566,17 +570,28 @@ function TabAttendance() {
     fetchAttendance()
   }, [statusFilter, internshipId])
 
-  const reviewCorrection = async (id, action) => {
-    setProcessing(id)
-    try {
-      const res = await api.patch(`/faculty/dtr/corrections/${id}`, { action })
-      setMessage(res.data.message)
-      fetchAttendance()
-    } catch (err) {
-      setMessage(err.response?.data?.message || "Action failed.")
-    } finally {
-      setProcessing(null)
-    }
+  const reviewCorrection = async (correction, action) => {
+    const student = correction.student_name || 'this student'
+    const verb = action === 'approved' ? 'Approve' : 'Reject'
+    await confirm({
+      title: `${verb} attendance correction?`,
+      message: `${verb} the correction request for ${student} on ${formatDisplayDate(correction.date) || correction.date || '—'}? Original ${correction.original_clock_in || '—'}–${correction.original_clock_out || '—'}; requested ${correction.requested_clock_in || '—'}–${correction.requested_clock_out || '—'}.`,
+      confirmLabel: verb,
+      variant: action === 'approved' ? 'primary' : 'danger',
+      run: async () => {
+        setProcessing(correction.id)
+        try {
+          const res = await api.patch(`/faculty/dtr/corrections/${correction.id}`, { action })
+          setMessage(res.data.message)
+          fetchAttendance()
+        } catch (err) {
+          setMessage(err.response?.data?.message || "Action failed.")
+          throw err
+        } finally {
+          setProcessing(null)
+        }
+      },
+    })
   }
 
   return (
@@ -599,13 +614,13 @@ function TabAttendance() {
                 {corrections.map((c) => (
                   <tr key={c.id}>
                     <td className="fw-semibold">{c.student_name || "—"}</td>
-                    <td>{c.date}</td>
+                    <td>{formatDisplayDate(c.date) || c.date || "—"}</td>
                     <td>{c.original_clock_in || "—"} – {c.original_clock_out || "—"}</td>
                     <td>{c.requested_clock_in || "—"} – {c.requested_clock_out || "—"}</td>
                     <td>{c.status_label || c.status}</td>
                     <td className="text-center">
-                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === c.id} onClick={() => reviewCorrection(c.id, "approved")}>Approve</button>
-                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === c.id} onClick={() => reviewCorrection(c.id, "rejected")}>Reject</button>
+                      <AsyncButton className="btn btn-sm btn-success me-2" busy={processing === c.id} busyLabel="…" onClick={() => reviewCorrection(c, "approved")}>Approve</AsyncButton>
+                      <AsyncButton className="btn btn-sm btn-danger" busy={processing === c.id} busyLabel="…" onClick={() => reviewCorrection(c, "rejected")}>Reject</AsyncButton>
                     </td>
                   </tr>
                 ))}

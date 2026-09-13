@@ -7,8 +7,11 @@ import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
+import AsyncButton from '../../components/AsyncButton'
 
 function CoordLogbookReview() {
+  const confirm = useConfirm()
   const currentTerm = useCurrentTerm()
   const { loading, seed, run } = useCachedPage('coordinator:logbook')
   const [journals, setJournals]   = useState(() => seed ?? [])
@@ -34,15 +37,32 @@ function CoordLogbookReview() {
   const openModal = (j) => { setModal(j); setFeedback(''); setAction('approved') }
 
   const submitReview = async () => {
-    setProcessing(modal.id)
-    try {
-      await api.patch(`/coordinator/logbook/${modal.id}/review`, { action, feedback })
-      setMessage({ type: action === 'approved' ? 'success' : 'info', text: `Journal ${action} successfully.` })
-      setModal(null)
-      fetchJournals()
-    } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Review failed.' })
-    } finally { setProcessing(null) }
+    if (!modal) return
+    const student = modal.internship?.student?.studentProfile
+      ? `${modal.internship.student.studentProfile.last_name}, ${modal.internship.student.studentProfile.first_name}`
+      : 'this student'
+    const week = modal.week_number ?? modal.entry_number ?? '—'
+    const verb = action === 'approved' ? 'Approve' : 'Request revision for'
+    await confirm({
+      title: action === 'approved' ? 'Approve journal entry?' : 'Request journal revision?',
+      message: `${verb} journal entry for ${student}, Week ${week}?`,
+      confirmLabel: action === 'approved' ? 'Approve Journal' : 'Submit Needs Revision',
+      variant: action === 'approved' ? 'primary' : 'danger',
+      run: async () => {
+        setProcessing(modal.id)
+        try {
+          await api.patch(`/coordinator/logbook/${modal.id}/review`, { action, feedback })
+          setMessage({ type: action === 'approved' ? 'success' : 'info', text: `Journal ${action} successfully.` })
+          setModal(null)
+          fetchJournals()
+        } catch (err) {
+          setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Review failed.' })
+          throw err
+        } finally {
+          setProcessing(null)
+        }
+      },
+    })
   }
 
   return (
@@ -79,10 +99,10 @@ function CoordLogbookReview() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>
-                <button className="btn btn-primary" onClick={submitReview} disabled={processing === modal.id}>
-                  <i className={`fa fa-${processing === modal.id ? 'spinner fa-spin' : 'check'} me-2`}></i>Submit
-                </button>
+                <button className="btn btn-secondary" onClick={() => setModal(null)} disabled={processing === modal.id}>Cancel</button>
+                <AsyncButton className="btn btn-primary" busy={processing === modal.id} busyLabel="Submitting…" onClick={submitReview}>
+                  <i className="fa fa-check me-2"></i>Submit
+                </AsyncButton>
               </div>
             </div>
           </div>

@@ -88,7 +88,10 @@ class CoordinatorController extends Controller
                 'documents' => [
                     'submitted' => 0,
                     'approved' => 0,
-                    'total' => RequiredDocuments::count(),
+                    'total' => 0,
+                    'compliance_pct' => 0,
+                    'complete' => false,
+                    'label' => 'No Requirements',
                     'items' => [],
                 ],
                 'journals' => [
@@ -109,9 +112,11 @@ class CoordinatorController extends Controller
         $journals = $internship->journals;
         $documents = $internship->documents;
 
-        $docsSubmitted = $documents->whereNotNull('file_path')->count();
-        $docsApproved = $documents->where('status', 'approved')->count();
-        $docsTotal = $documents->count();
+        $compliance = app(\App\Services\DocumentComplianceService::class)
+            ->summaryForStudent($internship->student ?? $student, $internship);
+        $docsSubmitted = $compliance['approved'] + $compliance['pending'];
+        $docsApproved = $compliance['approved'];
+        $docsTotal = $compliance['total'];
 
         $journalCount = $journals->count();
         $lastJournal = $journals->sortByDesc('created_at')->first();
@@ -142,11 +147,15 @@ class CoordinatorController extends Controller
                 'submitted' => $docsSubmitted,
                 'approved' => $docsApproved,
                 'total' => $docsTotal,
-                'items' => $documents->map(fn ($d) => [
-                    'id' => $d->id,
-                    'name' => $d->document_type,
-                    'status' => $d->status,
-                ]),
+                'compliance_pct' => $compliance['pct'],
+                'complete' => $compliance['complete'],
+                'label' => $compliance['label'],
+                'items' => collect($compliance['details'])->map(fn ($d) => [
+                    'id' => $d['template_id'] ?? null,
+                    'name' => $d['name'],
+                    'status' => $d['status'],
+                    'status_label' => $d['status_label'] ?? $d['status'],
+                ])->values(),
             ],
             'journals' => [
                 'count' => $journalCount,
@@ -224,8 +233,18 @@ class CoordinatorController extends Controller
             $i = $student->activeInternship;
             $supProfile = $i?->supervisor?->supervisorProfile;
             $lastJournal = $i?->journals->first();
-            $docsApproved = $i?->documents->where('status', 'approved')->count() ?? 0;
-            $docsTotal = RequiredDocuments::count();
+            $compliance = $i
+                ? app(\App\Services\DocumentComplianceService::class)->summaryForStudent($student, $i)
+                : [
+                    'approved' => 0,
+                    'total' => 0,
+                    'pct' => 0,
+                    'complete' => false,
+                    'label' => 'No Requirements',
+                    'status' => 'pending',
+                ];
+            $docsApproved = $compliance['approved'];
+            $docsTotal = $compliance['total'];
 
             // Resolve faculty
             $facultyName = 'Not Assigned';
@@ -256,8 +275,9 @@ class CoordinatorController extends Controller
                 'journal_status' => $lastJournal?->status ?? 'none',
                 'docs_approved' => $docsApproved,
                 'docs_total' => $docsTotal,
-                'docs_label' => $docsTotal > 0 && $docsApproved < $docsTotal ? ($docsTotal - $docsApproved).' Missing' : 'Complete',
-                'docs_status' => $docsTotal > 0 && $docsApproved >= $docsTotal ? 'complete' : 'missing',
+                'docs_label' => $compliance['label'],
+                'docs_status' => $compliance['status'],
+                'compliance_pct' => $compliance['pct'],
                 'progress_percent' => (float) ($i && $i->target_hours > 0 ? round($i->total_hours_rendered / $i->target_hours * 100, 1) : 0),
                 'hours_rendered' => (float) ($i?->total_hours_rendered ?? 0),
                 'target_hours' => $i?->target_hours ?? 0,

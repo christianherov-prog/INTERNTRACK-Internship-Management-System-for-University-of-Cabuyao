@@ -8,6 +8,7 @@ import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { documentStatusLabel } from '../../utils/documentStatus'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { invalidateStudentDocuments } from '../../utils/pageCache'
 
 /**
  * Faculty stage of document routing: only pending_faculty / current_stage=faculty.
@@ -48,6 +49,8 @@ function FacultyDocuments() {
       await api.post(`/faculty/documents/${verifyModal.id}/review`, { action: 'approve', remarks })
       setMessage({ type: 'success', text: `Document "${verifyModal.document_type}" approved successfully.` })
       setVerifyModal(null)
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       fetchDocs()
     } catch {
       setMessage({ type: 'danger', text: 'Failed to approve document.' })
@@ -90,6 +93,8 @@ function FacultyDocuments() {
       await api.post(`/faculty/documents/${remarkModal.id}/review`, { action: 'reject', remarks: remark })
       setMessage({ type: 'warning', text: 'Document rejected.' })
       setRemarkModal(null)
+      invalidateStudentDocuments()
+      window.dispatchEvent(new CustomEvent('interntrack:document-reviewed'))
       fetchDocs()
     } catch {
       setMessage({ type: 'danger', text: 'Failed to reject.' })

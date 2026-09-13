@@ -246,7 +246,10 @@ class FacultyController extends Controller
                 'documents' => [
                     'submitted' => 0,
                     'approved' => 0,
-                    'total' => RequiredDocuments::count(),
+                    'total' => 0,
+                    'compliance_pct' => 0,
+                    'complete' => false,
+                    'label' => 'No Requirements',
                     'items' => [],
                 ],
                 'journals' => [
@@ -270,9 +273,11 @@ class FacultyController extends Controller
             $internship->journals->first(fn ($j) => $j->isSupervisorNote() && filled($j->supervisor_feedback))
         );
 
-        $docsSubmitted = $documents->whereNotNull('file_path')->count();
-        $docsApproved = $documents->where('status', 'approved')->count();
-        $docsTotal = $documents->count();
+        $compliance = app(\App\Services\DocumentComplianceService::class)
+            ->summaryForStudent($internship->student ?? $student, $internship);
+        $docsSubmitted = $compliance['approved'] + $compliance['pending'];
+        $docsApproved = $compliance['approved'];
+        $docsTotal = $compliance['total'];
 
         $journalCount = $journals->count();
         $lastJournal = $journals->sortByDesc('created_at')->first();
@@ -303,11 +308,15 @@ class FacultyController extends Controller
                 'submitted' => $docsSubmitted,
                 'approved' => $docsApproved,
                 'total' => $docsTotal,
-                'items' => $documents->map(fn ($d) => [
-                    'id' => $d->id,
-                    'name' => $d->document_type,
-                    'status' => $d->status,
-                ]),
+                'compliance_pct' => $compliance['pct'],
+                'complete' => $compliance['complete'],
+                'label' => $compliance['label'],
+                'items' => collect($compliance['details'])->map(fn ($d) => [
+                    'id' => $d['template_id'] ?? null,
+                    'name' => $d['name'],
+                    'status' => $d['status'],
+                    'status_label' => $d['status_label'] ?? $d['status'],
+                ])->values(),
             ],
             'journals' => [
                 'count' => $journalCount,
@@ -797,6 +806,9 @@ class FacultyController extends Controller
                     'progress_pct' => 0.0,
                     'company_name' => null,
                 ];
+            $compliance = $i
+                ? app(\App\Services\DocumentComplianceService::class)->summaryForStudent($u, $i)
+                : ['approved' => 0, 'total' => 0, 'pct' => 0];
 
             return [
                 'student_name' => NameParts::fromProfile($p) ?: trim(($p->last_name ?? '').', '.($p->first_name ?? '')),
@@ -809,8 +821,9 @@ class FacultyController extends Controller
                 'progress_pct' => $progress['progress_pct'],
                 'validated_days' => $i?->validated_days ?? 0,
                 'approved_journals' => $i?->approved_journals ?? 0,
-                'approved_docs' => $i?->approved_docs ?? 0,
-                'required_docs' => RequiredDocuments::count(),
+                'approved_docs' => $compliance['approved'],
+                'required_docs' => $compliance['total'],
+                'compliance_pct' => $compliance['pct'],
                 'start_date' => $i?->start_date?->toDateString(),
                 'end_date' => $i?->end_date?->toDateString(),
                 'final_grade' => $i?->final_grade,
@@ -819,7 +832,7 @@ class FacultyController extends Controller
 
         return response()->json([
             'students' => $students->sortBy('status')->values(),
-            'docs_total' => RequiredDocuments::count(),
+            'docs_total' => null,
             'generated_at' => now()->toDateTimeString(),
         ]);
     }

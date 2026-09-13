@@ -129,7 +129,7 @@ class DocumentComplianceService
             $deduped->push($template);
         }
 
-        return $deduped->values();
+        return new \Illuminate\Database\Eloquent\Collection($deduped->all());
     }
 
     /**
@@ -138,11 +138,13 @@ class DocumentComplianceService
      *   satisfied_count: int,
      *   pending_count: int,
      *   missing_count: int,
+     *   rejected_count: int,
      *   compliance_pct: int,
      *   required_types: list<string>,
      *   satisfied: list<string>,
      *   pending: list<string>,
      *   missing: list<string>,
+     *   rejected: list<string>,
      *   details: list<array<string, mixed>>
      * }
      */
@@ -170,23 +172,40 @@ class DocumentComplianceService
         $satisfied = [];
         $pending = [];
         $missing = [];
+        $rejected = [];
         $details = [];
 
         foreach ($templates as $template) {
             $state = $this->resolveTemplateState($template, $internship, $documents);
+            $status = $state['status'];
+            $label = match ($status) {
+                'approved' => ($state['source'] ?? 'upload') === 'upload' ? 'Approved' : 'Completed',
+                'pending' => 'Pending Review',
+                'rejected' => 'Rejected',
+                default => 'Missing',
+            };
+
             $details[] = [
                 'template_id' => $template->id,
                 'system_code' => $template->system_code,
                 'name' => $template->name,
                 'is_system' => (bool) $template->is_system,
-                'status' => $state['status'],
+                'status' => $status,
+                'status_label' => $label,
                 'source' => $state['source'],
+                'document_id' => $state['document_id'] ?? null,
+                'approved' => $status === 'approved',
+                'pending' => $status === 'pending',
+                'missing' => $status === 'missing',
+                'rejected' => $status === 'rejected',
             ];
 
-            if ($state['status'] === 'approved') {
+            if ($status === 'approved') {
                 $satisfied[] = $template->name;
-            } elseif ($state['status'] === 'pending') {
+            } elseif ($status === 'pending') {
                 $pending[] = $template->name;
+            } elseif ($status === 'rejected') {
+                $rejected[] = $template->name;
             } else {
                 $missing[] = $template->name;
             }
@@ -196,34 +215,32 @@ class DocumentComplianceService
         $satisfiedCount = count($satisfied);
         $pendingCount = count($pending);
         $missingCount = count($missing);
+        $rejectedCount = count($rejected);
 
         return [
             'required_count' => $requiredCount,
             'satisfied_count' => $satisfiedCount,
             'pending_count' => $pendingCount,
             'missing_count' => $missingCount,
+            'rejected_count' => $rejectedCount,
             'compliance_pct' => $requiredCount > 0 ? (int) round($satisfiedCount / $requiredCount * 100) : 0,
             'required_types' => $templates->pluck('name')->values()->all(),
             'satisfied' => $satisfied,
             'pending' => $pending,
             'missing' => $missing,
+            'rejected' => $rejected,
             'details' => $details,
         ];
     }
 
     /**
+     * Documents that satisfy a template via template_id or alias labels.
+     *
      * @param  Collection<int, Document>  $documents
-     * @return array{status: string, source: string}
+     * @return Collection<int, Document>
      */
-    public function resolveTemplateState(
-        OjtRequirementTemplate $template,
-        ?Internship $internship,
-        Collection $documents
-    ): array {
-        if ($system = $this->systemGeneratedSatisfaction($template, $internship)) {
-            return $system;
-        }
-
+    public function matchingDocumentsForTemplate(OjtRequirementTemplate $template, Collection $documents): Collection
+    {
         $aliases = collect(self::aliasesForCode($template->system_code, $template->name))
             ->map(fn ($n) => self::normalizeLabel($n))
             ->filter()
@@ -231,7 +248,7 @@ class DocumentComplianceService
             ->values()
             ->all();
 
-        $matching = $documents->filter(function (Document $doc) use ($template, $aliases) {
+        return $documents->filter(function (Document $doc) use ($template, $aliases) {
             if (
                 Schema::hasColumn('documents', 'requirement_template_id')
                 && $doc->requirement_template_id
@@ -244,23 +261,64 @@ class DocumentComplianceService
 
             return $type !== '' && in_array($type, $aliases, true);
         })->values();
+    }
+
+    /**
+     * Prefer an approved match; otherwise the newest matching submission.
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    public function bestMatchingDocument(OjtRequirementTemplate $template, Collection $documents): ?Document
+    {
+        $matching = $this->matchingDocumentsForTemplate($template, $documents);
+        if ($matching->isEmpty()) {
+            return null;
+        }
+
+        $active = $matching->filter(fn (Document $d) => ! method_exists($d, 'trashed') || ! $d->trashed())->values();
+        $pool = $active->isNotEmpty() ? $active : $matching;
+
+        $approved = $pool->first(fn (Document $d) => strtolower((string) $d->status) === 'approved');
+
+        return $approved ?: $pool->first();
+    }
+
+    /**
+     * @param  Collection<int, Document>  $documents
+     * @return array{status: string, source: string, document_id?: int|null}
+     */
+    public function resolveTemplateState(
+        OjtRequirementTemplate $template,
+        ?Internship $internship,
+        Collection $documents
+    ): array {
+        if ($system = $this->systemGeneratedSatisfaction($template, $internship)) {
+            return $system;
+        }
+
+        $matching = $this->matchingDocumentsForTemplate($template, $documents);
 
         if ($matching->isEmpty()) {
-            return ['status' => 'missing', 'source' => 'upload'];
+            return ['status' => 'missing', 'source' => 'upload', 'document_id' => null];
         }
 
         // Prefer approved; rejected historical must not override later approved.
-        if ($matching->contains(fn (Document $d) => strtolower((string) $d->status) === 'approved')) {
-            return ['status' => 'approved', 'source' => 'upload'];
+        $approved = $matching->first(fn (Document $d) => strtolower((string) $d->status) === 'approved');
+        if ($approved) {
+            return ['status' => 'approved', 'source' => 'upload', 'document_id' => $approved->id];
         }
 
         $latest = $matching->first();
         $status = strtolower((string) ($latest->status ?? ''));
         if (in_array($status, ['pending', 'pending_review', 'under_review', 'pending_faculty', 'resubmitted', 'submitted'], true)) {
-            return ['status' => 'pending', 'source' => 'upload'];
+            return ['status' => 'pending', 'source' => 'upload', 'document_id' => $latest->id];
         }
 
-        return ['status' => 'missing', 'source' => 'upload'];
+        if (in_array($status, ['rejected', 'declined'], true)) {
+            return ['status' => 'rejected', 'source' => 'upload', 'document_id' => $latest->id];
+        }
+
+        return ['status' => 'missing', 'source' => 'upload', 'document_id' => $latest->id];
     }
 
     /**
@@ -340,6 +398,10 @@ class DocumentComplianceService
                 'missing_docs' => $result['missing'],
                 'pending_doc_types' => $result['pending'],
                 'satisfied_docs' => $result['satisfied'],
+                'rejected_docs' => $result['rejected'],
+                'rejected_count' => $result['rejected_count'],
+                // Full per-requirement status list (same resolver as progress counts).
+                'requirements' => $result['details'],
             ];
         })->values()->all();
 
@@ -347,6 +409,48 @@ class DocumentComplianceService
             'rows' => $rows,
             'required_types' => array_keys($unionTypes),
             'generated_at' => now()->toDateTimeString(),
+        ];
+    }
+
+    /**
+     * Compact compliance counts for dashboards / monitoring cards.
+     *
+     * @return array{
+     *   approved: int,
+     *   pending: int,
+     *   missing: int,
+     *   rejected: int,
+     *   total: int,
+     *   pct: int,
+     *   complete: bool,
+     *   label: string,
+     *   status: string,
+     *   details: list<array<string, mixed>>
+     * }
+     */
+    public function summaryForStudent(User $student, ?Internship $internship = null): array
+    {
+        $result = $this->evaluateStudent($student, $internship);
+        $complete = $result['required_count'] > 0
+            && $result['satisfied_count'] === $result['required_count'];
+
+        return [
+            'approved' => $result['satisfied_count'],
+            'pending' => $result['pending_count'],
+            'missing' => $result['missing_count'],
+            'rejected' => $result['rejected_count'],
+            'total' => $result['required_count'],
+            'pct' => $result['compliance_pct'],
+            'complete' => $complete,
+            'label' => $complete
+                ? 'Complete'
+                : (
+                    $result['required_count'] > 0
+                        ? $result['missing_count'] + $result['rejected_count'] + $result['pending_count'].' Remaining'
+                        : 'No Requirements'
+                ),
+            'status' => $complete ? 'complete' : 'pending',
+            'details' => $result['details'],
         ];
     }
 }

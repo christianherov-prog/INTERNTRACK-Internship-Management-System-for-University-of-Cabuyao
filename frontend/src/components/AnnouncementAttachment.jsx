@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import '../styles/announcement-attachments.css'
+import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../config/uploads'
+import { formatFileSize } from '../utils/uploadValidation'
 
 const ATTACH_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png,image/gif,image/webp,application/pdf'
-const ATTACH_MAX_BYTES = 10 * 1024 * 1024
 const ATTACH_EXT_OK = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx'])
 
 export { ATTACH_ACCEPT }
@@ -30,10 +31,7 @@ function fileTypeIcon(filename) {
 }
 
 function formatBytes(n) {
-  const size = Number(n) || 0
-  if (size < 1024) return `${size} B`
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  return formatFileSize(n)
 }
 
 export function validateAttachFile(file) {
@@ -42,8 +40,8 @@ export function validateAttachFile(file) {
   if (!ATTACH_EXT_OK.has(ext)) {
     return 'Unsupported file type. Use images (jpg, png, gif, webp) or documents (pdf, doc, docx, xls, xlsx).'
   }
-  if (file.size > ATTACH_MAX_BYTES) {
-    return 'File is too large. Maximum size is 10 MB.'
+  if (file.size > UPLOAD_MAX_BYTES) {
+    return `File is too large. Maximum size is ${UPLOAD_MAX_MB} MB.`
   }
   return null
 }

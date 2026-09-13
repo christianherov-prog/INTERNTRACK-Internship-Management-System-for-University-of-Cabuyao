@@ -9,6 +9,9 @@ import { formatStudentName } from '../../utils/formatName'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
+import AsyncButton from '../../components/AsyncButton'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 function fmtTime(t) {
   if (!t) return '—'
@@ -16,6 +19,7 @@ function fmtTime(t) {
 }
 
 function SupervisorAttendanceValidation() {
+  const confirm = useConfirm()
   const currentTerm = useCurrentTerm()
   const { loading, seed, run } = useCachedPage('supervisor:attendance')
   const [attendance, setAttendance] = useState(() => seed?.attendance ?? [])
@@ -68,7 +72,21 @@ function SupervisorAttendanceValidation() {
   const toggleAll = () => setSelected(allSelected ? [] : selectable.map((a) => a.id))
   const toggleOne = (id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
-  const validate = async (id, action, remarks = '') => {
+  const validate = async (log, action, remarks = '') => {
+    const id = typeof log === 'object' ? log.id : log
+    const studentName = typeof log === 'object' ? (profileName(log) || 'this student') : 'this student'
+    const dateLabel = typeof log === 'object' ? formatDisplayDate(log.date) : ''
+    const isValidate = action === 'validated'
+    const proceed = isValidate
+      ? await confirm({
+          title: 'Validate attendance?',
+          message: `Validate attendance for ${studentName}${dateLabel ? ` on ${dateLabel}` : ''}?`,
+          confirmLabel: 'Validate',
+          variant: 'primary',
+        })
+      : true
+    if (!proceed) return
+
     setProcessing(id)
     try {
       await api.patch(`/supervisor/attendance/${id}/validate`, { action, remarks })
@@ -86,6 +104,15 @@ function SupervisorAttendanceValidation() {
 
   const bulkValidate = async (action, remarks = '') => {
     if (selected.length === 0) return
+    if (action === 'validated') {
+      const ok = await confirm({
+        title: 'Validate selected attendance?',
+        message: `Validate ${selected.length} selected attendance record(s)?`,
+        confirmLabel: 'Validate Selected',
+        variant: 'primary',
+      })
+      if (!ok) return
+    }
     setProcessing('bulk')
     try {
       const res = await api.patch('/supervisor/attendance/bulk-validate', { ids: selected, action, remarks })
@@ -100,17 +127,37 @@ function SupervisorAttendanceValidation() {
     }
   }
 
-  const reviewDtr = async (path, id, action, remarks = '') => {
-    setProcessing(`${path}-${id}`)
-    try {
-      const res = await api.patch(`/supervisor/dtr/${path}/${id}`, { action, remarks })
-      setMessage({ type: action === 'approved' || action === 'validated' ? 'success' : 'warning', text: res.data.message })
-      fetchAttendance()
-    } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Action failed.' })
-    } finally {
-      setProcessing(null)
-    }
+  const reviewDtr = async (path, row, action, remarks = '') => {
+    const id = row.id
+    const student = formatStudentName(row.internship) || 'this student'
+    const kind =
+      path === 'schedules' ? 'working-hours schedule'
+        : path === 'overtime' ? 'overtime entry'
+          : 'attendance correction'
+    const verb = action === 'approved' ? 'Approve' : 'Reject'
+    const detail =
+      path === 'schedules' ? `${fmtTime(row.start_time)}–${fmtTime(row.end_time)}`
+        : path === 'overtime' ? formatDisplayDate(row.date)
+          : formatDisplayDate(row.date)
+    await confirm({
+      title: `${verb} ${kind}?`,
+      message: `${verb} the ${kind} for ${student}${detail ? ` (${detail})` : ''}?`,
+      confirmLabel: verb,
+      variant: action === 'approved' ? 'primary' : 'danger',
+      run: async () => {
+        setProcessing(`${path}-${id}`)
+        try {
+          const res = await api.patch(`/supervisor/dtr/${path}/${id}`, { action, remarks })
+          setMessage({ type: action === 'approved' || action === 'validated' ? 'success' : 'warning', text: res.data.message })
+          fetchAttendance()
+        } catch (err) {
+          setMessage({ type: 'danger', text: err.response?.data?.message ?? 'Action failed.' })
+          throw err
+        } finally {
+          setProcessing(null)
+        }
+      },
+    })
   }
 
   const profileName = (log) => formatStudentName(log.internship)
@@ -136,7 +183,7 @@ function SupervisorAttendanceValidation() {
               <div className="modal-body">
                 {!rejectModal.bulk && (
                   <p className="text-muted mb-2" style={{ fontSize: '0.88rem' }}>
-                    Date: <strong>{rejectModal.date}</strong> · Student: <strong>{rejectModal.studentName}</strong>
+                    Date: <strong>{formatDisplayDate(rejectModal.date) || rejectModal.date || '—'}</strong> · Student: <strong>{rejectModal.studentName}</strong>
                   </p>
                 )}
                 <label className="form-label fw-semibold">Reason for Rejection</label>
@@ -147,10 +194,14 @@ function SupervisorAttendanceValidation() {
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => (rejectModal.bulk ? bulkValidate('rejected', remark) : validate(rejectModal.id, 'rejected', remark))}
+                  onClick={() => (rejectModal.bulk ? bulkValidate('rejected', remark) : validate({ id: rejectModal.id, date: rejectModal.date }, 'rejected', remark))}
                   disabled={processing === (rejectModal.bulk ? 'bulk' : rejectModal.id)}
                 >
-                  <i className="fa fa-times me-2"></i>Reject {rejectModal.bulk ? 'Selected' : ''}
+                  {processing === (rejectModal.bulk ? 'bulk' : rejectModal.id) ? (
+                    <><i className="fa fa-spinner fa-spin me-2"></i>Rejecting…</>
+                  ) : (
+                    <><i className="fa fa-times me-2"></i>Reject {rejectModal.bulk ? 'Selected' : ''}</>
+                  )}
                 </button>
               </div>
             </div>
@@ -176,9 +227,9 @@ function SupervisorAttendanceValidation() {
         {selected.length > 0 && (
           <div className="d-flex align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
             <span className="fw-semibold" style={{ fontSize: '0.85rem' }}>{selected.length} selected</span>
-            <button type="button" className="btn btn-sm btn-success ms-auto" onClick={() => bulkValidate('validated')} disabled={processing === 'bulk'}>
+            <AsyncButton type="button" className="btn btn-sm btn-success ms-auto" busy={processing === 'bulk'} busyLabel="Validating…" onClick={() => bulkValidate('validated')} disabled={processing === 'bulk'}>
               <i className="fa fa-check me-1"></i>Validate Selected
-            </button>
+            </AsyncButton>
             <button type="button" className="btn btn-sm btn-danger" onClick={() => { setRejectModal({ bulk: true }); setRemark('') }} disabled={processing === 'bulk'}>
               <i className="fa fa-times me-1"></i>Reject Selected
             </button>
@@ -234,19 +285,21 @@ function SupervisorAttendanceValidation() {
                           />
                         </td>
                         <td className="fw-semibold">{name}</td>
-                        <td>{new Date(log.date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                        <td>{formatDisplayDate(log.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
                         <td>{fmtTime(log.clock_in_display || log.clock_in)}</td>
                         <td>{(log.clock_out_display || log.clock_out) ? fmtTime(log.clock_out_display || log.clock_out) : <span className="badge bg-warning text-dark">Still In</span>}</td>
                         <td>{log.hours_rendered != null ? `${log.hours_rendered} hrs` : '—'}</td>
                         <td className="text-center">
-                          <button
+                          <AsyncButton
                             type="button"
                             className="btn btn-sm btn-success me-2"
+                            busy={processing === log.id}
+                            busyLabel="…"
                             disabled={processing === log.id || processing === 'bulk' || !log.clock_out}
-                            onClick={() => validate(log.id, 'validated')}
+                            onClick={() => validate(log, 'validated')}
                           >
                             <i className="fa fa-check me-1"></i>Validate
-                          </button>
+                          </AsyncButton>
                           <button
                             type="button"
                             className="btn btn-sm btn-danger"
@@ -284,8 +337,8 @@ function SupervisorAttendanceValidation() {
                     <td className="fw-semibold">{formatStudentName(s.internship)}</td>
                     <td>{fmtTime(s.start_time)}–{fmtTime(s.end_time)}</td>
                     <td className="text-center">
-                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === `schedules-${s.id}`} onClick={() => reviewDtr('schedules', s.id, 'approved')}>Approve</button>
-                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === `schedules-${s.id}`} onClick={() => reviewDtr('schedules', s.id, 'rejected')}>Reject</button>
+                      <AsyncButton type="button" className="btn btn-sm btn-success me-2" busy={processing === `schedules-${s.id}`} busyLabel="…" onClick={() => reviewDtr('schedules', s, 'approved')}>Approve</AsyncButton>
+                      <AsyncButton type="button" className="btn btn-sm btn-danger" busy={processing === `schedules-${s.id}`} busyLabel="…" onClick={() => reviewDtr('schedules', s, 'rejected')}>Reject</AsyncButton>
                     </td>
                   </tr>
                 ))}
@@ -310,12 +363,12 @@ function SupervisorAttendanceValidation() {
                 {overtime.map((o) => (
                   <tr key={o.id}>
                     <td className="fw-semibold">{formatStudentName(o.internship)}</td>
-                    <td>{o.attendance_log?.date || '—'}</td>
+                    <td>{formatDisplayDate(o.attendance_log?.date || o.date) || '—'}</td>
                     <td>{o.excess_minutes} min</td>
                     <td>{o.original_hours_rendered ?? '—'} hrs</td>
                     <td className="text-center">
-                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === `overtime-${o.id}`} onClick={() => reviewDtr('overtime', o.id, 'approved')}>Approve</button>
-                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === `overtime-${o.id}`} onClick={() => reviewDtr('overtime', o.id, 'rejected')}>Reject</button>
+                      <AsyncButton type="button" className="btn btn-sm btn-success me-2" busy={processing === `overtime-${o.id}`} busyLabel="…" onClick={() => reviewDtr('overtime', o, 'approved')}>Approve</AsyncButton>
+                      <AsyncButton type="button" className="btn btn-sm btn-danger" busy={processing === `overtime-${o.id}`} busyLabel="…" onClick={() => reviewDtr('overtime', o, 'rejected')}>Reject</AsyncButton>
                     </td>
                   </tr>
                 ))}
@@ -340,13 +393,13 @@ function SupervisorAttendanceValidation() {
                 {corrections.map((c) => (
                   <tr key={c.id}>
                     <td className="fw-semibold">{c.student_name || formatStudentName(c.internship)}</td>
-                    <td>{c.date}</td>
+                    <td>{formatDisplayDate(c.date) || '—'}</td>
                     <td>{fmtTime(c.original_clock_in)}–{fmtTime(c.original_clock_out)}</td>
                     <td>{fmtTime(c.requested_clock_in)}–{fmtTime(c.requested_clock_out)}</td>
                     <td>{c.status_label || c.status}</td>
                     <td className="text-center">
-                      <button type="button" className="btn btn-sm btn-success me-2" disabled={processing === `corrections-${c.id}`} onClick={() => reviewDtr('corrections', c.id, 'approved')}>Approve</button>
-                      <button type="button" className="btn btn-sm btn-danger" disabled={processing === `corrections-${c.id}`} onClick={() => reviewDtr('corrections', c.id, 'rejected')}>Reject</button>
+                      <AsyncButton type="button" className="btn btn-sm btn-success me-2" busy={processing === `corrections-${c.id}`} busyLabel="…" onClick={() => reviewDtr('corrections', c, 'approved')}>Approve</AsyncButton>
+                      <AsyncButton type="button" className="btn btn-sm btn-danger" busy={processing === `corrections-${c.id}`} busyLabel="…" onClick={() => reviewDtr('corrections', c, 'rejected')}>Reject</AsyncButton>
                     </td>
                   </tr>
                 ))}
@@ -383,7 +436,7 @@ function SupervisorAttendanceValidation() {
                   {history.map((log) => (
                     <tr key={log.id}>
                       <td className="fw-semibold">{profileName(log)}</td>
-                      <td>{log.date ? String(log.date).slice(0, 10) : '—'}</td>
+                      <td>{formatDisplayDate(log.date) || '—'}</td>
                       <td>{fmtTime(log.clock_in_display || log.clock_in)}</td>
                       <td>{fmtTime(log.clock_out_display || log.clock_out)}</td>
                       <td>{log.hours_rendered != null ? `${log.hours_rendered} hrs` : '—'}</td>

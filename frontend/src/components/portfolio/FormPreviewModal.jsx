@@ -4,13 +4,32 @@ import InternTrackLoader from '../InternTrackLoader';
 import DailyTimeRecord from './DailyTimeRecord';
 import WeeklyInternshipJournal from './WeeklyInternshipJournal';
 import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, PrintFacultyEval } from './EvaluationsPreview';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import AsyncButton from '../AsyncButton';
 
 function JournalReviewFooter({ review, onClose }) {
+  const confirm = useConfirm();
   const [action, setAction] = useState('approved');
   const [feedback, setFeedback] = useState('');
   const journal = review.journal || {};
   const processing = !!review.processing;
   const needsFeedback = action === 'needs_revision' && !String(feedback).trim();
+
+  const submit = async () => {
+    if (needsFeedback || processing) return;
+    const student = journal.student_name || review.studentName || 'this student';
+    const week = journal.week_number ?? journal.entry_number ?? review.weekNumber ?? '—';
+    const verb = action === 'approved' ? 'Approve' : 'Request revision for';
+    await confirm({
+      title: action === 'approved' ? 'Approve journal entry?' : 'Request journal revision?',
+      message: `${verb} journal entry for ${student}, Week ${week}?`,
+      confirmLabel: action === 'approved' ? 'Approve Journal' : 'Submit Needs Revision',
+      variant: action === 'approved' ? 'primary' : 'danger',
+      run: async () => {
+        await review.onSubmit(action, feedback);
+      },
+    });
+  };
 
   return (
     <div className="fpm-no-print" style={{ flexShrink: 0, borderTop: '1px solid #dee2e6', background: '#fff' }}>
@@ -47,15 +66,17 @@ function JournalReviewFooter({ review, onClose }) {
         </div>
       </div>
       <div className="d-flex justify-content-end gap-2 px-3 py-2" style={{ borderTop: '1px solid #eee', background: '#f8f9fa' }}>
-        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button
+        <button type="button" className="btn btn-secondary" onClick={onClose} disabled={processing}>Cancel</button>
+        <AsyncButton
           type="button"
           className="btn btn-primary"
-          disabled={processing || needsFeedback}
-          onClick={() => review.onSubmit(action, feedback)}
+          busy={processing}
+          busyLabel="Submitting…"
+          disabled={needsFeedback}
+          onClick={submit}
         >
-          <i className={`fa fa-${processing ? 'spinner fa-spin' : 'check'} me-2`}></i>Submit Review
-        </button>
+          <i className="fa fa-check me-2"></i>Submit Review
+        </AsyncButton>
       </div>
     </div>
   );

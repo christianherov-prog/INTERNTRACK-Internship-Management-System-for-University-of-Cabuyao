@@ -2,6 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import api from '../services/api'
 import { invalidateOfficialFormCaches } from '../utils/pageCache'
 import { invalidateAuthenticatedFileCache } from './AuthenticatedFile'
+import { useConfirm } from '../contexts/ConfirmContext'
+import AsyncButton from './AsyncButton'
+import { uploadErrorMessage } from '../utils/uploadValidation'
+
+const SIGNATURE_MAX_BYTES = 2 * 1024 * 1024 // intentional module override (backend max:2048)
 
 /**
  * SignatureUpload component
@@ -10,6 +15,7 @@ import { invalidateAuthenticatedFileCache } from './AuthenticatedFile'
  * background to create a transparent PNG that stamps cleanly on Form 30 & 31 PDFs.
  */
 function SignatureUpload() {
+  const confirm = useConfirm()
   const [hasSignature, setHasSignature] = useState(false)
   const [uploading, setUploading]       = useState(false)
   const [removing, setRemoving]         = useState(false)
@@ -26,6 +32,11 @@ function SignatureUpload() {
 
   const applyFile = (file) => {
     if (!file) return
+    if (file.size > SIGNATURE_MAX_BYTES) {
+      setMessage({ type: 'danger', text: 'Signature image must not exceed 2 MB.' })
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
     setFileName(file.name)
     setPreview(URL.createObjectURL(file))
     setMessage(null)
@@ -65,26 +76,34 @@ function SignatureUpload() {
       if (fileRef.current) fileRef.current.value = ''
       setMessage({ type: 'success', text: 'Signature uploaded! Background has been automatically removed.' })
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message || 'Upload failed.' })
+      setMessage({ type: 'danger', text: uploadErrorMessage(err, 'Upload failed.') })
     } finally {
       setUploading(false)
     }
   }
 
   const handleRemove = async () => {
-    if (!window.confirm('Remove your saved signature?')) return
-    setRemoving(true)
-    try {
-      await api.delete('/auth/signature')
-      invalidateOfficialFormCaches()
-      invalidateAuthenticatedFileCache('signatures/')
-      setHasSignature(false)
-      setMessage({ type: 'success', text: 'Signature removed.' })
-    } catch {
-      setMessage({ type: 'danger', text: 'Failed to remove signature.' })
-    } finally {
-      setRemoving(false)
-    }
+    await confirm({
+      title: 'Remove saved signature?',
+      message: 'Remove your saved signature? Official forms will no longer include it until you upload a new one.',
+      confirmLabel: 'Remove Signature',
+      variant: 'danger',
+      run: async () => {
+        setRemoving(true)
+        try {
+          await api.delete('/auth/signature')
+          invalidateOfficialFormCaches()
+          invalidateAuthenticatedFileCache('signatures/')
+          setHasSignature(false)
+          setMessage({ type: 'success', text: 'Signature removed.' })
+        } catch {
+          setMessage({ type: 'danger', text: 'Failed to remove signature.' })
+          throw new Error('Failed to remove signature.')
+        } finally {
+          setRemoving(false)
+        }
+      },
+    })
   }
 
   return (
@@ -135,25 +154,27 @@ function SignatureUpload() {
               <span>PNG or JPG · Max 5MB · Sign on white paper for best results</span>
             </label>
             <div className="d-flex gap-2">
-              <button
+              <AsyncButton
                 type="button"
                 className="btn-green"
+                busy={uploading}
+                busyLabel="Processing…"
                 onClick={handleUpload}
-                disabled={uploading}
               >
-                <i className={`fa fa-${uploading ? 'spinner fa-spin' : 'upload'} me-2`}></i>
-                {uploading ? 'Processing…' : hasSignature ? 'Replace Signature' : 'Upload Signature'}
-              </button>
+                <i className="fa fa-upload me-2"></i>
+                {hasSignature ? 'Replace Signature' : 'Upload Signature'}
+              </AsyncButton>
               {hasSignature && (
-                <button
+                <AsyncButton
                   type="button"
                   className="btn btn-outline-danger"
+                  busy={removing}
+                  busyLabel="Removing…"
                   onClick={handleRemove}
-                  disabled={removing}
                 >
                   <i className="fa fa-trash me-2"></i>
-                  {removing ? 'Removing…' : 'Remove'}
-                </button>
+                  Remove
+                </AsyncButton>
               )}
             </div>
           </div>

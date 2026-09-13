@@ -37,7 +37,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
     run(() => api.get('/meetings').then((res) => res.data.meetings ?? []))
       .then((next) => { if (next) setMeetings(next) })
       .catch((err) => {
-        setError(err.response?.data?.message || 'Failed to load meetings.')
+        setError(err.response?.data?.message || 'Failed to load appointments.')
       })
   }
 
@@ -55,14 +55,14 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
         meeting_url: form.meeting_url || null,
         location: form.location || null,
       })
-      setMessage({ type: 'success', text: 'Meeting scheduled.' })
+      setMessage({ type: 'success', text: 'Appointment scheduled.' })
       setForm({
         title: '', type: 'orientation', description: '', starts_at: '', ends_at: '',
         location: '', meeting_url: '', internship_id: '',
       })
       load()
     } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to create meeting.' })
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to create appointment.' })
     } finally {
       setSaving(false)
     }
@@ -78,7 +78,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
   }
 
   return (
-    <Layout title="Meetings" subtitle="Orientation & check-ins" icon="fa-calendar" bodyClass={bodyClass}>
+    <Layout title="Appointments" subtitle="Orientations, consultations & check-ins" icon="fa-calendar" bodyClass={bodyClass}>
       {error && <PageError message={error} onRetry={load} />}
       {message && (
         <div className={`alert alert-${message.type} alert-dismissible`}>
@@ -89,7 +89,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
 
       {canCreate && (
         <div className="content-card mb-4">
-          <div className="content-card-header"><i className="fa fa-plus"></i><h6>Schedule meeting</h6></div>
+          <div className="content-card-header"><i className="fa fa-plus"></i><h6>Schedule Appointment</h6></div>
           <form className="p-3" onSubmit={create}>
             <div className="row g-3">
               <div className="col-md-6">
@@ -97,7 +97,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
                 <input className="form-control" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </div>
               <div className="col-md-3">
-                <label className="form-label">Type</label>
+                <label className="form-label">Appointment Type</label>
                 <select className="form-select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                   {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
@@ -119,8 +119,8 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
                 <input className="form-control" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Meeting URL</label>
-                <input className="form-control" value={form.meeting_url} onChange={(e) => setForm({ ...form, meeting_url: e.target.value })} placeholder="Meeting Link" />
+                <label className="form-label">Appointment Link</label>
+                <input className="form-control" value={form.meeting_url} onChange={(e) => setForm({ ...form, meeting_url: e.target.value })} placeholder="Appointment Link" />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Description</label>
@@ -128,7 +128,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
               </div>
             </div>
             <button className="btn btn-primary mt-3" disabled={saving}>
-              {saving ? 'Saving…' : 'Create meeting'}
+              {saving ? 'Saving…' : 'Create Appointment'}
             </button>
           </form>
         </div>
@@ -139,7 +139,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
         {pending && meetings.length === 0 ? (
           <InternTrackLoader />
         ) : meetings.length === 0 ? (
-          <EmptyState icon="fa-calendar" title="No meetings" message="Scheduled orientations and check-ins will appear here." />
+          <EmptyState icon="fa-calendar" title="No Appointments" message="Scheduled orientations and check-ins will appear here." />
         ) : (
           <div className="table-responsive">
             <table className="table table-hover mb-0">

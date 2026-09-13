@@ -16,7 +16,7 @@ const ROLE_NAV = {
     { section: 'TOOLS', to: '/student/evaluations', icon: 'fa-star', text: 'Evaluations' },
     { section: 'TOOLS', to: '/student/records', icon: 'fa-folder-open', text: 'My Records' },
     { section: 'TOOLS', to: '/student/messages', icon: 'fa-comments', text: 'Messages' },
-    { section: 'TOOLS', to: '/student/meetings', icon: 'fa-calendar', text: 'Meetings' },
+    { section: 'TOOLS', to: '/student/meetings', icon: 'fa-calendar', text: 'Appointments' },
     { section: 'ACCOUNT', to: '/student/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -32,7 +32,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/director/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/director/announcements', icon: 'fa-bullhorn', text: 'Announcements' },
     { section: 'MAIN', to: '/director/messages', icon: 'fa-comments', text: 'Messages' },
-    { section: 'MAIN', to: '/director/meetings', icon: 'fa-calendar', text: 'Meetings' },
+    { section: 'MAIN', to: '/director/meetings', icon: 'fa-calendar', text: 'Appointments' },
     { section: 'ACCOUNT', to: '/director/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -44,7 +44,7 @@ const ROLE_NAV = {
     { section: 'MAIN', to: '/supervisor/performance-evaluation', icon: 'fa-star', text: 'Evaluations' },
     { section: 'MAIN', to: '/supervisor/absorption', icon: 'fa-user-check', text: 'Absorption' },
     { section: 'MAIN', to: '/supervisor/messages', icon: 'fa-comments', text: 'Messages' },
-    { section: 'MAIN', to: '/supervisor/meetings', icon: 'fa-calendar', text: 'Meetings' },
+    { section: 'MAIN', to: '/supervisor/meetings', icon: 'fa-calendar', text: 'Appointments' },
     { section: 'ACCOUNT', to: '/supervisor/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -57,7 +57,7 @@ const ROLE_NAV = {
     { section: 'TOOLS', to: '/faculty/supervisor-approvals', icon: 'fa-user-check', text: 'Supervisor Approvals' },
     { section: 'TOOLS', to: '/faculty/reports', icon: 'fa-chart-bar', text: 'Reports' },
     { section: 'TOOLS', to: '/faculty/messages', icon: 'fa-comments', text: 'Messages' },
-    { section: 'TOOLS', to: '/faculty/meetings', icon: 'fa-calendar', text: 'Meetings' },
+    { section: 'TOOLS', to: '/faculty/meetings', icon: 'fa-calendar', text: 'Appointments' },
     { section: 'ACCOUNT', to: '/faculty/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],
@@ -76,7 +76,7 @@ const ROLE_NAV = {
 
     // ── Shared ──────────────────────────────────────────────────────────
     { section: 'COMMUNICATIONS', to: '/coordinator/messages', icon: 'fa-comments', text: 'Messages' },
-    { section: 'COMMUNICATIONS', to: '/coordinator/meetings', icon: 'fa-calendar', text: 'Meetings' },
+    { section: 'COMMUNICATIONS', to: '/coordinator/meetings', icon: 'fa-calendar', text: 'Appointments' },
     { section: 'ACCOUNT', to: '/coordinator/settings', icon: 'fa-cog', text: 'Settings' },
     { section: 'SESSION', to: '/', icon: 'fa-sign-out-alt', text: 'Logout', isLogout: true }
   ],

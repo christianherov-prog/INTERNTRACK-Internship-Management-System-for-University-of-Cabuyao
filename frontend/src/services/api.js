@@ -1,15 +1,16 @@
 import axios from 'axios'
 import { disconnectEcho } from './echo'
+import { resolveApiBaseUrl } from '../utils/apiBase'
 
 /**
  * INTERNTRACK API Service
  * Centralized Axios instance for all Laravel backend communication.
  * React never communicates with the MISD API directly.
  *
- * Set VITE_API_BASE_URL in frontend/.env to match your local Laravel host/port.
+ * Host follows the page (localhost vs LAN). Port/path from VITE_API_BASE_URL.
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1',
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

@@ -8,6 +8,8 @@ import { useCachedPage } from '../../hooks/useCachedPage'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
+import AsyncButton from '../../components/AsyncButton'
 
 function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
   const [period, setPeriod] = useState(existing?.evaluation_period || 'midterm')
@@ -16,7 +18,21 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
+  const confirm = useConfirm()
+
   const submit = async () => {
+    const studentLabel = internship?.student_name
+      || [internship?.student?.student_profile?.last_name, internship?.student?.student_profile?.first_name].filter(Boolean).join(', ')
+      || internship?.student?.username
+      || `Internship #${internship.id}`
+    const ok = await confirm({
+      title: 'Submit faculty evaluation?',
+      message: `Submit faculty evaluation for ${studentLabel} (${period}) with score ${score}?`,
+      confirmLabel: 'Submit Evaluation',
+      variant: 'primary',
+    })
+    if (!ok) return
+
     setSaving(true)
     setError(null)
     try {
@@ -74,6 +90,7 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
 
 function FacultyEvaluations() {
   const currentTerm = useCurrentTerm()
+  const confirm = useConfirm()
   const { loading, seed, run } = useCachedPage('faculty:evaluations')
   const [internships, setInternships] = useState(() => seed?.internships ?? [])
   const [availableSections, setAvailableSections] = useState(() => seed?.available_sections ?? [])
@@ -114,17 +131,30 @@ function FacultyEvaluations() {
   useEffect(() => { fetchData() }, [debouncedSearch, filters.section])
 
   const approvePeriod = async (internship) => {
-    setApprovingId(internship.id)
-    setMessage(null)
-    try {
-      await api.post(`/faculty/evaluations/${internship.id}/approve-period`)
-      setMessage({ type: 'success', text: 'Evaluation period approved. Student and supervisor forms are now unlocked.' })
-      fetchData()
-    } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to approve evaluation period.' })
-    } finally {
-      setApprovingId(null)
-    }
+    const studentLabel = internship?.student_name
+      || [internship?.student?.student_profile?.last_name, internship?.student?.student_profile?.first_name].filter(Boolean).join(', ')
+      || internship?.student?.username
+      || `Internship #${internship.id}`
+    await confirm({
+      title: 'Approve evaluation period?',
+      message: `Approve the evaluation period for ${studentLabel}? This unlocks Student (FO-22/FO-23) and Supervisor (FO-24/FO-03) forms.`,
+      confirmLabel: 'Approve Period',
+      variant: 'primary',
+      run: async () => {
+        setApprovingId(internship.id)
+        setMessage(null)
+        try {
+          await api.post(`/faculty/evaluations/${internship.id}/approve-period`)
+          setMessage({ type: 'success', text: 'Evaluation period approved. Student and supervisor forms are now unlocked.' })
+          fetchData()
+        } catch (err) {
+          setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to approve evaluation period.' })
+          throw err
+        } finally {
+          setApprovingId(null)
+        }
+      },
+    })
   }
 
   return (
@@ -234,14 +264,15 @@ function FacultyEvaluations() {
                         {periodApproved ? (
                           <span className="badge bg-success"><i className="fa fa-unlock me-1"></i>Approved</span>
                         ) : (
-                          <button
+                          <AsyncButton
                             className="btn btn-sm btn-outline-warning"
-                            disabled={approvingId === intern.id}
+                            busy={approvingId === intern.id}
+                            busyLabel="Approving…"
                             onClick={() => approvePeriod(intern)}
                           >
-                            <i className={`fa fa-${approvingId === intern.id ? 'spinner fa-spin' : 'unlock'} me-1`}></i>
+                            <i className="fa fa-unlock me-1"></i>
                             Approve period
-                          </button>
+                          </AsyncButton>
                         )}
                       </td>
                       <td className="text-center pe-4">

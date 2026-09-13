@@ -6,6 +6,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const SEMESTER_OPTIONS = [
   { value: '1st Semester', label: '1st Semester' },
@@ -31,6 +32,7 @@ function normalizeSemester(value) {
 }
 
 function MisdSectionMappings() {
+  const confirm = useConfirm()
   const [filters, setFilters] = useState({ academic_year: '', semester: '', section: '' })
   const [applied, setApplied] = useState({ academic_year: '', semester: '', section: '' })
   const cacheKey = `admin:section-mappings:${applied.academic_year || 'all'}:${applied.semester || 'all'}:${applied.section || 'all'}`
@@ -146,15 +148,18 @@ function MisdSectionMappings() {
   }
 
   const remove = async (row) => {
-    if (!window.confirm(`Delete mapping for ${formatYearSection(row.section)}?`)) return
-    setMessage(null)
-    try {
-      await api.delete(`/admin/section-assignments/${row.id}`)
-      setMessage({ type: 'success', text: 'Mapping deleted.' })
-      load()
-    } catch (err) {
-      setMessage({ type: 'danger', text: err.response?.data?.message || 'Delete failed.' })
-    }
+    await confirm({
+      title: 'Delete section mapping?',
+      message: `Delete the faculty mapping for section ${formatYearSection(row.section)} (${row.program || 'program'}, ${row.school_year || row.academic_year || 'term'})?`,
+      confirmLabel: 'Delete Mapping',
+      variant: 'danger',
+      run: async () => {
+        setMessage(null)
+        await api.delete(`/admin/section-assignments/${row.id}`)
+        setMessage({ type: 'success', text: 'Mapping deleted.' })
+        load()
+      },
+    })
   }
 
   return (

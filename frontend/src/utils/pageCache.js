@@ -55,11 +55,33 @@ export function cacheSet(key, data) {
 
 export function cacheDelete(key) {
   store.delete(key)
+  inflight.delete(key)
   persist()
 }
 
 export function invalidateStudentPortfolio() {
   cacheDelete('student:portfolio')
+}
+
+/** Invalidate student documents + shared compliance surfaces after upload/review. */
+export function invalidateStudentDocuments() {
+  const keys = []
+  store.forEach((_, key) => {
+    if (
+      key === 'student:documents'
+      || key === 'student:dashboard'
+      || key === 'student:records'
+      || key.startsWith('faculty:assigned')
+      || key.startsWith('coordinator:records')
+      || key.includes('student-progress')
+      || key.includes('compliance')
+      || key.includes('documents')
+    ) {
+      keys.push(key)
+    }
+  })
+  keys.forEach(cacheDelete)
+  invalidateStudentPortfolio()
 }
 
 /** Invalidate attendance-related student caches after clock/break/correction mutations. */

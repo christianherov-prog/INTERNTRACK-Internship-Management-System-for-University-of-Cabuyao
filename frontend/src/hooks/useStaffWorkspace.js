@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { cacheClear } from '../utils/pageCache'
 
 export const STAFF_WORKSPACE_KEY = 'interntrack_staff_workspace'
 
@@ -48,6 +49,8 @@ export function useStaffWorkspace() {
   const switchWorkspace = (next) => {
     if (!canSwitch || !WORKSPACE_HOME[next] || next === workspace) return
     sessionStorage.setItem(STAFF_WORKSPACE_KEY, next)
+    // Drop cached page payloads so the prior workspace cannot flash unauthorized data.
+    cacheClear()
     navigate(WORKSPACE_HOME[next])
   }
 

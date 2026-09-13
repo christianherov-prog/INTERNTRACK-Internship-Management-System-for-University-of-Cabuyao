@@ -21,5 +21,9 @@ export function safeApiError(err, fallback = 'Something went wrong. Please try a
 }
 
 export function safeUploadError(err) {
+  const status = err?.response?.status
+  if (status === 413) {
+    return err?.response?.data?.message || 'The selected file is too large.'
+  }
   return safeApiError(err, 'File upload failed. Please try again.')
 }

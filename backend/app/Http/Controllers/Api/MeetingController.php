@@ -164,7 +164,7 @@ class MeetingController extends Controller
                 Notification::notify(
                     (int) $uid,
                     'meeting_invite',
-                    'Meeting invitation',
+                    'Appointment invitation',
                     $meeting->title.' — '.optional($meeting->starts_at)->toDayDateTimeString(),
                     $link,
                     ['meeting_id' => $meeting->id]
@@ -173,7 +173,7 @@ class MeetingController extends Controller
         }
 
         return response()->json([
-            'message' => 'Meeting scheduled.',
+            'message' => 'Appointment scheduled.',
             'meeting' => $this->payload($meeting->fresh(['attendees.user', 'creator', 'internship.student.studentProfile']), $user->id),
         ], 201);
     }
@@ -208,7 +208,7 @@ class MeetingController extends Controller
             Notification::notify(
                 (int) $attendee->user_id,
                 'meeting_updated',
-                'Meeting updated',
+                'Appointment updated',
                 $meeting->title.' was updated.',
                 $this->meetingsPathForRole(User::find($attendee->user_id)?->role),
                 ['meeting_id' => $meeting->id]
@@ -216,7 +216,7 @@ class MeetingController extends Controller
         }
 
         return response()->json([
-            'message' => 'Meeting updated.',
+            'message' => 'Appointment updated.',
             'meeting' => $this->payload($meeting->fresh(['attendees.user', 'creator', 'internship.student.studentProfile']), $user->id),
         ]);
     }

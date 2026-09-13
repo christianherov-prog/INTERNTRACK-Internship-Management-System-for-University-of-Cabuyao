@@ -15,7 +15,8 @@ class Message extends Model
         'pdf', 'doc', 'docx', 'xls', 'xlsx',
     ];
 
-    public const ATTACHMENT_MAX_KB = 10240; // 10 MB
+    /** @deprecated Prefer UploadLimits::maxKb() */
+    public const ATTACHMENT_MAX_KB = 10240; // fallback; runtime rules use UploadLimits
 
     protected $fillable = [
         'internship_id',

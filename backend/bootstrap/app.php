@@ -52,7 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (PostTooLargeException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'message' => 'The attachment must not be larger than 10 MB.',
+                    'message' => \App\Support\UploadLimits::requestTooLargeMessage(),
                 ], 413);
             }
         });

@@ -10,6 +10,7 @@ import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 function profileOf(entity) {
   return entity?.student?.student_profile || entity?.student?.studentProfile || null
@@ -56,6 +57,7 @@ function EvalModal({ internship, activeForm, onClose, onSubmit, processing }) {
 }
 
 export default function SupervisorPerformanceEvaluation() {
+  const confirm = useConfirm()
   const { loading, seed, run } = useCachedPage('supervisor:evaluations')
   const [modal, setModal] = useState(null)
   const [previewEval, setPreviewEval] = useState(null)
@@ -77,6 +79,16 @@ export default function SupervisorPerformanceEvaluation() {
   useEffect(() => { fetchData() }, [])
 
   const handleSubmit = async (internshipId, data, period) => {
+    const student = displayName(modal?.internship || { id: internshipId }) || 'this intern'
+    const formLabel = data?.form_type || modal?.activeForm || 'evaluation'
+    const ok = await confirm({
+      title: 'Submit evaluation?',
+      message: `Submit ${formLabel}${period ? ` (${period})` : ''} for ${student}? You will not be able to edit it after submission.`,
+      confirmLabel: 'Submit Evaluation',
+      variant: 'primary',
+    })
+    if (!ok) return
+
     setProcessing(true)
     setMessage(null)
     try {

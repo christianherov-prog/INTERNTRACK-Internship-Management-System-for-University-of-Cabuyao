@@ -6,6 +6,8 @@ import { unwrapList } from '../../utils/apiList'
 import { resolveTargetHours } from '../../config/hours'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
+import AsyncButton from '../../components/AsyncButton'
 
 function absorptionBadge(status) {
   if (status === 'absorbed') return 'badge bg-success'
@@ -14,6 +16,7 @@ function absorptionBadge(status) {
 }
 
 function StudentRecords() {
+  const confirm = useConfirm()
   const { loading, seed, run } = useCachedPage('student:records')
   const [profile, setProfile] = useState(() => seed?.profile ?? null)
   const [history, setHistory] = useState(() => seed?.history ?? [])
@@ -49,21 +52,29 @@ function StudentRecords() {
   const totalHours = history.reduce((sum, h) => sum + (Number(h.total_hours_rendered) || 0), 0)
   const totalDays = history.reduce((sum, h) => sum + (Number(h.validated_days) || 0), 0)
 
-  const declareHired = (internshipId) => {
+  const declareHired = async (internshipId, companyName) => {
+    const ok = await confirm({
+      title: 'Declare you were hired?',
+      message: `Declare that you were hired at ${companyName || 'this company'}? Faculty/Coordinator will still finalize absorption.`,
+      confirmLabel: 'Declare Hired',
+      variant: 'primary',
+    })
+    if (!ok) return
+
     setDeclaringId(internshipId)
     setDeclareMsg(null)
-    api.post('/student/absorption/declare', { internship_id: internshipId })
-      .then((res) => {
-        setDeclareMsg({ type: 'success', text: res.data.message || 'Declaration submitted.' })
-        load()
+    try {
+      const res = await api.post('/student/absorption/declare', { internship_id: internshipId })
+      setDeclareMsg({ type: 'success', text: res.data.message || 'Declaration submitted.' })
+      load()
+    } catch (err) {
+      setDeclareMsg({
+        type: 'danger',
+        text: err.response?.data?.message || 'Could not submit hire declaration.',
       })
-      .catch((err) => {
-        setDeclareMsg({
-          type: 'danger',
-          text: err.response?.data?.message || 'Could not submit hire declaration.',
-        })
-      })
-      .finally(() => setDeclaringId(null))
+    } finally {
+      setDeclaringId(null)
+    }
   }
 
   return (
@@ -181,13 +192,14 @@ function StudentRecords() {
                           <td>{alreadyDeclared ? <span className="badge bg-info text-dark">Yes</span> : '—'}</td>
                           <td>
                             {!alreadyDeclared && (outcome === 'pending' || !row.absorption_status) && (
-                              <button
+                              <AsyncButton
                                 className="btn btn-sm btn-outline-primary"
-                                disabled={declaringId === row.id}
-                                onClick={() => declareHired(row.id)}
+                                busy={declaringId === row.id}
+                                busyLabel="Submitting…"
+                                onClick={() => declareHired(row.id, row.company_name || row.company?.company_name)}
                               >
-                                {declaringId === row.id ? 'Submitting…' : 'Declare I was hired'}
-                              </button>
+                                Declare I was hired
+                              </AsyncButton>
                             )}
                           </td>
                         </tr>

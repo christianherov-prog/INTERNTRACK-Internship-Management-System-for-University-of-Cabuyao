@@ -11,6 +11,7 @@ import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
 
 const COMPETENCIES = [
   { key: 'technical_skills', label: 'Technical Skills' },
@@ -208,6 +209,7 @@ function SubmitEvalModal({ internship, activeForm, onClose, onSubmit, processing
 
 function StudentEvaluations() {
   const currentTerm = useCurrentTerm()
+  const confirm = useConfirm()
   const { loading, seed, run } = useCachedPage('student:evaluations')
   const [evaluations, setEvaluations] = useState(() => seed?.evaluations ?? [])
   const [error, setError] = useState(null)
@@ -266,6 +268,15 @@ function StudentEvaluations() {
   }
 
   const handleLocalSubmit = async (data) => {
+    const formLabel = data?.form_type || showSubmitModal || 'evaluation'
+    const ok = await confirm({
+      title: 'Submit evaluation?',
+      message: `Submit ${formLabel}? You will not be able to edit it after submission.`,
+      confirmLabel: 'Submit Evaluation',
+      variant: 'primary',
+    })
+    if (!ok) return
+
     setProcessing(true)
     setError(null)
     try {
