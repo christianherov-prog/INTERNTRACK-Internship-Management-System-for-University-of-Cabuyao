@@ -1,0 +1,90 @@
+[
+  {
+    "id": "INT-04-TZ",
+    "classification": "Data consistency defect",
+    "actual": "Expected 4 hours; stored log, Student dashboard, Faculty progress and FO-30 all returned 1 hour, despite displaying 13:00–17:00.",
+    "root": "DtrWorkflowService::finalizeClockOut passes both UTC attendance times and Manila schedule times through combineDateAndTime, which parses using app timezone UTC. The 05:00–09:00 UTC session overlaps the incorrectly interpreted 08:00–17:00 UTC schedule for only one hour.",
+    "files": "app/Services/DtrWorkflowService.php (finalizeClockOut, combineDateAndTime); app/Services/AttendanceDayResolver.php (scheduleEndAt uses Manila explicitly)",
+    "impact": "Incorrect credited hours propagate after validation into progress and official forms.",
+    "recommendation": "Interpret schedule wall-clock times in Asia/Manila, convert to the same instant basis as stored attendance, and regression-test morning/afternoon/break boundaries.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-06",
+    "classification": "Data consistency defect",
+    "actual": "After 17:01 on the first scheduled workday, FO-30 contained no absence row. Afternoon presence and subsequent not_clocked_in state passed their assertions.",
+    "root": "AttendanceDayResolver::mergeFo30Attendance returns an empty array when there are no serialized attendance dates; it also starts at the first recorded date, not the internship/schedule start.",
+    "files": "app/Services/AttendanceDayResolver.php; app/Services/OfficialFormDataService.php; app/Services/PortfolioDataService.php",
+    "impact": "A fully missed first scheduled day is omitted from official-form data even though schedule/day logic can determine absence. The test does not claim a dashboard absence counter exists.",
+    "recommendation": "Build the expected workday range from authoritative internship and approved-schedule dates even with zero attendance rows; derive absence only after shift end.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-07-COORD",
+    "classification": "Workflow/business-rule conflict",
+    "actual": "Coordinator received 200; journal became approved with Coordinator reviewer ID. Student history, FO-31 and portfolio all returned that approved journal.",
+    "root": "Faculty route group permits faculty,coordinator; reviewJournal enforces assignment/department, not exclusive Faculty role. Current source intentionally supports a Coordinator Faculty workspace.",
+    "files": "routes/api.php; app/Http/Controllers/Api/FacultyController.php (reviewJournal)",
+    "impact": "Coordinator review propagates as authoritative approved content across all three downstream surfaces.",
+    "recommendation": "Resolve the final role policy. If Faculty-only is authoritative, restrict review to Faculty before mutation; otherwise revise the documented requirement explicitly.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-09",
+    "classification": "Data consistency defect",
+    "actual": "Portfolio returned the approved journal once AND the second journal with status submitted.",
+    "root": "PortfolioDataService::payload queries academic journals for the internship without an approved-status filter.",
+    "files": "app/Services/PortfolioDataService.php (payload); app/Models/JournalEntry.php (academic scope)",
+    "impact": "Unapproved journal content appears in the portfolio payload. No claim is made about whether the browser subsequently filters it.",
+    "recommendation": "Apply the agreed approved-only rule at the authoritative portfolio query; preserve separate submission history and test both paths.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-11-SCOPE",
+    "classification": "Data consistency defect",
+    "actual": "Only FO-24 was submitted, but Host Evaluation showed 1/1 approved and 100% on Student dashboard/documents, Faculty and Coordinator progress, and both compliance reports.",
+    "root": "DocumentComplianceService::systemGeneratedSatisfaction uses any submitted internship evaluation for both performance_evaluation and host_evaluation, without form_type/evaluator_type constraints.",
+    "files": "app/Services/DocumentComplianceService.php (systemGeneratedSatisfaction)",
+    "impact": "The same incorrect form match propagates consistently to six surfaces; agreement does not establish correctness.",
+    "recommendation": "Map each evaluation requirement to its applicable official form and evaluator and constrain the query before counting satisfaction.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-12-COORD",
+    "classification": "Workflow/business-rule conflict",
+    "actual": "Coordinator received 200; invite became approved, internship Supervisor ID was assigned, Supervisor saw the intern and Student dashboard displayed that Supervisor.",
+    "root": "SupervisorRegistrationController::assertFacultyMayReview explicitly permits a same-department Coordinator, and Faculty middleware admits Coordinator.",
+    "files": "app/Http/Controllers/Api/SupervisorRegistrationController.php (assertFacultyMayReview, approve); routes/api.php",
+    "impact": "Coordinator approval activates assignment and downstream access under current code, contrary to the supplied Faculty-only expectation.",
+    "recommendation": "Resolve the final role policy; if Faculty-only is authoritative, enforce it before account/assignment/notification changes.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-17-ATOMIC",
+    "classification": "Transaction/atomicity defect",
+    "actual": "Unauthorized Coordinator received 403, but one meeting row persisted and appeared in the creator list. It had zero attendees, no Student visibility and zero new notifications.",
+    "root": "MeetingController::store calls Meeting::create before checking internship ownership/attendee authority; rejection occurs before attendee/notification creation and there is no encompassing rollback.",
+    "files": "app/Http/Controllers/Api/MeetingController.php (store, index)",
+    "impact": "Denied write leaves an orphan scheduled meeting visible to its creator. Student/notification propagation was tested and was absent.",
+    "recommendation": "Authorize and validate audience before insertion; create meeting and attendees transactionally and dispatch notifications after success.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  },
+  {
+    "id": "INT-20",
+    "classification": "Data consistency defect",
+    "actual": "For 8 validated source hours and stored internship total 0, Faculty summary returned 8, but Coordinator summary and both performance reports returned 0. Checked company, approved journal/document counts and evaluation average 80 matched.",
+    "root": "Coordinator reportStudentSummary reads total_hours_rendered directly. Both reportPerformance implementations average the stored field, while Faculty summary uses InternshipProgressService::snapshot.",
+    "files": "app/Http/Controllers/Api/CoordinatorController.php (reportStudentSummary, reportPerformance); app/Http/Controllers/Api/FacultyController.php (reportStudentSummary, reportPerformance)",
+    "impact": "Report outputs disagree for the same source records whenever stored totals lag authoritative attendance. Coordinator summary also lacks the applicable-requirement denominator field supplied by Faculty summary.",
+    "recommendation": "Use a shared authoritative progress aggregation for all report types; reconcile raw document counts with applicable compliance summaries rather than relying on stale cached totals.",
+    "production_changed": false,
+    "retest": "No production correction; failure retained."
+  }
+]

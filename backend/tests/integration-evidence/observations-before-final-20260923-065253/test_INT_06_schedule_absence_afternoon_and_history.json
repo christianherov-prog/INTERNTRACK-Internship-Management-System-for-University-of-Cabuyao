@@ -1,0 +1,41 @@
+{
+    "after_shift": {
+        "id": null,
+        "date": "2026-09-18",
+        "timezone": "Asia/Manila",
+        "am_time_in": "Absent",
+        "am_time_out": "\u2014",
+        "pm_time_in": "\u2014",
+        "pm_time_out": "\u2014",
+        "am_absent": false,
+        "day_absent": true,
+        "hours_rendered": 0,
+        "status": "absent",
+        "validated": false,
+        "validated_at": null,
+        "hte_signature_path": null,
+        "student_signature_path": null,
+        "hte_signed_name": null,
+        "student_signed_name": null
+    },
+    "afternoon": {
+        "id": 2,
+        "date": "2026-09-21",
+        "timezone": "Asia/Manila",
+        "am_time_in": null,
+        "am_time_out": null,
+        "pm_time_in": "13:00",
+        "pm_time_out": "17:00",
+        "am_absent": false,
+        "day_absent": false,
+        "hours_rendered": 4,
+        "status": "pending",
+        "validated": false,
+        "validated_at": null,
+        "hte_signature_path": null,
+        "student_signature_path": null,
+        "hte_signed_name": null,
+        "student_signed_name": "STUDENT, TEST"
+    },
+    "next_day": "not_clocked_in"
+}

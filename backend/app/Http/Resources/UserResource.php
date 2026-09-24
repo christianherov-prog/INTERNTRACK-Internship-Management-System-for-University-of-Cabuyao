@@ -150,13 +150,16 @@ class UserResource extends JsonResource
             ];
         }
 
-        if ($this->activeInternship) {
-            $snapshot = InternshipProgressService::snapshot($this->activeInternship);
+        $internship = $this->activeInternship;
+        if ($internship) {
+            $target = (float) ($internship->target_hours > 0 ? $internship->target_hours : ProgramRequirementService::targetHoursForProfile($this->studentProfile));
+            $hoursRendered = (float) ($internship->total_hours_rendered ?? 0);
+            $progress = $target > 0 ? (float) min(100, max(0, round(($hoursRendered / $target) * 100, 1))) : 0.0;
 
             return [
-                'hours_rendered' => $snapshot['hours_rendered'],
-                'target_hours' => $snapshot['target_hours'],
-                'hours_progress' => (int) $snapshot['progress_pct'],
+                'hours_rendered' => $hoursRendered,
+                'target_hours' => $target,
+                'hours_progress' => (int) $progress,
             ];
         }
 

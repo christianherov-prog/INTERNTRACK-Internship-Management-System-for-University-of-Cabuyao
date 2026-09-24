@@ -132,7 +132,7 @@ class PortfolioDataIntegrationTest extends TestCase
         Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
         Sanctum::actingAs($party['student']);
 
-        $this->postJson('/api/v1/student/logbook', [
+        $submitted = $this->postJson('/api/v1/student/logbook', [
             'week_number' => 3,
             'date' => '2026-09-01',
             'end_date' => '2026-09-05',
@@ -141,9 +141,17 @@ class PortfolioDataIntegrationTest extends TestCase
             'learnings' => 'Use Asia/Manila explicitly',
         ])->assertCreated();
 
+        $this->getJson('/api/v1/student/portfolio')->assertOk()->assertJsonCount(0, 'internship.journals');
+        Sanctum::actingAs($party['faculty']);
+        $this->patchJson('/api/v1/faculty/journals/'.$submitted->json('journal.id').'/review', [
+            'action' => 'approved',
+        ])->assertOk();
+        Sanctum::actingAs($party['student']);
+
         $payload = $this->getJson('/api/v1/student/portfolio')->assertOk()->json();
         $journal = $payload['internship']['journals'][0];
-        $this->assertSame(3, (int) $journal['week_number']);
+        // June 1 internship start to September 1 is chronological Week 14.
+        $this->assertSame(14, (int) $journal['week_number']);
         $this->assertSame('2026-09-01', $journal['date']);
         $this->assertSame('2026-09-05', $journal['end_date']);
         $this->assertSame('Configured interntrack DTR mapping', $journal['activities_summary']);

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="5" assertions="60" errors="0" failures="0" skipped="0" time="11.964275">
+    <testsuite name="Feature" tests="5" assertions="60" errors="0" failures="0" skipped="0" time="11.964275">
+      <testsuite name="Tests\Feature\AbsorptionFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AbsorptionFlowTest.php" tests="1" assertions="3" errors="0" failures="0" skipped="0" time="8.325363">
+        <testcase name="test_student_can_declare_hired_after_completed_internship" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AbsorptionFlowTest.php" line="42" class="Tests\Feature\AbsorptionFlowTest" classname="Tests.Feature.AbsorptionFlowTest" assertions="3" time="8.325363"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\FacultyJournalsPageRepairTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\FacultyJournalsPageRepairTest.php" tests="1" assertions="35" errors="0" failures="0" skipped="0" time="2.855952">
+        <testcase name="test_assigned_faculty_sees_authorized_journal_and_review_persists" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\FacultyJournalsPageRepairTest.php" line="111" class="Tests\Feature\FacultyJournalsPageRepairTest" classname="Tests.Feature.FacultyJournalsPageRepairTest" assertions="35" time="2.855952"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\InternshipProgressConsistencyTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\InternshipProgressConsistencyTest.php" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="0.358239">
+        <testcase name="test_nursing_internship_uses_2703_hours_and_five_htes" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\InternshipProgressConsistencyTest.php" line="137" class="Tests\Feature\InternshipProgressConsistencyTest" classname="Tests.Feature.InternshipProgressConsistencyTest" assertions="4" time="0.358239"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\MisdMockSyncTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MisdMockSyncTest.php" tests="1" assertions="9" errors="0" failures="0" skipped="0" time="0.213104">
+        <testcase name="test_mock_student_sync_is_idempotent_and_preserves_local_account_fields" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MisdMockSyncTest.php" line="19" class="Tests\Feature\MisdMockSyncTest" classname="Tests.Feature.MisdMockSyncTest" assertions="9" time="0.213104"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\PortfolioDataIntegrationTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioDataIntegrationTest.php" tests="1" assertions="9" errors="0" failures="0" skipped="0" time="0.211617">
+        <testcase name="test_fo31_journal_and_student_signature_path" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioDataIntegrationTest.php" line="129" class="Tests\Feature\PortfolioDataIntegrationTest" classname="Tests.Feature.PortfolioDataIntegrationTest" assertions="9" time="0.211617"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

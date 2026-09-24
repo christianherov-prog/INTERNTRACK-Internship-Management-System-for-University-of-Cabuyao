@@ -73,7 +73,7 @@ trait RunsParallelRequests
             'CACHE_STORE' => 'array',
             'DB_CONNECTION' => 'mysql',
             'DB_HOST' => '127.0.0.1',
-            'DB_PORT' => '3306',
+            'DB_PORT' => (string) config('database.connections.mysql.port', 3306),
             'DB_DATABASE' => 'interntrack_testing',
             'DB_USERNAME' => 'root',
             'DB_PASSWORD' => '',

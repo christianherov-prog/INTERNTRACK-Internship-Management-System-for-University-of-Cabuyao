@@ -7,7 +7,7 @@ import { unwrapList } from '../../utils/apiList'
 import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { useCachedPage } from '../../hooks/useCachedPage'
-import { invalidateStudentAttendance } from '../../utils/pageCache'
+import { cacheDelete, invalidateStudentAttendance } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { formatManilaTime } from '../../utils/manilaTime'
 

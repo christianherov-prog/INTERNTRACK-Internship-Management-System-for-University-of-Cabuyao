@@ -1,0 +1,482 @@
+[
+  {
+    "module": "AUTH",
+    "id": "UT-AUTH-03-U",
+    "fn": "User::username/account_id",
+    "scenario": "Chosen login name and stable supervisor ID differ",
+    "expected": "Username is supervisor.login; account ID remains SUP-0123",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\AUTHUnitTest",
+    "method": "test_UT_AUTH_03_U"
+  },
+  {
+    "module": "AUTH",
+    "id": "UT-AUTH-05-U",
+    "fn": "EnsureUserHasRole::handle",
+    "scenario": "Student calls Faculty-only middleware",
+    "expected": "403 response and downstream action is not called",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\AUTHUnitTest",
+    "method": "test_UT_AUTH_05_U"
+  },
+  {
+    "module": "AUTH",
+    "id": "UT-AUTH-04-U",
+    "fn": "User::hasExactRole",
+    "scenario": "Coordinator checked against Faculty-only role",
+    "expected": "Exact Faculty-only check returns false",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\AUTHUnitTest",
+    "method": "test_UT_AUTH_04_U"
+  },
+  {
+    "module": "PROFILE",
+    "id": "UT-PROFILE-03-U",
+    "fn": "UpdateProfileRequest::rules",
+    "scenario": "Malformed email and overlong contact",
+    "expected": "Both email and contact validation fail",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PROFILEUnitTest",
+    "method": "test_UT_PROFILE_03_U"
+  },
+  {
+    "module": "PROFILE",
+    "id": "UT-PROFILE-02-U",
+    "fn": "UpdateProfileRequest::rules",
+    "scenario": "Permitted contact and valid email",
+    "expected": "Validation passes; this does not test persistence",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PROFILEUnitTest",
+    "method": "test_UT_PROFILE_02_U"
+  },
+  {
+    "module": "PROFILE",
+    "id": "UT-PROFILE-08-U",
+    "fn": "InternshipAccess::canView",
+    "scenario": "Different student IDs",
+    "expected": "Access returns false",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PROFILEUnitTest",
+    "method": "test_UT_PROFILE_08_U"
+  },
+  {
+    "module": "PLACE",
+    "id": "UT-PLACE-02-U",
+    "fn": "InternshipStatuses::normalize/openCurrent",
+    "scenario": "Legacy ongoing and completed statuses",
+    "expected": "Ongoing becomes active; completed does not block another placement",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PLACEUnitTest",
+    "method": "test_UT_PLACE_02_U"
+  },
+  {
+    "module": "PLACE",
+    "id": "UT-PLACE-04-U",
+    "fn": "InternshipAccess::canManageAsCoordinator",
+    "scenario": "Student attempts Coordinator operation",
+    "expected": "Permission returns false",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PLACEUnitTest",
+    "method": "test_UT_PLACE_04_U"
+  },
+  {
+    "module": "PLACE",
+    "id": "UT-PLACE-06-U",
+    "fn": "Internship::participantUserIds",
+    "scenario": "Duplicate Faculty/Coordinator ID and null Supervisor",
+    "expected": "Returns only distinct authoritative IDs 11 and 22",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PLACEUnitTest",
+    "method": "test_UT_PLACE_06_U"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-05-U",
+    "fn": "ManilaAttendanceClock::creditedHours",
+    "scenario": "09:00–12:00 and 13:00–17:00",
+    "expected": "Returns 7.0 credited hours",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ATTUnitTest",
+    "method": "test_UT_ATT_05_U"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-08-U",
+    "fn": "AttendanceDayResolver::isFullDayAbsent",
+    "scenario": "Approved weekday schedule; no attendance before and at 17:00",
+    "expected": "Not absent at 16:59; absent at 17:00",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ATTUnitTest",
+    "method": "test_UT_ATT_08_U"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-07-U",
+    "fn": "AttendanceDayResolver::isFullDayAbsent",
+    "scenario": "Afternoon work start after scheduled day ends",
+    "expected": "Returns false for absence",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ATTUnitTest",
+    "method": "test_UT_ATT_07_U"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-08-WEEKEND",
+    "fn": "AttendanceDayResolver::isFullDayAbsent",
+    "scenario": "Saturday without attendance",
+    "expected": "Weekend is not marked absent",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ATTUnitTest",
+    "method": "test_UT_ATT_08_WEEKEND"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-11-U",
+    "fn": "ManilaTime::todayDateString",
+    "scenario": "UTC 16:01 crosses Manila midnight",
+    "expected": "Returns 2026-09-19",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ATTUnitTest",
+    "method": "test_UT_ATT_11_U"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-15-U",
+    "fn": "PortfolioDataService::serializeAttendance",
+    "scenario": "Unsaved authoritative log with 3.25 hours",
+    "expected": "Preserves 3.25 hours and suppresses unvalidated supervisor signature",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ATTUnitTest",
+    "method": "test_UT_ATT_15_U"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-02-U",
+    "fn": "JournalPeriodValidator::validateAndResolveWeek",
+    "scenario": "Range starts before internship start",
+    "expected": "ValidationException with exact before-start message",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\JRNUnitTest",
+    "method": "test_UT_JRN_02_U"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-05-U",
+    "fn": "JournalPeriodValidator::validateAndResolveWeek",
+    "scenario": "End date precedes start",
+    "expected": "ValidationException identifies end_date",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\JRNUnitTest",
+    "method": "test_UT_JRN_05_U"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-WEEK",
+    "fn": "JournalPeriodValidator::weekNumberFor",
+    "scenario": "Start date and next seven-day block",
+    "expected": "Returns week 1 then week 2",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\JRNUnitTest",
+    "method": "test_UT_JRN_WEEK"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-13-U",
+    "fn": "Fo31JournalPresenter::dateRange/weekLabel",
+    "scenario": "Week 2 September 7–11",
+    "expected": "Returns September 7–11, 2026 and Week 2",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\JRNUnitTest",
+    "method": "test_UT_JRN_13_U"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-05-U",
+    "fn": "DocumentComplianceService::resolveTemplateState",
+    "scenario": "Submission status approved",
+    "expected": "Resolver returns approved from document ID 4",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\DOCUnitTest",
+    "method": "test_UT_DOC_05_U"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-07-U",
+    "fn": "DocumentComplianceService::resolveTemplateState",
+    "scenario": "Submission status pending_faculty",
+    "expected": "Resolver returns pending from document ID 4",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\DOCUnitTest",
+    "method": "test_UT_DOC_07_U"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-08-U",
+    "fn": "DocumentComplianceService::resolveTemplateState",
+    "scenario": "Submission status rejected",
+    "expected": "Resolver returns rejected from document ID 4",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\DOCUnitTest",
+    "method": "test_UT_DOC_08_U"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-06-U",
+    "fn": "DocumentComplianceService::resolveTemplateState",
+    "scenario": "No submissions for custom requirement",
+    "expected": "Returns missing and no document ID",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\DOCUnitTest",
+    "method": "test_UT_DOC_06_U"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-APPROVAL-PRIORITY",
+    "fn": "DocumentComplianceService::resolveTemplateState",
+    "scenario": "Rejected row precedes approved historical row in supplied collection",
+    "expected": "Approved ID remains authoritative",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\DOCUnitTest",
+    "method": "test_UT_DOC_APPROVAL_PRIORITY"
+  },
+  {
+    "module": "SUP",
+    "id": "UT-SUP-12-U",
+    "fn": "InternshipAccess::canView",
+    "scenario": "Supervisor 8 accesses internship assigned to 7",
+    "expected": "Access returns false",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SUPUnitTest",
+    "method": "test_UT_SUP_12_U"
+  },
+  {
+    "module": "SUP",
+    "id": "UT-SUP-13-U",
+    "fn": "InternshipAccess::canView",
+    "scenario": "Supervisor 7 accesses internship assigned to 7",
+    "expected": "Access returns true",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SUPUnitTest",
+    "method": "test_UT_SUP_13_U"
+  },
+  {
+    "module": "FDBK",
+    "id": "UT-FDBK-02-U",
+    "fn": "SupervisorFeedbackService::assertAssignedSupervisor",
+    "scenario": "Unrelated Supervisor",
+    "expected": "Throws HTTP 403",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\FDBKUnitTest",
+    "method": "test_UT_FDBK_02_U"
+  },
+  {
+    "module": "FDBK",
+    "id": "UT-FDBK-07-U",
+    "fn": "SupervisorFeedbackService::serialize",
+    "scenario": "Stored UTC review timestamp",
+    "expected": "Manila display is Sep 18, 2026 1:00 PM",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\FDBKUnitTest",
+    "method": "test_UT_FDBK_07_U"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-96",
+    "fn": "Evaluation::computeScores",
+    "scenario": "All ten FO-24 criteria rated 96",
+    "expected": "Weighted average 96, rating Excellent",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_96"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-90",
+    "fn": "Evaluation::computeScores",
+    "scenario": "All ten FO-24 criteria rated 90",
+    "expected": "Weighted average 90, rating Very Good",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_90"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-85",
+    "fn": "Evaluation::computeScores",
+    "scenario": "All ten FO-24 criteria rated 85",
+    "expected": "Weighted average 85, rating Good",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_85"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-80",
+    "fn": "Evaluation::computeScores",
+    "scenario": "All ten FO-24 criteria rated 80",
+    "expected": "Weighted average 80, rating Fair",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_80"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-75",
+    "fn": "Evaluation::computeScores",
+    "scenario": "All ten FO-24 criteria rated 75",
+    "expected": "Weighted average 75, rating Passed",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_75"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-74",
+    "fn": "Evaluation::computeScores",
+    "scenario": "All ten FO-24 criteria rated 74",
+    "expected": "Weighted average 74, rating Failed",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_74"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-MIXED",
+    "fn": "Evaluation::computeScores",
+    "scenario": "FO-22 q1=5 q2=4 with comment and unrelated numeric field",
+    "expected": "Average 4.5; total 9; Outstanding",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_04_MIXED"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-06-U",
+    "fn": "Evaluation::computeScores",
+    "scenario": "Absent responses",
+    "expected": "No score or submission timestamp fabricated",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\EVALUnitTest",
+    "method": "test_UT_EVAL_06_U"
+  },
+  {
+    "module": "PORT",
+    "id": "UT-PORT-11-U",
+    "fn": "InternshipAccess::internshipIdFromPath",
+    "scenario": "Private portfolio path",
+    "expected": "Resolves internship ID 42, unrelated path returns null",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\PORTUnitTest",
+    "method": "test_UT_PORT_11_U"
+  },
+  {
+    "module": "MSG",
+    "id": "UT-MSG-02-U",
+    "fn": "Internship::isParticipant",
+    "scenario": "Authoritative participant and outsider",
+    "expected": "Known Faculty accepted; unrelated ID rejected",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\MSGUnitTest",
+    "method": "test_UT_MSG_02_U"
+  },
+  {
+    "module": "APP",
+    "id": "UT-APP-04-U",
+    "fn": "MeetingController::store",
+    "scenario": "Student directly invokes restricted controller method",
+    "expected": "Throws HTTP 403 before validation or database writes",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\APPUnitTest",
+    "method": "test_UT_APP_04_U"
+  },
+  {
+    "module": "NOTIF",
+    "id": "UT-NOTIF-02-U",
+    "fn": "NotificationPreferences::prefKeyForType",
+    "scenario": "Message and meeting notification types",
+    "expected": "Map to directMessages and meetingInvites",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\NOTIFUnitTest",
+    "method": "test_UT_NOTIF_02_U"
+  },
+  {
+    "module": "NOTIF",
+    "id": "UT-NOTIF-PREF",
+    "fn": "User::wantsNotification",
+    "scenario": "Saved opt-out overrides Student default",
+    "expected": "directMessages false; attendanceAlerts true",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\NOTIFUnitTest",
+    "method": "test_UT_NOTIF_PREF"
+  },
+  {
+    "module": "RPT",
+    "id": "UT-RPT-01-500-80",
+    "fn": "Internship::progress_percent",
+    "scenario": "80 rendered / 500 target hours",
+    "expected": "Progress returns 16%",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\RPTUnitTest",
+    "method": "test_UT_RPT_01_500_80"
+  },
+  {
+    "module": "RPT",
+    "id": "UT-RPT-01-500-550",
+    "fn": "Internship::progress_percent",
+    "scenario": "550 rendered / 500 target hours",
+    "expected": "Progress returns 100%",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\RPTUnitTest",
+    "method": "test_UT_RPT_01_500_550"
+  },
+  {
+    "module": "RPT",
+    "id": "UT-RPT-01-0-80",
+    "fn": "Internship::progress_percent",
+    "scenario": "80 rendered / 0 target hours",
+    "expected": "Progress returns 0%",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\RPTUnitTest",
+    "method": "test_UT_RPT_01_0_80"
+  },
+  {
+    "module": "RPT",
+    "id": "UT-RPT-05-U",
+    "fn": "InternshipStatuses::label",
+    "scenario": "for_evaluation status",
+    "expected": "Returns For Evaluation",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\RPTUnitTest",
+    "method": "test_UT_RPT_05_U"
+  },
+  {
+    "module": "RPT",
+    "id": "UT-RPT-06-U",
+    "fn": "OfficialFormAsset::clockLabel",
+    "scenario": "13:03 wall clock",
+    "expected": "Returns 1:03 PM",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\RPTUnitTest",
+    "method": "test_UT_RPT_06_U"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-01-U",
+    "fn": "EnsureUserHasRole::handle",
+    "scenario": "Faculty calls Admin-only operation",
+    "expected": "403 and downstream action not called",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ADMUnitTest",
+    "method": "test_UT_ADM_01_U"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-04-U",
+    "fn": "MisdAdminController::sanitizeAuditPayload",
+    "scenario": "Nested password/token and permitted role",
+    "expected": "Secrets removed recursively; role retained",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\ADMUnitTest",
+    "method": "test_UT_ADM_04_U"
+  }
+]

@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="33" assertions="453" errors="3" failures="0" skipped="0" time="116.302188">
+    <testsuite name="Feature" tests="33" assertions="453" errors="3" failures="0" skipped="0" time="116.302188">
+      <testsuite name="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" tests="24" assertions="327" errors="3" failures="0" skipped="0" time="106.685730">
+        <testcase name="test_INT_01_login_role_workspace_and_api_scope" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="122" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="0" time="0.000000">
+          <error type="Illuminate\Database\QueryException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_01_login_role_workspace_and_api_scope&#13;
+Illuminate\Database\QueryException: SQLSTATE[HY000]: General error: 1025 Error on rename of '.\interntrack_testing\dtr_request_audits' to '.\interntrack_testing\#sql2-1c9c-4c5' (errno: 168 "Unknown (generic) error from engine") (Connection: mysql, Host: 127.0.0.1, Port: 33307, Database: interntrack_testing, SQL: alter table `dtr_request_audits` add constraint `dtr_request_audits_student_id_foreign` foreign key (`student_id`) references `users` (`id`) on delete cascade)
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:838
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:794
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:573
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Blueprint.php:121
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Builder.php:686
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Builder.php:506
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:363
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\database\migrations\2026_09_05_180000_create_dtr_workflow_tables.php:84
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:517
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:442
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:451
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\View\Components\Task.php:41
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:814
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:138
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:116
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:671
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:109
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:88
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Command\Command.php:341
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Concerns\CallsCommands.php:68
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Concerns\CallsCommands.php:29
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\FreshCommand.php:88
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Command\Command.php:341
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:1094
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:356
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:195
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Application.php:165
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Console\Kernel.php:447
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\PendingCommand.php:451
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\PendingCommand.php:675
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithConsole.php:87
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:119
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:84
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:25
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithTestCaseLifecycle.php:217
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithTestCaseLifecycle.php:101
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\TestCase.php:63
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\TestCase.php:13
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:24</error>
+        </testcase>
+        <testcase name="test_INT_02_profile_internship_and_placement_ids" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="141" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="0" time="0.000000">
+          <error type="Illuminate\Database\QueryException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_02_profile_internship_and_placement_ids&#13;
+Illuminate\Database\QueryException: SQLSTATE[HY000]: General error: 1025 Error on rename of '.\interntrack_testing\#sql-1c9c_4c9' to '.\interntrack_testing\overtime_entries' (errno: 168 "Unknown (generic) error from engine") (Connection: mysql, Host: 127.0.0.1, Port: 33307, Database: interntrack_testing, SQL: alter table `overtime_entries` add constraint `overtime_entries_student_id_foreign` foreign key (`student_id`) references `users` (`id`) on delete cascade)
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:838
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:794
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:573
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Blueprint.php:121
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Builder.php:686
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Builder.php:506
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:363
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\database\migrations\2026_09_05_180000_create_dtr_workflow_tables.php:29
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:517
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:442
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:451
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\View\Components\Task.php:41
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:814
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:138
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:116
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:671
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:109
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:88
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Command\Command.php:341
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Concerns\CallsCommands.php:68
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Concerns\CallsCommands.php:29
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\FreshCommand.php:88
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Command\Command.php:341
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:1094
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:356
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:195
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Application.php:165
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Console\Kernel.php:447
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\PendingCommand.php:451
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\PendingCommand.php:675
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithConsole.php:87
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:119
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:84
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:25
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithTestCaseLifecycle.php:217
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithTestCaseLifecycle.php:101
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\TestCase.php:63
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\TestCase.php:13
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:24</error>
+          <system-out>
+🔄 Backfilling placements for 5 internships...
+  ⚠ Skipping internship #1: No HTE requirements for program BSN
+  ⚠ Skipping internship #2: No HTE requirements for program BSPSY
+  ⚠ Skipping internship #3: No HTE requirements for program BSBAMM
+  ⚠ Skipping internship #4: No HTE requirements for program BSBAFM
+  ⚠ Skipping internship #5: No HTE requirements for program BSA
+
+✅ Backfill complete: 0 successful, 5 skipped
+
+⚠️  COE or COED department not found. Skipping migration.
+</system-out>
+        </testcase>
+        <testcase name="test_INT_04_clock_break_validation_and_progress" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="165" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="0" time="0.000000">
+          <error type="Illuminate\Database\QueryException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_04_clock_break_validation_and_progress&#13;
+Illuminate\Database\QueryException: SQLSTATE[HY000]: General error: 1025 Error on rename of '.\interntrack_testing\overtime_entries' to '.\interntrack_testing\#sql2-1c9c-4cd' (errno: 168 "Unknown (generic) error from engine") (Connection: mysql, Host: 127.0.0.1, Port: 33307, Database: interntrack_testing, SQL: alter table `overtime_entries` add constraint `overtime_entries_reviewed_by_foreign` foreign key (`reviewed_by`) references `users` (`id`) on delete set null)
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:838
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:794
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Connection.php:573
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Blueprint.php:121
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Builder.php:686
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Schema\Builder.php:506
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:363
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\database\migrations\2026_09_05_180000_create_dtr_workflow_tables.php:29
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:517
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:442
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:451
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\View\Components\Task.php:41
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:814
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:138
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:116
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:671
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:109
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:88
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Command\Command.php:341
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Concerns\CallsCommands.php:68
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Concerns\CallsCommands.php:29
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\FreshCommand.php:88
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Command\Command.php:341
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:1094
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:356
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\symfony\console\Application.php:195
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Console\Application.php:165
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Console\Kernel.php:447
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\PendingCommand.php:451
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\PendingCommand.php:675
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithConsole.php:87
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:119
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:84
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\RefreshDatabase.php:25
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithTestCaseLifecycle.php:217
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithTestCaseLifecycle.php:101
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\TestCase.php:63
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\TestCase.php:13
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:24</error>
+          <system-out>
+🔄 Backfilling placements for 5 internships...
+  ⚠ Skipping internship #1: No HTE requirements for program BSN
+  ⚠ Skipping internship #2: No HTE requirements for program BSPSY
+  ⚠ Skipping internship #3: No HTE requirements for program BSBAMM
+  ⚠ Skipping internship #4: No HTE requirements for program BSBAFM
+  ⚠ Skipping internship #5: No HTE requirements for program BSA
+
+✅ Backfill complete: 0 successful, 5 skipped
+
+⚠️  COE or COED department not found. Skipping migration.
+</system-out>
+        </testcase>
+        <testcase name="test_INT_06_schedule_absence_afternoon_and_history" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="191" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="24" time="85.131646">
+          <system-out>
+🔄 Backfilling placements for 5 internships...
+  ⚠ Skipping internship #1: No HTE requirements for program BSN
+  ⚠ Skipping internship #2: No HTE requirements for program BSPSY
+  ⚠ Skipping internship #3: No HTE requirements for program BSBAMM
+  ⚠ Skipping internship #4: No HTE requirements for program BSBAFM
+  ⚠ Skipping internship #5: No HTE requirements for program BSA
+
+✅ Backfill complete: 0 successful, 5 skipped
+
+⚠️  COE or COED department not found. Skipping migration.
+</system-out>
+        </testcase>
+        <testcase name="test_INT_07_journal_review_history_and_denials" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="224" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="11" time="1.297389"/>
+        <testcase name="test_INT_07_COORD_coordinator_review_propagation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="242" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="12" time="0.611286"/>
+        <testcase name="test_INT_08_approved_journal_to_fo31" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="262" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="14" time="0.403398"/>
+        <testcase name="test_INT_09_portfolio_excludes_unapproved_journals" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="275" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="8" time="0.308616"/>
+        <testcase name="test_INT_10_upload_approval_all_compliance_views" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="284" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="35" time="2.495545"/>
+        <testcase name="test_INT_11_mixed_status_report_denominator" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="298" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="19" time="1.198670"/>
+        <testcase name="test_INT_11_SCOPE_fo24_does_not_satisfy_host_evaluation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="308" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="18" time="1.389725"/>
+        <testcase name="test_INT_12_COORD_coordinator_approval_access_propagation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="316" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="8" time="0.666097"/>
+        <testcase name="test_INT_13_validation_authorization_fo30_and_monitoring" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="333" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="14" time="0.784640"/>
+        <testcase name="test_INT_14_evaluation_submission_student_record" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="353" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="13" time="0.418353"/>
+        <testcase name="test_INT_15_pending_evaluation_not_completed" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="366" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="6" time="0.180937"/>
+        <testcase name="test_INT_03_existing_supervisor_approval_placement_and_access" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="376" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="20" time="1.203597"/>
+        <testcase name="test_INT_11_COMPLETE_approval_updates_complete_label" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="408" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="26" time="3.295029"/>
+        <testcase name="test_INT_04_TZ_scheduled_afternoon_hours_propagate" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="425" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="16" time="1.693202"/>
+        <testcase name="test_INT_17_authorized_meeting_student_view" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="455" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="10" time="1.879928"/>
+        <testcase name="test_INT_17_ATOMIC_denied_meeting_downstream_visibility" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="472" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="6" time="1.473727"/>
+        <testcase name="test_INT_18_action_notification_preferences_and_read_ownership" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="485" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="13" time="0.406978"/>
+        <testcase name="test_INT_19_broad_portfolio_authoritative_sources" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="504" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="18" time="1.060456"/>
+        <testcase name="test_INT_20_reports_match_authoritative_sources" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="527" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="21" time="0.334363"/>
+        <testcase name="test_INT_21_admin_account_change_login_and_audit" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="553" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="15" time="0.452147"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\DtrWorkflowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DtrWorkflowTest.php" tests="1" assertions="16" errors="0" failures="0" skipped="0" time="0.643088">
+        <testcase name="test_correction_requires_supervisor_then_faculty_and_does_not_edit_until_both_approve" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DtrWorkflowTest.php" line="242" class="Tests\Feature\DtrWorkflowTest" classname="Tests.Feature.DtrWorkflowTest" assertions="16" time="0.643088"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\MessagingFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" tests="3" assertions="28" errors="0" failures="0" skipped="0" time="2.154015">
+        <testcase name="test_participants_can_send_and_read_messages" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" line="45" class="Tests\Feature\MessagingFlowTest" classname="Tests.Feature.MessagingFlowTest" assertions="13" time="0.203776"/>
+        <testcase name="test_outsider_cannot_send_or_read_thread" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" line="148" class="Tests\Feature\MessagingFlowTest" classname="Tests.Feature.MessagingFlowTest" assertions="3" time="0.707806"/>
+        <testcase name="test_archive_is_per_user_and_reversible" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" line="270" class="Tests\Feature\MessagingFlowTest" classname="Tests.Feature.MessagingFlowTest" assertions="12" time="1.242432"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\PortfolioDataIntegrationTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioDataIntegrationTest.php" tests="2" assertions="47" errors="0" failures="0" skipped="0" time="4.792271">
+        <testcase name="test_fo30_uses_same_attendance_in_asia_manila_without_inventing_sessions" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioDataIntegrationTest.php" line="84" class="Tests\Feature\PortfolioDataIntegrationTest" classname="Tests.Feature.PortfolioDataIntegrationTest" assertions="21" time="0.676611"/>
+        <testcase name="test_evaluations_fo22_fo23_fo24_and_fo03_without_faculty_eval" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioDataIntegrationTest.php" line="163" class="Tests\Feature\PortfolioDataIntegrationTest" classname="Tests.Feature.PortfolioDataIntegrationTest" assertions="26" time="4.115660"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\SupervisorInviteFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" tests="3" assertions="35" errors="0" failures="0" skipped="0" time="2.027084">
+        <testcase name="test_new_supervisor_registers_via_invite_and_faculty_approves" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" line="85" class="Tests\Feature\SupervisorInviteFlowTest" classname="Tests.Feature.SupervisorInviteFlowTest" assertions="16" time="0.711296"/>
+        <testcase name="test_rejection_requires_remarks" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" line="523" class="Tests\Feature\SupervisorInviteFlowTest" classname="Tests.Feature.SupervisorInviteFlowTest" assertions="7" time="0.682987"/>
+        <testcase name="test_approval_and_rejection_emails_go_to_supervisor_once" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" line="671" class="Tests\Feature\SupervisorInviteFlowTest" classname="Tests.Feature.SupervisorInviteFlowTest" assertions="12" time="0.632801"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

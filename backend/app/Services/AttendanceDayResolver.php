@@ -174,6 +174,19 @@ class AttendanceDayResolver
         }
 
         $dates = array_keys($byDate);
+        $scheduleStart = WorkSchedule::query()
+            ->where('internship_id', $internship->id)
+            ->whereIn('status', ['approved', 'superseded'])
+            ->min('effective_from');
+        if ($scheduleStart) {
+            $scheduleStart = substr((string) $scheduleStart, 0, 10);
+            if ($internship->start_date) {
+                $scheduleStart = max($scheduleStart, $internship->start_date->toDateString());
+            }
+            if ($scheduleStart <= $today) {
+                $dates[] = $scheduleStart;
+            }
+        }
         sort($dates);
         if ($dates === []) {
             return [];

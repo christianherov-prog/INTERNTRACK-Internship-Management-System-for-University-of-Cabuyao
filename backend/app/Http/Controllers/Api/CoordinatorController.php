@@ -678,6 +678,9 @@ class CoordinatorController extends Controller
 
         $students = $query->orderBy('status')
             ->get()
+            ->each(function (Internship $internship) {
+                $internship->total_hours_rendered = $internship->computeTotalHours();
+            })
             ->map(fn ($i) => [
                 'student_name' => optional($i->student?->studentProfile)->last_name.', '.optional($i->student?->studentProfile)->first_name,
                 'student_number' => $i->student?->username,
@@ -759,7 +762,7 @@ class CoordinatorController extends Controller
                 'program' => $program,
                 'total' => $rows->count(),
                 'completed' => $rows->where('status', 'completed')->count(),
-                'avg_hours' => round((float) $rows->avg('total_hours_rendered'), 2),
+                'avg_hours' => round((float) $rows->avg(fn (Internship $i) => $i->computeTotalHours()), 2),
                 'avg_grade' => round((float) $rows->avg('final_grade'), 2),
             ])
             ->sortBy('program')

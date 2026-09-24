@@ -1,0 +1,52 @@
+[
+  {
+    "module": "DOC",
+    "id": "UT-DOC-02-04",
+    "fn": "StudentController::uploadDocument",
+    "scenario": "Allowed PDF for applicable requirement",
+    "expected": "201; attachment filename, MIME, size and private file preserved",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_DOC_02_04"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-03",
+    "fn": "StudentController::uploadDocument",
+    "scenario": "Executable supplied for applicable requirement",
+    "expected": "422; file validation error and no document",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_DOC_03"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-13",
+    "fn": "RequirementTemplateController::store",
+    "scenario": "Coordinator creates section-targeted custom requirement",
+    "expected": "201; custom requirement owner and section target persist",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_DOC_13"
+  },
+  {
+    "module": "PROFILE",
+    "id": "UT-PROFILE-06",
+    "fn": "User::activeInternship",
+    "scenario": "Current active internship has authoritative company/Supervisor",
+    "expected": "Resolves exact current internship, company and Supervisor IDs",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_PROFILE_06"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-04",
+    "fn": "audit_log helper",
+    "scenario": "Explicit actor, action and nonsensitive metadata",
+    "expected": "Audit record stores actor ID, action and probe metadata",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_ADM_04"
+  }
+]

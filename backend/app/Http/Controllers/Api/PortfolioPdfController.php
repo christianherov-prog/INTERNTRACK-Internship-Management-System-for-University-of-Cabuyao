@@ -110,6 +110,8 @@ class PortfolioPdfController extends Controller
 
         // 3. Chapter II: Weekly Progress Reports (Block Cloning)
         $journals = JournalEntry::where('internship_id', $internship->id)
+            ->academic()
+            ->where('status', 'approved')
             ->orderBy('week_number')
             ->get();
 

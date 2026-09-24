@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="3" assertions="72" errors="0" failures="0" skipped="0" time="82.891222">
+    <testsuite name="Feature" tests="3" assertions="72" errors="0" failures="0" skipped="0" time="82.891222">
+      <testsuite name="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" tests="3" assertions="72" errors="0" failures="0" skipped="0" time="82.891222">
+        <testcase name="test_INT_01_login_role_workspace_and_api_scope" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="122" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="37" time="80.813169">
+          <system-out>
+🔄 Backfilling placements for 5 internships...
+  ⚠ Skipping internship #1: No HTE requirements for program BSN
+  ⚠ Skipping internship #2: No HTE requirements for program BSPSY
+  ⚠ Skipping internship #3: No HTE requirements for program BSBAMM
+  ⚠ Skipping internship #4: No HTE requirements for program BSBAFM
+  ⚠ Skipping internship #5: No HTE requirements for program BSA
+
+✅ Backfill complete: 0 successful, 5 skipped
+
+⚠️  COE or COED department not found. Skipping migration.
+</system-out>
+        </testcase>
+        <testcase name="test_INT_02_profile_internship_and_placement_ids" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="141" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="16" time="0.913549"/>
+        <testcase name="test_INT_04_clock_break_validation_and_progress" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="165" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="19" time="1.164504"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

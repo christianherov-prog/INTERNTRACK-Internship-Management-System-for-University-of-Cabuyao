@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\PORTUnitTest\\:\\:test_UT_PORT_11_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_PORT_03_04|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_PORT_05|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_PORT_11|Tests\\\\Feature\\\\PortfolioUploadAndAttendanceAccessTest\\:\\:test_portfolio_builder_rejects_pdf_for_all_upload_types|Tests\\\\Feature\\\\PortfolioUploadAndAttendanceAccessTest\\:\\:test_image_section_rejects_pdf_and_executables|Tests\\\\Feature\\\\PsychologyPortfolioFlowTest\\:\\:test_ccs_student_still_saves_chapter_fields|Tests\\\\Unit\\\\ChapterIV\\\\SupplementalUnitTest\\:\\:test_UT_PORT_08_U|Tests\\\\Unit\\\\ChapterIV\\\\SupplementalUnitTest\\:\\:test_UT_PORT_06_U)$/",
+        "--log-junit",
+        "tests/evidence/module-PORT.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 9
+}

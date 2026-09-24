@@ -34,7 +34,7 @@ function LoginPage() {
           coordinator: '/coordinator/settings',
           admin: '/admin/settings',
         }
-        navigate(settingsRoutes[user.role] || '/')
+        navigate(settingsRoutes[user.role] || '/', { replace: true, state: { forcePasswordChange: true } })
         return
       }
       const roleRoutes = {
@@ -45,7 +45,7 @@ function LoginPage() {
         coordinator: '/coordinator/monitoring',
         admin: '/admin/dashboard',
       }
-      navigate(roleRoutes[user.role])
+      navigate(roleRoutes[user.role] || '/', { replace: true })
     }
   }, [user, navigate])
 
@@ -69,21 +69,6 @@ function LoginPage() {
 
     if (result.success) {
       setRedirecting(true)
-      setTimeout(() => {
-        const settingsRoutes = {
-          student: '/student/settings',
-          director: '/director/settings',
-          supervisor: '/supervisor/settings',
-          faculty: '/faculty/settings',
-          coordinator: '/coordinator/settings',
-          admin: '/admin/settings',
-        }
-        if (result.user?.must_change_password) {
-          navigate(settingsRoutes[result.user.role] || '/', { state: { forcePasswordChange: true } })
-          return
-        }
-        navigate(result.user.dashRoute || '/')
-      }, 800)
     } else {
       setError(result.error || 'Unable to sign in. The ID or password is incorrect. Please check your credentials and try again.')
       setLoading(false)

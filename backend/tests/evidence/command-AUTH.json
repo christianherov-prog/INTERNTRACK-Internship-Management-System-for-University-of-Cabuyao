@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\AUTHUnitTest\\:\\:test_UT_AUTH_03_U|Tests\\\\Unit\\\\ChapterIV\\\\AUTHUnitTest\\:\\:test_UT_AUTH_05_U|Tests\\\\Unit\\\\ChapterIV\\\\AUTHUnitTest\\:\\:test_UT_AUTH_04_U|Tests\\\\Feature\\\\AuthTest\\:\\:test_login_success_returns_token|Tests\\\\Feature\\\\AuthTest\\:\\:test_login_invalid_password_returns_422|Tests\\\\Feature\\\\AuthTest\\:\\:test_faculty_login_resolves_id_from_faculty_profile_when_users_column_is_empty|Tests\\\\Feature\\\\SupervisorAuthenticationAndIdsTest\\:\\:test_inactive_supervisor_cannot_login|Tests\\\\Feature\\\\RoleAuthorizationLeakTest\\:\\:test_student_cannot_access_faculty_or_coordinator_endpoints)$/",
+        "--log-junit",
+        "tests/evidence/module-AUTH.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 8
+}

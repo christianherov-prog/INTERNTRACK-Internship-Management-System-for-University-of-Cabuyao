@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="9" assertions="37" errors="0" failures="0" skipped="0" time="4.794147">
+    <testsuite name="Unit" tests="3" assertions="11" errors="0" failures="0" skipped="0" time="0.797701">
+      <testsuite name="Tests\Unit\ChapterIV\PORTUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PORTUnitTest.php" tests="1" assertions="2" errors="0" failures="0" skipped="0" time="0.683263">
+        <testcase name="test_UT_PORT_11_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PORTUnitTest.php" line="13" class="Tests\Unit\ChapterIV\PORTUnitTest" classname="Tests.Unit.ChapterIV.PORTUnitTest" assertions="2" time="0.683263"/>
+      </testsuite>
+      <testsuite name="Tests\Unit\ChapterIV\SupplementalUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\SupplementalUnitTest.php" tests="2" assertions="9" errors="0" failures="0" skipped="0" time="0.114438">
+        <testcase name="test_UT_PORT_08_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\SupplementalUnitTest.php" line="8" class="Tests\Unit\ChapterIV\SupplementalUnitTest" classname="Tests.Unit.ChapterIV.SupplementalUnitTest" assertions="5" time="0.050615"/>
+        <testcase name="test_UT_PORT_06_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\SupplementalUnitTest.php" line="9" class="Tests\Unit\ChapterIV\SupplementalUnitTest" classname="Tests.Unit.ChapterIV.SupplementalUnitTest" assertions="4" time="0.063823"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="6" assertions="26" errors="0" failures="0" skipped="0" time="3.996446">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="3" assertions="17" errors="0" failures="0" skipped="0" time="1.986439">
+        <testcase name="test_UT_PORT_03_04" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="155" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="7" time="1.418646"/>
+        <testcase name="test_UT_PORT_05" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="160" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.269333"/>
+        <testcase name="test_UT_PORT_11" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="165" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.298460"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\PortfolioUploadAndAttendanceAccessTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioUploadAndAttendanceAccessTest.php" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.385090">
+        <testcase name="test_portfolio_builder_rejects_pdf_for_all_upload_types" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioUploadAndAttendanceAccessTest.php" line="112" class="Tests\Feature\PortfolioUploadAndAttendanceAccessTest" classname="Tests.Feature.PortfolioUploadAndAttendanceAccessTest" assertions="1" time="0.173495"/>
+        <testcase name="test_image_section_rejects_pdf_and_executables" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PortfolioUploadAndAttendanceAccessTest.php" line="124" class="Tests\Feature\PortfolioUploadAndAttendanceAccessTest" classname="Tests.Feature.PortfolioUploadAndAttendanceAccessTest" assertions="2" time="0.211595"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\PsychologyPortfolioFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PsychologyPortfolioFlowTest.php" tests="1" assertions="6" errors="0" failures="0" skipped="0" time="1.624917">
+        <testcase name="test_ccs_student_still_saves_chapter_fields" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PsychologyPortfolioFlowTest.php" line="65" class="Tests\Feature\PsychologyPortfolioFlowTest" classname="Tests.Feature.PsychologyPortfolioFlowTest" assertions="6" time="1.624917"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

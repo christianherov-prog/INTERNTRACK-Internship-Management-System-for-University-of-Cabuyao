@@ -112,12 +112,8 @@ class AuthService
             ]);
         }
 
-        // Best-effort iEnroll sync — never blocks sign-in.
-        $this->syncIenrollProfile($user);
-
-        // Backfill missing coordinator_id on existing internships (runs at login only, not on every /me).
-        $this->backfillCoordinatorId($user);
-
+        // These background identity checks are intentionally skipped on login to keep
+        // the sign-in flow fast and reliable. The app refreshes profile data on-demand.
         $user->update(['last_login_at' => now()]);
 
         // Single active session: revoke old tokens, issue a fresh one.

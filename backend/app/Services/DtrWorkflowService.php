@@ -386,8 +386,8 @@ class DtrWorkflowService
         $excessMinutes = 0;
 
         if ($schedule) {
-            $schedStart = $this->combineDateAndTime($log->date, $schedule->start_time);
-            $schedEnd = $this->combineDateAndTime($log->date, $schedule->end_time);
+            $schedStart = $this->scheduleDateAndTime($log->date, $schedule->start_time);
+            $schedEnd = $this->scheduleDateAndTime($log->date, $schedule->end_time);
             $overlapStart = $clockIn->greaterThan($schedStart) ? $clockIn->copy() : $schedStart;
             $overlapEnd = $clockOut->lessThan($schedEnd) ? $clockOut->copy() : $schedEnd;
             $baseMinutes = $overlapEnd->greaterThan($overlapStart)
@@ -1062,8 +1062,8 @@ class DtrWorkflowService
 
             $scheduledHours = $schedule
                 ? round($this->minutesBetween(
-                    $this->combineDateAndTime($date, $schedule->start_time),
-                    $this->combineDateAndTime($date, $schedule->end_time)
+                    $this->scheduleDateAndTime($date, $schedule->start_time),
+                    $this->scheduleDateAndTime($date, $schedule->end_time)
                 ) / 60, 2)
                 : null;
 
@@ -1275,8 +1275,8 @@ class DtrWorkflowService
         if (! $schedule) {
             $minutes = $this->minutesBetween($in, $out);
         } else {
-            $schedStart = $this->combineDateAndTime($date, $schedule->start_time);
-            $schedEnd = $this->combineDateAndTime($date, $schedule->end_time);
+            $schedStart = $this->scheduleDateAndTime($date, $schedule->start_time);
+            $schedEnd = $this->scheduleDateAndTime($date, $schedule->end_time);
             $overlapStart = $in->greaterThan($schedStart) ? $in : $schedStart;
             $overlapEnd = $out->lessThan($schedEnd) ? $out : $schedEnd;
             $minutes = $overlapEnd->greaterThan($overlapStart)
@@ -1305,7 +1305,7 @@ class DtrWorkflowService
         }
 
         $clockOut = $this->combineDateAndTime($log->date, $log->clock_out);
-        $schedEnd = $this->combineDateAndTime($log->date, $schedule->end_time);
+        $schedEnd = $this->scheduleDateAndTime($log->date, $schedule->end_time);
 
         if (! $clockOut->greaterThan($schedEnd)) {
             return 0;
@@ -1422,12 +1422,19 @@ class DtrWorkflowService
         ];
     }
 
+    private function scheduleDateAndTime(Carbon|string $date, mixed $time): Carbon
+    {
+        // Schedules contain Manila wall-clock times; attendance stores app-timezone times.
+        return Carbon::parse(Carbon::parse($date)->toDateString().' '.$this->normalizeTime((string) $time), ManilaTime::TZ);
+    }
+
     public function combineDateAndTime(Carbon|string $date, mixed $time): Carbon
     {
         $dateStr = Carbon::parse($date)->toDateString();
         $timeStr = $this->normalizeTime((string) $time);
 
-        return Carbon::parse($dateStr.' '.$timeStr);
+        return Carbon::instance(ManilaTime::fromStoredDateAndTime($dateStr, $timeStr))
+            ->timezone(config('app.timezone', 'UTC'));
     }
 
     public function normalizeTime(string $time): string

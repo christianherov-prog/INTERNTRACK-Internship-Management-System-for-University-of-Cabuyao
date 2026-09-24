@@ -80,7 +80,10 @@ class FacultyJournalsPageRepairTest extends TestCase
 
         $this->assertStringNotContainsString('Journal Validation', $sidebar);
         $this->assertStringNotContainsString("to: '/supervisor/journals'", $sidebar);
-        $this->assertStringContainsString("to: '/faculty/journals'", $sidebar);
+        // The current workspace exposes journal review within Assigned Students.
+        $this->assertStringContainsString("to: '/faculty/assigned-students'", $sidebar);
+        $assigned = file_get_contents(base_path('../frontend/src/pages/faculty/FacultyAssignedStudents.jsx'));
+        $this->assertStringContainsString('Journal Review Queue', $assigned);
         $this->assertStringContainsString('<Navigate to="/supervisor/assigned-interns" replace />', $app);
 
         $faculty = $this->makeUser('faculty');
@@ -125,6 +128,9 @@ class FacultyJournalsPageRepairTest extends TestCase
         $supervisor = $this->makeUser('supervisor');
         $coordinator = $this->makeUser('coordinator');
         $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
+
+        // Make the asserted Week 1 independent of the day this test is executed.
+        $internship->update(['start_date' => '2026-08-24']);
 
         Sanctum::actingAs($student);
         $this->postJson('/api/v1/student/logbook', [

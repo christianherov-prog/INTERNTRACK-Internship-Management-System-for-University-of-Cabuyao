@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.xml" tests="6" assertions="23" errors="0" failures="1" skipped="0" time="4.074986">
+    <testsuite name="Unit" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="1.674185">
+      <testsuite name="Tests\Unit\ChapterIV\APPUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\APPUnitTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="1.674185">
+        <testcase name="test_UT_APP_04_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\APPUnitTest.php" line="13" class="Tests\Unit\ChapterIV\APPUnitTest" classname="Tests.Unit.ChapterIV.APPUnitTest" assertions="1" time="1.674185"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="5" assertions="22" errors="0" failures="1" skipped="0" time="2.400800">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="4" assertions="21" errors="0" failures="1" skipped="0" time="1.913217">
+        <testcase name="test_UT_APP_01" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="35" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="4" time="0.878419"/>
+        <testcase name="test_UT_APP_02" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="40" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="7" time="0.222380"/>
+        <testcase name="test_UT_APP_03" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="45" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="6" time="0.200133"/>
+        <testcase name="test_UT_APP_04_ATOMIC" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="50" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="4" time="0.612286">
+          <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIV\FocusedComponentsTest::test_UT_APP_04_ATOMIC&#13;
+Failed asserting that a row in the table [meetings] does not match the attributes {
+    "title": "Unauthorized atomic probe"
+}.
+
+Found similar results: [
+    {
+        "title": "Unauthorized atomic probe"
+    }
+].
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Foundation\Testing\Concerns\InteractsWithDatabase.php:79
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php:52</failure>
+        </testcase>
+      </testsuite>
+      <testsuite name="Tests\Feature\MeetingAclTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MeetingAclTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.487583">
+        <testcase name="test_outsider_attendee_ids_are_rejected_when_internship_set" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MeetingAclTest.php" line="35" class="Tests\Feature\MeetingAclTest" classname="Tests.Feature.MeetingAclTest" assertions="1" time="0.487583"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

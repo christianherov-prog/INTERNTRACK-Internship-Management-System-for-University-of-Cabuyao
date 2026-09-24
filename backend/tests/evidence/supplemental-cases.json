@@ -1,0 +1,52 @@
+[
+  {
+    "module": "ATT",
+    "id": "UT-ATT-06-U",
+    "fn": "DtrWorkflowService::breakMinutesFor",
+    "scenario": "Completed one-hour break and incomplete break",
+    "expected": "60 minutes for completed break; 0 for incomplete break",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SupplementalUnitTest",
+    "method": "test_UT_ATT_06_U"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-04-WEIGHTED",
+    "fn": "Evaluation::computeScores",
+    "scenario": "FO-24 first criterion 100; other nine criteria 80",
+    "expected": "Weighted average 85.0; Good",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SupplementalUnitTest",
+    "method": "test_UT_EVAL_04_WEIGHTED"
+  },
+  {
+    "module": "PORT",
+    "id": "UT-PORT-08-U",
+    "fn": "PortfolioDataService::serializeEvaluation",
+    "scenario": "FO-24 record with no submitted_at then a stored timestamp",
+    "expected": "Pending before submission; completed after timestamp; form code preserved",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SupplementalUnitTest",
+    "method": "test_UT_PORT_08_U"
+  },
+  {
+    "module": "PORT",
+    "id": "UT-PORT-06-U",
+    "fn": "PortfolioDataService::serializeJournal",
+    "scenario": "Approved weekly record with stored activities",
+    "expected": "Preserves approved status, week 2, dates and stored activities",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SupplementalUnitTest",
+    "method": "test_UT_PORT_06_U"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-03-U",
+    "fn": "StaffAssignmentService::assign",
+    "scenario": "Attempt unsupported staff role student",
+    "expected": "role validation error before external lookup or database writes",
+    "scope": "Isolated unit (database queries forbidden)",
+    "class": "Tests\\Unit\\ChapterIV\\SupplementalUnitTest",
+    "method": "test_UT_ADM_03_U"
+  }
+]

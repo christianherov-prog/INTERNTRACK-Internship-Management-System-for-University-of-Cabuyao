@@ -1,0 +1,23 @@
+{
+    "pending_portfolio_evaluation": {
+        "id": 3,
+        "internship_id": 17,
+        "evaluator_type": "supervisor",
+        "evaluated_by": 61,
+        "evaluation_period": "final",
+        "form_type": "FO-24",
+        "responses": {
+            "c1": 80,
+            "eq1": 20
+        },
+        "total_score": null,
+        "average_score": null,
+        "rating": null,
+        "general_comments": null,
+        "submitted_at": null,
+        "status": "pending",
+        "signer_name": "REVIEWER, INDUSTRY",
+        "signature_path": null,
+        "evaluator_name": "REVIEWER, INDUSTRY"
+    }
+}

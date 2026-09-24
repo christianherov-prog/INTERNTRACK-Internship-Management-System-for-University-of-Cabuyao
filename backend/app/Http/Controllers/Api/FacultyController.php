@@ -894,7 +894,7 @@ class FacultyController extends Controller
             })
             ->map(function ($rows, $program) {
                 $completedCount = $rows->filter(fn ($u) => $u->activeInternship?->status === 'completed')->count();
-                $avgHours = $rows->avg(fn ($u) => $u->activeInternship?->total_hours_rendered ?? 0);
+                $avgHours = $rows->avg(fn ($u) => $u->activeInternship?->computeTotalHours() ?? 0);
                 $avgGrade = $rows->avg(fn ($u) => $u->activeInternship?->final_grade);
 
                 return [

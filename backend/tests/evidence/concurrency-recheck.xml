@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="1" assertions="14" errors="0" failures="0" skipped="0" time="14.508443">
+    <testsuite name="Feature" tests="1" assertions="14" errors="0" failures="0" skipped="0" time="14.508443">
+      <testsuite name="Tests\Feature\ConcurrencyIntegrityTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ConcurrencyIntegrityTest.php" tests="1" assertions="14" errors="0" failures="0" skipped="0" time="14.508443">
+        <testcase name="test_ten_journals_and_same_week_double_submit_stay_unique" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ConcurrencyIntegrityTest.php" line="194" class="Tests\Feature\ConcurrencyIntegrityTest" classname="Tests.Feature.ConcurrencyIntegrityTest" assertions="14" time="14.508443"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

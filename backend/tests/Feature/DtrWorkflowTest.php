@@ -18,6 +18,12 @@ class DtrWorkflowTest extends TestCase
     use CreatesInternshipFixtures;
     use RefreshDatabase;
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     private function setupParty(): array
     {
         $coordinator = $this->makeUser('coordinator');
@@ -129,16 +135,16 @@ class DtrWorkflowTest extends TestCase
     public function test_clock_out_confirm_path_supports_grace_undo(): void
     {
         $party = $this->setupParty();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 08:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 08:00:00', 'Asia/Manila')->utc());
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/attendance/clock-in')->assertCreated();
 
-        Carbon::setTestNow(Carbon::parse('2026-09-05 17:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 17:00:00', 'Asia/Manila')->utc());
         $this->postJson('/api/v1/student/attendance/clock-out')
             ->assertOk()
             ->assertJsonPath('can_undo_clock_out', true);
 
-        Carbon::setTestNow(Carbon::parse('2026-09-05 17:03:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 17:03:00', 'Asia/Manila')->utc());
         $this->postJson('/api/v1/student/attendance/undo-clock-out')
             ->assertOk()
             ->assertJsonPath('today_status', 'clocked_in');
@@ -148,9 +154,9 @@ class DtrWorkflowTest extends TestCase
             'clock_out' => null,
         ]);
 
-        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00', 'Asia/Manila')->utc());
         $this->postJson('/api/v1/student/attendance/clock-out')->assertOk();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 18:06:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 18:06:00', 'Asia/Manila')->utc());
         $this->postJson('/api/v1/student/attendance/undo-clock-out')->assertStatus(422);
 
         Carbon::setTestNow();
@@ -159,7 +165,7 @@ class DtrWorkflowTest extends TestCase
     public function test_overtime_requires_student_opt_in_and_supervisor_approval(): void
     {
         $party = $this->setupParty();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 07:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 07:00:00', 'Asia/Manila')->utc());
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/attendance/schedules', [
             'start_time' => '07:00',
@@ -174,7 +180,7 @@ class DtrWorkflowTest extends TestCase
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/attendance/clock-in')->assertCreated();
 
-        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00', 'Asia/Manila')->utc());
         $out = $this->postJson('/api/v1/student/attendance/clock-out')
             ->assertOk()
             ->assertJsonPath('overtime_detected', true);
@@ -207,7 +213,7 @@ class DtrWorkflowTest extends TestCase
     public function test_declining_overtime_does_not_record_excess(): void
     {
         $party = $this->setupParty();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 07:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 07:00:00', 'Asia/Manila')->utc());
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/attendance/schedules', [
             'start_time' => '07:00',
@@ -218,7 +224,7 @@ class DtrWorkflowTest extends TestCase
 
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/attendance/clock-in')->assertCreated();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 18:00:00', 'Asia/Manila')->utc());
         $logId = $this->postJson('/api/v1/student/attendance/clock-out')->json('record.id');
 
         $this->postJson('/api/v1/student/attendance/overtime-decision', [
@@ -236,7 +242,7 @@ class DtrWorkflowTest extends TestCase
     public function test_correction_requires_supervisor_then_faculty_and_does_not_edit_until_both_approve(): void
     {
         $party = $this->setupParty();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 12:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 12:00:00', 'Asia/Manila')->utc());
         Sanctum::actingAs($party['student']);
 
         $yesterday = Carbon::parse('2026-09-04')->toDateString();
@@ -301,7 +307,7 @@ class DtrWorkflowTest extends TestCase
     public function test_correction_cannot_be_filed_beyond_three_days(): void
     {
         $party = $this->setupParty();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 12:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 12:00:00', 'Asia/Manila')->utc());
         Sanctum::actingAs($party['student']);
 
         $this->postJson('/api/v1/student/attendance/corrections', [
@@ -316,10 +322,10 @@ class DtrWorkflowTest extends TestCase
     public function test_supervisor_and_faculty_history_include_entry_status(): void
     {
         $party = $this->setupParty();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 08:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 08:00:00', 'Asia/Manila')->utc());
         Sanctum::actingAs($party['student']);
         $this->postJson('/api/v1/student/attendance/clock-in')->assertCreated();
-        Carbon::setTestNow(Carbon::parse('2026-09-05 17:00:00'));
+        Carbon::setTestNow(Carbon::parse('2026-09-05 17:00:00', 'Asia/Manila')->utc());
         $this->postJson('/api/v1/student/attendance/clock-out')->assertOk();
 
         Sanctum::actingAs($party['supervisor']);

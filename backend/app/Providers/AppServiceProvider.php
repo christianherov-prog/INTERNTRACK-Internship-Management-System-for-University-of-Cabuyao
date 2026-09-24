@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)
                 ->by(strtolower((string) $request->input('username')).'|'.$request->ip())
                 ->response(function (Request $request, array $headers) {
-                    $retry = (int) ($headers['Retry-After'][0] ?? $headers['retry-after'][0] ?? 60);
+                    $retry = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 60);
 
                     return response()->json([
                         'message' => "Too many login attempts. Please try again in {$retry} seconds.",

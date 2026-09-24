@@ -64,12 +64,6 @@ class MeetingController extends Controller
             'attendee_ids.*' => 'integer|exists:users,id',
         ]);
 
-        $meeting = Meeting::create([
-            ...collect($data)->except('attendee_ids')->all(),
-            'created_by' => $user->id,
-            'status' => 'scheduled',
-        ]);
-
         $attendeeIds = collect($data['attendee_ids'] ?? []);
 
         if (!empty($data['internship_id'])) {
@@ -150,6 +144,12 @@ class MeetingController extends Controller
             }
             $attendeeIds = $attendeeIds->merge([$user->id]);
         }
+
+        $meeting = Meeting::create([
+            ...collect($data)->except('attendee_ids')->all(),
+            'created_by' => $user->id,
+            'status' => 'scheduled',
+        ]);
 
         $attendeeIds = $attendeeIds->filter()->unique()->values();
         foreach ($attendeeIds as $uid) {

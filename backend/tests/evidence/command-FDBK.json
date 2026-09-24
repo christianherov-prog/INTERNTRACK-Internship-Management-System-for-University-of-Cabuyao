@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\FDBKUnitTest\\:\\:test_UT_FDBK_02_U|Tests\\\\Unit\\\\ChapterIV\\\\FDBKUnitTest\\:\\:test_UT_FDBK_07_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_FDBK_03|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_FDBK_01|Tests\\\\Feature\\\\SupervisorFeedbackFlowTest\\:\\:test_feedback_rejects_over_limit_and_accepts_max_length)$/",
+        "--log-junit",
+        "tests/evidence/module-FDBK.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 5
+}

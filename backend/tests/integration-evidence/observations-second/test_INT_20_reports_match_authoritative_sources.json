@@ -1,0 +1,92 @@
+{
+    "faculty": {
+        "summary": {
+            "student_name": "Test Student",
+            "student_number": "2009-46961",
+            "program": "Bachelor of Science in Information Technology",
+            "company": "Integration HTE",
+            "status": "active",
+            "hours_rendered": 8,
+            "target_hours": 360,
+            "progress_pct": 2.2,
+            "validated_days": 1,
+            "approved_journals": 1,
+            "approved_docs": 1,
+            "required_docs": 1,
+            "compliance_pct": 100,
+            "start_date": "2026-09-01",
+            "end_date": null,
+            "final_grade": null
+        },
+        "performance": {
+            "by_program": [
+                {
+                    "program": "Bachelor of Science in Information Technology",
+                    "total": 1,
+                    "completed": 0,
+                    "avg_hours": 0,
+                    "avg_grade": 0
+                }
+            ],
+            "eval_averages": [
+                {
+                    "evaluator_type": "supervisor",
+                    "avg_overall": "80.000000",
+                    "signature_url": null
+                }
+            ],
+            "generated_at": "2026-09-18 00:00:00"
+        }
+    },
+    "coordinator": {
+        "summary": {
+            "student_name": "Student, Test",
+            "student_number": "2009-46961",
+            "program": "Bachelor of Science in Information Technology",
+            "company": "Integration HTE",
+            "industry": "\u2014",
+            "status": "active",
+            "hours_rendered": 0,
+            "target_hours": 360,
+            "progress_pct": 0,
+            "validated_days": 1,
+            "approved_journals": 1,
+            "approved_docs": 1,
+            "start_date": "2026-09-01",
+            "end_date": null,
+            "final_grade": null
+        },
+        "performance": {
+            "by_program": [
+                {
+                    "program": "Bachelor of Science in Information Technology",
+                    "total": 1,
+                    "completed": 0,
+                    "avg_hours": 0,
+                    "avg_grade": 0
+                }
+            ],
+            "eval_averages": [
+                {
+                    "evaluator_type": "supervisor",
+                    "avg_overall": "80.000000",
+                    "signature_url": null
+                }
+            ],
+            "filters": {
+                "programs": [
+                    {
+                        "id": 131,
+                        "name": "Bachelor of Science in Information Technology"
+                    }
+                ],
+                "industries": []
+            },
+            "applied": {
+                "program": null,
+                "industry": null
+            },
+            "generated_at": "2026-09-18 00:00:00"
+        }
+    }
+}

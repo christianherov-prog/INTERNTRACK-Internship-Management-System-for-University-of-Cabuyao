@@ -50,13 +50,16 @@ class Student2300590IdentityTest extends TestCase
         $this->assertSame('Montealegre', $row['last_name']);
     }
 
-    public function test_login_sync_replaces_uc_student_stub_with_catalog_name(): void
+    public function test_explicit_sync_replaces_uc_student_stub_and_login_returns_catalog_name(): void
     {
         $student = $this->makeAngelAccount(first: 'UC', last: 'Student');
         $clarence = $this->makeClarenceAccount();
 
         $this->assertSame(1, User::where('student_number', '2300590')->count());
         $this->assertSame(1, StudentProfile::where('student_number', '2300590')->count());
+
+        // Profile sync is explicit; login intentionally avoids background MISD calls.
+        app(MisdIntegrationService::class)->syncStudent($student->fresh('studentProfile'));
 
         $login = $this->postJson('/api/v1/auth/login', [
             'username' => '2300590',

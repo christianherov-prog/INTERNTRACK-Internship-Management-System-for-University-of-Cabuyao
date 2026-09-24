@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\ATTUnitTest\\:\\:test_UT_ATT_05_U|Tests\\\\Unit\\\\ChapterIV\\\\ATTUnitTest\\:\\:test_UT_ATT_08_U|Tests\\\\Unit\\\\ChapterIV\\\\ATTUnitTest\\:\\:test_UT_ATT_07_U|Tests\\\\Unit\\\\ChapterIV\\\\ATTUnitTest\\:\\:test_UT_ATT_08_WEEKEND|Tests\\\\Unit\\\\ChapterIV\\\\ATTUnitTest\\:\\:test_UT_ATT_11_U|Tests\\\\Unit\\\\ChapterIV\\\\ATTUnitTest\\:\\:test_UT_ATT_15_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_ATT_13|Tests\\\\Feature\\\\ClockAttendanceTest\\:\\:test_student_can_clock_in_and_out|Tests\\\\Feature\\\\ClockAttendanceTest\\:\\:test_double_clock_in_returns_422|Tests\\\\Feature\\\\ClockAttendanceTest\\:\\:test_duplicate_clock_out_is_rejected_and_keeps_first_timeout|Tests\\\\Feature\\\\AttendanceTodayStateRepairTest\\:\\:test_historical_attendance_does_not_mean_clocked_in_today|Tests\\\\Feature\\\\DtrWorkflowTest\\:\\:test_correction_cannot_be_filed_beyond_three_days|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_eight_am_is_am_and_one_oh_three_pm_is_pm|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_afternoon_only_leaves_am_blank_not_absent|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_pm_clock_out_never_appears_under_am_time_out|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_normal_full_day_with_break_resume|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_morning_only_does_not_fabricate_pm|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_cross_noon_without_break_does_not_fabricate_lunch|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_late_morning_clock_in_is_not_am_absent|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_exact_noon_clock_in_is_pm_not_day_absent|Tests\\\\Unit\\\\ManilaAttendanceClockFo30Test\\:\\:test_hours_helper_unchanged_for_canonical_credit_math|Tests\\\\Unit\\\\ChapterIV\\\\SupplementalUnitTest\\:\\:test_UT_ATT_06_U)$/",
+        "--log-junit",
+        "tests/evidence/module-ATT.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 22
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="5" assertions="14" errors="0" failures="0" skipped="0" time="1.220810">
+    <testsuite name="Unit" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.318896">
+      <testsuite name="Tests\Unit\ChapterIV\FDBKUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\FDBKUnitTest.php" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.318896">
+        <testcase name="test_UT_FDBK_02_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\FDBKUnitTest.php" line="13" class="Tests\Unit\ChapterIV\FDBKUnitTest" classname="Tests.Unit.ChapterIV.FDBKUnitTest" assertions="1" time="0.293761"/>
+        <testcase name="test_UT_FDBK_07_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\FDBKUnitTest.php" line="18" class="Tests\Unit\ChapterIV\FDBKUnitTest" classname="Tests.Unit.ChapterIV.FDBKUnitTest" assertions="2" time="0.025135"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="3" assertions="11" errors="0" failures="0" skipped="0" time="0.901913">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="2" assertions="8" errors="0" failures="0" skipped="0" time="0.694245">
+        <testcase name="test_UT_FDBK_03" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="70" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.362397"/>
+        <testcase name="test_UT_FDBK_01" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="75" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="3" time="0.331848"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\SupervisorFeedbackFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorFeedbackFlowTest.php" tests="1" assertions="3" errors="0" failures="0" skipped="0" time="0.207668">
+        <testcase name="test_feedback_rejects_over_limit_and_accepts_max_length" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorFeedbackFlowTest.php" line="143" class="Tests\Feature\SupervisorFeedbackFlowTest" classname="Tests.Feature.SupervisorFeedbackFlowTest" assertions="3" time="0.207668"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

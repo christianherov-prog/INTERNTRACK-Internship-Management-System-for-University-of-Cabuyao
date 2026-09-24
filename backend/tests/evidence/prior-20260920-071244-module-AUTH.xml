@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.xml" tests="8" assertions="17" errors="0" failures="0" skipped="0" time="2.112228">
+    <testsuite name="Unit" tests="3" assertions="4" errors="0" failures="0" skipped="0" time="0.686325">
+      <testsuite name="Tests\Unit\ChapterIV\AUTHUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\AUTHUnitTest.php" tests="3" assertions="4" errors="0" failures="0" skipped="0" time="0.686325">
+        <testcase name="test_UT_AUTH_03_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\AUTHUnitTest.php" line="13" class="Tests\Unit\ChapterIV\AUTHUnitTest" classname="Tests.Unit.ChapterIV.AUTHUnitTest" assertions="2" time="0.537991"/>
+        <testcase name="test_UT_AUTH_05_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\AUTHUnitTest.php" line="18" class="Tests\Unit\ChapterIV\AUTHUnitTest" classname="Tests.Unit.ChapterIV.AUTHUnitTest" assertions="1" time="0.103213"/>
+        <testcase name="test_UT_AUTH_04_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\AUTHUnitTest.php" line="23" class="Tests\Unit\ChapterIV\AUTHUnitTest" classname="Tests.Unit.ChapterIV.AUTHUnitTest" assertions="1" time="0.045121"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="5" assertions="13" errors="0" failures="0" skipped="0" time="1.425903">
+      <testsuite name="Tests\Feature\AuthTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AuthTest.php" tests="3" assertions="8" errors="0" failures="0" skipped="0" time="0.825524">
+        <testcase name="test_login_success_returns_token" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AuthTest.php" line="26" class="Tests\Feature\AuthTest" classname="Tests.Feature.AuthTest" assertions="4" time="0.372697"/>
+        <testcase name="test_login_invalid_password_returns_422" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AuthTest.php" line="41" class="Tests\Feature\AuthTest" classname="Tests.Feature.AuthTest" assertions="1" time="0.269492"/>
+        <testcase name="test_faculty_login_resolves_id_from_faculty_profile_when_users_column_is_empty" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AuthTest.php" line="107" class="Tests\Feature\AuthTest" classname="Tests.Feature.AuthTest" assertions="3" time="0.183335"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\RoleAuthorizationLeakTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\RoleAuthorizationLeakTest.php" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="0.421845">
+        <testcase name="test_student_cannot_access_faculty_or_coordinator_endpoints" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\RoleAuthorizationLeakTest.php" line="207" class="Tests\Feature\RoleAuthorizationLeakTest" classname="Tests.Feature.RoleAuthorizationLeakTest" assertions="4" time="0.421845"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\SupervisorAuthenticationAndIdsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorAuthenticationAndIdsTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.178534">
+        <testcase name="test_inactive_supervisor_cannot_login" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorAuthenticationAndIdsTest.php" line="44" class="Tests\Feature\SupervisorAuthenticationAndIdsTest" classname="Tests.Feature.SupervisorAuthenticationAndIdsTest" assertions="1" time="0.178534"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

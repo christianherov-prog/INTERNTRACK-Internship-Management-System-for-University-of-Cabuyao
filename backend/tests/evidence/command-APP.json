@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\APPUnitTest\\:\\:test_UT_APP_04_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_APP_01|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_APP_02|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_APP_03|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_APP_04_ATOMIC|Tests\\\\Feature\\\\MeetingAclTest\\:\\:test_outsider_attendee_ids_are_rejected_when_internship_set)$/",
+        "--log-junit",
+        "tests/evidence/module-APP.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 6
+}

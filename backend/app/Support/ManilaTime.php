@@ -52,8 +52,12 @@ final class ManilaTime
         }
 
         try {
-            return Carbon::parse($datePart.' '.$timePart, config('app.timezone', 'UTC'))
+            $local = Carbon::parse($datePart.' '.$timePart, config('app.timezone', 'UTC'))
                 ->timezone(self::TZ);
+
+            // Attendance dates are Manila calendar dates, even when a stored UTC
+            // clock (e.g. 23:00 for 07:00 Manila) belongs to the previous UTC day.
+            return $local->setDateFrom(Carbon::parse($datePart, self::TZ));
         } catch (\Throwable) {
             return null;
         }
@@ -67,7 +71,7 @@ final class ManilaTime
     public static function dateString(mixed $date): ?string
     {
         if ($date instanceof CarbonInterface) {
-            return $date->timezone(config('app.timezone', 'UTC'))->toDateString();
+            return $date->copy()->timezone(config('app.timezone', 'UTC'))->toDateString();
         }
 
         $raw = trim((string) $date);

@@ -345,7 +345,10 @@ class DocumentComplianceService
 
         if (in_array($code, ['performance_evaluation', 'host_evaluation'], true)
             || in_array(self::normalizeLabel($template->name), ['performance_evaluation', 'host_evaluation'], true)) {
-            $evalQuery = Evaluation::query()->where('internship_id', $internship->id);
+            $formType = $code === 'host_evaluation' ? 'FO-22' : 'FO-24';
+            $evalQuery = Evaluation::query()
+                ->where('internship_id', $internship->id)
+                ->where('form_type', $formType);
             if (Schema::hasColumn('evaluations', 'status')) {
                 $evalQuery->whereIn('status', ['submitted', 'approved', 'finalized', 'completed']);
             } elseif (Schema::hasColumn('evaluations', 'submitted_at')) {

@@ -229,7 +229,10 @@ class DepartmentOwnershipRepairTest extends TestCase
         $faculty = $this->makeUser('faculty');
         $supervisor = $this->makeUser('supervisor');
         $company = $this->makeEligibleCompany();
-        $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $chasCoord);
+        // Login now preserves authoritative assignments; it does not repair them.
+        // Keep a valid CCS assignment and prove the first unrelated CHAS user
+        // is not substituted during authentication.
+        $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $ccsCoord);
 
         app(AuthService::class)->login($student->student_number, 'password', '127.0.0.1');
 

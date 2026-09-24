@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.xml" tests="12" assertions="39" errors="0" failures="0" skipped="0" time="4.096230">
+    <testsuite name="Unit" tests="8" assertions="17" errors="0" failures="0" skipped="0" time="1.753321">
+      <testsuite name="Tests\Unit\ChapterIV\EVALUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" tests="8" assertions="17" errors="0" failures="0" skipped="0" time="1.753321">
+        <testcase name="test_UT_EVAL_04_96" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="13" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="1.136077"/>
+        <testcase name="test_UT_EVAL_04_90" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="18" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="0.084996"/>
+        <testcase name="test_UT_EVAL_04_85" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="23" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="0.085809"/>
+        <testcase name="test_UT_EVAL_04_80" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="28" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="0.090135"/>
+        <testcase name="test_UT_EVAL_04_75" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="33" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="0.087639"/>
+        <testcase name="test_UT_EVAL_04_74" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="38" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="0.084860"/>
+        <testcase name="test_UT_EVAL_04_MIXED" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="43" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="3" time="0.089735"/>
+        <testcase name="test_UT_EVAL_06_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\EVALUnitTest.php" line="48" class="Tests\Unit\ChapterIV\EVALUnitTest" classname="Tests.Unit.ChapterIV.EVALUnitTest" assertions="2" time="0.094070"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="4" assertions="22" errors="0" failures="0" skipped="0" time="2.342908">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="4" assertions="22" errors="0" failures="0" skipped="0" time="2.342908">
+        <testcase name="test_UT_EVAL_03" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="80" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="7" time="1.137599"/>
+        <testcase name="test_UT_EVAL_02" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="85" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.391331"/>
+        <testcase name="test_UT_EVAL_05" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="90" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="6" time="0.487694"/>
+        <testcase name="test_UT_EVAL_07" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="95" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="4" time="0.326284"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

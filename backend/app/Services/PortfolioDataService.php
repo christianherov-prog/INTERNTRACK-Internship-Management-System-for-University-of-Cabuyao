@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class PortfolioDataService
 {
-    public function payload(Internship $internship, User $viewer): array
+    public function payload(Internship $internship, User $viewer, bool $includeUnapprovedJournals = false): array
     {
         $internship->loadMissing([
             'company',
@@ -107,6 +107,7 @@ class PortfolioDataService
         $identity = $this->identity($internship, ['company_logo_path' => $logoPath]);
         $journals = JournalEntry::where('internship_id', $internship->id)
             ->academic()
+            ->when(! $includeUnapprovedJournals, fn ($query) => $query->where('status', 'approved'))
             ->orderBy('date')
             ->orderBy('week_number')
             ->get()

@@ -1,0 +1,70 @@
+{
+    "http": 200,
+    "invite_status": "approved",
+    "assigned_supervisor": 547,
+    "supervisor_list": {
+        "data": [
+            {
+                "id": 155,
+                "term": "AY 2024-2025, Sem 2",
+                "status": "active",
+                "status_label": "Active",
+                "status_reason": null,
+                "target_hours": 360,
+                "total_hours_rendered": 0,
+                "remaining_hours": 360,
+                "progress_pct": 0,
+                "company": {
+                    "id": 136,
+                    "company_name": "Integration HTE",
+                    "company_logo_path": null
+                },
+                "student": {
+                    "id": 546,
+                    "username": "2050-49595",
+                    "student_profile": {
+                        "first_name": "Test",
+                        "last_name": "Student",
+                        "student_number": "2050-49595",
+                        "course_name": "Bachelor of Science in Information Technology",
+                        "program": "Bachelor of Science in Information Technology"
+                    }
+                },
+                "supervisor_name": "REVIEWER, INDUSTRY",
+                "student_signature_path": null,
+                "supervisor_signature_path": null,
+                "attendance_logs": [],
+                "evaluation_eligibility": {
+                    "progress_pct": 0,
+                    "hours_rendered": 0,
+                    "target_hours": 360,
+                    "remaining_hours": 360,
+                    "midterm_eligible": false,
+                    "final_eligible": false,
+                    "status": "not_yet_eligible",
+                    "label": "Not Yet Eligible",
+                    "reason": "Not yet eligible for midterm evaluation (0 / 360 hours = 0%; 50% required)."
+                }
+            }
+        ],
+        "meta": {
+            "current_page": 1,
+            "last_page": 1,
+            "per_page": 20,
+            "total": 1
+        }
+    },
+    "student": {
+        "id": 155,
+        "term": "AY 2024-2025, Sem 2",
+        "status": "active",
+        "status_label": "Active",
+        "status_reason": null,
+        "company_name": "Integration HTE",
+        "supervisor_name": "Industry Reviewer",
+        "supervisor_faculty_number": "SUPERVISOR-1682",
+        "start_date": "2026-09-01",
+        "placements": [],
+        "current_placement": null
+    }
+}

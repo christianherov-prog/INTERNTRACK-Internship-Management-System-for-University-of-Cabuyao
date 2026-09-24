@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\RPTUnitTest\\:\\:test_UT_RPT_01_500_80|Tests\\\\Unit\\\\ChapterIV\\\\RPTUnitTest\\:\\:test_UT_RPT_01_500_550|Tests\\\\Unit\\\\ChapterIV\\\\RPTUnitTest\\:\\:test_UT_RPT_01_0_80|Tests\\\\Unit\\\\ChapterIV\\\\RPTUnitTest\\:\\:test_UT_RPT_05_U|Tests\\\\Unit\\\\ChapterIV\\\\RPTUnitTest\\:\\:test_UT_RPT_06_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_RPT_03|Tests\\\\Feature\\\\DocumentComplianceAndRequirementsRepairTest\\:\\:test_faculty_compliance_report_uses_satisfied_counts)$/",
+        "--log-junit",
+        "tests/evidence/module-RPT.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 7
+}

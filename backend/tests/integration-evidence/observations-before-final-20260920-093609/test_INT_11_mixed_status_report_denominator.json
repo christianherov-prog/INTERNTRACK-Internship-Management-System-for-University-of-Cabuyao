@@ -1,0 +1,219 @@
+{
+    "faculty_requirements": [
+        {
+            "template_id": 203,
+            "system_code": null,
+            "name": "Approved proof",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Approved",
+            "source": "upload",
+            "document_id": 54,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        },
+        {
+            "template_id": 204,
+            "system_code": null,
+            "name": "Pending proof",
+            "is_system": true,
+            "status": "pending",
+            "status_label": "Pending Review",
+            "source": "upload",
+            "document_id": 55,
+            "approved": false,
+            "pending": true,
+            "missing": false,
+            "rejected": false
+        },
+        {
+            "template_id": 205,
+            "system_code": null,
+            "name": "Missing proof",
+            "is_system": true,
+            "status": "missing",
+            "status_label": "Missing",
+            "source": "upload",
+            "document_id": null,
+            "approved": false,
+            "pending": false,
+            "missing": true,
+            "rejected": false
+        },
+        {
+            "template_id": 206,
+            "system_code": null,
+            "name": "Rejected proof",
+            "is_system": true,
+            "status": "rejected",
+            "status_label": "Rejected",
+            "source": "upload",
+            "document_id": 56,
+            "approved": false,
+            "pending": false,
+            "missing": false,
+            "rejected": true
+        }
+    ],
+    "coordinator_requirements": [
+        {
+            "template_id": 203,
+            "system_code": null,
+            "name": "Approved proof",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Approved",
+            "source": "upload",
+            "document_id": 54,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        },
+        {
+            "template_id": 204,
+            "system_code": null,
+            "name": "Pending proof",
+            "is_system": true,
+            "status": "pending",
+            "status_label": "Pending Review",
+            "source": "upload",
+            "document_id": 55,
+            "approved": false,
+            "pending": true,
+            "missing": false,
+            "rejected": false
+        },
+        {
+            "template_id": 205,
+            "system_code": null,
+            "name": "Missing proof",
+            "is_system": true,
+            "status": "missing",
+            "status_label": "Missing",
+            "source": "upload",
+            "document_id": null,
+            "approved": false,
+            "pending": false,
+            "missing": true,
+            "rejected": false
+        },
+        {
+            "template_id": 206,
+            "system_code": null,
+            "name": "Rejected proof",
+            "is_system": true,
+            "status": "rejected",
+            "status_label": "Rejected",
+            "source": "upload",
+            "document_id": 56,
+            "approved": false,
+            "pending": false,
+            "missing": false,
+            "rejected": true
+        }
+    ],
+    "compliance": {
+        "student": {
+            "approved": 1,
+            "total": 4,
+            "pct": 25
+        },
+        "student_documents": {
+            "approved": 1,
+            "total": 4,
+            "pct": 25
+        },
+        "faculty": {
+            "approved": 1,
+            "total": 4,
+            "pct": 25
+        },
+        "faculty_report": {
+            "approved": 1,
+            "total": 4,
+            "pct": 25
+        },
+        "coordinator": {
+            "approved": 1,
+            "total": 4,
+            "pct": 25
+        },
+        "coordinator_report": {
+            "approved": 1,
+            "total": 4,
+            "pct": 25
+        }
+    },
+    "summary": {
+        "approved": 1,
+        "pending": 1,
+        "missing": 1,
+        "rejected": 1,
+        "total": 4,
+        "pct": 25,
+        "complete": false,
+        "label": "3 Remaining",
+        "status": "pending",
+        "details": [
+            {
+                "template_id": 203,
+                "system_code": null,
+                "name": "Approved proof",
+                "is_system": true,
+                "status": "approved",
+                "status_label": "Approved",
+                "source": "upload",
+                "document_id": 54,
+                "approved": true,
+                "pending": false,
+                "missing": false,
+                "rejected": false
+            },
+            {
+                "template_id": 204,
+                "system_code": null,
+                "name": "Pending proof",
+                "is_system": true,
+                "status": "pending",
+                "status_label": "Pending Review",
+                "source": "upload",
+                "document_id": 55,
+                "approved": false,
+                "pending": true,
+                "missing": false,
+                "rejected": false
+            },
+            {
+                "template_id": 205,
+                "system_code": null,
+                "name": "Missing proof",
+                "is_system": true,
+                "status": "missing",
+                "status_label": "Missing",
+                "source": "upload",
+                "document_id": null,
+                "approved": false,
+                "pending": false,
+                "missing": true,
+                "rejected": false
+            },
+            {
+                "template_id": 206,
+                "system_code": null,
+                "name": "Rejected proof",
+                "is_system": true,
+                "status": "rejected",
+                "status_label": "Rejected",
+                "source": "upload",
+                "document_id": 56,
+                "approved": false,
+                "pending": false,
+                "missing": false,
+                "rejected": true
+            }
+        ]
+    }
+}

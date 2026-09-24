@@ -220,7 +220,8 @@ class ConcurrencyIntegrityTest extends TestCase
         foreach ($dupes as $result) {
             $this->assertSame(201, $result['json']['status'] ?? 0, $result['stdout']);
         }
-        $this->assertSame(1, JournalEntry::query()->where('internship_id', $party[0]['internship']->id)->where('week_number', 3)->count());
+        // Week numbers are derived from the internship start, not the client payload.
+        $this->assertSame(1, JournalEntry::query()->where('internship_id', $party[0]['internship']->id)->whereDate('date', '2026-09-01')->count());
     }
 
     public function test_ten_document_uploads_and_double_upload_stay_unique(): void

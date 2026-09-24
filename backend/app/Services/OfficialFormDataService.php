@@ -22,7 +22,8 @@ class OfficialFormDataService
     public function bundle(Internship $internship): array
     {
         $viewer = $internship->student;
-        $payload = $this->portfolio->payload($internship, $viewer);
+        // Faculty must be able to preview and download a journal before approving it.
+        $payload = $this->portfolio->payload($internship, $viewer, includeUnapprovedJournals: true);
         $identity = $payload['identity'] ?? [];
         $identity['student_signature'] = OfficialFormAsset::dataUri($identity['student_signature_path'] ?? null);
         $identity['supervisor_signature'] = OfficialFormAsset::dataUri($identity['supervisor_signature_path'] ?? null);

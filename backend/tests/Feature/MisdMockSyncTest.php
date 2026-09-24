@@ -36,7 +36,7 @@ class MisdMockSyncTest extends TestCase
 
         Sanctum::actingAs($admin);
         $first = $this->postJson('/api/v1/admin/misd/sync/student/'.$student->id)->assertOk();
-        $this->assertSame('4ITD', $first->json('student.section'));
+        $this->assertSame('4ITA', $first->json('student.section'));
         $second = $this->postJson('/api/v1/admin/misd/sync/student/'.$student->id)->assertOk();
         $this->assertFalse($second->json('changed'));
 

@@ -49,6 +49,14 @@ class ManilaAttendanceClockFo30Test extends TestCase
         $this->assertTrue(ManilaAttendanceClock::isPm($pm));
     }
 
+    public function test_early_morning_utc_clock_stays_on_the_manila_attendance_date(): void
+    {
+        $at = ManilaTime::fromStoredDateAndTime('2026-09-05', $this->stored('07:00'));
+
+        $this->assertSame('2026-09-05 07:00', $at->format('Y-m-d H:i'));
+        $this->assertSame('2026-09-04 23:00', $at->copy()->utc()->format('Y-m-d H:i'));
+    }
+
     public function test_afternoon_only_leaves_am_blank_not_absent(): void
     {
         $cols = ManilaAttendanceClock::fo30Columns($this->log([

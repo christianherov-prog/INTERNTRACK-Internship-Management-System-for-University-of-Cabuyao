@@ -1,0 +1,94 @@
+{
+    "faculty_requirements": [
+        {
+            "template_id": 7,
+            "system_code": null,
+            "name": "First completion proof",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Approved",
+            "source": "upload",
+            "document_id": 5,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        },
+        {
+            "template_id": 8,
+            "system_code": null,
+            "name": "Second completion proof",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Approved",
+            "source": "upload",
+            "document_id": 6,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        }
+    ],
+    "coordinator_requirements": [
+        {
+            "template_id": 7,
+            "system_code": null,
+            "name": "First completion proof",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Approved",
+            "source": "upload",
+            "document_id": 5,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        },
+        {
+            "template_id": 8,
+            "system_code": null,
+            "name": "Second completion proof",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Approved",
+            "source": "upload",
+            "document_id": 6,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        }
+    ],
+    "compliance": {
+        "student": {
+            "approved": 2,
+            "total": 2,
+            "pct": 100
+        },
+        "student_documents": {
+            "approved": 2,
+            "total": 2,
+            "pct": 100
+        },
+        "faculty": {
+            "approved": 2,
+            "total": 2,
+            "pct": 100
+        },
+        "faculty_report": {
+            "approved": 2,
+            "total": 2,
+            "pct": 100
+        },
+        "coordinator": {
+            "approved": 2,
+            "total": 2,
+            "pct": 100
+        },
+        "coordinator_report": {
+            "approved": 2,
+            "total": 2,
+            "pct": 100
+        }
+    }
+}

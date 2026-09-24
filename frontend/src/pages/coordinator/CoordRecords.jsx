@@ -182,7 +182,6 @@ function CoordRecords() {
   const cacheKey = `coordinator:records:${archived ? 1 : 0}`
   const { pending, seed, run } = useCachedPage(cacheKey)
   const [students, setStudents] = useState(() => seed ?? [])
-  const [assigning, setAssigning] = useState(null)
   const [changingSection, setChangingSection] = useState(null)
   const [bulkChangingSection, setBulkChangingSection] = useState(false)
   const [selectedStudents, setSelectedStudents] = useState([])
@@ -291,18 +290,6 @@ function CoordRecords() {
           {message.text}
           <button className="btn-close" onClick={() => setMessage(null)}></button>
         </div>
-      )}
-
-      {assigning && (
-        <AssignPlacementModal
-          student={assigning}
-          onClose={() => setAssigning(null)}
-          onAssigned={(internship) => {
-            setAssigning(null)
-            setMessage({ type: 'success', text: 'Placement assigned successfully.' })
-            fetchRecords()
-          }}
-        />
       )}
 
       {changingSection && (
