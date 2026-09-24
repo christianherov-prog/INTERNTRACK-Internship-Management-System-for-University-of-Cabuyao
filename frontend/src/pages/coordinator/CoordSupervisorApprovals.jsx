@@ -360,7 +360,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
               <div className="sup-reg-remarks-section">
                 <label className="form-label fw-semibold mb-1" htmlFor="sup-reg-remarks">Remarks</label>
                 <div className="small text-muted mb-2">Required when rejecting.</div>
-                <textarea
+                <textarea maxLength={500}
                   id="sup-reg-remarks"
                   className="form-control"
                   rows={3}

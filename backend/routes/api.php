@@ -37,7 +37,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('/auth/confirm-password-change', [AuthController::class, 'confirmPasswordChange'])->middleware('throttle:10,1');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-    Route::get('/auth/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
+    Route::get('/auth/user', [AuthController::class, 'user'])->middleware(['auth:sanctum', 'account.active']);
 
     // Public avatar media (does not require the public/storage symlink)
     Route::get('/media/avatars/{filename}', [PublicAvatarController::class, 'show'])
@@ -61,10 +61,11 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:5,1');
 
     // ─── Protected Routes ────────────────────────────────────────────────────
-    Route::middleware(['auth:sanctum', 'password.changed'])->group(function () {
+    // account.active revalidates is_active / locked_at on every request.
+    // Change Password was removed for all roles; Supervisors recover access via
+    // the public forgot-password + confirm-password-change workflow.
+    Route::middleware(['auth:sanctum', 'account.active'])->group(function () {
 
-        Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('throttle:5,1');
-        Route::post('/auth/request-password-change', [AuthController::class, 'requestPasswordChange'])->middleware('throttle:5,1');
         Route::post('/auth/avatar', [AuthController::class, 'uploadAvatar'])->middleware('throttle:5,1');
         Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
         Route::get('/auth/notification-preferences', [AuthController::class, 'notificationPreferences']);
@@ -203,6 +204,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('/students/{userId}/archive', [FacultyController::class, 'setStudentArchived']);
             Route::get('/students/{userId}/progress', [FacultyController::class, 'studentProgress']);
             Route::get('/students/{userId}/journals', [FacultyController::class, 'studentJournalHistory']);
+            Route::get('/students/{userId}/portfolio', [FacultyController::class, 'studentPortfolio'])->whereNumber('userId');
             Route::get('/attendance', [FacultyController::class, 'attendance']);
             Route::get('/dtr/corrections', [DtrWorkflowController::class, 'facultyCorrections']);
             Route::patch('/dtr/corrections/{id}', [DtrWorkflowController::class, 'reviewCorrectionAsFaculty']);
@@ -210,11 +212,16 @@ Route::prefix('v1')->group(function () {
             Route::get('/dtr/audits', [DtrWorkflowController::class, 'facultyAudits']);
             Route::get('/journals', [FacultyController::class, 'journals']);
             Route::patch('/journals/{id}/review', [FacultyController::class, 'reviewJournal']);
+            Route::get('/journal-deadlines', [FacultyController::class, 'journalDeadlines']);
+            Route::get('/journal-weeks', [FacultyController::class, 'journalWeeks']);
+            Route::post('/journal-deadlines', [FacultyController::class, 'setJournalDeadline']);
+            Route::delete('/journal-deadlines/{id}', [FacultyController::class, 'deleteJournalDeadline'])->whereNumber('id');
             Route::get('/supervisor-feedback', [FacultyController::class, 'supervisorFeedback']);
             Route::get('/supervisors', [FacultyController::class, 'supervisors']);
             Route::get('/supervisors/{id}', [FacultyController::class, 'showSupervisor']);
             Route::get('/evaluations', [FacultyController::class, 'evaluations']);
             Route::post('/evaluations/{internshipId}/approve-period', [FacultyController::class, 'approveEvaluationPeriod']);
+            Route::post('/evaluations/{internshipId}/release-performance', [FacultyController::class, 'releasePerformanceEvaluation'])->whereNumber('internshipId');
             Route::post('/evaluations/{internshipId}', [FacultyController::class, 'submitEvaluation']);
             Route::get('/feedback', [FacultyController::class, 'feedback']);
             Route::post('/feedback/{internshipId}', [FacultyController::class, 'submitFeedback']);
@@ -255,8 +262,6 @@ Route::prefix('v1')->group(function () {
             Route::get('/records', [CoordinatorController::class, 'records']);
             Route::patch('/students/{userId}/archive', [CoordinatorController::class, 'setStudentArchived']);
             Route::get('/students/{userId}/progress', [CoordinatorController::class, 'studentProgress']);
-            Route::patch('/students/bulk-section', [CoordinatorController::class, 'bulkUpdateStudentSection']);
-            Route::patch('/students/{userId}/section', [CoordinatorController::class, 'updateStudentSection']);
             Route::get('/placement-options', [CoordinatorController::class, 'placementOptions']);
             Route::post('/internships/{id}/place', [CoordinatorController::class, 'assignPlacement']);
             Route::get('/internships/{id}/status-history', [InternshipStatusController::class, 'history']);
@@ -300,6 +305,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('director')->middleware('role:director')->group(function () {
             Route::get('/dashboard', [DirectorController::class, 'dashboard']);
             Route::get('/evaluations', [DirectorController::class, 'hteEvaluations']);
+            Route::post('/evaluations/{evaluationId}/release', [DirectorController::class, 'releaseHteEvaluation'])->whereNumber('evaluationId');
             Route::get('/analytics', [DirectorController::class, 'analytics']);
             Route::get('/companies', [DirectorController::class, 'companies']);
             Route::post('/companies', [DirectorController::class, 'storeCompany']);
@@ -339,6 +345,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/users', [MisdAdminController::class, 'users']);
             Route::patch('/users/{id}/active', [MisdAdminController::class, 'setUserActive']);
             Route::post('/users/{id}/reset-password', [MisdAdminController::class, 'resetPassword']);
+            Route::post('/users/{id}/unlock', [MisdAdminController::class, 'unlockUser']);
 
             Route::get('/section-assignments', [MisdAdminController::class, 'sectionAssignments']);
             Route::post('/section-assignments', [MisdAdminController::class, 'storeSectionAssignment']);

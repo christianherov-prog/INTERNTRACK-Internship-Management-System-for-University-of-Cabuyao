@@ -461,7 +461,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                   <form id="requirementForm" onSubmit={handleSubmit}>
                     <div className="mb-3">
                       <label className="form-label fw-semibold">Requirement Name</label>
-                      <input
+                      <input maxLength={255}
                         required
                         type="text"
                         className="form-control"
@@ -483,7 +483,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
 
                     <div className="mb-3">
                       <label className="form-label fw-semibold">Description <span className="text-muted fw-normal">(Optional)</span></label>
-                      <textarea
+                      <textarea maxLength={2000}
                         className="form-control"
                         value={formData.description}
                         onChange={e => setFormData({ ...formData, description: e.target.value })}
@@ -515,7 +515,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                       </div>
                       <div className="col-md-12">
                         <label className="form-label fw-semibold">Select Targets</label>
-                        <input
+                        <input maxLength={100}
                           type="search"
                           className="form-control form-control-sm mb-2"
                           placeholder="Search"
@@ -674,7 +674,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                     </div>
                     <div className="mb-3">
                       <label className="form-label fw-semibold">Link <span className="text-muted fw-normal">(Optional)</span></label>
-                      <input
+                      <input maxLength={2048}
                         type="url"
                         className="form-control"
 
@@ -829,7 +829,7 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
                   <div className="modal-body">
                     <div className="mb-3">
                       <label className="form-label fw-semibold">Remarks (Optional)</label>
-                      <textarea
+                      <textarea maxLength={2000}
                         className="form-control"
                         rows="3"
                         placeholder="Feedback"

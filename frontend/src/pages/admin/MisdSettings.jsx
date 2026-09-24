@@ -9,7 +9,7 @@ function MisdSettings() {
       summaryNote="Your official MISD admin identity is synced from iEnroll. Update password and avatar here."
       accountIntro="Official MISD Administrator profile from iEnroll. These fields are display-only in INTERNTRACK."
       notificationsIntro="Choose which system-administration alerts you want to receive."
-      securityIntro="Update your password and protect MISD admin credentials."
+      securityIntro="Account protection and sign-in security for your InternTrack account."
       metaFields={[
         { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
         { label: 'Department', key: 'department', fallback: 'Management Information Systems Department' },

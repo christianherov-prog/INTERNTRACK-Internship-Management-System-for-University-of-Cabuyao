@@ -182,7 +182,7 @@ function StudentDocuments() {
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Google Drive Link (Optional)</label>
-                    <input 
+                    <input maxLength={2048}
                       type="url" 
                       className="form-control" 
                       placeholder="File Link" 
@@ -425,7 +425,6 @@ function StudentDocuments() {
 }
 
 export default StudentDocuments
-
 
 
 

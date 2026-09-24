@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\AccountLockedMail;
 use App\Mail\PasswordChangeMail;
 use App\Models\Notification;
 use App\Models\User;
@@ -100,10 +101,31 @@ class AuthService
             }
         }
 
-        if (! $this->passwordMatches($user, $password)) {
+        // Locked accounts are refused even with the correct password. The lock
+        // reason is shown only when the password is right, so a guesser cannot
+        // tell a locked account from a wrong password.
+        if ($user->isLocked()) {
+            if ($this->passwordMatches($user, $password)) {
+                throw ValidationException::withMessages([
+                    'username' => [self::LOCKED_MESSAGE],
+                ]);
+            }
+
             throw ValidationException::withMessages([
                 'username' => ['Invalid credentials. Please check your ID and password.'],
             ]);
+        }
+
+        if (! $this->passwordMatches($user, $password)) {
+            $this->registerFailedLogin($user, $ip);
+
+            throw ValidationException::withMessages([
+                'username' => ['Invalid credentials. Please check your ID and password.'],
+            ]);
+        }
+
+        if ((int) $user->failed_login_attempts !== 0) {
+            $user->forceFill(['failed_login_attempts' => 0])->saveQuietly();
         }
 
         if (!$user->is_active) {
@@ -126,6 +148,77 @@ class AuthService
             'token' => $token,
             'user'  => $user->fresh()->load(self::USER_RELATIONS),
         ];
+    }
+
+    public const LOCKED_MESSAGE = 'This account is locked after repeated failed sign-in attempts. Contact the University MISD office or your InternTrack administrator to unlock it.';
+
+    public static function maxFailedLogins(): int
+    {
+        return max(1, (int) config('interntrack.max_failed_logins', 3));
+    }
+
+    /**
+     * Count a consecutive failed sign-in. On the attempt that reaches the limit
+     * the account is locked and the owner is emailed exactly once.
+     */
+    private function registerFailedLogin(User $user, string $ip): void
+    {
+        $locked = DB::transaction(function () use ($user) {
+            $row = User::query()->whereKey($user->id)->lockForUpdate()->first();
+            if (! $row || $row->locked_at !== null) {
+                return null;
+            }
+
+            $attempts = (int) $row->failed_login_attempts + 1;
+            $fill = ['failed_login_attempts' => $attempts];
+            if ($attempts >= self::maxFailedLogins()) {
+                $fill['locked_at'] = now();
+            }
+            $row->forceFill($fill)->saveQuietly();
+
+            return isset($fill['locked_at']) ? $row : null;
+        });
+
+        audit_log($user->id, 'login_failed', ['ip' => $ip]);
+
+        if ($locked) {
+            // Any session opened before the lock stops working immediately.
+            $locked->tokens()->delete();
+            audit_log($user->id, 'account_locked', ['ip' => $ip, 'attempts' => (int) $locked->failed_login_attempts]);
+            $this->sendLockNotification($locked);
+        }
+    }
+
+    private function sendLockNotification(User $user): void
+    {
+        $user->loadMissing(['studentProfile', 'facultyProfile', 'supervisorProfile']);
+        $recipient = collect([
+            $user->email,
+            $user->supervisorProfile?->email,
+            $user->facultyProfile?->email,
+            $user->studentProfile?->email,
+        ])->first(fn ($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL));
+
+        if (! $recipient) {
+            Log::warning("Account {$user->id} locked but no valid email is on file for the lock notice.");
+
+            return;
+        }
+
+        try {
+            Mail::send(new AccountLockedMail($user, $recipient, $user->locked_at, (int) $user->failed_login_attempts));
+        } catch (\Throwable $e) {
+            Log::warning('Account lock email failed: '.$e->getMessage());
+        }
+    }
+
+    /** Admin/MISD unlock: clears the lock and the failed-attempt counter. */
+    public function unlockAccount(User $user, User $actor): User
+    {
+        $user->forceFill(['failed_login_attempts' => 0, 'locked_at' => null])->saveQuietly();
+        audit_log($actor->id, 'account_unlocked', ['user_id' => $user->id]);
+
+        return $user->fresh();
     }
 
     /**
@@ -161,103 +254,39 @@ class AuthService
 
     // ─── Password Management ──────────────────────────────────────────────────
 
-    /**
-     * Change password for authenticated users who know their current password.
-     *
-     * @throws ValidationException
-     */
-    public function changePassword(User $user, string $currentPassword, string $newPassword): User
+    /** Roles allowed to use the public Forgot Password workflow. */
+    public const PASSWORD_RECOVERY_ROLES = ['supervisor'];
+
+    public static function canRecoverPassword(?User $user): bool
     {
-        if (!Hash::check($currentPassword, $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => ['The current password is incorrect.'],
-            ]);
-        }
-
-        $user->update([
-            'password'            => Hash::make($newPassword),
-            'must_change_password'=> false,
-        ]);
-
-        audit_log($user->id, 'change_password', []);
-
-        return $user->fresh()->load(self::USER_RELATIONS);
+        return $user !== null && in_array($user->role, self::PASSWORD_RECOVERY_ROLES, true);
     }
 
     /**
-     * Generate a time-limited password-reset token, persist it, then dispatch
-     * a confirmation email and an in-app notification.
-     */
-    public function requestPasswordChange(User $user): void
-    {
-        $user  = $user->fresh();
-        $token = Str::random(60);
-
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $user->email],
-            ['token' => Hash::make($token), 'created_at' => now()]
-        );
-
-        $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:5173'), '/');
-        $link        = $frontendUrl . '/change-password-confirm?token=' . $token . '&email=' . urlencode($user->email);
-
-        // Send email via proper Mailable (testable, queueable).
-        try {
-            Mail::send(new PasswordChangeMail($user, $link));
-        } catch (\Exception $e) {
-            Log::warning('Mail send failed for password change: ' . $e->getMessage());
-        }
-
-        // In-app notification fallback.
-        Notification::notify(
-            $user->id,
-            'password_change_requested',
-            'Password Change Confirmation Link',
-            "We sent a confirmation link to {$user->email}. Click here to set your new password.",
-            '/change-password-confirm?token=' . $token . '&email=' . urlencode($user->email),
-            ['token' => $token, 'email' => $user->email]
-        );
-    }
-
-    /**
-     * Handle public "forgot password" request by identifier (Student Number, Employee ID, or Email).
-     * Dispatches password reset token and email if user exists.
-     * Always returns consistent success response to prevent user enumeration.
+     * Public "forgot password" request — Industry/Company Supervisors only.
+     * University accounts (Student, Faculty, Coordinator, Director, Admin) are
+     * managed through iEnroll/MISD and never receive a reset link here. Locked
+     * accounts are not issued a link either; Admin/MISD unlocks them. The same
+     * response is returned in every case to prevent account enumeration.
      */
     public function forgotPassword(string $identifier): array
     {
         $raw = trim($identifier);
         $upper = strtoupper($raw);
+        $lower = strtolower($raw);
 
-        // Find user by student_number, faculty_number, or email
-        $user = User::where('student_number', $upper)
-            ->orWhere('faculty_number', $upper)
-            ->orWhere('email', $raw)
+        $user = User::query()
+            ->where('role', 'supervisor')
+            ->where(function ($q) use ($upper, $lower) {
+                $q->where('faculty_number', $upper)
+                    ->orWhereRaw('LOWER(login_username) = ?', [$lower])
+                    ->orWhereRaw('LOWER(email) = ?', [$lower]);
+            })
             ->first();
-
-        // If not found in local DB and mock MISD is active, attempt provisioning check
-        if (!$user && config('interntrack.misd_use_mock', true)) {
-            try {
-                $role = MisdIntegrationService::detectRole($upper);
-                if ($role) {
-                    $defaultPw = config('interntrack.default_password', 'interntrack123');
-                    $user = $this->misd->provision($upper, $defaultPw);
-                }
-            } catch (\Throwable $e) {
-                Log::info('Forgot password MISD fallback lookup error: ' . $e->getMessage());
-            }
-        }
 
         $debugResetUrl = null;
 
-        if ($user && $user->is_active) {
-            // Ensure user has an email
-            if (empty($user->email)) {
-                $identifierKey = $user->student_number ?: $user->faculty_number ?: ('user_' . $user->id);
-                $user->update(['email' => strtolower(str_replace('-', '_', $identifierKey)) . '@pnc.edu.ph']);
-                $user->refresh();
-            }
-
+        if (self::canRecoverPassword($user) && $user->is_active && ! $user->isLocked() && filled($user->email)) {
             $token = Str::random(60);
 
             DB::table('password_reset_tokens')->updateOrInsert(
@@ -289,7 +318,7 @@ class AuthService
 
         $result = [
             'success' => true,
-            'message' => 'If an account exists with the provided ID or email, password reset instructions have been sent to the registered email address.',
+            'message' => 'If a Company Supervisor account exists with the provided username or email, password reset instructions have been sent to the registered email address.',
         ];
 
         if (app()->environment('local') && $debugResetUrl) {
@@ -321,7 +350,20 @@ class AuthService
             ]);
         }
 
-        $user = User::where('email', $email)->firstOrFail();
+        $user = User::where('email', $email)->first();
+
+        if (! self::canRecoverPassword($user)) {
+            DB::table('password_reset_tokens')->where('email', $email)->delete();
+            throw ValidationException::withMessages([
+                'token' => ['The password reset link is invalid or expired.'],
+            ]);
+        }
+
+        if ($user->isLocked()) {
+            throw ValidationException::withMessages([
+                'token' => [self::LOCKED_MESSAGE],
+            ]);
+        }
 
         $this->assertPasswordNotReused($user, $newPassword);
         $this->assertPasswordNotContainsName($user, $newPassword);

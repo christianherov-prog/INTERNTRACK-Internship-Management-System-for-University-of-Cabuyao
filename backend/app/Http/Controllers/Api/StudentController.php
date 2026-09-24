@@ -22,6 +22,8 @@ use App\Services\JournalPeriodValidator;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
+use App\Support\EvaluationVisibility;
+use App\Support\PlacementEligibility;
 use App\Support\InternshipProvisioning;
 use App\Support\ManilaTime;
 use App\Support\InternshipStatuses;
@@ -203,8 +205,11 @@ class StudentController extends Controller
         $docCompliance = $compliance['pct'];
         $requiredDocTypes = collect($compliance['details'])->pluck('name')->values()->all();
 
-        // Evaluation score (average of both evaluations, scaled to 100%)
-        $evalAvg = $internship->evaluations()->avg('average_score');
+        // Evaluation score (scaled to 100%) — only from evaluations the student may see.
+        $evalAvg = $internship->evaluations()
+            ->get()
+            ->reject(fn ($e) => EvaluationVisibility::isHiddenFromStudent($e))
+            ->avg('average_score');
         $evaluationScore = $evalAvg ? min(100.0, max(0.0, round($evalAvg * 20, 1))) : null;
 
         // Weekly chart — last 8 weeks (single query)
@@ -532,6 +537,12 @@ class StudentController extends Controller
             $journal->setAttribute('internship_id', $internship->id);
             $journal->setAttribute('company_logo_path', $companyLogoPath);
             $journal->setAttribute('student_signature_path', $studentSignaturePath);
+            $journal->setAttribute('submitted_at_display', $journal->submitted_at
+                ? $journal->submitted_at->copy()->timezone(\App\Support\ManilaTime::TZ)->format('F j, Y, g:i A')
+                : null);
+            $journal->setAttribute('deadline_display', $journal->deadline_at
+                ? $journal->deadline_at->copy()->timezone(\App\Support\ManilaTime::TZ)->format('F j, Y, g:i A')
+                : null);
 
             return $journal;
         });
@@ -541,6 +552,8 @@ class StudentController extends Controller
             app(SupervisorFeedbackService::class)->noteForInternship($internship)
         );
         $payload['journal_period'] = $period;
+        $payload['journal_deadlines'] = app(\App\Services\JournalDeadlineService::class)->listFor($internship);
+        $payload['timezone'] = \App\Support\ManilaTime::TZ;
 
         return response()->json($payload);
     }
@@ -564,13 +577,15 @@ class StudentController extends Controller
     {
         $request->validate([
             'journal_id' => 'nullable|integer',
+            // Informational only: the server derives the week from the dates.
             'week_number' => 'nullable|integer|min:1',
             'date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:date',
-            'activities_summary' => 'required_without_all:challenges,learnings|string|nullable',
-            'challenges' => 'required_without_all:activities_summary,learnings|string|nullable',
-            'learnings' => 'required_without_all:activities_summary,challenges|string|nullable',
-            'notes' => 'nullable|string',
+            // journal_entries text columns (TEXT); limits keep entries printable on FO-31.
+            'activities_summary' => 'required_without_all:challenges,learnings|string|nullable|max:5000',
+            'challenges' => 'required_without_all:activities_summary,learnings|string|nullable|max:5000',
+            'learnings' => 'required_without_all:activities_summary,challenges|string|nullable|max:5000',
+            'notes' => 'nullable|string|max:2000',
         ]);
 
         $internship = $this->internship($request);
@@ -665,6 +680,12 @@ class StudentController extends Controller
                 } else {
                     $journal = $internship->journals()->create($data);
                 }
+
+                // Real submission time + the Faculty deadline that applied (late
+                // journals are accepted and flagged, not blocked).
+                $journal->forceFill(
+                    app(\App\Services\JournalDeadlineService::class)->stampSubmission($journal->fresh(), now())
+                )->save();
 
                 audit_log($request->user()->id, 'submit_journal', ['week_number' => $weekNumber]);
 
@@ -940,7 +961,12 @@ class StudentController extends Controller
         $internship = $this->internship($request);
         $evaluations = $internship->evaluations()->with('evaluator')->get();
 
-        $payload = ApiResponse::list($evaluations)->getData(true);
+        // Unreleased FO-24 (Faculty release) and FO-03 (Director release) are
+        // reduced to completion status before they leave the server.
+        $payload = ApiResponse::list(EvaluationVisibility::listForStudent($evaluations))->getData(true);
+        $payload['internship_id'] = $internship->id;
+        // Authoritative state object (EvaluationPeriod); legacy fields kept for older clients.
+        $payload['evaluation_period'] = \App\Support\EvaluationPeriod::state($internship);
         $payload['evaluation_period_status'] = $internship->evaluation_period_status ?: 'pending';
         $payload['evaluation_period_approved'] = $internship->evaluationPeriodIsApproved();
 
@@ -951,10 +977,11 @@ class StudentController extends Controller
     public function submitEvaluation(Request $request)
     {
         $request->validate([
-            'evaluation_period' => 'required|string',
+            'evaluation_period' => 'required|string|in:midterm,final',
             'form_type' => 'required|in:FO-22,FO-23',
-            'responses' => 'required|array',
-            'general_comments' => 'nullable|string',
+            'responses' => 'required|array|max:60',
+            'responses.*' => 'nullable|max:2000',
+            'general_comments' => 'nullable|string|max:2000',
         ]);
 
         $internship = $this->internship($request);
@@ -1109,7 +1136,10 @@ class StudentController extends Controller
                 ]);
         }
 
-        return response()->json(['applications' => $applications]);
+        return response()->json([
+            'applications' => $applications,
+            'placement_lock' => PlacementEligibility::forStudent($request->user()),
+        ]);
     }
 
     public function applyCompany(Request $request)
@@ -1123,6 +1153,16 @@ class StudentController extends Controller
         $existing = InternshipApplication::where('student_id', $request->user()->id)
             ->where('company_id', $data['company_id'])
             ->first();
+
+        // Accepted placement: no applications to other companies (enforced here,
+        // not only by the disabled buttons in the Placement Hub).
+        $lock = PlacementEligibility::forStudent($request->user());
+        if ($lock['locked'] && (int) $lock['company_id'] !== (int) $data['company_id']) {
+            return response()->json([
+                'message' => PlacementEligibility::LOCK_MESSAGE,
+                'placement_lock' => $lock,
+            ], 409);
+        }
 
         if ($existing && $existing->status === 'approved') {
             return response()->json([
@@ -1141,6 +1181,12 @@ class StudentController extends Controller
         try {
             $application = DB::transaction(function () use ($request, $internship, $data, $existing) {
                 Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+
+                // Re-check under the row lock so a concurrent approval cannot be bypassed.
+                $lock = PlacementEligibility::forStudent($request->user());
+                if ($lock['locked'] && (int) $lock['company_id'] !== (int) $data['company_id']) {
+                    throw new \App\Exceptions\PlacementLockedException();
+                }
                 $internship->update(['company_id' => $data['company_id']]);
 
                 $payload = [
@@ -1172,6 +1218,11 @@ class StudentController extends Controller
 
                 return $application;
             });
+        } catch (\App\Exceptions\PlacementLockedException $e) {
+            return response()->json([
+                'message' => PlacementEligibility::LOCK_MESSAGE,
+                'placement_lock' => PlacementEligibility::forStudent($request->user()),
+            ], 409);
         } catch (QueryException $e) {
             if (! UniqueWrite::isDuplicate($e)) {
                 throw $e;
@@ -1211,7 +1262,8 @@ class StudentController extends Controller
     {
         $data = $request->validate([
             'company_name' => 'required|string|max:255',
-            'address' => 'required|string|max:500',
+            // hte_requests.address is VARCHAR(255); 500 previously failed at insert time.
+            'address' => 'required|string|max:255',
             'organization_type' => \App\Support\OrganizationTypes::validationRule(false),
             'contact_person' => 'required|string|max:255',
             'contact_email' => 'required|email|max:255',
@@ -1219,6 +1271,15 @@ class StudentController extends Controller
             'remarks' => 'nullable|string|max:2000',
             'moa' => PlacementMoa::rule(),
         ]);
+
+        // A new-HTE request is an application to another company; blocked once placed.
+        $lock = PlacementEligibility::forStudent($request->user());
+        if ($lock['locked']) {
+            return response()->json([
+                'message' => PlacementEligibility::LOCK_MESSAGE,
+                'placement_lock' => $lock,
+            ], 409);
+        }
 
         $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($data['organization_type'] ?? null);
         if (! $resolvedType['ok']) {

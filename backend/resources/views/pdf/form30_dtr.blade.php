@@ -13,7 +13,7 @@
         .header .side { width: 82px; text-align: center; }
         .header .center { text-align: center; padding: 0 8px; }
         .header img { max-width: 78px; max-height: 78px; width: auto; height: auto; object-fit: contain; }
-        .logo-ph { width: 78px; height: 78px; border: 1px dashed #444; font-size: 8px; color: #444; text-align: center; line-height: 1.2; padding-top: 18px; }
+        .logo-slot { width: 78px; height: 78px; }
         .univ { color: #0B5D2A; font-size: 20px; line-height: 1.1; }
         h1 { text-align: center; font-size: 12px; background: #cccccc; padding: 6px 8px; margin: 8px 0 10px; }
         .info { margin-bottom: 10px; }
@@ -58,13 +58,8 @@
             <div><strong>Academic Affairs Division</strong></div>
             <div>Katapatan Mutual Homes, Brgy. Banay-banay, City of Cabuyao, Laguna 4025</div>
         </td>
-        <td class="side">
-            @if (!empty($company_logo))
-                <img src="{{ $company_logo }}" alt="HTE Logo">
-            @else
-                <div class="logo-ph">Logo<br>of<br>HTE</div>
-            @endif
-        </td>
+        {{-- HTE logo removed from FO-30; the empty cell keeps the header centered. --}}
+        <td class="side"><div class="logo-slot"></div></td>
     </tr>
 </table>
 <h1>STUDENT INTERNSHIP DAILY TIME RECORD (DTR) FORM</h1>

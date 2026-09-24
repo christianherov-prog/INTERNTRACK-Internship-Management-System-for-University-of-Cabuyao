@@ -249,16 +249,16 @@ function PsychologyPortfolioBuilder() {
               <div className="portfolio-hte-row mb-3">
                 <div>
                   <label className="portfolio-field-label">Host Training Establishment</label>
-                  <input className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Host Establishment" />
+                  <input maxLength={255} className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Host Establishment" />
                 </div>
                 <div>
                   <label className="portfolio-field-label">HTE Address</label>
-                  <input className="form-control portfolio-field-input" value={fields.hte_address} onChange={(e) => setRotationField(rotationId, 'hte_address', e.target.value)} placeholder="Address" />
+                  <input maxLength={255} className="form-control portfolio-field-input" value={fields.hte_address} onChange={(e) => setRotationField(rotationId, 'hte_address', e.target.value)} placeholder="Address" />
                 </div>
               </div>
               <div className="mb-3">
                 <label className="portfolio-field-label">Host Training Establishment Profile</label>
-                <textarea className="form-control portfolio-field-input" rows={4} value={fields.hte_profile} onChange={(e) => setRotationField(rotationId, 'hte_profile', e.target.value)} placeholder="Host Profile" />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={4} value={fields.hte_profile} onChange={(e) => setRotationField(rotationId, 'hte_profile', e.target.value)} placeholder="Host Profile" />
               </div>
               {renderUploadGroup(rotationId, PRE_INTERNSHIP_UPLOADS)}
             </div>
@@ -279,7 +279,7 @@ function PsychologyPortfolioBuilder() {
             <div className="p-3 p-lg-4">
               <div className="mb-3">
                 <label className="portfolio-field-label">Narrative and Insights of Internship Learning Experiences</label>
-                <textarea className="form-control portfolio-field-input" rows={6} value={fields.narrative} onChange={(e) => setRotationField(rotationId, 'narrative', e.target.value)} placeholder="Narrative" />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={6} value={fields.narrative} onChange={(e) => setRotationField(rotationId, 'narrative', e.target.value)} placeholder="Narrative" />
               </div>
               {renderUploadGroup(rotationId, INTERNSHIP_UPLOADS)}
             </div>
@@ -302,19 +302,19 @@ function PsychologyPortfolioBuilder() {
               <div className="portfolio-fields-2">
                 <div>
                   <label className="portfolio-field-label">Students</label>
-                  <textarea className="form-control portfolio-field-input" rows={3} value={fields.rec_students} onChange={(e) => setRotationField(rotationId, 'rec_students', e.target.value)} />
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.rec_students} onChange={(e) => setRotationField(rotationId, 'rec_students', e.target.value)} />
                 </div>
                 <div>
                   <label className="portfolio-field-label">Internship Program</label>
-                  <textarea className="form-control portfolio-field-input" rows={3} value={fields.rec_program} onChange={(e) => setRotationField(rotationId, 'rec_program', e.target.value)} />
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.rec_program} onChange={(e) => setRotationField(rotationId, 'rec_program', e.target.value)} />
                 </div>
                 <div>
                   <label className="portfolio-field-label">Curriculum</label>
-                  <textarea className="form-control portfolio-field-input" rows={3} value={fields.rec_curriculum} onChange={(e) => setRotationField(rotationId, 'rec_curriculum', e.target.value)} />
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.rec_curriculum} onChange={(e) => setRotationField(rotationId, 'rec_curriculum', e.target.value)} />
                 </div>
                 <div>
                   <label className="portfolio-field-label">HTE</label>
-                  <textarea className="form-control portfolio-field-input" rows={3} value={fields.rec_hte} onChange={(e) => setRotationField(rotationId, 'rec_hte', e.target.value)} />
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.rec_hte} onChange={(e) => setRotationField(rotationId, 'rec_hte', e.target.value)} />
                 </div>
               </div>
               <div className="mt-3">{renderUploadGroup(rotationId, POST_INTERNSHIP_UPLOADS)}</div>

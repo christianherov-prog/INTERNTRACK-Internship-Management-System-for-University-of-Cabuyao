@@ -115,12 +115,12 @@ export const StudentInternPerformanceForm = ({ internship, onSubmit, processing 
 
         <div className="mb-3">
           <label className="fw-bold form-label">Other comments on work attitudes and behavior:</label>
-          <textarea className="form-control" rows="3" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
         </div>
 
         <div className="mb-4">
           <label className="fw-bold form-label">Recommendations for the trainee's further improvement in his/her work performance:</label>
-          <textarea className="form-control" rows="3" value={recommendations} onChange={(e) => setRecommendations(e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={recommendations} onChange={(e) => setRecommendations(e.target.value)}></textarea>
         </div>
 
         <div className="d-flex justify-content-end mt-4">

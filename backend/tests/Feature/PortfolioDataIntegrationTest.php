@@ -209,6 +209,20 @@ class PortfolioDataIntegrationTest extends TestCase
             'general_comments' => 'Faculty remarks',
         ])->assertCreated();
 
+        // FO-24 (Faculty release) and FO-03 (Director release) are completion-only until released.
+        Sanctum::actingAs($party['student']);
+        $locked = collect($this->getJson('/api/v1/student/portfolio')->assertOk()->json('internship.evaluations'));
+        $this->assertTrue($locked->firstWhere('form_type', 'FO-24')['details_locked']);
+        $this->assertTrue($locked->firstWhere('form_type', 'FO-03')['details_locked']);
+        $this->assertArrayNotHasKey('responses', $locked->firstWhere('form_type', 'FO-24'));
+        $this->assertFalse($locked->firstWhere('form_type', 'FO-22')['details_locked']);
+
+        Sanctum::actingAs($party['faculty']);
+        $this->postJson('/api/v1/faculty/evaluations/'.$party['internship']->id.'/release-performance')->assertOk();
+        Sanctum::actingAs($this->makeUser('director'));
+        $fo03Id = \App\Models\Evaluation::where('internship_id', $party['internship']->id)->where('form_type', 'FO-03')->value('id');
+        $this->postJson("/api/v1/director/evaluations/{$fo03Id}/release")->assertOk();
+
         Sanctum::actingAs($party['student']);
         $evals = collect($this->getJson('/api/v1/student/portfolio')->assertOk()->json('internship.evaluations'));
 

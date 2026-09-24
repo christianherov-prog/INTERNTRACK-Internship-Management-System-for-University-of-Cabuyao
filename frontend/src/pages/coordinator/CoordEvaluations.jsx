@@ -66,13 +66,13 @@ function CoordEvaluations() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search Students" value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} />
         </div>
         <div className="input-group input-group-sm" style={{ width: 170 }}>
-          <input className="form-control" placeholder="Program" value={filters.program} onChange={e => setFilters({ ...filters, program: e.target.value })} />
+          <input maxLength={150} className="form-control" placeholder="Program" value={filters.program} onChange={e => setFilters({ ...filters, program: e.target.value })} />
         </div>
         <div className="input-group input-group-sm" style={{ width: 150 }}>
-          <input className="form-control" placeholder="Section" value={filters.section} onChange={e => setFilters({ ...filters, section: e.target.value })} />
+          <input maxLength={50} className="form-control" placeholder="Section" value={filters.section} onChange={e => setFilters({ ...filters, section: e.target.value })} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 180 }} value={filters.faculty_id} onChange={e => setFilters({ ...filters, faculty_id: e.target.value })}>
           <option value="">All Faculty</option>

@@ -144,8 +144,8 @@ function DirectorCompanies() {
           <div className="content-card-header"><i className="fa fa-pen"></i><h6>{editItem ? 'Edit Company' : 'Add Partner Company'}</h6></div>
           <form className="p-3" onSubmit={handleSubmit}>
             <div className="row g-3">
-              <div className="col-md-6"><label className="form-label fw-semibold">Company Name <span className="text-danger">*</span></label><input className="form-control" value={form.company_name} onChange={e => setForm(p => ({...p, company_name: e.target.value}))} required /></div>
-              <div className="col-md-3"><label className="form-label fw-semibold">Industry</label><input className="form-control" value={form.industry} onChange={e => setForm(p => ({...p, industry: e.target.value}))} /></div>
+              <div className="col-md-6"><label className="form-label fw-semibold">Company Name <span className="text-danger">*</span></label><input maxLength={255} className="form-control" value={form.company_name} onChange={e => setForm(p => ({...p, company_name: e.target.value}))} required /></div>
+              <div className="col-md-3"><label className="form-label fw-semibold">Industry</label><input maxLength={255} className="form-control" value={form.industry} onChange={e => setForm(p => ({...p, industry: e.target.value}))} /></div>
               <div className="col-md-3">
                 <OrganizationTypeField
                   selectValue={form.organization_type_select}
@@ -168,10 +168,10 @@ function DirectorCompanies() {
                   <div className="form-text text-warning">Needs Specification — enter the actual organization type.</div>
                 )}
               </div>
-              <div className="col-12"><label className="form-label fw-semibold">Address</label><input className="form-control" value={form.address} onChange={e => setForm(p => ({...p, address: e.target.value}))} /></div>
-              <div className="col-md-4"><label className="form-label fw-semibold">Contact Person</label><input className="form-control" value={form.contact_person} onChange={e => setForm(p => ({...p, contact_person: e.target.value}))} /></div>
-              <div className="col-md-4"><label className="form-label fw-semibold">Contact Email</label><input type="email" className="form-control" value={form.contact_email} onChange={e => setForm(p => ({...p, contact_email: e.target.value}))} /></div>
-              <div className="col-md-4"><label className="form-label fw-semibold">Contact Number</label><input className="form-control" value={form.contact_number} onChange={e => setForm(p => ({...p, contact_number: e.target.value}))} /></div>
+              <div className="col-12"><label className="form-label fw-semibold">Address</label><input maxLength={255} className="form-control" value={form.address} onChange={e => setForm(p => ({...p, address: e.target.value}))} /></div>
+              <div className="col-md-4"><label className="form-label fw-semibold">Contact Person</label><input maxLength={255} className="form-control" value={form.contact_person} onChange={e => setForm(p => ({...p, contact_person: e.target.value}))} /></div>
+              <div className="col-md-4"><label className="form-label fw-semibold">Contact Email</label><input maxLength={255} type="email" className="form-control" value={form.contact_email} onChange={e => setForm(p => ({...p, contact_email: e.target.value}))} /></div>
+              <div className="col-md-4"><label className="form-label fw-semibold">Contact Number</label><input maxLength={30} className="form-control" value={form.contact_number} onChange={e => setForm(p => ({...p, contact_number: e.target.value}))} /></div>
               <div className="col-md-3"><label className="form-label fw-semibold">MOA Status <span className="text-danger">*</span></label><select className="form-select" value={form.moa_status} onChange={e => setForm(p => ({...p, moa_status: e.target.value}))}><option value="active">Active</option><option value="pending">Pending</option><option value="on-process">On-Process</option><option value="for_renewal">For Renewal</option><option value="expired">Expired</option></select></div>
               <div className="col-md-3"><label className="form-label fw-semibold">MOA Start</label><input type="date" className="form-control" value={form.moa_start_date} onChange={e => setForm(p => ({...p, moa_start_date: e.target.value}))} /></div>
               <div className="col-md-3">
@@ -181,7 +181,7 @@ function DirectorCompanies() {
                   <div className="form-text text-warning">Recommended: set an expiry date for active MOAs so deployment eligibility stays clear.</div>
                 )}
               </div>
-              <div className="col-md-3"><label className="form-label fw-semibold">Available Slots</label><input type="number" className="form-control" value={form.slots_available} min={0} onChange={e => setForm(p => ({...p, slots_available: e.target.value}))} /></div>
+              <div className="col-md-3"><label className="form-label fw-semibold">Available Slots</label><input type="number" className="form-control" value={form.slots_available} min={0} max={1000} step={1} onChange={e => setForm(p => ({...p, slots_available: e.target.value}))} /></div>
             </div>
             <div className="mt-3">
               <button type="submit" className="btn btn-success me-2" disabled={saving}><i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>{saving ? 'Saving…' : 'Save'}</button>

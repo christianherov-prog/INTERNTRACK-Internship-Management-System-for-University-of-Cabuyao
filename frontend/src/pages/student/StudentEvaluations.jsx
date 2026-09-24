@@ -218,7 +218,11 @@ function StudentEvaluations() {
   const [processing, setProcessing] = useState(false)
   const [internship, setInternship] = useState(() => seed?.internship ?? null)
   const [previewEval, setPreviewEval] = useState(null)
-  const [periodApproved, setPeriodApproved] = useState(() => Boolean(seed?.periodApproved))
+  // Authoritative evaluation-period state from the API (EvaluationPeriod on the
+  // server). The banner and form locks read ONLY this object, and only after it
+  // was fetched during this visit — never from a stale cache or a missing value.
+  const [period, setPeriod] = useState(null)
+  const periodApproved = Boolean(period?.approved)
 
   const load = () => {
     setError(null)
@@ -241,14 +245,14 @@ function StudentEvaluations() {
       return {
         internship: nextInternship,
         evaluations: unwrapList(evalRes.data).items,
-        periodApproved: Boolean(evalRes.data?.evaluation_period_approved),
+        period: evalRes.data?.evaluation_period || null,
       }
     })
       .then((next) => {
         if (next) {
           if (next.internship) setInternship(next.internship)
           setEvaluations(next.evaluations)
-          setPeriodApproved(Boolean(next.periodApproved))
+          setPeriod(next.period || null)
         }
       })
       .catch(err => {
@@ -258,6 +262,20 @@ function StudentEvaluations() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Approval (or a reset) can happen while this page is open: re-fetch whenever
+  // the tab regains focus, and every 30 s while the period is not yet approved.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') load() }
+    const timer = periodApproved ? null : window.setInterval(refresh, 30000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      if (timer) window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [periodApproved])
 
   const getRatingBg = (avg) => {
     const n = parseFloat(avg ?? 0)
@@ -310,8 +328,10 @@ function StudentEvaluations() {
     { key: 'FO-23', label: 'FO-23', title: 'Program Evaluation', source: 'By: You (Student)', eval: fo23, color: 'warning', canSubmit: periodApproved && !hasFO23, submitKey: 'FO-23' },
   ]
 
-  const totalAvg = evaluations.length > 0
-    ? (evaluations.reduce((sum, e) => sum + parseFloat(e.average_score ?? 0), 0) / evaluations.length).toFixed(2)
+  // Unreleased FO-24 / FO-03 arrive without scores (details_locked) and are not averaged.
+  const scoredEvaluations = evaluations.filter(e => !e.details_locked)
+  const totalAvg = scoredEvaluations.length > 0
+    ? (scoredEvaluations.reduce((sum, e) => sum + parseFloat(e.average_score ?? 0), 0) / scoredEvaluations.length).toFixed(2)
     : null
 
   return (
@@ -342,7 +362,9 @@ function StudentEvaluations() {
           <div className="stat-card">
             <div className="stat-icon amber"><i className="fa fa-clock"></i></div>
             <div>
-              <div className="stat-value">{4 - evaluations.length}</div>
+              {/* The four required forms (FO-24, FO-03, FO-22, FO-23) not yet completed.
+                  Counting all evaluations went negative once a Faculty evaluation existed. */}
+              <div className="stat-value" data-testid="pending-forms-count">{FORM_STATUS.filter(f => !f.eval || f.eval.status === 'pending').length}</div>
               <div className="stat-label">Pending Forms</div>
             </div>
           </div>
@@ -352,10 +374,16 @@ function StudentEvaluations() {
 
 
       {error && <PageError message={error} onRetry={load} />}
-      {!periodApproved && (
-        <div className="alert alert-warning d-flex align-items-center gap-2 mb-4">
+      {period?.status === 'pending_faculty_approval' && (
+        <div className="alert alert-warning d-flex align-items-center gap-2 mb-4" data-testid="evaluation-period-pending">
           <i className="fa fa-lock"></i>
-          <span>Waiting for Faculty approval of the evaluation period. Your forms stay locked until then.</span>
+          <span>{period.message || 'Waiting for Faculty approval of the evaluation period. Your forms stay locked until then.'}</span>
+        </div>
+      )}
+      {(period?.status === 'not_yet_eligible' || period?.status === 'closed') && (
+        <div className="alert alert-secondary d-flex align-items-center gap-2 mb-4" data-testid="evaluation-period-info">
+          <i className="fa fa-circle-info"></i>
+          <span>{period.message}</span>
         </div>
       )}
       {!!showSubmitModal && <SubmitEvalModal internship={internship} activeForm={showSubmitModal} onClose={() => setShowSubmitModal(null)} onSubmit={handleLocalSubmit} processing={processing} />}
@@ -381,14 +409,22 @@ function StudentEvaluations() {
                       <div className="fw-bold" style={{ fontSize: '0.9rem' }}>{form.title}</div>
                       <div className="text-muted" style={{ fontSize: '0.78rem' }}>{form.source}</div>
                     </div>
-                    {form.eval ? (
-                      <span className="badge bg-success"><i className="fa fa-check me-1"></i>Submitted</span>
+                    {form.eval && form.eval.status === 'pending' ? (
+                      <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>Not Yet Completed</span>
+                    ) : form.eval ? (
+                      <span className="badge bg-success"><i className="fa fa-check me-1"></i>{form.eval.details_locked ? 'Completed' : 'Submitted'}</span>
                     ) : (
-                      <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>Pending</span>
+                      <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>{form.submitKey ? 'Pending' : 'Not Yet Completed'}</span>
                     )}
                   </div>
 
-                  {form.eval && (
+                  {form.eval?.details_locked && (
+                    <div className="mb-2 text-muted" style={{ fontSize: '0.8rem' }} data-testid={`eval-locked-${form.key}`}>
+                      <i className="fa fa-lock me-1"></i>{form.eval.locked_message}
+                    </div>
+                  )}
+
+                  {form.eval && !form.eval.details_locked && (
                     <div className="mb-2" style={{ fontSize: '0.82rem' }}>
                       <span className="text-muted">Score: </span>
                       <strong>{parseFloat(form.eval.average_score ?? 0).toFixed(2)}</strong>
@@ -397,7 +433,7 @@ function StudentEvaluations() {
                   )}
 
                   <div className="d-flex gap-2 mt-auto">
-                    {form.eval && (
+                    {form.eval && !form.eval.details_locked && (
                       <button
                         className={`btn btn-sm btn-outline-${form.color} flex-fill`}
                         onClick={() => setPreviewEval(form.eval)}
@@ -413,8 +449,8 @@ function StudentEvaluations() {
                         <i className="fa fa-plus me-1"></i>Submit
                       </button>
                     )}
-                    {form.submitKey && !form.eval && !periodApproved && (
-                      <span className="text-muted small"><i className="fa fa-lock me-1"></i>Waiting for Faculty approval</span>
+                    {form.submitKey && !form.eval && period && !periodApproved && (
+                      <span className="text-muted small"><i className="fa fa-lock me-1"></i>{period.status === 'pending_faculty_approval' ? 'Waiting for Faculty approval' : period.label}</span>
                     )}
                   </div>
                 </div>
@@ -435,6 +471,19 @@ function StudentEvaluations() {
                   <tbody>
                     {[...supervisor, ...faculty].map(ev => {
                       const { bg, color } = getRatingBg(ev.average_score)
+                      if (ev.details_locked) {
+                        return (
+                          <tr key={ev.id}>
+                            <td><span className="badge bg-primary">{ev.form_type}</span></td>
+                            <td><span className="badge bg-secondary text-capitalize">{ev.evaluation_period}</span></td>
+                            <td className="text-capitalize">{ev.evaluator_type} supervisor</td>
+                            <td colSpan={3} className="text-muted small">
+                              <span className={`badge ${ev.status === 'pending' ? 'bg-warning text-dark' : 'bg-success'} me-2`}>{ev.status === 'pending' ? 'Not Yet Completed' : 'Completed'}</span>
+                              <i className="fa fa-lock me-1"></i>{ev.locked_message}
+                            </td>
+                          </tr>
+                        )
+                      }
                       return (
                         <tr key={ev.id}>
                           <td><span className="badge bg-primary">{ev.form_type}</span></td>

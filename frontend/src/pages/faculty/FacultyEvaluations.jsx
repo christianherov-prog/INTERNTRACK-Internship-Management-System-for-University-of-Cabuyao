@@ -69,11 +69,12 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
             </div>
             <div className="mb-3">
               <label className="form-label fw-semibold">Overall score (0-100)</label>
-              <input type="number" className="form-control" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
+              <input type="number" className="form-control" min="0" max="100" step="1" required value={score} onChange={e => setScore(e.target.value)} />
             </div>
             <div>
               <label className="form-label fw-semibold">Comments</label>
-              <textarea className="form-control" rows={3} value={comments} onChange={e => setComments(e.target.value)} placeholder="Remarks" />
+              <textarea className="form-control" rows={3} maxLength={2000} value={comments} onChange={e => setComments(e.target.value)} placeholder="Remarks" />
+              <div className="form-text text-end">{comments.length}/2000</div>
             </div>
           </div>
           <div className="modal-footer">
@@ -99,6 +100,7 @@ function FacultyEvaluations() {
   const [submitModal, setSubmitModal] = useState(null)
   const [message, setMessage] = useState(null)
   const [approvingId, setApprovingId] = useState(null)
+  const [releasingId, setReleasingId] = useState(null)
   const [filters, setFilters] = useState({ search: '', section: '' })
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
@@ -144,14 +146,52 @@ function FacultyEvaluations() {
         setApprovingId(internship.id)
         setMessage(null)
         try {
-          await api.post(`/faculty/evaluations/${internship.id}/approve-period`)
-          setMessage({ type: 'success', text: 'Evaluation period approved. Student and supervisor forms are now unlocked.' })
+          const res = await api.post(`/faculty/evaluations/${internship.id}/approve-period`)
+          // Reflect the authoritative state immediately, then re-fetch the list.
+          const nextPeriod = res.data?.evaluation_period
+          if (nextPeriod) {
+            setInternships(prev => prev.map(i => (i.id === internship.id
+              ? { ...i, evaluation_period: nextPeriod, evaluation_period_status: res.data?.evaluation_period_status || 'approved' }
+              : i)))
+          }
+          setMessage({ type: 'success', text: res.data?.message || 'Evaluation period approved. Student and supervisor forms are now unlocked.' })
           fetchData()
         } catch (err) {
           setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to approve evaluation period.' })
           throw err
         } finally {
           setApprovingId(null)
+        }
+      },
+    })
+  }
+
+  // FO-24 details stay hidden from the student until this faculty releases them.
+  const toggleRelease = async (internship, release) => {
+    const studentLabel = internship?.student_name
+      || [internship?.student?.student_profile?.last_name, internship?.student?.student_profile?.first_name].filter(Boolean).join(', ')
+      || internship?.student?.username
+      || `Internship #${internship.id}`
+    await confirm({
+      title: release ? 'Release Performance Evaluation?' : 'Hide Performance Evaluation?',
+      message: release
+        ? `Allow ${studentLabel} to view the FO-24 Performance Evaluation details (scores, ratings, and comments)?`
+        : `Hide the FO-24 Performance Evaluation details from ${studentLabel}? The student will only see that it was completed.`,
+      confirmLabel: release ? 'Release to Student' : 'Hide from Student',
+      variant: release ? 'primary' : 'danger',
+      run: async () => {
+        setReleasingId(internship.id)
+        setMessage(null)
+        try {
+          const res = await api.post(`/faculty/evaluations/${internship.id}/release-performance`, { released: release })
+          setMessage({ type: 'success', text: res.data?.message || 'Updated.' })
+          invalidateStudentPortfolio()
+          fetchData()
+        } catch (err) {
+          setMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to update evaluation visibility.' })
+          throw err
+        } finally {
+          setReleasingId(null)
         }
       },
     })
@@ -170,59 +210,69 @@ function FacultyEvaluations() {
       {loading ? (
         <div className="text-center py-5"><InternTrackLoader /></div>
       ) : (
-        <div className="content-card">
-          <div className="content-card-header">
-            <i className="fa fa-check-circle text-success"></i>
-            <h6>FO-24 — Student Internship Performance Evaluation (Official Basis for Grading)</h6>
-            <span className="ms-auto badge bg-success">{internships.length}</span>
+        <section className="content-card fo24-review" aria-labelledby="fo24-review-title">
+          <div className="content-card-header fo24-review__header">
+            <i className="fa fa-check-circle text-success" aria-hidden="true"></i>
+            <h6 id="fo24-review-title">FO-24 — Student Internship Performance Evaluation (Official Basis for Grading)</h6>
+            <span className="ms-auto badge bg-success" aria-label={`${internships.length} students`}>{internships.length}</span>
           </div>
 
-          <div className="p-3 bg-light border-bottom text-muted" style={{ fontSize: '0.88rem' }}>
-            <i className="fa fa-info-circle me-2"></i>
-            As Faculty, you have access to the <strong>FO-24</strong> (Supervisor Performance Evaluation) submitted by the Company Supervisor. This serves as the official basis for grading your assigned students. Approve the evaluation period to unlock that intern's Student (FO-22, FO-23) and Supervisor (FO-24, FO-03) forms at the same time.
+          <div className="fo24-review__info" role="note">
+            <i className="fa fa-info-circle" aria-hidden="true"></i>
+            <p className="mb-0">
+              As Faculty, you have access to the <strong>FO-24</strong> (Supervisor Performance Evaluation) submitted by the Company Supervisor.
+              It is the official basis for grading your assigned students. <strong>Approve period</strong> unlocks the intern&apos;s Student
+              (FO-22, FO-23) and Supervisor (FO-24, FO-03) forms. <strong>Release to Student</strong> lets the student see the FO-24 details.
+            </p>
           </div>
 
-          {/* Filters */}
-          <div className="p-3 border-bottom bg-white d-flex gap-3">
-            <div style={{ flex: '1' }}>
+          <div className="fo24-review__filters row g-2 g-md-3 align-items-end">
+            <div className="col-12 col-md-8">
+              <label htmlFor="fo24-search" className="form-label small text-muted mb-1">Search</label>
               <input
-                type="text"
-                className="form-control form-control-sm"
-                placeholder="Search Students"
+                id="fo24-search"
+                maxLength={100}
+                type="search"
+                className="form-control"
+                placeholder="Search students by name"
                 value={filters.search}
                 onChange={e => setFilters({ ...filters, search: e.target.value })}
               />
             </div>
-            <div style={{ width: '200px' }}>
+            <div className="col-12 col-md-4">
+              <label htmlFor="fo24-section" className="form-label small text-muted mb-1">Section</label>
               <select
-                className="form-select form-select-sm"
+                id="fo24-section"
+                className="form-select"
                 value={filters.section}
                 onChange={e => setFilters({ ...filters, section: e.target.value })}
               >
                 <option value="">All Assigned Sections</option>
-                {availableSections.map(sec => (
-                  <option key={sec.id} value={sec.name}>{sec.name}</option>
-                ))}
+                {availableSections.map(sec => {
+                  // API returns plain section strings; tolerate {id, name} objects too.
+                  const value = typeof sec === 'string' ? sec : (sec?.name ?? '')
+                  return <option key={value} value={value}>{formatYearSection(value) || value}</option>
+                })}
               </select>
             </div>
           </div>
 
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="table-light">
+          <div className="table-responsive fo24-review__scroll">
+            <table className="table align-middle mb-0 fo24-review__table">
+              <thead>
                 <tr>
-                  <th className="ps-4 py-3">Student</th>
-                  <th>Section</th>
-                  <th>Company</th>
-                  <th>Supervisor</th>
-                  <th className="text-center">Preview Evaluations</th>
-                  <th className="text-center">Evaluation Period</th>
-                  <th className="text-center">Faculty Evaluation</th>
+                  <th scope="col" className="fo24-col-student">Student</th>
+                  <th scope="col">Section</th>
+                  <th scope="col">Company</th>
+                  <th scope="col">Supervisor</th>
+                  <th scope="col" className="text-center">Preview Evaluations</th>
+                  <th scope="col" className="text-center">Evaluation Period</th>
+                  <th scope="col" className="text-center">Faculty Evaluation</th>
                 </tr>
               </thead>
               <tbody>
                 {internships.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center text-muted py-4">No evaluations found matching the filters.</td></tr>
+                  <tr><td colSpan={7} className="text-center text-muted py-5">No evaluations found matching the filters.</td></tr>
                 ) : internships.map(intern => {
                   const p = intern.student?.student_profile || intern.student?.studentProfile
                   const name = p ? `${p.last_name || ''}, ${p.first_name || ''}`.trim() : intern.student?.student_number || intern.student?.email || '—'
@@ -230,66 +280,106 @@ function FacultyEvaluations() {
                   const supName = sup ? `${sup.last_name || ''}, ${sup.first_name || ''}`.trim() : '—'
                   const fo24 = (intern.evaluations || []).find(e => e.form_type === 'FO-24')
                   const facultyEval = (intern.evaluations || []).find(e => e.form_type === 'faculty_eval')
-                  const periodApproved = intern.evaluation_period_status === 'approved'
+                  // Authoritative state from the API (EvaluationPeriod); legacy field as fallback.
+                  const period = intern.evaluation_period || {
+                    status: intern.evaluation_period_status === 'approved' ? 'approved' : 'pending_faculty_approval',
+                    label: intern.evaluation_period_status === 'approved' ? 'Approved' : 'Pending Faculty Approval',
+                  }
+                  const periodApproved = period.status === 'approved'
 
                   return (
                     <tr key={intern.id}>
-                      <td className="ps-4">
-                        <div className="fw-semibold">{name}</div>
-                        <div className="text-muted" style={{ fontSize: '0.82rem' }}>
-                          {p?.course_name || '—'}
+                      <td className="fo24-col-student">
+                        <div className="fw-semibold text-dark">{name}</div>
+                        <div className="text-muted small">{p?.course_name || p?.program?.name || '—'}</div>
+                      </td>
+                      <td><span className="badge bg-secondary-subtle text-secondary-emphasis fw-semibold">{formatYearSection(p?.section) || '—'}</span></td>
+                      <td><div className="fw-medium fo24-wrap">{intern.company?.company_name || '—'}</div></td>
+                      <td>
+                        <div className="fw-medium fo24-wrap">{supName}</div>
+                        <div className="text-muted small">{sup?.position || 'Supervisor'}</div>
+                      </td>
+                      <td>
+                        {fo24 ? (
+                          <div className="fo24-actions">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              aria-label={`Preview FO-24 for ${name}`}
+                              onClick={() => setPreviewData({ eval: fo24, internship: intern })}
+                            >
+                              <i className="fa fa-eye me-1" aria-hidden="true"></i>Preview FO-24
+                            </button>
+                            {fo24.released_to_student_at ? (
+                              <div className="fo24-actions__row">
+                                <span className="badge bg-success-subtle text-success-emphasis"><i className="fa fa-user-check me-1" aria-hidden="true"></i>Released to student</span>
+                                <AsyncButton
+                                  className="btn btn-sm btn-outline-danger"
+                                  busy={releasingId === intern.id}
+                                  busyLabel="Hiding…"
+                                  aria-label={`Hide FO-24 details from ${name}`}
+                                  onClick={() => toggleRelease(intern, false)}
+                                >
+                                  Hide
+                                </AsyncButton>
+                              </div>
+                            ) : (
+                              <AsyncButton
+                                className="btn btn-sm btn-success"
+                                busy={releasingId === intern.id}
+                                busyLabel="Releasing…"
+                                aria-label={`Release FO-24 details to ${name}`}
+                                onClick={() => toggleRelease(intern, true)}
+                              >
+                                <i className="fa fa-share me-1" aria-hidden="true"></i>Release to Student
+                              </AsyncButton>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center text-muted small"><i className="fa fa-clock me-1" aria-hidden="true"></i>Not yet submitted</div>
+                        )}
+                      </td>
+                      <td>
+                        <div className="fo24-actions">
+                          {periodApproved ? (
+                            <span className="badge bg-success fo24-badge-lg"><i className="fa fa-unlock me-1" aria-hidden="true"></i>Approved</span>
+                          ) : period.status === 'closed' ? (
+                            <span className="badge bg-secondary fo24-badge-lg">{period.label}</span>
+                          ) : (
+                            <>
+                              <span className="badge bg-warning-subtle text-warning-emphasis">{period.label}</span>
+                              <AsyncButton
+                                className="btn btn-sm btn-outline-warning"
+                                busy={approvingId === intern.id}
+                                busyLabel="Approving…"
+                                aria-label={`Approve evaluation period for ${name}`}
+                                onClick={() => approvePeriod(intern)}
+                              >
+                                <i className="fa fa-unlock me-1" aria-hidden="true"></i>Approve period
+                              </AsyncButton>
+                            </>
+                          )}
                         </div>
                       </td>
-                      <td><span className="badge bg-secondary">{formatYearSection(p?.section) || '—'}</span></td>
                       <td>
-                        <div className="fw-medium">{intern.company?.company_name || '—'}</div>
-                      </td>
-                      <td>
-                        <div className="fw-medium">{supName}</div>
-                        <div className="text-muted" style={{ fontSize: '0.82rem' }}>{sup?.position || 'Supervisor'}</div>
-                      </td>
-                      <td className="text-center pe-4">
-                        {fo24 ? (
-                          <button
-                            className="btn btn-sm btn-outline-primary px-3"
-                            onClick={() => setPreviewData({ eval: fo24, internship: intern })}
-                          >
-                            <i className="fa fa-eye me-1"></i>Preview FO-24
-                          </button>
-                        ) : (
-                          <span className="text-muted small"><i className="fa fa-clock me-1"></i>Not yet submitted</span>
-                        )}
-                      </td>
-                      <td className="text-center">
-                        {periodApproved ? (
-                          <span className="badge bg-success"><i className="fa fa-unlock me-1"></i>Approved</span>
-                        ) : (
-                          <AsyncButton
-                            className="btn btn-sm btn-outline-warning"
-                            busy={approvingId === intern.id}
-                            busyLabel="Approving…"
-                            onClick={() => approvePeriod(intern)}
-                          >
-                            <i className="fa fa-unlock me-1"></i>
-                            Approve period
-                          </AsyncButton>
-                        )}
-                      </td>
-                      <td className="text-center pe-4">
-                        <div className="d-flex justify-content-center gap-2">
+                        <div className="fo24-actions">
                           {facultyEval && (
                             <button
+                              type="button"
                               className="btn btn-sm btn-outline-secondary"
+                              aria-label={`Preview faculty evaluation for ${name}`}
                               onClick={() => setPreviewData({ eval: facultyEval, internship: intern, type: 'faculty_eval' })}
                             >
-                              <i className="fa fa-eye me-1"></i>Preview
+                              <i className="fa fa-eye me-1" aria-hidden="true"></i>Preview
                             </button>
                           )}
                           <button
+                            type="button"
                             className="btn btn-sm btn-outline-success"
+                            aria-label={`${facultyEval ? 'Update' : 'Submit'} faculty evaluation for ${name}`}
                             onClick={() => setSubmitModal({ internship: intern, existing: facultyEval })}
                           >
-                            <i className="fa fa-pen me-1"></i>{facultyEval ? 'Update' : 'Submit'}
+                            <i className="fa fa-pen me-1" aria-hidden="true"></i>{facultyEval ? 'Update' : 'Submit'}
                           </button>
                         </div>
                       </td>
@@ -299,7 +389,7 @@ function FacultyEvaluations() {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Preview Modal */}

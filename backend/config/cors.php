@@ -35,6 +35,7 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    // Required for the HttpOnly session cookie; origins above are explicit (no wildcard).
+    'supports_credentials' => true,
 
 ];

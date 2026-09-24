@@ -236,7 +236,7 @@ function SupervisorFeedback() {
         <div className="p-3 border-bottom bg-light">
           <div className="input-group input-group-sm" style={{ width: 260 }}>
             <span className="input-group-text bg-white text-muted border-end-0"><i className="fa fa-search"></i></span>
-            <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
+            <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
 

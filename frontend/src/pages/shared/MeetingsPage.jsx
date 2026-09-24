@@ -94,7 +94,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
             <div className="row g-3">
               <div className="col-md-6">
                 <label className="form-label">Title</label>
-                <input className="form-control" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <input maxLength={255} className="form-control" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </div>
               <div className="col-md-3">
                 <label className="form-label">Appointment Type</label>
@@ -104,7 +104,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
               </div>
               <div className="col-md-3">
                 <label className="form-label">Internship ID (optional)</label>
-                <input className="form-control" value={form.internship_id} onChange={(e) => setForm({ ...form, internship_id: e.target.value })} placeholder="Internship" />
+                <input maxLength={255} className="form-control" value={form.internship_id} onChange={(e) => setForm({ ...form, internship_id: e.target.value })} placeholder="Internship" />
               </div>
               <div className="col-md-4">
                 <label className="form-label">Starts</label>
@@ -116,15 +116,15 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
               </div>
               <div className="col-md-4">
                 <label className="form-label">Location</label>
-                <input className="form-control" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                <input maxLength={255} className="form-control" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Appointment Link</label>
-                <input className="form-control" value={form.meeting_url} onChange={(e) => setForm({ ...form, meeting_url: e.target.value })} placeholder="Appointment Link" />
+                <input maxLength={500} className="form-control" value={form.meeting_url} onChange={(e) => setForm({ ...form, meeting_url: e.target.value })} placeholder="Appointment Link" />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Description</label>
-                <input className="form-control" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                <input maxLength={2000} className="form-control" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
             </div>
             <button className="btn btn-primary mt-3" disabled={saving}>

@@ -246,8 +246,8 @@ class RequirementTemplateController extends Controller
         $maxFiles = UploadLimits::maxFiles();
         $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category' => 'nullable|string',
+            'description' => 'nullable|string|max:2000',
+            'category' => 'nullable|string|max:255',
             'is_active' => 'boolean',
             'targets' => 'required|array|min:1',
             'template_files' => "nullable|array|max:{$maxFiles}",
@@ -316,8 +316,8 @@ class RequirementTemplateController extends Controller
         $maxFiles = UploadLimits::maxFiles();
         $rules = [
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'category' => 'nullable|string',
+            'description' => 'nullable|string|max:2000',
+            'category' => 'nullable|string|max:255',
             'is_active' => 'boolean',
             'template_files' => "nullable|array|max:{$maxFiles}",
             'template_files.*' => 'nullable|'.UploadLimits::fileRule('doc,docx,pdf,jpg,jpeg,png'),

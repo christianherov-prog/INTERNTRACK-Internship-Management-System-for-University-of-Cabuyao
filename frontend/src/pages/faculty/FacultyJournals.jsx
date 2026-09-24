@@ -11,6 +11,7 @@ import InternTrackLoader from '../../components/InternTrackLoader'
 import { loadFacultyFo31Preview, openOfficialFo31 } from '../../utils/officialForm'
 import { formatFo31DateRange } from '../../utils/fo31DateRange'
 import { formatManilaDateTime } from '../../utils/manilaTime'
+import JournalDeadlineManager from '../../components/faculty/JournalDeadlineManager'
 
 function journalStudentNumber(journal) {
   const student = journal?.internship?.student
@@ -107,6 +108,7 @@ function FacultyJournals() {
 
   return (
     <Layout title="Journals" subtitle={currentTerm} icon="fa-book" bodyClass="faculty-page">
+      <JournalDeadlineManager />
       {error && <PageError message={error} onRetry={fetchJournals} />}
 
       {message && (
@@ -214,6 +216,16 @@ function FacultyJournals() {
                   <span className={`badge mt-1 ${j.status === 'approved' ? 'bg-success' : j.status === 'needs_revision' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
                     {j.status}
                   </span>
+                  {j.deadline_display ? (
+                    <span className={`badge mt-1 ms-1 ${j.submitted_late ? 'bg-danger' : 'bg-success'}`} title={`Deadline: ${j.deadline_display}`}>
+                      {j.submitted_late ? 'Late' : 'On time'}
+                    </span>
+                  ) : null}
+                  {(j.range_display || j.deadline_display || j.submitted_at_display) ? (
+                    <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>
+                      {[j.range_display, j.deadline_display ? `Deadline: ${j.deadline_display}` : null, j.submitted_at_display ? `Submitted: ${j.submitted_at_display}` : null].filter(Boolean).join(' · ')}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="d-flex align-items-center gap-2 ms-3 flex-shrink-0">
                   <button className="btn btn-sm btn-outline-secondary" onClick={() => openHistory(j.internship?.student_id, name)}>

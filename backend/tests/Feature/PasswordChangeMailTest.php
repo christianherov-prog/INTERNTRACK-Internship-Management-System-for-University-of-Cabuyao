@@ -17,16 +17,17 @@ class PasswordChangeMailTest extends TestCase
     {
         Mail::fake();
 
+        // Forgot Password is limited to Company Supervisors.
         $user = User::create([
-            'student_number' => '2300592',
-            'email' => 'clarence.montealegre@uc.edu.ph',
+            'login_username' => 'hte.mailcheck',
+            'email' => 'hte.mailcheck@example.com',
             'password' => Hash::make('password123'),
-            'role' => 'student',
+            'role' => 'supervisor',
             'is_active' => true,
         ]);
 
         $this->postJson('/api/v1/auth/forgot-password', [
-            'identifier' => '2300592',
+            'identifier' => 'hte.mailcheck',
         ])->assertOk()->assertJsonPath('success', true);
 
         Mail::assertSent(PasswordChangeMail::class, function (PasswordChangeMail $mail) use ($user) {

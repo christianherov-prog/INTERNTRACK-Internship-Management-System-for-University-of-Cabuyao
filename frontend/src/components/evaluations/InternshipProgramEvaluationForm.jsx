@@ -116,7 +116,7 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
                           </select>
                         </td>
                         <td>
-                          <input
+                          <input maxLength={255}
                             type="text"
                             className="form-control"
                             value={responses[`${qId}_comment`] || ''}
@@ -134,7 +134,7 @@ export const InternshipProgramEvaluationForm = ({ internship, onSubmit, processi
 
         <div className="mb-4">
           <label className="fw-bold form-label">Other comments and suggestions:</label>
-          <textarea className="form-control" rows="3" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
         </div>
 
         <div className="card-footer bg-white border-top-0 px-0 pb-0">

@@ -236,28 +236,28 @@ function NursingPortfolioBuilder() {
               <div className="portfolio-hte-row mb-3">
                 <div>
                   <label className="portfolio-field-label">HTE / Cooperating Site</label>
-                  <input className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Host Establishment" />
+                  <input maxLength={255} className="form-control portfolio-field-input" value={fields.hte_name} onChange={(e) => setRotationField(rotationId, 'hte_name', e.target.value)} placeholder="Host Establishment" />
                 </div>
                 <div>
                   <label className="portfolio-field-label">Address</label>
-                  <input className="form-control portfolio-field-input" value={fields.hte_address} onChange={(e) => setRotationField(rotationId, 'hte_address', e.target.value)} placeholder="Address" />
+                  <input maxLength={255} className="form-control portfolio-field-input" value={fields.hte_address} onChange={(e) => setRotationField(rotationId, 'hte_address', e.target.value)} placeholder="Address" />
                 </div>
               </div>
               <div className="mb-3">
                 <label className="portfolio-field-label">Company / Site Profile</label>
-                <textarea className="form-control portfolio-field-input" rows={5} value={fields.hte_profile} onChange={(e) => setRotationField(rotationId, 'hte_profile', e.target.value)} />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={5} value={fields.hte_profile} onChange={(e) => setRotationField(rotationId, 'hte_profile', e.target.value)} />
               </div>
               <div className="mb-3">
                 <label className="portfolio-field-label">Vision</label>
-                <textarea className="form-control portfolio-field-input" rows={3} value={fields.hte_vision} onChange={(e) => setRotationField(rotationId, 'hte_vision', e.target.value)} />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.hte_vision} onChange={(e) => setRotationField(rotationId, 'hte_vision', e.target.value)} />
               </div>
               <div className="mb-3">
                 <label className="portfolio-field-label">Mission</label>
-                <textarea className="form-control portfolio-field-input" rows={3} value={fields.hte_mission} onChange={(e) => setRotationField(rotationId, 'hte_mission', e.target.value)} />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.hte_mission} onChange={(e) => setRotationField(rotationId, 'hte_mission', e.target.value)} />
               </div>
               <div className="mb-3">
                 <label className="portfolio-field-label">Core Values / Objectives</label>
-                <textarea className="form-control portfolio-field-input" rows={3} value={fields.hte_values} onChange={(e) => setRotationField(rotationId, 'hte_values', e.target.value)} />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} value={fields.hte_values} onChange={(e) => setRotationField(rotationId, 'hte_values', e.target.value)} />
               </div>
               {renderUploadGroup(ROTATION_UPLOADS, (suffix) => rotationDocType(rotationId, suffix))}
             </div>
@@ -331,11 +331,11 @@ function NursingPortfolioBuilder() {
                 <p className="mb-3">Cover uses your live student record. Write your own biographical sketch and acknowledgement — do not copy another intern’s text.</p>
                 <div className="mb-3">
                   <label className="portfolio-field-label">Biographical Sketch</label>
-                  <textarea className="form-control portfolio-field-input" rows={8} value={form.bio_sketch} onChange={(e) => setFrontField('bio_sketch', e.target.value)} placeholder="Bio Sketch" />
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={8} value={form.bio_sketch} onChange={(e) => setFrontField('bio_sketch', e.target.value)} placeholder="Bio Sketch" />
                 </div>
                 <div className="mb-0">
                   <label className="portfolio-field-label">Acknowledgement</label>
-                  <textarea className="form-control portfolio-field-input" rows={8} value={form.acknowledgement} onChange={(e) => setFrontField('acknowledgement', e.target.value)} placeholder="Acknowledgement" />
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={8} value={form.acknowledgement} onChange={(e) => setFrontField('acknowledgement', e.target.value)} placeholder="Acknowledgement" />
                 </div>
               </div>
             </div>
@@ -354,7 +354,7 @@ function NursingPortfolioBuilder() {
             <div className="content-card portfolio-chapter-card border-0 shadow-none mb-3">
               <div className="content-card-header bg-light"><h6 className="mb-0">Narrative &amp; Insights of Internship Learning Experiences</h6></div>
               <div className="p-3 p-lg-4">
-                <textarea className="form-control portfolio-field-input" rows={10} value={form.narrative} onChange={(e) => setFrontField('narrative', e.target.value)} placeholder="Narrative" />
+                <textarea maxLength={10000} className="form-control portfolio-field-input" rows={10} value={form.narrative} onChange={(e) => setFrontField('narrative', e.target.value)} placeholder="Narrative" />
               </div>
             </div>
             <div className="content-card portfolio-chapter-card border-0 shadow-none mb-0">
@@ -363,19 +363,19 @@ function NursingPortfolioBuilder() {
                 <div className="portfolio-fields-2">
                   <div>
                     <label className="portfolio-field-label">a. Students</label>
-                    <textarea className="form-control portfolio-field-input" rows={4} value={form.rec_students} onChange={(e) => setFrontField('rec_students', e.target.value)} />
+                    <textarea maxLength={10000} className="form-control portfolio-field-input" rows={4} value={form.rec_students} onChange={(e) => setFrontField('rec_students', e.target.value)} />
                   </div>
                   <div>
                     <label className="portfolio-field-label">b. Internship Program</label>
-                    <textarea className="form-control portfolio-field-input" rows={4} value={form.rec_program} onChange={(e) => setFrontField('rec_program', e.target.value)} />
+                    <textarea maxLength={10000} className="form-control portfolio-field-input" rows={4} value={form.rec_program} onChange={(e) => setFrontField('rec_program', e.target.value)} />
                   </div>
                   <div>
                     <label className="portfolio-field-label">c. Curriculum</label>
-                    <textarea className="form-control portfolio-field-input" rows={4} value={form.rec_curriculum} onChange={(e) => setFrontField('rec_curriculum', e.target.value)} />
+                    <textarea maxLength={10000} className="form-control portfolio-field-input" rows={4} value={form.rec_curriculum} onChange={(e) => setFrontField('rec_curriculum', e.target.value)} />
                   </div>
                   <div>
                     <label className="portfolio-field-label">d. Host Training Establishments</label>
-                    <textarea className="form-control portfolio-field-input" rows={4} value={form.rec_hte} onChange={(e) => setFrontField('rec_hte', e.target.value)} />
+                    <textarea maxLength={10000} className="form-control portfolio-field-input" rows={4} value={form.rec_hte} onChange={(e) => setFrontField('rec_hte', e.target.value)} />
                   </div>
                 </div>
               </div>

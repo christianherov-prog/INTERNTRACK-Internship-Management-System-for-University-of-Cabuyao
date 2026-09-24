@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\AttendanceLog;
 use App\Models\Internship;
+use App\Models\User;
+use App\Support\EvaluationVisibility;
 use App\Support\ManilaTime;
 use App\Support\OfficialFormAsset;
 
@@ -19,11 +21,20 @@ class OfficialFormDataService
         protected PortfolioDataService $portfolio,
     ) {}
 
-    public function bundle(Internship $internship): array
+    /**
+     * @param  User|null  $requester  The signed-in user. Student requesters never
+     *                                receive unreleased FO-24/FO-03 details.
+     */
+    public function bundle(Internship $internship, ?User $requester = null): array
     {
         $viewer = $internship->student;
         // Faculty must be able to preview and download a journal before approving it.
-        $payload = $this->portfolio->payload($internship, $viewer, includeUnapprovedJournals: true);
+        $payload = $this->portfolio->payload(
+            $internship,
+            $viewer,
+            includeUnapprovedJournals: true,
+            studentView: EvaluationVisibility::viewerIsStudent($requester),
+        );
         $identity = $payload['identity'] ?? [];
         $identity['student_signature'] = OfficialFormAsset::dataUri($identity['student_signature_path'] ?? null);
         $identity['supervisor_signature'] = OfficialFormAsset::dataUri($identity['supervisor_signature_path'] ?? null);
@@ -72,7 +83,7 @@ class OfficialFormDataService
             'fo30' => $fo30,
             'month_label' => $month ? $month : null,
             'university_logo' => OfficialFormAsset::universityLogoDataUri(),
-            'company_logo' => OfficialFormAsset::dataUri($fo30['company_logo_path'] ?? null),
+            // FO-30 no longer carries the HTE logo; the header keeps an empty slot.
             'student_signature' => OfficialFormAsset::dataUri($fo30['student_signature_path'] ?? null),
             'supervisor_signature' => $anyValidated
                 ? OfficialFormAsset::dataUri($fo30['supervisor_signature_path'] ?? null)
@@ -88,7 +99,7 @@ class OfficialFormDataService
 
         return [
             'identity' => $bundle['identity'],
-            'company_logo' => OfficialFormAsset::dataUri($bundle['company_logo_path'] ?? null),
+            // FO-31 no longer carries the HTE logo; the header keeps an empty slot.
             'university_logo' => OfficialFormAsset::universityLogoDataUri(),
             'student_signature' => OfficialFormAsset::dataUri($bundle['identity']['student_signature_path'] ?? null),
             'journals' => $bundle['journals'],

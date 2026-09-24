@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\FacultySectionAssignment;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Services\AuthService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\MisdIntegrationService;
 use App\Services\StaffAssignmentService;
@@ -269,6 +270,9 @@ class MisdAdminController extends Controller
                 'email'         => $user->email ?? $profile?->email,
                 'role'          => $user->role,
                 'is_active'     => (bool) $user->is_active,
+                'is_locked'     => $user->locked_at !== null,
+                'locked_at'     => optional($user->locked_at)?->toIso8601String(),
+                'failed_login_attempts' => (int) $user->failed_login_attempts,
                 'name'          => $name,
                 'last_login_at' => optional($user->last_login_at)?->toIso8601String(),
                 'created_at'    => optional($user->created_at)?->toIso8601String(),
@@ -299,6 +303,27 @@ class MisdAdminController extends Controller
                 'username'  => $user->username,
                 'role'      => $user->role,
                 'is_active' => (bool) $user->is_active,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/admin/users/{id}/unlock
+     * Clears a lockout caused by repeated failed sign-ins (Admin/MISD only).
+     */
+    public function unlockUser(Request $request, int $id): JsonResponse
+    {
+        $user = User::findOrFail($id);
+        $user = app(AuthService::class)->unlockAccount($user, $request->user());
+
+        return response()->json([
+            'message' => 'Account unlocked. The user can sign in again.',
+            'user'    => [
+                'id'        => $user->id,
+                'username'  => $user->username,
+                'role'      => $user->role,
+                'is_locked' => false,
+                'failed_login_attempts' => 0,
             ],
         ]);
     }

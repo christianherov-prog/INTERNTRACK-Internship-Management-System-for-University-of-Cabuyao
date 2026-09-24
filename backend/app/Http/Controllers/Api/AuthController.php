@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Http\Requests\Auth\ConfirmPasswordChangeRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\UploadAvatarRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
+use App\Support\AuthCookie;
 use App\Support\NotificationPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,10 +35,15 @@ class AuthController extends Controller
             $request->ip(),
         );
 
-        return response()->json([
-            'token' => $token,
-            'user'  => new UserResource($user),
-        ]);
+        // The SPA (X-Requested-With) authenticates with the HttpOnly cookie, which
+        // every tab shares, and never receives the token in JavaScript. Other API
+        // clients still get the bearer token in the body.
+        $body = ['user' => new UserResource($user)];
+        if ($request->headers->get('X-Requested-With') !== 'XMLHttpRequest') {
+            $body = ['token' => $token] + $body;
+        }
+
+        return response()->json($body)->withCookie(AuthCookie::make($token, $request));
     }
 
     /** POST /api/v1/auth/logout */
@@ -53,7 +58,8 @@ class AuthController extends Controller
 
         audit_log($user->id, 'logout', []);
 
-        return response()->json(['message' => 'Logged out successfully.']);
+        return response()->json(['message' => 'Logged out successfully.'])
+            ->withCookie(AuthCookie::forget($request));
     }
 
     /** GET /api/v1/auth/user */
@@ -75,21 +81,6 @@ class AuthController extends Controller
         ]);
     }
 
-    /** PUT /api/v1/auth/password */
-    public function changePassword(ChangePasswordRequest $request): JsonResponse
-    {
-        $user = $this->auth->changePassword(
-            $request->user(),
-            $request->input('current_password'),
-            $request->input('new_password'),
-        );
-
-        return response()->json([
-            'message' => 'Password updated successfully.',
-            'user'    => new UserResource($user),
-        ]);
-    }
-
     /** POST /api/v1/auth/forgot-password */
     public function forgotPassword(Request $request): JsonResponse
     {
@@ -100,19 +91,6 @@ class AuthController extends Controller
         $result = $this->auth->forgotPassword($request->input('identifier'));
 
         return response()->json($result);
-    }
-
-    /** POST /api/v1/auth/request-password-change */
-    public function requestPasswordChange(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        $this->auth->requestPasswordChange($user);
-
-        return response()->json([
-            'message' => 'Password confirmation email sent. Please check your inbox (and system notifications).',
-            'email'   => $user->email,
-        ]);
     }
 
     /** POST /api/v1/auth/confirm-password-change */

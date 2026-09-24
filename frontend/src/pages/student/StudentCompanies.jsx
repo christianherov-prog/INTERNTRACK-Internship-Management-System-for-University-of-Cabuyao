@@ -46,6 +46,8 @@ function StudentCompanies() {
   const [activeTab, setActiveTab] = useState('companies')
   const [companies, setCompanies] = useState(() => seed?.companies ?? [])
   const [applications, setApplications] = useState(() => seed?.applications ?? [])
+  // Authoritative lock from the API: once a placement is accepted, no new applications.
+  const [placementLock, setPlacementLock] = useState(() => seed?.placementLock ?? null)
   const [hteRequests, setHteRequests] = useState(() => seed?.hteRequests ?? [])
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
@@ -68,12 +70,14 @@ function StudentCompanies() {
         return {
           companies: compRes.data.companies || [],
           applications: appRes.data.applications || [],
+          placementLock: appRes.data.placement_lock || null,
           hteRequests: hteRes.data.requests || [],
         }
       })
       if (payload) {
         setCompanies(payload.companies)
         setApplications(payload.applications)
+        setPlacementLock(payload.placementLock)
         setHteRequests(payload.hteRequests)
       }
     } catch (err) {
@@ -122,6 +126,10 @@ function StudentCompanies() {
       cacheDelete('coordinator:applications')
       loadData()
     } catch (err) {
+      if (err.response?.status === 409 && err.response?.data?.placement_lock) {
+        setPlacementLock(err.response.data.placement_lock)
+        setApplyTarget(null)
+      }
       setError(err.response?.data?.message || err.response?.data?.errors?.moa?.[0] || 'Failed to send application.')
     } finally {
       setSubmitting(false)
@@ -253,6 +261,15 @@ function StudentCompanies() {
                 </div>
               ) : (
                 <div className="table-responsive">
+                  {placementLock?.locked && (
+                    <div className="alert alert-info d-flex align-items-center gap-2 m-3 mb-2" role="status" data-testid="placement-lock-banner">
+                      <i className="fa fa-lock"></i>
+                      <span>
+                        {placementLock.message}
+                        {placementLock.company_name ? <> Current placement: <strong>{placementLock.company_name}</strong>.</> : null}
+                      </span>
+                    </div>
+                  )}
                   <table className="table table-hover mb-0">
                     <thead>
                       <tr>
@@ -269,6 +286,8 @@ function StudentCompanies() {
                         const existing = applicationForCompany(applications, c.id)
                         const send = sendButtonState(existing)
                         const noSlots = c.slots_available === 0
+                        const locked = Boolean(placementLock?.locked)
+                        const isAcceptedCompany = locked && Number(placementLock.company_id) === Number(c.id)
                         return (
                         <tr key={c.id}>
                           <td>
@@ -290,15 +309,31 @@ function StudentCompanies() {
                             </span>
                           </td>
                           <td className="text-center">
-                            <button
-                              id={`apply-company-${c.id}`}
-                              className={`btn btn-sm px-3 ${send.disabled ? 'btn-outline-secondary' : 'btn-primary'}`}
-                              onClick={() => { setApplyTarget(c); setApplyMoa(null); setError(null) }}
-                              disabled={submitting || noSlots || send.disabled}
-                            >
-                              <i className={`fa ${send.disabled ? 'fa-check' : 'fa-paper-plane'} me-1`}></i>
-                              {send.label}
-                            </button>
+                            {isAcceptedCompany ? (
+                              <span className="badge bg-success" data-testid={`accepted-company-${c.id}`}>
+                                <i className="fa fa-circle-check me-1"></i>Current placement
+                              </span>
+                            ) : locked ? (
+                              <button
+                                id={`apply-company-${c.id}`}
+                                className="btn btn-sm px-3 btn-outline-secondary"
+                                disabled
+                                title={placementLock.message}
+                                aria-label={`Apply to ${c.company_name} unavailable: ${placementLock.message}`}
+                              >
+                                <i className="fa fa-lock me-1"></i>Locked
+                              </button>
+                            ) : (
+                              <button
+                                id={`apply-company-${c.id}`}
+                                className={`btn btn-sm px-3 ${send.disabled ? 'btn-outline-secondary' : 'btn-primary'}`}
+                                onClick={() => { setApplyTarget(c); setApplyMoa(null); setError(null) }}
+                                disabled={submitting || noSlots || send.disabled}
+                              >
+                                <i className={`fa ${send.disabled ? 'fa-check' : 'fa-paper-plane'} me-1`}></i>
+                                {send.label}
+                              </button>
+                            )}
                           </td>
                         </tr>
                         )
@@ -425,6 +460,12 @@ function StudentCompanies() {
                 <div className="hte-info-banner">
                   Request an HTE that is not yet listed. The Coordinator will review the request and its MOA before approval.
                 </div>
+                {placementLock?.locked && (
+                  <div className="alert alert-info d-flex align-items-center gap-2 mb-3" role="status">
+                    <i className="fa fa-lock"></i>
+                    <span>{placementLock.message}</span>
+                  </div>
+                )}
                 <form onSubmit={submitHteRequest}>
                   <div className="hte-form-section">
                     <div className="hte-form-section-title">Company information</div>
@@ -438,7 +479,8 @@ function StudentCompanies() {
                         value={newHte.company_name}
                         onChange={e => setNewHte({...newHte, company_name: e.target.value})}
                         placeholder="Company Name"
-                        disabled={submitting}
+                        maxLength={255}
+                        disabled={submitting || placementLock?.locked}
                       />
                     </div>
                     <div className="mb-3">
@@ -451,7 +493,8 @@ function StudentCompanies() {
                         value={newHte.address}
                         onChange={e => setNewHte({...newHte, address: e.target.value})}
                         placeholder="Company Address"
-                        disabled={submitting}
+                        maxLength={255}
+                        disabled={submitting || placementLock?.locked}
                       />
                     </div>
                     <div className="mb-0">
@@ -475,15 +518,15 @@ function StudentCompanies() {
                     <div className="row g-3">
                       <div className="col-md-4">
                         <label className="form-label fw-semibold" htmlFor="hte-contact-person">Contact Person <span className="text-danger">*</span></label>
-                        <input id="hte-contact-person" type="text" className="form-control" required value={newHte.contact_person} onChange={e => setNewHte({...newHte, contact_person: e.target.value})} placeholder="Contact Person" disabled={submitting} />
+                        <input id="hte-contact-person" type="text" className="form-control" required value={newHte.contact_person} onChange={e => setNewHte({...newHte, contact_person: e.target.value})} placeholder="Contact Person" maxLength={255} disabled={submitting || placementLock?.locked} />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-semibold" htmlFor="hte-contact-email">Contact Email <span className="text-danger">*</span></label>
-                        <input id="hte-contact-email" type="email" className="form-control" required value={newHte.contact_email} onChange={e => setNewHte({...newHte, contact_email: e.target.value})} placeholder="Contact Email" disabled={submitting} />
+                        <input id="hte-contact-email" type="email" className="form-control" required value={newHte.contact_email} onChange={e => setNewHte({...newHte, contact_email: e.target.value})} placeholder="Contact Email" maxLength={255} disabled={submitting || placementLock?.locked} />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-semibold" htmlFor="hte-contact-number">Contact Number <span className="text-danger">*</span></label>
-                        <input id="hte-contact-number" type="text" className="form-control" required value={newHte.contact_number} onChange={e => setNewHte({...newHte, contact_number: e.target.value})} placeholder="Contact Number" disabled={submitting} />
+                        <input id="hte-contact-number" type="text" className="form-control" required value={newHte.contact_number} onChange={e => setNewHte({...newHte, contact_number: e.target.value})} placeholder="Contact Number" minLength={7} maxLength={50} pattern="[0-9+\-\s\(\)]{7,50}" title="7 to 50 characters: digits, spaces, +, -, ( )" disabled={submitting || placementLock?.locked} />
                       </div>
                     </div>
                   </div>
@@ -498,8 +541,10 @@ function StudentCompanies() {
                       value={newHte.remarks}
                       onChange={e => setNewHte({...newHte, remarks: e.target.value})}
                       placeholder="Reason for Request"
-                      disabled={submitting}
+                      maxLength={2000}
+                      disabled={submitting || placementLock?.locked}
                     ></textarea>
+                    <div className="form-text text-end">{(newHte.remarks || '').length}/2000</div>
                   </div>
 
                   <div className="hte-form-section">
@@ -522,7 +567,7 @@ function StudentCompanies() {
                     >
                       Clear
                     </button>
-                    <button id="hte-submit-btn" type="submit" className="btn btn-primary px-4" disabled={submitting}>
+                    <button id="hte-submit-btn" type="submit" className="btn btn-primary px-4" disabled={submitting || placementLock?.locked}>
                       {submitting
                         ? <><i className="fa fa-spinner fa-spin me-2"></i>Sending...</>
                         : <><i className="fa fa-paper-plane me-2"></i>Send Request</>

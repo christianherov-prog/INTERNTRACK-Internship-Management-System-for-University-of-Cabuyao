@@ -20,9 +20,9 @@ class RequirementController extends Controller
     {
         $data = $request->validate([
             'name'        => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:2000',
             'category'    => 'required|in:pre-ojt,during,post-ojt,general',
-            'sort_order'  => 'nullable|integer',
+            'sort_order'  => 'nullable|integer|min:0|max:1000',
             'is_active'   => 'nullable|boolean',
         ]);
 
@@ -38,9 +38,9 @@ class RequirementController extends Controller
 
         $data = $request->validate([
             'name'        => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'nullable|string|max:2000',
             'category'    => 'sometimes|required|in:pre-ojt,during,post-ojt,general',
-            'sort_order'  => 'nullable|integer',
+            'sort_order'  => 'nullable|integer|min:0|max:1000',
             'is_active'   => 'nullable|boolean',
         ]);
 

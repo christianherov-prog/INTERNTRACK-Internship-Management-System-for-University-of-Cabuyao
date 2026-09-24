@@ -466,7 +466,7 @@ class CoordinatorController extends Controller
         $request->validate([
             'company_id' => 'required|exists:companies,id',
             'supervisor_id' => 'required|exists:users,id',
-            'section' => 'nullable|string',
+            'section' => 'nullable|string|max:50',
             'faculty_id' => 'nullable|exists:users,id',
         ]);
 
@@ -927,97 +927,8 @@ class CoordinatorController extends Controller
         return ApiResponse::list($notes);
     }
 
-    public function updateStudentSection(Request $request, $userId)
-    {
-        $request->validate([
-            'section' => 'nullable|string',
-        ]);
-
-        $user = User::where('role', 'student')->findOrFail($userId);
-        DepartmentScope::abortUnlessStudentInDepartment($request->user(), (int) $userId);
-        $profile = $user->studentProfile;
-
-        if (! $profile) {
-            return response()->json(['message' => 'Student profile not found.'], 404);
-        }
-
-        $section = FacultySectionAssignmentService::normalizeSection($request->section);
-        $profile->section = $section;
-        $profile->save();
-
-        $service = app(FacultySectionAssignmentService::class);
-        $assignedFaculty = $service->suggestFacultyForSection(
-            $profile->section,
-            is_object($profile->program) ? $profile->program->name : $profile->program,
-            $profile->school_year,
-            $profile->semester,
-            DepartmentScope::studentDepartmentId($profile)
-        );
-        if ($assignedFaculty && ! DepartmentScope::facultyMatchesStudent($assignedFaculty, $profile)) {
-            $assignedFaculty = null;
-        }
-
-        if ($assignedFaculty) {
-            $internships = Internship::where('student_id', $userId)->get();
-            foreach ($internships as $internship) {
-                $internship->faculty_id = $assignedFaculty->id;
-                $internship->save();
-            }
-        }
-
-        return response()->json([
-            'message' => 'Section updated successfully.',
-            'section' => $section,
-            'resolved_faculty' => $service->formatFaculty($assignedFaculty),
-        ]);
-    }
-
-    public function bulkUpdateStudentSection(Request $request)
-    {
-        $request->validate([
-            'student_ids' => 'required|array',
-            'student_ids.*' => 'exists:users,id',
-            'section' => 'nullable|string',
-        ]);
-
-        $section = FacultySectionAssignmentService::normalizeSection($request->section);
-        $service = app(FacultySectionAssignmentService::class);
-
-        $assignedFaculty = $service->suggestFacultyForSection(
-            $section,
-            null,
-            null,
-            null,
-            DepartmentScope::departmentIdFor($request->user())
-        );
-        if ($assignedFaculty && ! DepartmentScope::facultyBelongsToActor($request->user(), $assignedFaculty)) {
-            $assignedFaculty = null;
-        }
-        $facultyId = $assignedFaculty?->id;
-
-        $studentIds = collect($request->student_ids)->map(fn ($id) => (int) $id)->unique()->values();
-        $allowedIds = User::inDepartment()->where('role', 'student')->whereIn('id', $studentIds)->pluck('id');
-        if ($allowedIds->count() !== $studentIds->count()) {
-            DepartmentScope::abortDifferentDepartment();
-        }
-
-        if ($assignedFaculty) {
-            User::whereIn('id', $allowedIds)->with('studentProfile')->get()->each(function (User $student) use ($assignedFaculty) {
-                DepartmentScope::assertFacultySameDepartment($assignedFaculty, $student);
-            });
-        }
-
-        DB::transaction(function () use ($allowedIds, $section, $facultyId) {
-            StudentProfile::whereIn('user_id', $allowedIds)->update(['section' => $section]);
-            Internship::whereIn('student_id', $allowedIds)->update(['faculty_id' => $facultyId]);
-        });
-
-        return response()->json([
-            'message' => 'Sections updated successfully.',
-            'section' => $section,
-            'resolved_faculty' => $service->formatFaculty($assignedFaculty),
-        ]);
-    }
+    // Coordinator section changes (single and bulk) were removed: student sections
+    // come from iEnroll/MISD and faculty section mappings, not the Student Intern Roster.
 
     public function applications()
     {

@@ -78,7 +78,7 @@ function ChangePasswordConfirmPage() {
                 <i className="fa fa-exclamation-triangle fa-3x text-warning mb-3"></i>
                 <h5 className="fw-bold">Invalid Link</h5>
                 <p className="text-muted mb-4">This password confirmation link is missing required security tokens.</p>
-                <Link to="/" className="btn btn-primary w-100 py-2">Return to Login</Link>
+                <Link to="/supervisor/login" className="btn btn-primary w-100 py-2">Return to Supervisor Sign-in</Link>
               </div>
             ) : successMsg ? (
               <div className="text-center py-4">
@@ -87,7 +87,7 @@ function ChangePasswordConfirmPage() {
                 <p className="text-muted mb-4">{successMsg}</p>
                 <button
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/supervisor/login')}
                   className="btn btn-success w-100 py-2 fw-semibold"
                 >
                   Proceed to Login / Dashboard

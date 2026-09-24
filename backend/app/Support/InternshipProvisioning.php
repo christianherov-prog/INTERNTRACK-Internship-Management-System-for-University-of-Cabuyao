@@ -101,9 +101,12 @@ final class InternshipProvisioning
         $cancelled = 0;
 
         foreach ($studentIds as $studentId) {
+            // Rows that already hold student work are never superseded by empty ones.
             $rows = Internship::query()
                 ->where('student_id', $studentId)
                 ->whereIn('status', InternshipStatuses::openCurrent())
+                ->withCount(['journals', 'attendance', 'documents', 'evaluations'])
+                ->orderByRaw('(journals_count + attendance_count + documents_count + evaluations_count) DESC')
                 ->orderByRaw('(company_id IS NOT NULL) DESC')
                 ->orderByRaw('(supervisor_id IS NOT NULL) DESC')
                 ->orderByDesc('id')

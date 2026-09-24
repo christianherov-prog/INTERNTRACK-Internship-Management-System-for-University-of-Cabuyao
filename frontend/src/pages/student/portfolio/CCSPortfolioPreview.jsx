@@ -12,6 +12,7 @@ import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, pickLatestEvaluation } from
 import { displayLabel } from '../../../utils/displayLabel';
 import { useCachedPage } from '../../../hooks/useCachedPage';
 import InternTrackLoader from '../../../components/InternTrackLoader'
+import usePortfolioPreviewScale from '../../../hooks/usePortfolioPreviewScale'
 
 // --- Reusable Header Component ---
 function PageHeader({ companyLogoPath }) {
@@ -80,13 +81,16 @@ const TocRow = ({ label, page, level = 0, bold = false, style }) => (
   </div>
 );
 
-function PortfolioPreview() {
-  const { loading, seed, run } = useCachedPage('student:portfolio');
-  const [data, setData] = useState(seed ?? null);
+function PortfolioPreview({ preloadedData = null, backTo = '/student/portfolio', backLabel = 'Back to Builder', modeLabel = 'Draft Preview Mode' } = {}) {
+  const { loading: cacheLoading, seed, run } = useCachedPage('student:portfolio');
+  const loading = preloadedData ? false : cacheLoading;
+  const [data, setData] = useState(preloadedData ?? seed ?? null);
   const [error, setError] = useState(null);
   const [toc, setToc] = useState({});
 
   const printRef = useRef(null);
+
+  usePortfolioPreviewScale()
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: 'CCS_Portfolio_Preview'
@@ -94,6 +98,7 @@ function PortfolioPreview() {
 
   const load = () => {
     setError(null);
+    if (preloadedData) { setData(preloadedData); return; }
     run(() => api.get('/student/portfolio').then(res => res.data))
       .then(next => { if (next) setData(next); })
       .catch(err => {
@@ -212,7 +217,7 @@ function PortfolioPreview() {
       <div style={{ background: '#e5e5e5', minHeight: '100vh', padding: '24px' }}>
         <PageError message={error} onRetry={load} />
         <div className="text-center mt-3">
-          <Link to="/student/portfolio" className="text-muted">Back to Builder</Link>
+          <Link to={backTo} className="text-muted">{backLabel}</Link>
         </div>
       </div>
     )
@@ -295,19 +300,19 @@ function PortfolioPreview() {
 
   return (
     <div ref={printRef} style={{ background: '#e5e5e5', minHeight: '100vh', paddingBottom: '60px' }}>
-      <div className="no-print" style={{
+      <div className="no-print portfolio-preview-toolbar" style={{
         position: 'sticky', top: 0, left: 0, zIndex: 1000,
         background: '#1a1a2e', color: '#fff',
         padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
       }}>
         <div className="d-flex align-items-center gap-3">
-          <Link to="/student/portfolio" style={{ color: '#ccc', textDecoration: 'none', fontSize: '14px' }}>
-            <i className="fa fa-arrow-left me-2"></i>Back to Builder
+          <Link to={backTo} style={{ color: '#ccc', textDecoration: 'none', fontSize: '14px' }}>
+            <i className="fa fa-arrow-left me-2"></i>{backLabel}
           </Link>
-          <span style={{ color: '#555' }}>|</span>
+          <span className="portfolio-preview-sep" style={{ color: '#555' }}>|</span>
           <span style={{ fontWeight: 600, fontSize: '15px' }}>Portfolio Preview</span>
-          <span className="badge bg-info text-dark ms-2" style={{ fontSize: '12px', fontWeight: '500' }}><i className="fa fa-info-circle me-1"></i>Draft Preview Mode</span>
+          <span className="badge bg-info text-dark ms-2" style={{ fontSize: '12px', fontWeight: '500' }}><i className="fa fa-info-circle me-1"></i>{modeLabel}</span>
         </div>
         <div className="d-flex gap-2">
           <button

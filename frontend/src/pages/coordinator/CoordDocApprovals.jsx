@@ -168,7 +168,7 @@ function CoordDocApprovals() {
                 </p>
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Remarks (optional)</label>
-                  <textarea
+                  <textarea maxLength={1000}
                     className="form-control"
                     rows={2}
                     value={remarks}
@@ -204,7 +204,7 @@ function CoordDocApprovals() {
               </div>
               <div className="modal-body">
                 <label className="form-label fw-semibold">Remarks / Reason for Rejection <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Feedback"></textarea>
+                <textarea maxLength={1000} className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Feedback"></textarea>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
@@ -221,7 +221,7 @@ function CoordDocApprovals() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           {["all", ...new Set(docs.map(d => (typeof d.internship?.student?.studentProfile?.program === 'string' ? d.internship?.student?.studentProfile?.program : d.internship?.student?.studentProfile?.program?.name || d.internship?.student?.studentProfile?.program?.code) || "—").filter(x => x !== "—"))].map(p => (

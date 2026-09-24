@@ -9,7 +9,7 @@ function CoordSettings() {
       summaryNote="Your official staff identity is synced from iEnroll. Update password and avatar here; request MISD corrections for identity changes."
       accountIntro="Official coordinator profile from iEnroll. These fields are display-only in INTERNTRACK."
       notificationsIntro="Choose which alerts you want to receive. As Coordinator & Faculty Supervisor, you can manage both coordinator and faculty notification types."
-      securityIntro="Update your password and strengthen account protection for your school credentials."
+      securityIntro="Account protection and sign-in security for your InternTrack account."
       metaFields={[
         { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
         { label: 'Department', key: 'department', fallback: 'College of Computing Studies' },

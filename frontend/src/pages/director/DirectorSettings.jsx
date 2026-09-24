@@ -7,7 +7,7 @@ function DirectorSettings() {
       bodyClass="director-page"
       subtitleLabel="Director"
       notificationsIntro="Choose which program-oversight alerts you want to receive."
-      securityIntro="Update your password and strengthen account protection for your director credentials."
+      securityIntro="Account protection and sign-in security for your InternTrack account."
       metaFields={[
         { label: 'Faculty Number', key: 'faculty_number', fallback: '—' },
         { label: 'Department', key: 'department', fallback: 'Placement, Alumni, & Linkages Department' },

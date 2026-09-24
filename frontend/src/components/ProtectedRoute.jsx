@@ -2,15 +2,6 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import InternTrackLoader from './InternTrackLoader'
 
-const SETTINGS_PATH = {
-  student: '/student/settings',
-  director: '/director/settings',
-  supervisor: '/supervisor/settings',
-  faculty: '/faculty/settings',
-  coordinator: '/coordinator/settings',
-  admin: '/admin/settings',
-}
-
 function ProtectedRoute({ children, role, allowedRoles }) {
   const { user, loading } = useAuth()
   const location = useLocation()
@@ -40,11 +31,6 @@ function ProtectedRoute({ children, role, allowedRoles }) {
       admin: '/admin/dashboard',
     }
     return <Navigate to={roleRoutes[user.role] || '/'} replace />
-  }
-
-  const settingsPath = SETTINGS_PATH[user.role]
-  if (user.must_change_password && settingsPath && !location.pathname.endsWith('/settings')) {
-    return <Navigate to={settingsPath} replace state={{ forcePasswordChange: true }} />
   }
 
   return children

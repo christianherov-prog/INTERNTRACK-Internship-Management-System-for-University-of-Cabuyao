@@ -5,8 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 class JournalEntry extends Model {
     use SoftDeletes;
-    protected $fillable = ['internship_id','entry_number','date','end_date','activities_summary','learnings','challenges','status','supervisor_feedback','supervisor_reviewed_by','supervisor_reviewed_at','faculty_feedback','faculty_reviewed_by','faculty_reviewed_at', 'week_number', 'file_path', 'notes', 'score'];
-    protected $casts = ['date'=>'date','end_date'=>'date','supervisor_reviewed_at'=>'datetime','faculty_reviewed_at'=>'datetime'];
+    protected $fillable = ['internship_id','entry_number','date','end_date','activities_summary','learnings','challenges','status','supervisor_feedback','supervisor_reviewed_by','supervisor_reviewed_at','faculty_feedback','faculty_reviewed_by','faculty_reviewed_at', 'week_number', 'file_path', 'notes', 'score', 'submitted_at', 'deadline_at', 'submitted_late'];
+    protected $casts = ['date'=>'date','end_date'=>'date','supervisor_reviewed_at'=>'datetime','faculty_reviewed_at'=>'datetime','submitted_at'=>'datetime','deadline_at'=>'datetime','submitted_late'=>'boolean'];
     public function internship() { return $this->belongsTo(Internship::class); }
 
     public function toArray(): array

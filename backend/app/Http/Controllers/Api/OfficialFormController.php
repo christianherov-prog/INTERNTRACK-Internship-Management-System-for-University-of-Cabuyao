@@ -14,6 +14,6 @@ class OfficialFormController extends Controller
     {
         InternshipAccess::abortUnlessCanView($request->user(), $internship);
 
-        return response()->json(app(OfficialFormDataService::class)->bundle($internship));
+        return response()->json(app(OfficialFormDataService::class)->bundle($internship, $request->user()));
     }
 }

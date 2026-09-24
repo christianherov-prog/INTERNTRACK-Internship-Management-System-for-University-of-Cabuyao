@@ -143,6 +143,9 @@ class DepartmentOwnershipRepairTest extends TestCase
         $ccs = $this->collegeParty('CCS', 'Bachelor of Science in Information Technology', 'BSIT', '4ITD');
         $chas = $this->collegeParty('CHAS', 'Bachelor of Science in Nursing', 'BSN', '4BSN-A');
         $company = $this->makeEligibleCompany();
+        // Applying requires a student who is still seeking placement: an accepted,
+        // active placement locks new applications (PLACEMENT-LOCK).
+        $ccs['internship']->update(['status' => 'pending_placement', 'company_id' => null, 'supervisor_id' => null]);
 
         Sanctum::actingAs($ccs['student']);
         $this->postJson('/api/v1/student/applications', [

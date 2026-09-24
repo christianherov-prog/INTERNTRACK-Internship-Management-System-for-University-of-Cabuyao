@@ -85,7 +85,7 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
                     </select>
                   </td>
                   <td>
-                    <input
+                    <input maxLength={255}
                       type="text"
                       className="form-control"
                       value={responses[`q${idx + 1}_comment`] || ''}
@@ -100,7 +100,7 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
 
         <div className="mb-3">
           <label className="fw-bold form-label">Please list new training activities related to your program which you have experienced in the training/practicum but were not specified in the Student Training Plan:</label>
-          <textarea className="form-control" rows="3" value={responses['new_activities'] || ''} onChange={(e) => handleTextChange('new_activities', e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={responses['new_activities'] || ''} onChange={(e) => handleTextChange('new_activities', e.target.value)}></textarea>
         </div>
 
         <div className="mb-3">
@@ -114,18 +114,18 @@ export const HostTrainingEstEvaluationForm = ({ internship, onSubmit, processing
               <input type="radio" className="form-check-input" name="recommend_host" value="no" onChange={(e) => handleRatingChange('recommend', e.target.value)} />
               <label className="form-check-label">No</label>
             </div>
-            <input type="text" className="form-control flex-grow-1" placeholder="Reason" value={responses['recommend_reason'] || ''} onChange={(e) => handleTextChange('recommend_reason', e.target.value)} />
+            <input maxLength={500} type="text" className="form-control flex-grow-1" placeholder="Reason" value={responses['recommend_reason'] || ''} onChange={(e) => handleTextChange('recommend_reason', e.target.value)} />
           </div>
         </div>
 
         <div className="mb-4">
           <label className="fw-bold form-label">What specific curricular programs of students do you think will best fit with the training being provided by your host company?</label>
-          <textarea className="form-control" rows="2" value={responses['fit_programs'] || ''} onChange={(e) => handleTextChange('fit_programs', e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="2" value={responses['fit_programs'] || ''} onChange={(e) => handleTextChange('fit_programs', e.target.value)}></textarea>
         </div>
 
         <div className="mb-4">
           <label className="fw-bold form-label">Other Comments / General Comments:</label>
-          <textarea className="form-control" rows="2" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="2" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
         </div>
 
         <div className="card-footer bg-white border-top-0 px-0 pb-0">

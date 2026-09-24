@@ -84,6 +84,31 @@ class StudentPortfolioController extends Controller
      */
     public function update(Request $request)
     {
+        // Column limits: company_* are VARCHAR(255); essays are TEXT.
+        $essay = 'nullable|string|max:10000';
+        $request->validate([
+            'internship_id' => 'nullable|exists:internships,id',
+            'company_name' => 'nullable|string|max:255',
+            'company_address' => 'nullable|string|max:255',
+            'company_vision' => $essay,
+            'company_mission' => $essay,
+            'company_history' => $essay,
+            'company_background' => $essay,
+            'assessment_ethical' => $essay,
+            'prof_ethical_responsibilities' => $essay,
+            'assessment_learnings' => $essay,
+            'things_learned' => $essay,
+            'assessment_experience' => $essay,
+            'experience_with_people' => $essay,
+            'assessment_standards' => $essay,
+            'industry_best_practices' => $essay,
+            'assessment_recommendations' => $essay,
+            'recommendations' => $essay,
+            'assessment_advice' => $essay,
+            'advice' => $essay,
+            'custom_fields' => 'nullable|array',
+        ]);
+
         $internship = $this->getInternship($request);
 
         $companyHistory = $request->input('company_history', $request->input('company_background'));

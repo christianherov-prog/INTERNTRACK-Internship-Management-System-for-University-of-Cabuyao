@@ -78,7 +78,7 @@ function MisdAuditLogs() {
         <div className="row g-2 align-items-end">
           <div className="col-md-3">
             <label className="form-label small fw-semibold">Search</label>
-            <input className="form-control" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} placeholder="User, action, subject" />
+            <input maxLength={100} className="form-control" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} placeholder="User, action, subject" />
           </div>
           <div className="col-md-2">
             <label className="form-label small fw-semibold">Role</label>
@@ -88,11 +88,11 @@ function MisdAuditLogs() {
           </div>
           <div className="col-md-2">
             <label className="form-label small fw-semibold">Action</label>
-            <input className="form-control" value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })} placeholder="document_approved" />
+            <input maxLength={255} className="form-control" value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })} placeholder="document_approved" />
           </div>
           <div className="col-md-2">
             <label className="form-label small fw-semibold">Module</label>
-            <input className="form-control" value={filters.module} onChange={(e) => setFilters({ ...filters, module: e.target.value })} placeholder="Documents" />
+            <input maxLength={255} className="form-control" value={filters.module} onChange={(e) => setFilters({ ...filters, module: e.target.value })} placeholder="Documents" />
           </div>
           <div className="col-md-1">
             <label className="form-label small fw-semibold">From</label>

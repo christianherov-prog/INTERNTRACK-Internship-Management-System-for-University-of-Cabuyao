@@ -68,13 +68,13 @@ function AbsorptionModal({ internship, apiBase, onClose, onSaved, declaredHiredE
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Job title (optional)</label>
-                    <input className="form-control" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job Title" />
+                    <input maxLength={255} className="form-control" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job Title" />
                   </div>
                 </>
               )}
               <div className="mb-2">
                 <label className="form-label">Notes (optional)</label>
-                <textarea className="form-control" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <textarea maxLength={2000} className="form-control" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
             </div>
             <div className="modal-footer">

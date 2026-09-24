@@ -88,20 +88,28 @@ class AuthTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_forgot_password_generates_token_and_returns_success(): void
+    public function test_forgot_password_generates_token_for_company_supervisor_only(): void
     {
-        $user = $this->createUser();
-
-        $response = $this->postJson('/api/v1/auth/forgot-password', [
-            'identifier' => $user->student_number,
+        $supervisor = $this->createUser([
+            'student_number' => null,
+            'login_username' => 'hte.supervisor',
+            'email' => 'hte.supervisor@example.com',
+            'role' => 'supervisor',
         ]);
 
-        $response->assertOk()
-            ->assertJsonFragment(['success' => true]);
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'identifier' => 'hte.supervisor',
+        ])->assertOk()->assertJsonFragment(['success' => true]);
 
-        $this->assertDatabaseHas('password_reset_tokens', [
-            'email' => $user->email,
-        ]);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $supervisor->email]);
+
+        // University accounts get the same generic response but no reset link.
+        $student = $this->createUser(['student_number' => 'STU-2002', 'email' => 'student2@example.com']);
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'identifier' => $student->student_number,
+        ])->assertOk()->assertJsonFragment(['success' => true]);
+
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $student->email]);
     }
 
     public function test_faculty_login_resolves_id_from_faculty_profile_when_users_column_is_empty(): void

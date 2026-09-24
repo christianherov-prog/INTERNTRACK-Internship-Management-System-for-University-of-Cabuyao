@@ -22,12 +22,13 @@ class Evaluation extends Model {
         'submitted_at',
         'signer_name',
         'signature_path',
-        'signed_at'
+        'signed_at',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
         'signed_at' => 'datetime',
+        'released_to_student_at' => 'datetime',
         'responses' => 'json'
     ];
 

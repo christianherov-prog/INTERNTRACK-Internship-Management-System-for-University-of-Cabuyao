@@ -187,7 +187,7 @@ function SupervisorAttendanceValidation() {
                   </p>
                 )}
                 <label className="form-label fw-semibold">Reason for Rejection</label>
-                <textarea className="form-control" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Reason" />
+                <textarea maxLength={500} className="form-control" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Reason" />
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setRejectModal(null)}>Cancel</button>
@@ -213,7 +213,7 @@ function SupervisorAttendanceValidation() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search Students" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 

@@ -17,11 +17,15 @@ use App\Services\DtrWorkflowService;
 use App\Services\FacultySectionAssignmentService;
 use App\Services\InternshipProgressService;
 use App\Services\OfficialFormDataService;
+use App\Services\PortfolioDataService;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorDirectoryService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
+use App\Support\EvaluationPeriod;
+use App\Support\InternshipAccess;
+use App\Support\InternshipStatuses;
 use App\Support\NameParts;
 use App\Support\RequiredDocuments;
 use App\Support\SignatureCapture;
@@ -110,7 +114,7 @@ class FacultyController extends Controller
 
         $paginator = $query->paginate(20);
 
-        $transformed = $paginator->through(function ($student) {
+        $transformed = $paginator->through(function ($student) use ($facultyId) {
             $internship = $student->activeInternship;
             $profile = $student->studentProfile;
             $profile?->loadMissing('program');
@@ -128,6 +132,12 @@ class FacultyController extends Controller
                 'user_id' => $student->id,
                 'student_id' => $student->id,
                 'status' => $internship?->status ?? 'unplaced',
+                // Portfolio preview is limited to internships this faculty personally handles.
+                'can_preview_portfolio' => $internship !== null
+                    && (int) $internship->faculty_id === (int) $facultyId,
+                // Same authoritative check used for journal deadlines.
+                'handled_by_faculty' => $internship !== null
+                    && (int) $internship->faculty_id === (int) $facultyId,
                 'program' => $programName,
                 'section' => $profile?->section ?? '—',
                 'company' => $internship?->company ? [
@@ -161,6 +171,48 @@ class FacultyController extends Controller
         });
 
         return ApiResponse::list($transformed);
+    }
+
+    /**
+     * GET /api/v1/faculty/students/{userId}/portfolio
+     *
+     * Read-only preview of an assigned student's internship portfolio. Access is
+     * granted only through the internship record whose faculty_id is the
+     * requesting faculty user. The payload comes from PortfolioDataService, the
+     * same builder the student Portfolio uses, so journals, attendance (FO-30)
+     * and evaluations stay consistent. This GET performs no writes.
+     */
+    public function studentPortfolio(Request $request, int $userId, PortfolioDataService $portfolio)
+    {
+        $viewer = $request->user();
+        $internship = $this->assignedInternshipForStudent($viewer, $userId);
+
+        if (! $internship || ! InternshipAccess::canView($viewer, $internship)) {
+            abort(403, 'Student is not assigned to you.');
+        }
+
+        $payload = $portfolio->payload($internship, $viewer);
+        $payload['read_only'] = true;
+
+        return response()->json($payload);
+    }
+
+    /**
+     * The student's internship handled by this faculty user, preferring the
+     * current internship over earlier ones. Null when no such assignment exists.
+     */
+    private function assignedInternshipForStudent(User $faculty, int $studentId): ?Internship
+    {
+        $current = InternshipStatuses::currentRelation();
+        $placeholders = implode(',', array_fill(0, count($current), '?'));
+
+        return Internship::inDepartment()
+            ->where('student_id', $studentId)
+            ->where('faculty_id', $faculty->id)
+            ->whereHas('student', fn ($q) => $q->where('role', 'student'))
+            ->orderByRaw("CASE WHEN status IN ({$placeholders}) THEN 0 ELSE 1 END", $current)
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**
@@ -405,6 +457,14 @@ class FacultyController extends Controller
                 : ($student?->student_number ?: $student?->email);
 
             $journal->setAttribute('student_name', $studentName ?: null);
+            // One row per journal week (journal id); deadline + timing from the
+            // same week the student submitted against.
+            $timing = \App\Services\JournalDeadlineService::presentJournal($journal);
+            $journal->setAttribute('range_display', $timing['range_display']);
+            $journal->setAttribute('submitted_at_display', $timing['submitted_at_display']);
+            $journal->setAttribute('deadline_display', $journal->deadline_at
+                ? $journal->deadline_at->copy()->timezone(\App\Support\ManilaTime::TZ)->format('F j, Y, g:i A')
+                : null);
 
             return $journal;
         });
@@ -528,8 +588,21 @@ class FacultyController extends Controller
         })->whereNotNull('section')->distinct()->pluck('section');
 
         // Faculty sees FO-24 (industry) plus their own faculty_eval records.
+        // One row per student: the student's CURRENT internship as resolved by
+        // EvaluationPeriod::currentInternshipFor() (latest open row, else latest
+        // current row). Superseded/historical duplicates never repeat a student,
+        // and the row the faculty approves is the row the student reads.
+        $current = InternshipStatuses::currentRelation();
+        $open = InternshipStatuses::openCurrent();
+        $inCurrent = implode(',', array_fill(0, count($current), '?'));
+        $inOpen = implode(',', array_fill(0, count($open), '?'));
         $query = Internship::inDepartment()
             ->where('faculty_id', $facultyId)
+            ->whereIn('status', $current)
+            ->whereRaw(
+                "internships.id = (SELECT i2.id FROM internships i2 WHERE i2.student_id = internships.student_id AND i2.deleted_at IS NULL AND i2.status IN ({$inCurrent}) ORDER BY (i2.status IN ({$inOpen})) DESC, i2.id DESC LIMIT 1)",
+                array_merge($current, $open)
+            )
             ->with([
                 'student.studentProfile.program',
                 'company',
@@ -555,7 +628,9 @@ class FacultyController extends Controller
             });
         }
 
-        $internships = $query->get();
+        $internships = $query->get()->each(
+            fn (Internship $i) => $i->setAttribute('evaluation_period', EvaluationPeriod::state($i))
+        );
 
         return response()->json([
             'internships' => $internships,
@@ -574,22 +649,272 @@ class FacultyController extends Controller
             abort(403, 'Internship not assigned to you.');
         }
 
-        $internship->forceFill([
-            'evaluation_period_status' => 'approved',
-            'evaluation_period_approved_by' => $request->user()->id,
-            'evaluation_period_approved_at' => now(),
-        ])->save();
+        // Approve only the internship the student actually reads; approving a
+        // superseded/historical row would leave the student's forms locked.
+        if (! EvaluationPeriod::isCurrentFor($internship)) {
+            return response()->json([
+                'message' => 'This is not the student\'s current internship. Refresh the list and approve the current one.',
+                'current_internship_id' => EvaluationPeriod::currentInternshipFor((int) $internship->student_id)?->id,
+            ], 409);
+        }
+
+        $internship = EvaluationPeriod::setApproved($internship, true, $request->user());
 
         audit_log($request->user()->id, 'approve_evaluation_period', [
             'internship_id' => $internship->id,
         ]);
 
+        Notification::notify(
+            (int) $internship->student_id,
+            'evaluation_period_approved',
+            'Evaluation period approved',
+            'Your Faculty Supervisor approved the evaluation period. Your evaluation forms are now unlocked.',
+            '/student/evaluations',
+            ['internship_id' => $internship->id]
+        );
+
+        $state = EvaluationPeriod::state($internship);
+
         return response()->json([
             'message' => 'Evaluation period approved. Student and supervisor forms are now unlocked.',
             'internship_id' => $internship->id,
-            'evaluation_period_status' => 'approved',
+            'evaluation_period' => $state,
+            'evaluation_period_status' => $internship->evaluation_period_status,
             'evaluation_period_approved' => true,
             'evaluation_period_approved_at' => $internship->evaluation_period_approved_at,
+        ]);
+    }
+
+    /** Internships this faculty handles (authoritative assignment), keyed by id. */
+    private function handledInternships(Request $request, ?array $ids = null)
+    {
+        return Internship::inDepartment()
+            ->where('faculty_id', $request->user()->id)
+            ->when($ids !== null, fn ($q) => $q->whereIn('id', $ids))
+            ->with('student.studentProfile')
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
+     * GET /api/v1/faculty/journal-weeks?internship_ids[]=
+     * Authoritative journal weeks (same rule as Student journals / FO-31 / review
+     * queue) for each requested internship this faculty handles, with the
+     * week's journal and deadline. Unassigned internships are refused (403).
+     */
+    public function journalWeeks(Request $request, \App\Services\JournalDeadlineService $deadlines)
+    {
+        $data = $request->validate([
+            'internship_ids' => 'nullable|array|max:200',
+            'internship_ids.*' => 'integer',
+        ]);
+
+        $ids = isset($data['internship_ids'])
+            ? collect($data['internship_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all()
+            : null;
+        $internships = $this->handledInternships($request, $ids);
+
+        if ($ids !== null && $internships->count() !== count($ids)) {
+            abort(403, 'You can only view journal weeks for students assigned to you.');
+        }
+
+        return response()->json([
+            'data' => $internships->values()->map(function (Internship $internship) use ($deadlines) {
+                $profile = $internship->student?->studentProfile;
+
+                return [
+                    'internship_id' => $internship->id,
+                    'student_id' => $internship->student_id,
+                    'student_name' => NameParts::fromProfile($profile) ?: ($internship->student?->username ?? ''),
+                    'student_number' => $profile?->student_number ?? $internship->student?->student_number,
+                    'start_date' => $internship->start_date?->toDateString(),
+                    'end_date' => $internship->end_date?->toDateString(),
+                    'weeks' => $deadlines->weeksFor($internship),
+                ];
+            }),
+            'timezone' => \App\Support\ManilaTime::TZ,
+        ]);
+    }
+
+    /**
+     * GET /api/v1/faculty/journal-deadlines?internship_id=
+     * Weekly Journal deadlines for internships this faculty handles.
+     */
+    public function journalDeadlines(Request $request, \App\Services\JournalPeriodValidator $periods)
+    {
+        $request->validate(['internship_id' => 'nullable|integer']);
+
+        $internships = $this->handledInternships($request);
+        $query = \App\Models\JournalDeadline::query()
+            ->whereIn('internship_id', $internships->keys())
+            ->orderBy('internship_id')
+            ->orderBy('week_number');
+        if ($request->filled('internship_id')) {
+            $query->where('internship_id', (int) $request->input('internship_id'));
+        }
+
+        return response()->json([
+            'data' => $query->get()->map(fn ($d) => \App\Services\JournalDeadlineService::present(
+                $d,
+                $periods->weekWindow($internships->get($d->internship_id), (int) $d->week_number)
+            ))->values(),
+            'timezone' => \App\Support\ManilaTime::TZ,
+        ]);
+    }
+
+    /**
+     * POST /api/v1/faculty/journal-deadlines
+     * Body: { deadlines: [{ internship_id, week_number, due_at: "YYYY-MM-DDTHH:MM" (Asia/Manila) }] }
+     *   (legacy: { internship_ids: [], week_number, due_at } is expanded per internship)
+     * Every row must target an internship assigned to this faculty (else 403) and a
+     * week that exists for that student's internship (else 422). All or nothing.
+     */
+    public function setJournalDeadline(Request $request, \App\Services\JournalDeadlineService $deadlines)
+    {
+        $maxWeeks = \App\Services\JournalPeriodValidator::MAX_WEEKS;
+        if (! $request->has('deadlines') && $request->has('internship_ids')) {
+            $request->validate([
+                'internship_ids' => 'required|array|min:1|max:200',
+                'internship_ids.*' => 'required|integer|distinct',
+                'week_number' => "required|integer|min:1|max:{$maxWeeks}",
+                'due_at' => 'required|date|after:2000-01-01|before:2100-01-01',
+            ]);
+            $request->merge(['deadlines' => collect($request->input('internship_ids'))->map(fn ($id) => [
+                'internship_id' => $id,
+                'week_number' => $request->input('week_number'),
+                'due_at' => $request->input('due_at'),
+            ])->all()]);
+        }
+
+        $data = $request->validate([
+            'deadlines' => 'required|array|min:1|max:200',
+            'deadlines.*.internship_id' => 'required|integer',
+            'deadlines.*.week_number' => "required|integer|min:1|max:{$maxWeeks}",
+            'deadlines.*.due_at' => 'required|date|after:2000-01-01|before:2100-01-01',
+        ]);
+
+        $rows = collect($data['deadlines'])->map(fn ($row) => [
+            'internship_id' => (int) $row['internship_id'],
+            'week_number' => (int) $row['week_number'],
+            'due_at' => \App\Services\JournalDeadlineService::parseManila((string) $row['due_at']),
+        ]);
+        $pairs = $rows->map(fn ($r) => $r['internship_id'].':'.$r['week_number']);
+        if ($pairs->unique()->count() !== $pairs->count()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'deadlines' => ['Each student week can only appear once per save.'],
+            ]);
+        }
+
+        $ids = $rows->pluck('internship_id')->unique()->values()->all();
+        $internships = $this->handledInternships($request, $ids);
+        if ($internships->count() !== count($ids)) {
+            abort(403, 'You can only set journal deadlines for students assigned to you.');
+        }
+
+        $saved = $deadlines->saveRows($internships, $rows->all(), $request->user());
+
+        audit_log($request->user()->id, 'set_journal_deadline', [
+            'rows' => $rows->map(fn ($r) => ['internship_id' => $r['internship_id'], 'week_number' => $r['week_number']])->all(),
+        ]);
+
+        foreach ($saved as $deadline) {
+            $internship = $internships->get($deadline['internship_id']);
+            $range = $deadline['week_range_display'] ? " ({$deadline['week_range_display']})" : '';
+            Notification::notify(
+                (int) $internship->student_id,
+                'journal_deadline_set',
+                'Weekly journal deadline',
+                "Week {$deadline['week_number']} journal{$range} is due {$deadline['due_at_display']} (Asia/Manila).",
+                '/student/logbook',
+                ['internship_id' => $internship->id, 'week_number' => $deadline['week_number']]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Journal deadline saved.',
+            'data' => $saved,
+        ]);
+    }
+
+    /** DELETE /api/v1/faculty/journal-deadlines/{id} */
+    public function deleteJournalDeadline(Request $request, int $id, \App\Services\JournalDeadlineService $deadlines)
+    {
+        $deadline = \App\Models\JournalDeadline::with('internship')->findOrFail($id);
+        $internship = $deadline->internship;
+
+        if (! $internship
+            || (int) $internship->faculty_id !== (int) $request->user()->id
+            || ! Internship::inDepartment()->whereKey($internship->id)->exists()) {
+            abort(403, 'You can only manage journal deadlines for students assigned to you.');
+        }
+
+        $deadlines->remove($deadline);
+        audit_log($request->user()->id, 'delete_journal_deadline', ['deadline_id' => $id]);
+
+        return response()->json(['message' => 'Journal deadline removed.']);
+    }
+
+    /**
+     * POST /api/v1/faculty/evaluations/{internshipId}/release-performance
+     * Body: { released: bool } (default true)
+     *
+     * The internship's assigned Faculty authorizes (or withdraws) Student
+     * visibility of the FO-24 Performance Evaluation details.
+     */
+    public function releasePerformanceEvaluation(Request $request, int $internshipId)
+    {
+        $data = $request->validate(['released' => 'sometimes|boolean']);
+        $release = $data['released'] ?? true;
+
+        $internship = Internship::inDepartment()
+            ->where('faculty_id', $request->user()->id)
+            ->find($internshipId);
+
+        if (! $internship) {
+            abort(403, 'Internship not assigned to you.');
+        }
+
+        $evaluations = Evaluation::where('internship_id', $internship->id)
+            ->where('form_type', 'FO-24')
+            ->whereNotNull('submitted_at')
+            ->get();
+
+        if ($evaluations->isEmpty()) {
+            return response()->json([
+                'message' => 'The industry supervisor has not submitted the Performance Evaluation yet.',
+            ], 422);
+        }
+
+        foreach ($evaluations as $evaluation) {
+            $evaluation->forceFill([
+                'released_to_student_at' => $release ? ($evaluation->released_to_student_at ?? now()) : null,
+                'released_to_student_by' => $release ? ($evaluation->released_to_student_by ?? $request->user()->id) : null,
+            ])->save();
+        }
+
+        audit_log($request->user()->id, $release ? 'release_performance_evaluation' : 'withdraw_performance_evaluation', [
+            'internship_id' => $internship->id,
+            'evaluation_ids' => $evaluations->pluck('id')->all(),
+        ]);
+
+        if ($release) {
+            Notification::notify(
+                (int) $internship->student_id,
+                'performance_evaluation_released',
+                'Performance evaluation released',
+                'Your Faculty Supervisor released your Student Internship Performance Evaluation (FO-24). You can now view the details.',
+                '/student/evaluations',
+                ['internship_id' => $internship->id]
+            );
+        }
+
+        return response()->json([
+            'message' => $release
+                ? 'Performance Evaluation released. The student can now view the details.'
+                : 'Performance Evaluation hidden from the student.',
+            'internship_id' => $internship->id,
+            'released' => $release,
+            'evaluations' => $evaluations->map(fn ($e) => $e->fresh())->values(),
         ]);
     }
 
@@ -735,7 +1060,7 @@ class FacultyController extends Controller
 
     public function submitFeedback(Request $request, int $internshipId)
     {
-        $request->validate(['feedback' => 'required|string|min:5']);
+        $request->validate(['feedback' => 'required|string|min:5|max:1000']);
         $internship = Internship::findOrFail($internshipId);
         if (! Internship::inDepartment()->where('id', $internshipId)->exists()) {
             DepartmentScope::abortDifferentDepartment();

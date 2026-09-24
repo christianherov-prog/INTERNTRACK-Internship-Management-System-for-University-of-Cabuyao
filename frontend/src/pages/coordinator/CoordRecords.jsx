@@ -13,146 +13,7 @@ import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
 import { openOfficialFo30 } from '../../utils/officialForm'
 
 
-function ChangeSectionModal({ student, onClose, onUpdated }) {
-  const [loading, setLoading] = useState(true)
-  const [options, setOptions] = useState({ sections: [], section_faculty_map: {} })
-  const [form, setForm] = useState({ section: '' })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    api.get('/coordinator/placement-options')
-      .then(res => {
-        setOptions(res.data)
-        const initialSection = student.student_profile?.section || (res.data.sections?.length > 0 ? res.data.sections[0] : '')
-        setForm({ section: initialSection })
-      })
-      .catch(() => setError('Failed to load options.'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setSaving(true)
-    setError(null)
-    api.patch(`/coordinator/students/${student.id}/section`, form)
-      .then(res => onUpdated(res.data))
-      .catch(err => setError(err.response?.data?.message || 'Failed to update section.'))
-      .finally(() => setSaving(false))
-  }
-
-  return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <form onSubmit={handleSubmit}>
-            <div className="modal-header">
-              <h5 className="modal-title">Change Section: {student.student_profile?.first_name} {student.student_profile?.last_name}</h5>
-              <button type="button" className="btn-close" onClick={onClose}></button>
-            </div>
-            <div className="modal-body">
-              {error && <div className="alert alert-danger">{error}</div>}
-              {loading ? (
-                <div className="text-center py-3"><InternTrackLoader /></div>
-              ) : (
-                <div className="mb-3">
-                  <label className="form-label">Section</label>
-                  <select className="form-select" value={form.section} onChange={e => setForm({ section: e.target.value })} required>
-                    <option value="">Select Section</option>
-                    {options.sections?.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {form.section && (
-                    <div className="mt-2 text-muted small">
-                      <strong>Assigned Faculty:</strong> {options.section_faculty_map?.[form.section]?.name || (
-                        <span className="text-danger fw-bold"><i className="fa fa-warning"></i> No Faculty Assigned to this Section</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading || saving}>
-                {saving ? 'Saving...' : 'Update Section'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function BulkChangeSectionModal({ studentIds, onClose, onUpdated }) {
-  const [loading, setLoading] = useState(true)
-  const [options, setOptions] = useState({ sections: [], section_faculty_map: {} })
-  const [form, setForm] = useState({ section: '' })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    api.get('/coordinator/placement-options')
-      .then(res => {
-        setOptions(res.data)
-        if (res.data.sections?.length > 0) setForm({ section: res.data.sections[0] })
-      })
-      .catch(() => setError('Failed to load options.'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setSaving(true)
-    setError(null)
-    api.patch(`/coordinator/students/bulk-section`, { student_ids: studentIds, section: form.section })
-      .then(res => onUpdated(res.data))
-      .catch(err => setError(err.response?.data?.message || 'Failed to perform bulk update.'))
-      .finally(() => setSaving(false))
-  }
-
-  return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <form onSubmit={handleSubmit}>
-            <div className="modal-header">
-              <h5 className="modal-title">Bulk Change Section ({studentIds.length} Students)</h5>
-              <button type="button" className="btn-close" onClick={onClose}></button>
-            </div>
-            <div className="modal-body">
-              {error && <div className="alert alert-danger">{error}</div>}
-              {loading ? (
-                <div className="text-center py-3"><InternTrackLoader /></div>
-              ) : (
-                <div className="mb-3">
-                  <label className="form-label">New Section for all selected</label>
-                  <select className="form-select" value={form.section} onChange={e => setForm({ section: e.target.value })} required>
-                    <option value="">Select Section</option>
-                    {options.sections?.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {form.section && (
-                    <div className="mt-2 text-muted small">
-                      <strong>Assigned Faculty:</strong> {options.section_faculty_map?.[form.section]?.name || (
-                        <span className="text-danger fw-bold"><i className="fa fa-warning"></i> No Faculty Assigned to this Section</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading || saving}>
-                {saving ? 'Saving...' : 'Update Sections'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}
+// Coordinators no longer edit student sections here: sections come from iEnroll/MISD.
 
 function statusBadgeClass(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -182,9 +43,6 @@ function CoordRecords() {
   const cacheKey = `coordinator:records:${archived ? 1 : 0}`
   const { pending, seed, run } = useCachedPage(cacheKey)
   const [students, setStudents] = useState(() => seed ?? [])
-  const [changingSection, setChangingSection] = useState(null)
-  const [bulkChangingSection, setBulkChangingSection] = useState(false)
-  const [selectedStudents, setSelectedStudents] = useState([])
   const [statusTarget, setStatusTarget] = useState(null)
   const [historyTarget, setHistoryTarget] = useState(null)
   const [message, setMessage] = useState(null)
@@ -249,26 +107,6 @@ function CoordRecords() {
     }
   }
 
-  const handleSelectAll = (e, currentFiltered) => {
-    if (e.target.checked) {
-      setSelectedStudents(currentFiltered.map(s => s.id))
-    } else {
-      setSelectedStudents([])
-    }
-  }
-
-  const handleSelectOne = (e, id) => {
-    if (e.target.checked) {
-      setSelectedStudents(prev => [...prev, id])
-    } else {
-      setSelectedStudents(prev => prev.filter(x => x !== id))
-    }
-  }
-
-  useEffect(() => {
-    setSelectedStudents([])
-  }, [search, programFilter, sectionFilter, statusFilter, archived])
-
   const programs = ["all", ...new Set(students.map(s => s.student_profile?.program?.code || "—").filter(x => x !== "—"))]
   const sections = ["all", ...new Set(students.map(s => formatYearSection(s.student_profile?.section) || "—").filter(x => x !== "—"))]
 
@@ -290,31 +128,6 @@ function CoordRecords() {
           {message.text}
           <button className="btn-close" onClick={() => setMessage(null)}></button>
         </div>
-      )}
-
-      {changingSection && (
-        <ChangeSectionModal
-          student={changingSection}
-          onClose={() => setChangingSection(null)}
-          onUpdated={(res) => {
-            setChangingSection(null)
-            setMessage({ type: 'success', text: `Section updated to ${res.section}.` })
-            fetchRecords()
-          }}
-        />
-      )}
-
-      {bulkChangingSection && (
-        <BulkChangeSectionModal
-          studentIds={selectedStudents}
-          onClose={() => setBulkChangingSection(false)}
-          onUpdated={(res) => {
-            setBulkChangingSection(false)
-            setSelectedStudents([])
-            setMessage({ type: 'success', text: `Successfully updated sections for ${selectedStudents.length} student(s) to ${res.section}.` })
-            fetchRecords()
-          }}
-        />
       )}
 
       {statusTarget && (
@@ -345,7 +158,7 @@ function CoordRecords() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           {programs.map(p => <option key={p} value={p}>{p === "all" ? "All Departments" : p}</option>)}
@@ -373,11 +186,6 @@ function CoordRecords() {
         <div className="content-card-header">
           <i className="fa fa-users"></i>
           <h6>{archived ? 'Archived Students' : 'Student Interns Roster'}</h6>
-          {selectedStudents.length > 0 && (
-            <button className="btn btn-sm btn-primary ms-3" onClick={() => setBulkChangingSection(true)}>
-              <i className="fa fa-users me-1"></i> Change Section ({selectedStudents.length})
-            </button>
-          )}
           <span className="ms-auto badge bg-secondary">{filtered.length} student{filtered.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="table-card">
@@ -390,9 +198,6 @@ function CoordRecords() {
               <table className="table table-hover mb-0">
                 <thead>
                   <tr>
-                    <th style={{ width: '40px' }}>
-                      <input type="checkbox" className="form-check-input" checked={selectedStudents.length === filtered.length && filtered.length > 0} onChange={(e) => handleSelectAll(e, filtered)} />
-                    </th>
                     <th>Student Name</th>
                     <th>Student ID</th>
                     <th>Program</th>
@@ -411,9 +216,6 @@ function CoordRecords() {
 
                     return (
                       <tr key={student.id}>
-                        <td>
-                          <input type="checkbox" className="form-check-input" checked={selectedStudents.includes(student.id)} onChange={(e) => handleSelectOne(e, student.id)} />
-                        </td>
                         <td>{name}</td>
                         <td>{profile?.student_number || student.username}</td>
                         <td>{student.student_profile?.program?.code || "—"}</td>
@@ -441,9 +243,6 @@ function CoordRecords() {
                             <i className={`fa ${archived ? 'fa-box-open' : 'fa-box-archive'}`}></i>
                           </button>
 
-                          <button className="btn btn-sm btn-outline-info me-1" onClick={() => setChangingSection(student)}>
-                            <i className="fa fa-users me-1"></i> Section
-                          </button>
                           {internship?.id ? (
                             <>
                               <button

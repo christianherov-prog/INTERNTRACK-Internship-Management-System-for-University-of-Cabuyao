@@ -559,3 +559,62 @@ img {
 * {
     box-sizing: border-box;
 }
+/* ===========================
+   RESPONSIVE PREVIEW (screen only)
+   The document keeps its fixed A4 size; the preview scales each sheet to the
+   viewport (see hooks/usePortfolioPreviewScale.js). Print output is untouched.
+   =========================== */
+
+@media screen {
+    .a4-page {
+        zoom: var(--portfolio-preview-scale, 1);
+    }
+
+    /* Nested sheets must not compound the zoom. */
+    .a4-page .a4-page {
+        zoom: 1;
+    }
+
+    .portfolio-preview-toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .portfolio-preview-toolbar > div {
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+}
+
+@media screen and (max-width: 576px) {
+    .portfolio-preview-toolbar {
+        padding: 8px 12px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .portfolio-preview-toolbar .portfolio-preview-sep {
+        display: none;
+    }
+
+    .portfolio-preview-toolbar .badge {
+        margin-left: 0 !important;
+        white-space: normal;
+        text-align: left;
+    }
+
+    .portfolio-preview-toolbar button {
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+    }
+
+    .a4-page {
+        margin: 10px auto;
+    }
+}
+
+@media print {
+    .a4-page,
+    .a4-page .a4-page {
+        zoom: 1 !important;
+    }
+}

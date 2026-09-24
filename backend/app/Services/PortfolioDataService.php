@@ -10,6 +10,7 @@ use App\Models\Internship;
 use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\User;
+use App\Support\EvaluationVisibility;
 use App\Support\ManilaAttendanceClock;
 use App\Support\ManilaTime;
 use App\Support\NameParts;
@@ -23,8 +24,14 @@ use Illuminate\Support\Facades\Storage;
  */
 class PortfolioDataService
 {
-    public function payload(Internship $internship, User $viewer, bool $includeUnapprovedJournals = false): array
+    /**
+     * @param  bool|null  $studentView  Redact unreleased FO-24/FO-03 details. When null,
+     *                                  redaction applies if the viewer is a Student.
+     */
+    public function payload(Internship $internship, User $viewer, bool $includeUnapprovedJournals = false, ?bool $studentView = null): array
     {
+        $studentView ??= EvaluationVisibility::viewerIsStudent($viewer);
+
         $internship->loadMissing([
             'company',
             'portfolio',
@@ -127,7 +134,9 @@ class PortfolioDataService
             ->with(['evaluator.supervisorProfile', 'evaluator.facultyProfile', 'evaluator.studentProfile'])
             ->orderByDesc('submitted_at')
             ->get()
-            ->map(fn (Evaluation $e) => $this->serializeEvaluation($e, $identity));
+            ->map(fn (Evaluation $e) => $this->serializeEvaluation($e, $identity))
+            ->map(fn (array $e) => $studentView ? EvaluationVisibility::forStudent($e) : $e)
+            ->values();
 
         $internshipData = $internship->toArray();
         $internshipData['portfolio'] = $portfolioData;
@@ -361,6 +370,8 @@ class PortfolioDataService
             'signer_name' => $evaluation->signer_name ?: $evaluatorName,
             'signature_path' => $signaturePath,
             'evaluator_name' => $evaluatorName,
+            'released_to_student_at' => $evaluation->released_to_student_at?->toIso8601String(),
+            'release_authority' => EvaluationVisibility::authorityFor($evaluation->form_type),
         ];
     }
 

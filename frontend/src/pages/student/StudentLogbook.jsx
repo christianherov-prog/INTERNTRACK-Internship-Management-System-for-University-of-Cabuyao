@@ -68,6 +68,8 @@ function StudentLogbook() {
   const [journals, setJournals]       = useState(() => seed?.items ?? seed ?? [])
   const [internFeedback, setInternFeedback] = useState(() => seed?.internFeedback ?? null)
   const [journalPeriod, setJournalPeriod] = useState(() => seed?.journalPeriod ?? null)
+  // Faculty-set deadlines per internship week (displayed in Asia/Manila).
+  const [deadlines, setDeadlines] = useState(() => seed?.deadlines ?? [])
   const [error, setError]             = useState(null)
   const [submitting, setSubmitting]   = useState(false)
   const [generating, setGenerating]   = useState(null) // week_number being generated
@@ -91,12 +93,14 @@ function StudentLogbook() {
       items: unwrapList(res.data).items,
       internFeedback: res.data.intern_feedback || null,
       journalPeriod: res.data.journal_period || null,
+      deadlines: res.data.journal_deadlines || [],
     })))
       .then((next) => {
         if (next) {
           setJournals(next.items)
           setInternFeedback(next.internFeedback)
           setJournalPeriod(next.journalPeriod)
+          setDeadlines(next.deadlines || [])
         }
       })
       .catch(err => {
@@ -249,6 +253,44 @@ function StudentLogbook() {
         onDownload={previewModal?.onDownload}
       />
 
+      {deadlines.length > 0 && (
+        <div className="content-card mb-4" data-testid="journal-deadlines">
+          <div className="content-card-header">
+            <i className="fa fa-hourglass-half"></i>
+            <h6>Weekly Journal Deadlines</h6>
+            <span className="ms-auto text-muted small">Set by your Faculty Supervisor · Asia/Manila time</span>
+          </div>
+          <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0">
+              <thead>
+                <tr><th scope="col">Week</th><th scope="col">Date range</th><th scope="col">Deadline</th><th scope="col">Status</th></tr>
+              </thead>
+              <tbody>
+                {deadlines.map(d => (
+                  <tr key={d.id}>
+                    <td className="fw-semibold">Week {d.week_number}</td>
+                    <td>{d.week_range_display || '—'}</td>
+                    <td>{d.due_at_display}</td>
+                    <td>
+                      {d.journal_status ? (
+                        <span className={`badge ${d.submitted_late ? 'bg-danger' : 'bg-success'}`}>{d.submitted_late ? 'Late' : 'On time'}</span>
+                      ) : d.is_past ? (
+                        <span className="badge bg-secondary">Not submitted — deadline passed</span>
+                      ) : (
+                        <span className="badge bg-warning text-dark">Open</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-muted small px-3 pb-3 mb-0">
+            Journals submitted after the deadline are still accepted and are marked as late.
+          </p>
+        </div>
+      )}
+
       {/* Action bar */}
       <div className="d-flex justify-content-end align-items-center mb-4 gap-3 flex-wrap">
         <button className="btn btn-primary" onClick={openNewEntry}>
@@ -275,6 +317,17 @@ function StudentLogbook() {
                 </div>
               </div>
             )}
+            {(() => {
+              const week = Number(derivedWeek || form.week_number)
+              const d = week ? deadlines.find(x => Number(x.week_number) === week) : null
+              return d ? (
+                <div className={`alert ${d.is_past ? 'alert-warning' : 'alert-info'} py-2 small mb-3`} data-testid="journal-form-deadline">
+                  <i className="fa fa-hourglass-half me-1"></i>
+                  Week {week} deadline: <strong>{d.due_at_display}</strong>
+                  {d.is_past ? ' — this deadline has passed; the submission will be marked late.' : ''}
+                </div>
+              ) : null
+            })()}
             <div className="row g-3 mb-3">
               <div className="col-md-3">
                 <label className="form-label fw-semibold">
@@ -282,7 +335,7 @@ function StudentLogbook() {
                 </label>
                 <input
                   type="number" name="week_number" className="form-control"
-                  placeholder="Auto" min={1} max={52}
+                  placeholder="Auto" min={1} max={60}
                   value={derivedWeek || form.week_number} readOnly
                   required
                 />
@@ -318,8 +371,10 @@ function StudentLogbook() {
                 <textarea
                   name="activities_summary" className="form-control" rows={8}
                   placeholder="Accomplishments"
+                  maxLength={5000}
                   value={form.activities_summary} onChange={handleChange} required
                 />
+                <div className="form-text text-end">{(form.activities_summary || '').length}/5000</div>
                 <small className="text-muted">Mapped to: "ACCOMPLISHMENT" column in Form 31</small>
               </div>
               <div className="col-md-4">
@@ -330,8 +385,10 @@ function StudentLogbook() {
                 <textarea
                   name="challenges" className="form-control" rows={8}
                   placeholder="Challenges"
+                  maxLength={5000}
                   value={form.challenges} onChange={handleChange}
                 />
+                <div className="form-text text-end">{(form.challenges || '').length}/5000</div>
                 <small className="text-muted">Mapped to: "DIFFICULTIES ENCOUNTERED" column in Form 31</small>
               </div>
               <div className="col-md-4">
@@ -342,8 +399,10 @@ function StudentLogbook() {
                 <textarea
                   name="learnings" className="form-control" rows={8}
                   placeholder="Learnings"
+                  maxLength={5000}
                   value={form.learnings} onChange={handleChange}
                 />
+                <div className="form-text text-end">{(form.learnings || '').length}/5000</div>
                 <small className="text-muted">Mapped to: "NEW LEARNING / INSIGHTS" column in Form 31</small>
               </div>
             </div>
@@ -353,6 +412,7 @@ function StudentLogbook() {
               <textarea
                 name="notes" className="form-control" rows={2}
                 placeholder="Remarks"
+                maxLength={2000}
                 value={form.notes} onChange={handleChange}
               />
             </div>
@@ -456,6 +516,17 @@ function StudentLogbook() {
                 {/* Actions */}
                 <div className="d-flex flex-column align-items-end gap-2 ms-2">
                   {statusBadge(j.status)}
+                  {j.deadline_at ? (
+                    <span
+                      className={`badge ${j.submitted_late ? 'bg-danger' : 'bg-success'}`}
+                      title={`Deadline: ${j.deadline_display || ''}${j.submitted_at_display ? ` · Submitted: ${j.submitted_at_display}` : ''}`}
+                    >
+                      {j.submitted_late ? 'Submitted late' : 'On time'}
+                    </span>
+                  ) : null}
+                  {j.submitted_at_display ? (
+                    <span className="text-muted" style={{ fontSize: '0.75rem' }}>Submitted {j.submitted_at_display}</span>
+                  ) : null}
                   <div className="d-flex gap-1 flex-wrap justify-content-end mt-1">
                     {canEditJournal(j) ? (
                       <button

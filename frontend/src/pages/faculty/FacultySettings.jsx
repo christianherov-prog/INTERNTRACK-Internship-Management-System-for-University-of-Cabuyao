@@ -7,7 +7,7 @@ function FacultySettings() {
       bodyClass="faculty-page"
       subtitleLabel="Faculty"
       notificationsIntro="Choose which faculty advising alerts you want to receive."
-      securityIntro="Update your password and strengthen account protection for your school credentials."
+      securityIntro="Account protection and sign-in security for your InternTrack account."
       metaFields={[
         { label: 'Faculty Number', key: 'faculty_number' },
         { label: 'Department', key: 'department', fallback: 'College of Computing Studies' },

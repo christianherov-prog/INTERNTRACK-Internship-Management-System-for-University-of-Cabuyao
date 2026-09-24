@@ -443,7 +443,7 @@ function PortfolioBuilder() {
                   <div className="portfolio-hte-row mb-3">
                     <div>
                       <label className="portfolio-field-label">Host Company Name <span className="text-danger">*</span></label>
-                      <input
+                      <input maxLength={255}
                         type="text"
                         className="form-control portfolio-field-input"
                         placeholder="Company Name"
@@ -454,7 +454,7 @@ function PortfolioBuilder() {
                     </div>
                     <div>
                       <label className="portfolio-field-label">Host Company Address <span className="text-danger">*</span></label>
-                      <input
+                      <input maxLength={255}
                         type="text"
                         className="form-control portfolio-field-input"
                         placeholder="Company Address"
@@ -466,7 +466,7 @@ function PortfolioBuilder() {
                   </div>
                   <div className="mb-3">
                     <label className="portfolio-field-label">Company Background / History</label>
-                    <textarea
+                    <textarea maxLength={10000}
                       className="form-control portfolio-field-input"
                       rows={3}
                       placeholder="Company Profile"
@@ -489,11 +489,11 @@ function PortfolioBuilder() {
                   <div className="portfolio-fields-2">
                     <div>
                       <label className="portfolio-field-label">Company Vision (Text)</label>
-                      <textarea className="form-control portfolio-field-input" rows={3} placeholder="Company Vision" value={form.company_vision} onChange={e => setForm({ ...form, company_vision: e.target.value })}></textarea>
+                      <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} placeholder="Company Vision" value={form.company_vision} onChange={e => setForm({ ...form, company_vision: e.target.value })}></textarea>
                     </div>
                     <div>
                       <label className="portfolio-field-label">Company Mission (Text)</label>
-                      <textarea className="form-control portfolio-field-input" rows={3} placeholder="Company Mission" value={form.company_mission} onChange={e => setForm({ ...form, company_mission: e.target.value })}></textarea>
+                      <textarea maxLength={10000} className="form-control portfolio-field-input" rows={3} placeholder="Company Mission" value={form.company_mission} onChange={e => setForm({ ...form, company_mission: e.target.value })}></textarea>
                     </div>
                   </div>
                   <div className="mt-3">

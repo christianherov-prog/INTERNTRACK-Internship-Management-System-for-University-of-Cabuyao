@@ -14744,3 +14744,181 @@ body.page-body{min-height:100vh;margin:0;overflow-x:hidden;background:var(--layo
 
 
 
+
+/* ── Overlay stability ───────────────────────────────────────────
+   A transform on an ancestor becomes the containing block of any
+   position:fixed descendant. Never lift a card while it hosts an open
+   overlay/modal, otherwise the overlay jumps between the viewport and
+   the card box as hover toggles (DTR preview flicker). */
+.content-card:has(.fpm-backdrop, .modal.show, .modal.d-block):hover,
+.stat-card:has(.fpm-backdrop, .modal.show, .modal.d-block):hover {
+  transform: none;
+}
+
+/* ── Faculty FO-24 review (Evaluation Review page) ───────────────
+   Scoped layout polish: roomier card, readable info note, aligned
+   filters, comfortable table cells, and stacked action groups that
+   never touch. Horizontal scroll (not squashing) on narrow screens. */
+.fo24-review {
+  padding: 0;
+  overflow: hidden;
+}
+
+.fo24-review:hover {
+  transform: none; /* no hover lift: keeps the table and its buttons stable */
+}
+
+.fo24-review__header {
+  padding: 1.1rem 1.5rem;
+  margin: 0;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+.fo24-review__header h6 {
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.fo24-review__info {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  background: #f6faf7;
+  border-top: 1px solid #e6efe8;
+  border-bottom: 1px solid #e6efe8;
+  color: #4b5563;
+  font-size: .9rem;
+  line-height: 1.65;
+}
+
+.fo24-review__info > i {
+  margin-top: .25rem;
+  color: #1a7a3f;
+}
+
+.fo24-review__info p {
+  max-width: 88ch;
+}
+
+.fo24-review__filters {
+  padding: 1rem 1.5rem 1.1rem;
+  margin: 0;
+  border-bottom: 1px solid #eef2f6;
+  background: #fff;
+}
+
+.fo24-review__scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+.fo24-review__table {
+  min-width: 1080px;
+  font-size: .875rem;
+}
+
+.fo24-review__table thead th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: .85rem 1.1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.fo24-review__table tbody td {
+  padding: 1rem 1.1rem;
+  vertical-align: middle;
+  border-color: #f1f5f9;
+}
+
+.fo24-review__table tbody tr:hover td {
+  background: #fbfdfb;
+}
+
+.fo24-col-student {
+  min-width: 190px;
+  padding-left: 1.5rem !important;
+}
+
+.fo24-wrap {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+
+.fo24-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: .5rem;
+  min-width: 170px;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.fo24-actions .btn,
+.fo24-actions .badge {
+  white-space: nowrap;
+}
+
+.fo24-actions .btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fo24-actions .badge {
+  padding: .45em .7em;
+  font-size: .75rem;
+  text-align: center;
+}
+
+.fo24-actions__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.fo24-actions__row .badge {
+  flex: 1 1 auto;
+}
+
+.fo24-badge-lg {
+  padding: .55em .8em !important;
+}
+
+.fo24-actions .btn:focus-visible,
+.fo24-review__filters .form-control:focus-visible,
+.fo24-review__filters .form-select:focus-visible {
+  outline: 2px solid #1a7a3f;
+  outline-offset: 2px;
+}
+
+@media (max-width: 767.98px) {
+  .fo24-review__header,
+  .fo24-review__info,
+  .fo24-review__filters {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Keep the student name visible while the actions scroll horizontally. */
+  .fo24-review__table .fo24-col-student {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #fff;
+    box-shadow: 1px 0 0 #eef2f6;
+    padding-left: 1rem !important;
+  }
+
+  .fo24-review__table thead .fo24-col-student {
+    background: #f8fafc;
+  }
+}

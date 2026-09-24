@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import Layout from './Layout'
@@ -27,7 +26,6 @@ function RoleSettings({
 }) {
   const { user, updateUserLocal, refreshUser } = useAuth()
   const toast = useToast()
-  const location = useLocation()
   const fileInputRef = useRef(null)
   const storageKey = user?.id
     ? `interntrack_notifications_${user.id}`
@@ -56,13 +54,6 @@ function RoleSettings({
     sex: user?.sex || '',
   })
 
-  const [passwords, setPasswords] = useState({
-    current_password: '',
-    new_password: '',
-    new_password_confirmation: '',
-  })
-  const [passwordLoading, setPasswordLoading] = useState(false)
-  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' })
   const [profileSaving, setProfileSaving] = useState(false)
 
   const [cropSrc, setCropSrc] = useState(null)
@@ -127,9 +118,6 @@ function RoleSettings({
     } catch { /* ignore */ }
   }, [notifications, storageKey])
 
-  const securityStatus = user?.must_change_password
-    ? 'Password change required'
-    : 'Password protected'
 
   const filledAccountFields = [
     formData.name,
@@ -141,31 +129,9 @@ function RoleSettings({
   const profileCompletion = Math.round((filledAccountFields / Math.max(totalAccountFields, 1)) * 100)
   const notifEnabledCount = Object.values(notifications).filter(Boolean).length
 
-  const [directPasswordLoading, setDirectPasswordLoading] = useState(false)
-
   const handleFormChange = (e) => {
     if (identityLocked && e.target.name !== 'sex' && e.target.name !== 'contact') return
     setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
-
-  const handlePasswordChange = (e) => {
-    setPasswords({ ...passwords, [e.target.name]: e.target.value })
-  }
-
-  const handleDirectPasswordSubmit = async (e) => {
-    e.preventDefault()
-    setDirectPasswordLoading(true)
-    setPasswordMessage({ type: '', text: '' })
-    try {
-      const { data } = await api.post('/auth/change-password', passwords)
-      setPasswordMessage({ type: 'success', text: data.message || 'Password updated successfully.' })
-      setPasswords({ current_password: '', new_password: '', new_password_confirmation: '' })
-      updateUserLocal(data.user)
-    } catch (err) {
-      setPasswordMessage({ type: 'error', text: err.response?.data?.message || 'Failed to update password.' })
-    } finally {
-      setDirectPasswordLoading(false)
-    }
   }
 
   const handleNotificationChange = async (key) => {
@@ -240,19 +206,6 @@ function RoleSettings({
       faculty_number: user?.faculty_number || '',
       student_number: user?.student_number || '',
     })
-  }
-
-  const handleRequestPasswordChange = async () => {
-    setPasswordLoading(true)
-    setPasswordMessage({ type: '', text: '' })
-    try {
-      const { data } = await api.post('/auth/request-password-change')
-      setPasswordMessage({ type: 'success', text: data.message || 'Password confirmation email sent.' })
-    } catch (err) {
-      setPasswordMessage({ type: 'error', text: err.response?.data?.message || 'Failed to send password change email.' })
-    } finally {
-      setPasswordLoading(false)
-    }
   }
 
   const handleAvatarClick = () => fileInputRef.current?.click()
@@ -365,23 +318,8 @@ function RoleSettings({
     }
   }
 
-  useEffect(() => {
-    if (user?.must_change_password || location.state?.forcePasswordChange) {
-      const t = window.setTimeout(scrollToSecurity, 120)
-      return () => window.clearTimeout(t)
-    }
-    return undefined
-  }, [user?.must_change_password, location.state?.forcePasswordChange])
-
   return (
     <Layout title="Settings" subtitle={subtitleLabel} icon="fa-cog" bodyClass={bodyClass}>
-      {user?.must_change_password && (
-        <div className="alert alert-warning border mb-3" role="alert">
-          <i className="fa fa-key me-2"></i>
-          <strong>Password change required.</strong> An administrator reset your password to the default.
-          Update it in the Security section below before continuing.
-        </div>
-      )}
 
       <div className="row g-4 settings-layout pt-1 mb-2">
 
@@ -575,7 +513,7 @@ function RoleSettings({
                     <label className="d-block text-muted fw-semibold text-uppercase" style={{ fontSize: '0.72rem', letterSpacing: '0.06em', marginBottom: '4px' }}>
                       Contact Number
                     </label>
-                    <input
+                    <input maxLength={30}
                       name="contact"
                       className="form-control form-control-sm"
                       value={formData.contact}
@@ -640,15 +578,15 @@ function RoleSettings({
                         style={{
                           width: '42px',
                           height: '42px',
-                          background: user?.must_change_password ? '#fef3c7' : '#ecfdf5',
-                          color: user?.must_change_password ? '#d97706' : '#157938',
+                          background: '#ecfdf5',
+                          color: '#157938',
                         }}
                       >
-                        <i className={`fa-solid ${user?.must_change_password ? 'fa-triangle-exclamation' : 'fa-shield-halved'}`} style={{ fontSize: '1.15rem' }}></i>
+                        <i className="fa-solid fa-shield-halved" style={{ fontSize: '1.15rem' }}></i>
                       </div>
                       <div className="min-w-0">
                         <span className="fw-bolder text-dark d-block text-truncate" style={{ fontSize: '1.05rem', lineHeight: 1.1 }}>
-                          {user?.must_change_password ? 'Action Needed' : 'Protected'}
+                          Protected
                         </span>
                         <span className="text-muted fw-medium d-block text-truncate" style={{ fontSize: '0.75rem', marginTop: '3px' }}>
                           Security
@@ -731,59 +669,25 @@ function RoleSettings({
             </div>
             <div className="settings-section-intro">{securityIntro}</div>
 
-            {passwordMessage.text && (
-              <div className={`alert alert-${passwordMessage.type === 'error' ? 'danger' : 'success'} py-2 px-3 mb-3`} style={{ fontSize: '0.85rem' }}>
-                {passwordMessage.text}
+            {/* Change Password was removed for every role. */}
+            <div className="p-3 bg-light rounded border mb-2">
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <i className="fa fa-shield-halved text-success"></i>
+                <span className="fw-semibold text-dark" style={{ fontSize: '0.88rem' }}>Account protection</span>
               </div>
-            )}
-
-            {user?.must_change_password ? (
-              <form onSubmit={handleDirectPasswordSubmit} className="p-3 bg-light rounded border mb-4">
-                <div className="d-flex align-items-center gap-2 mb-3">
-                  <i className="fa fa-lock text-warning"></i>
-                  <span className="fw-semibold text-dark" style={{ fontSize: '0.88rem' }}>Set New Password</span>
-                </div>
-                <div className="mb-2">
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Current Password (Default)</label>
-                  <input type="password" name="current_password" value={passwords.current_password} onChange={handlePasswordChange} className="form-control form-control-sm" required />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>New Password</label>
-                  <input type="password" name="new_password" value={passwords.new_password} onChange={handlePasswordChange} className="form-control form-control-sm" minLength={8} required />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Confirm New Password</label>
-                  <input type="password" name="new_password_confirmation" value={passwords.new_password_confirmation} onChange={handlePasswordChange} className="form-control form-control-sm" minLength={8} required />
-                </div>
-                <button type="submit" className="btn btn-primary btn-sm w-100" disabled={directPasswordLoading}>
-                  {directPasswordLoading ? 'Updating...' : 'Update Password'}
-                </button>
-              </form>
-            ) : (
-              <>
-                <div className="p-3 bg-light rounded border mb-4">
-                  <div className="d-flex align-items-center gap-2 mb-2">
-                    <i className="fa fa-envelope text-success"></i>
-                    <span className="fw-semibold text-dark" style={{ fontSize: '0.88rem' }}>Email Confirmation Flow</span>
-                  </div>
-                  <p className="text-muted mb-0" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
-                    To keep your account secure, password changes require email verification. Click the button below to receive a confirmation link sent to your registered email address (valid for 60 minutes).
-                  </p>
-                </div>
-
-                <div className="settings-actions-row">
-                  <button type="button" className="btn-green d-inline-flex align-items-center gap-2" onClick={handleRequestPasswordChange} disabled={passwordLoading}>
-                    <i className="fa fa-paper-plane"></i>
-                    {passwordLoading ? 'Sending Email...' : 'Send Password Change Email'}
-                  </button>
-                </div>
-              </>
-            )}
+              <p className="text-muted mb-2" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+                Your account locks after 3 consecutive failed sign-in attempts, and a security notice is sent to your registered email.
+              </p>
+              <p className="text-muted mb-0" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
+                {user?.role === 'supervisor'
+                  ? 'Forgot your password? Use "Forgot Password" on the Industry Supervisor sign-in page.'
+                  : 'Password and account recovery for University accounts is handled by the University MISD office.'}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Children (e.g., SignatureUpload) — hide while password change is forced */}
-        {!user?.must_change_password ? children : null}
+        {children}
       </div >
 
       {

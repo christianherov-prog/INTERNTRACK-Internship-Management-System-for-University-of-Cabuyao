@@ -130,7 +130,7 @@ function MisdSyncMonitor() {
                 <div className="content-card-header"><i className="fa fa-user-graduate"></i><h6>Sync Student Profile</h6></div>
                 <form className="p-3" onSubmit={lookupStudent}>
                   <div className="input-group">
-                    <input
+                    <input maxLength={50}
                       className="form-control"
                       placeholder="Student Number"
                       value={studentNumber}

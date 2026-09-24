@@ -188,7 +188,7 @@ function MisdStaffPage({ role }) {
                   Faculty / Employee Number <span className="text-danger">*</span>
                 </label>
                 <div className="input-group">
-                  <input
+                  <input maxLength={50}
                     className="form-control rounded-start-3"
                     value={form.faculty_number}
                     onChange={(e) => setForm((p) => ({ ...p, faculty_number: e.target.value }))}
@@ -203,23 +203,23 @@ function MisdStaffPage({ role }) {
               </div>
               <div className="col-md-3">
                 <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>First Name</label>
-                <input className="form-control rounded-3" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} />
+                <input maxLength={100} className="form-control rounded-3" value={form.first_name} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} />
               </div>
               <div className="col-md-3">
                 <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Last Name</label>
-                <input className="form-control rounded-3" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} />
+                <input maxLength={100} className="form-control rounded-3" value={form.last_name} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Email Address</label>
-                <input type="email" className="form-control rounded-3" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+                <input maxLength={150} type="email" className="form-control rounded-3" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Department / College</label>
-                <input className="form-control rounded-3" value={form.department} onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))} />
+                <input maxLength={255} className="form-control rounded-3" value={form.department} onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold text-muted" style={{ fontSize: '0.82rem' }}>Official Position</label>
-                <input className="form-control rounded-3" value={form.position} onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))} />
+                <input maxLength={150} className="form-control rounded-3" value={form.position} onChange={(e) => setForm((p) => ({ ...p, position: e.target.value }))} />
               </div>
             </div>
 

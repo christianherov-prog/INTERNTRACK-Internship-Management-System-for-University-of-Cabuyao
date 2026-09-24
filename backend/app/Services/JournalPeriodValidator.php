@@ -148,6 +148,64 @@ class JournalPeriodValidator
         ];
     }
 
+    /** Highest supported internship week (same bound used when resolving journals). */
+    public const MAX_WEEKS = 52;
+
+    /**
+     * Authoritative journal week windows for an internship, derived from the same
+     * rule as weekNumberFor(): Week N covers start_date + 7(N-1) .. +6 days,
+     * clipped to the internship end. Without an end date, weeks run through the
+     * week after the current Asia/Manila week (never an arbitrary future week).
+     *
+     * @return list<array{week_number: int, start_date: string, end_date: string}>
+     */
+    public function weekWindows(Internship $internship): array
+    {
+        $start = $this->dateString($internship->start_date);
+        if ($start === null) {
+            return [];
+        }
+
+        $end = $this->resolvedInternshipEnd($internship);
+        if ($end !== null && $end >= $start) {
+            $lastWeek = $this->weekNumberFor($start, $end);
+        } else {
+            $today = ManilaTime::todayDateString();
+            $lastWeek = $this->weekNumberFor($start, max($start, $today)) + 1;
+        }
+        $lastWeek = min(self::MAX_WEEKS, max(1, $lastWeek));
+
+        $origin = Carbon::parse($start, ManilaTime::TZ)->startOfDay();
+        $weeks = [];
+        for ($week = 1; $week <= $lastWeek; $week++) {
+            $weekStart = $origin->copy()->addDays(7 * ($week - 1));
+            $weekEnd = $weekStart->copy()->addDays(6);
+            $endString = $weekEnd->toDateString();
+            if ($end !== null && $end >= $start && $endString > $end) {
+                $endString = $end;
+            }
+            $weeks[] = [
+                'week_number' => $week,
+                'start_date' => $weekStart->toDateString(),
+                'end_date' => $endString,
+            ];
+        }
+
+        return $weeks;
+    }
+
+    /** The authoritative window for one week, or null when the week does not exist. */
+    public function weekWindow(Internship $internship, int $weekNumber): ?array
+    {
+        foreach ($this->weekWindows($internship) as $window) {
+            if ($window['week_number'] === $weekNumber) {
+                return $window;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Chronological internship week: Week 1 begins on internship start_date.
      */

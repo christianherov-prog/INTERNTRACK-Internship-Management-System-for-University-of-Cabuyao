@@ -9,7 +9,7 @@ function SupervisorSettings() {
       subtitleLabel="Supervisor"
       identityLocked={true}
       notificationsIntro="Choose which intern-monitoring alerts you want to receive at your host training establishment."
-      securityIntro="Update your password and strengthen account protection for your supervisor credentials."
+      securityIntro="Account protection and sign-in security for your InternTrack account."
       metaFields={[
         { label: 'Host Company', key: 'company', fallback: 'Not assigned' },
         { label: 'Position', key: 'position', fallback: 'Company Supervisor' },

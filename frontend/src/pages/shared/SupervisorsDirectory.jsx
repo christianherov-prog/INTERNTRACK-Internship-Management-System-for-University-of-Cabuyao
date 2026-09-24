@@ -123,7 +123,7 @@ function SupervisorsDirectory({
           <span className="ms-auto badge bg-secondary">{filtered.length}</span>
         </div>
         <div className="p-3">
-          <input
+          <input maxLength={100}
             type="search"
             className="form-control"
             placeholder="Search by name, Supervisor ID, login, email, or company…"

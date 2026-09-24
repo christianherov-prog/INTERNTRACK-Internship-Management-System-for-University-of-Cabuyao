@@ -89,17 +89,17 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
 
         <div className="mb-3">
           <label className="fw-bold form-label">1. Observations on the School's Internship Program: (Describe any positive aspects and challenges faced during the collaboration with the school.)</label>
-          <textarea className="form-control" rows="3" value={responses['observations'] || ''} onChange={(e) => handleTextChange('observations', e.target.value)} required></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={responses['observations'] || ''} onChange={(e) => handleTextChange('observations', e.target.value)} required></textarea>
         </div>
 
         <div className="mb-3">
           <label className="fw-bold form-label">2. Suggestions for Improvement: (Provide recommendations on how the school can improve the internship experience.)</label>
-          <textarea className="form-control" rows="3" value={responses['suggestions'] || ''} onChange={(e) => handleTextChange('suggestions', e.target.value)} required></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={responses['suggestions'] || ''} onChange={(e) => handleTextChange('suggestions', e.target.value)} required></textarea>
         </div>
 
         <div className="mb-3">
           <label className="fw-bold form-label">3. Impact of the Internship Program on the Company. Did the interns contribute positively to the company's operations? (Explain how.)</label>
-          <textarea className="form-control" rows="3" value={responses['impact'] || ''} onChange={(e) => handleTextChange('impact', e.target.value)} required></textarea>
+          <textarea maxLength={2000} className="form-control" rows="3" value={responses['impact'] || ''} onChange={(e) => handleTextChange('impact', e.target.value)} required></textarea>
         </div>
 
         <div className="mb-3">
@@ -113,7 +113,7 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
               <input type="radio" className="form-check-input" name="hire" value="no" onChange={(e) => handleRadioChange('would_hire', e.target.value)} />
               <label className="form-check-label">No</label>
             </div>
-            <input type="text" className="form-control flex-grow-1" placeholder="Reason" value={responses['hire_reasons'] || ''} onChange={(e) => handleTextChange('hire_reasons', e.target.value)} />
+            <input maxLength={500} type="text" className="form-control flex-grow-1" placeholder="Reason" value={responses['hire_reasons'] || ''} onChange={(e) => handleTextChange('hire_reasons', e.target.value)} />
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export const HTEToUniversityEvaluationForm = ({ internship, onSubmit, processing
 
         <div className="mb-4">
           <label className="fw-bold form-label">Other Comments / General Comments:</label>
-          <textarea className="form-control" rows="2" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
+          <textarea maxLength={2000} className="form-control" rows="2" value={generalComments} onChange={(e) => setGeneralComments(e.target.value)}></textarea>
         </div>
 
         <div className="d-flex justify-content-end">

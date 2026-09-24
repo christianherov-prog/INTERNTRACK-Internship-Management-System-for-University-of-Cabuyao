@@ -8,6 +8,7 @@ import '../../../assets/css/portfolio-print.css'
 import { PaginatedTextSection, PaginatedImageCollection } from '../../../components/portfolio/AutoPaginatedFlow'
 import { displayLabel } from '../../../utils/displayLabel'
 import InternTrackLoader from '../../../components/InternTrackLoader'
+import usePortfolioPreviewScale from '../../../hooks/usePortfolioPreviewScale'
 import {
   PSY_COURSE,
   PSY_ROTATIONS,
@@ -131,17 +132,23 @@ function displayName(profile, user) {
   return `${last}, ${first}${mi}`.trim()
 }
 
-function PsychologyPortfolioPreview() {
-  const [data, setData] = useState(() => cacheGet('student:portfolio') ?? null)
-  const [loading, setLoading] = useState(() => !cacheGet('student:portfolio'))
+function PsychologyPortfolioPreview({ preloadedData = null, backTo = '/student/portfolio', backLabel = 'Back to Builder', modeLabel = 'Draft Preview Mode' } = {}) {
+  const [data, setData] = useState(() => preloadedData ?? cacheGet('student:portfolio') ?? null)
+  const [loading, setLoading] = useState(() => !preloadedData && !cacheGet('student:portfolio'))
   const [error, setError] = useState(null)
   const printRef = useRef(null)
+  usePortfolioPreviewScale()
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: 'Psychology_Internship_Portfolio',
   })
 
   useEffect(() => {
+    if (preloadedData) {
+      setData(preloadedData)
+      setLoading(false)
+      return
+    }
     api.get('/student/portfolio')
       .then((res) => {
         cacheSet('student:portfolio', res.data)
@@ -149,7 +156,7 @@ function PsychologyPortfolioPreview() {
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to load portfolio.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [preloadedData])
 
   if (loading && !data) {
     return (
@@ -163,7 +170,7 @@ function PsychologyPortfolioPreview() {
     return (
       <div style={{ background: '#e5e5e5', minHeight: '100vh', padding: '24px' }}>
         <PageError message={error} />
-        <div className="text-center mt-3"><Link to="/student/portfolio" className="text-muted">Back to Builder</Link></div>
+        <div className="text-center mt-3"><Link to={backTo} className="text-muted">{backLabel}</Link></div>
       </div>
     )
   }
@@ -259,16 +266,16 @@ function PsychologyPortfolioPreview() {
 
   return (
     <div style={{ background: '#e5e5e5', minHeight: '100vh', paddingBottom: '60px' }}>
-      <div className="no-print" style={{
+      <div className="no-print portfolio-preview-toolbar" style={{
         position: 'sticky', top: 0, left: 0, zIndex: 1000, background: '#1a1a2e', color: '#fff',
         padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
       }}>
         <div className="d-flex align-items-center gap-3">
-          <Link to="/student/portfolio" style={{ color: '#ccc', textDecoration: 'none', fontSize: '14px' }}>
-            <i className="fa fa-arrow-left me-2"></i>Back to Builder
+          <Link to={backTo} style={{ color: '#ccc', textDecoration: 'none', fontSize: '14px' }}>
+            <i className="fa fa-arrow-left me-2"></i>{backLabel}
           </Link>
-          <span style={{ color: '#555' }}>|</span>
+          <span className="portfolio-preview-sep" style={{ color: '#555' }}>|</span>
           <span style={{ fontWeight: 600, fontSize: '15px' }}>BS Psychology Portfolio Preview</span>
         </div>
         <button

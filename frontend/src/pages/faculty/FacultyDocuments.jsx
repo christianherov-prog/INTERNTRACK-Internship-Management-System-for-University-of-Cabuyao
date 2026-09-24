@@ -127,7 +127,7 @@ function FacultyDocuments() {
                 </p>
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Remarks (optional)</label>
-                  <textarea
+                  <textarea maxLength={1000}
                     className="form-control"
                     rows={2}
                     value={remarks}
@@ -162,7 +162,7 @@ function FacultyDocuments() {
               </div>
               <div className="modal-body">
                 <label className="form-label fw-semibold">Remarks <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Reason" />
+                <textarea maxLength={1000} className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Reason" />
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>

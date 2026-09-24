@@ -95,7 +95,7 @@ function CoordLogbookReview() {
                 </div>
                 <div>
                   <label className="form-label fw-semibold">Remarks / Feedback</label>
-                  <textarea className="form-control" rows={3} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Feedback"></textarea>
+                  <textarea maxLength={1000} className="form-control" rows={3} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Feedback"></textarea>
                 </div>
               </div>
               <div className="modal-footer">

@@ -30,7 +30,7 @@ class AnnouncementController extends Controller
     {
         $request->validate([
             'title'       => 'required|string|max:255',
-            'content'     => 'required|string',
+            'content'     => 'required|string|max:5000',
             'target_role' => 'required|string|in:all,student,supervisor,faculty,coordinator,director',
             'category'    => 'nullable|string|in:'.implode(',', Announcement::CATEGORIES),
             'is_pinned'   => 'boolean',
@@ -72,7 +72,7 @@ class AnnouncementController extends Controller
     {
         $request->validate([
             'title'             => 'required|string|max:255',
-            'content'           => 'required|string',
+            'content'           => 'required|string|max:5000',
             'target_role'       => 'required|in:all,student,supervisor,faculty,coordinator,director',
             'category'          => 'nullable|string|in:'.implode(',', Announcement::CATEGORIES),
             'is_pinned'         => 'boolean',

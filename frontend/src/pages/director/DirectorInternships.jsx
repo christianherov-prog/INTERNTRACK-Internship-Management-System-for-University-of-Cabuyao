@@ -300,7 +300,7 @@ function DirectorInternships() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 220 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 140 }} value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}>
           <option value="all">All Depts</option>

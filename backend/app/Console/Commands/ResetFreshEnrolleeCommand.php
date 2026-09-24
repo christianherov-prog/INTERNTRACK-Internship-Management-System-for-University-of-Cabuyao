@@ -199,6 +199,9 @@ class ResetFreshEnrolleeCommand extends Command
                 }
                 $keep->forceFill($pending)->save();
                 InternshipProgressService::synchronize($keep->fresh());
+                // Deliberate reset: lets interntrack:restore-evaluation-approvals tell
+                // it apart from an approval lost outside the app.
+                audit_log(null, 'evaluation_period_reset', ['internship_id' => $keep->id, 'source' => 'reset-fresh-enrollee']);
             } else {
                 InternshipProvisioning::createPendingIfNone($user, $pending);
             }

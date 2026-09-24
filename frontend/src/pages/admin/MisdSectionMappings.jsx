@@ -208,7 +208,7 @@ function MisdSectionMappings() {
 
       <div className="d-flex flex-wrap gap-2 justify-content-between mb-3">
         <div className="d-flex flex-wrap gap-2">
-          <input
+          <input maxLength={20}
             className="form-control form-control-sm"
             style={{ width: 140 }}
             placeholder="School Year"
@@ -225,7 +225,7 @@ function MisdSectionMappings() {
             <option value="1">Sem 1</option>
             <option value="2">Sem 2</option>
           </select>
-          <input
+          <input maxLength={50}
             className="form-control form-control-sm"
             style={{ width: 100 }}
             placeholder="Section"
@@ -246,11 +246,11 @@ function MisdSectionMappings() {
             <div className="row g-3">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Section <span className="text-danger">*</span></label>
-                <input className="form-control" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="Section" required />
+                <input maxLength={50} className="form-control" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="Section" required />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Academic Year <span className="text-danger">*</span></label>
-                <input className="form-control" value={form.academic_year} onChange={(e) => setForm((p) => ({ ...p, academic_year: e.target.value }))} required />
+                <input maxLength={20} className="form-control" value={form.academic_year} onChange={(e) => setForm((p) => ({ ...p, academic_year: e.target.value }))} required />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Semester <span className="text-danger">*</span></label>
@@ -262,7 +262,7 @@ function MisdSectionMappings() {
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Program</label>
-                <input className="form-control" value={(typeof form.program === 'string' ? form.program : form.program?.name || form.program?.code) || ''} onChange={(e) => setForm((p) => ({ ...p, program: e.target.value }))} />
+                <input maxLength={150} className="form-control" value={(typeof form.program === 'string' ? form.program : form.program?.name || form.program?.code) || ''} onChange={(e) => setForm((p) => ({ ...p, program: e.target.value }))} />
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Faculty <span className="text-danger">*</span></label>

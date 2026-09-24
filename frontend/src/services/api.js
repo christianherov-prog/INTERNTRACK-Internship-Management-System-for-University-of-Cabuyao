@@ -14,20 +14,16 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-
+    // Marks SPA requests: the API only accepts the session cookie with this header.
+    'X-Requested-With': 'XMLHttpRequest',
   },
-  withCredentials: false,
+  // The Sanctum token lives in an HttpOnly cookie set by /auth/login. Every tab
+  // of the browser shares it, and JavaScript never reads or stores the token.
+  withCredentials: true,
 })
 
-
-
-// ── Request Interceptor: Attach Sanctum Token ─────────────────────────────────
+// ── Request Interceptor ───────────────────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('interntrack_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-
   const selectedInternshipId = sessionStorage.getItem('interntrack_active_internship')
   if (selectedInternshipId) {
     config.headers['X-Internship-Id'] = selectedInternshipId
@@ -54,44 +50,25 @@ api.interceptors.response.use(
     const status = error.response?.status
     const requestUrl = String(error.config?.url || '')
 
-    // Let AuthContext/ConfirmLogoutModal handle logout 401s (token already gone).
-    if (status === 401 && !requestUrl.includes('/auth/logout')) {
+    // Session ended (logout in another tab, expiry, deactivation, or lockout).
+    // Let AuthContext handle /auth/logout and the initial /auth/user probe itself.
+    const isAuthProbe = requestUrl.includes('/auth/logout') || requestUrl.includes('/auth/user') || requestUrl.includes('/auth/login')
+    if (status === 401 && !isAuthProbe) {
       disconnectEcho()
-      sessionStorage.removeItem('interntrack_token')
       sessionStorage.removeItem('interntrack_session')
-      window.location.href = '/'
+      if (window.location.pathname !== '/' && !window.location.pathname.startsWith('/supervisor/login')) {
+        window.location.href = '/'
+      }
     }
 
     if (status === 403 && !requestUrl.includes('/files/download')) {
       const message = error.response?.data?.message || ''
-      const isPasswordChangeRequired = /password change required/i.test(message)
-      if (isPasswordChangeRequired) {
-        // Do not show the department Access Restricted overlay — send the user to Settings.
-        try {
-          const raw = sessionStorage.getItem('interntrack_session')
-          const session = raw ? JSON.parse(raw) : null
-          const role = session?.role
-          const settingsByRole = {
-            student: '/student/settings',
-            director: '/director/settings',
-            supervisor: '/supervisor/settings',
-            faculty: '/faculty/settings',
-            coordinator: '/coordinator/settings',
-            admin: '/admin/settings',
-          }
-          const target = settingsByRole[role]
-          if (target && !window.location.pathname.endsWith('/settings')) {
-            window.location.assign(target)
-          }
-        } catch { /* ignore */ }
-      } else {
-        const isAttendanceWorkflow =
-          requestUrl.includes('/student/attendance')
-          || /HTE Supervisor is approved/i.test(message)
-        if (!isAttendanceWorkflow) {
-          const detail = message || 'Access denied — different department'
-          window.dispatchEvent(new CustomEvent('access-denied', { detail }))
-        }
+      const isAttendanceWorkflow =
+        requestUrl.includes('/student/attendance')
+        || /HTE Supervisor is approved/i.test(message)
+      if (!isAttendanceWorkflow) {
+        const detail = message || 'Access denied — different department'
+        window.dispatchEvent(new CustomEvent('access-denied', { detail }))
       }
     }
 

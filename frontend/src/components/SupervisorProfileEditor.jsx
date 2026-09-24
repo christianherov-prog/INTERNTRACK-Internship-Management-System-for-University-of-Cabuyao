@@ -92,11 +92,11 @@ function SupervisorProfileEditor() {
         <div className="row g-3">
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Full Name</label>
-            <input name="name" className="form-control" value={form.name} onChange={handleChange} required />
+            <input maxLength={200} name="name" className="form-control" value={form.name} onChange={handleChange} required />
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Email</label>
-            <input type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
+            <input maxLength={255} type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Username</label>
@@ -120,11 +120,11 @@ function SupervisorProfileEditor() {
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Contact Number</label>
-            <input name="contact" className="form-control" value={form.contact} onChange={handleChange} />
+            <input maxLength={40} name="contact" className="form-control" value={form.contact} onChange={handleChange} />
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Position / Title</label>
-            <input name="position" className="form-control" value={form.position} onChange={handleChange} placeholder="Position" />
+            <input maxLength={255} name="position" className="form-control" value={form.position} onChange={handleChange} placeholder="Position" />
           </div>
           <div className="col-md-6">
             <label className="form-label small fw-semibold">Host Company</label>

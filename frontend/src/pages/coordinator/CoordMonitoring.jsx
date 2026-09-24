@@ -147,7 +147,7 @@ function CoordMonitoring() {
           <i className="fa fa-table"></i>
           <h6>Intern Overview</h6>
           <div className="ms-auto d-flex gap-2 flex-wrap">
-            <input className="form-control form-control-sm" style={{width:'180px'}} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
+            <input maxLength={100} className="form-control form-control-sm" style={{width:'180px'}} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
             <select className="form-select form-select-sm" style={{width:'140px'}} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
               {sections.map(s => <option key={s} value={s}>{s === 'all' ? 'All Sections' : s}</option>)}
             </select>

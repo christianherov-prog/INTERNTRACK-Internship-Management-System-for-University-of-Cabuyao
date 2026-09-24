@@ -13,7 +13,7 @@ function StudentSettings() {
         bodyClass="student-page"
         subtitleLabel="Student"
         notificationsIntro="Choose which internship alerts you want to receive."
-        securityIntro="Update your password and strengthen account protection for your school credentials."
+        securityIntro="Account protection and sign-in security for your InternTrack account."
         metaFields={[
           { label: 'Student Number', key: 'student_number', fallback: '—' },
           {

@@ -355,6 +355,13 @@ class WorkflowIntegrationTest extends TestCase
         $p=$this->party(); $e=$this->submitEvaluation($p);
         $this->assertSame($p['supervisor']->id,(int)$e->evaluated_by);
         $this->assertNotNull($e->submitted_at); $this->assertEquals(80,$e->average_score);
+        // FO-24 details stay hidden from the student until the assigned faculty releases them.
+        $this->as($p['student']);
+        $locked=collect($this->getJson('/api/v1/student/evaluations')->assertOk()->json('data'))->firstWhere('id',$e->id);
+        $this->assertSame('completed',$locked['status']); $this->assertTrue($locked['details_locked']);
+        $this->assertArrayNotHasKey('average_score',$locked);
+        $this->as($p['faculty']);
+        $this->postJson('/api/v1/faculty/evaluations/'.$p['internship']->id.'/release-performance')->assertOk();
         $this->as($p['student']);
         $row=collect($this->getJson('/api/v1/student/evaluations')->assertOk()->json('data'))->firstWhere('id',$e->id);
         $this->assertNotNull($row); $this->assertSame('FO-24',$row['form_type']);

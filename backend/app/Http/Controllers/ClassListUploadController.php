@@ -16,11 +16,11 @@ class ClassListUploadController extends Controller
     {
         $request->validate([
             'file' => 'required|'.UploadLimits::fileRule('xlsx,xls,csv'),
-            'section' => 'required|string',
-            'program' => 'required|string',
-            'school_year' => 'required_without:academic_year|string',
-            'academic_year' => 'required_without:school_year|string',
-            'semester' => 'required|string',
+            'section' => 'required|string|max:50',
+            'program' => 'required|string|max:255',
+            'school_year' => 'required_without:academic_year|string|max:20',
+            'academic_year' => 'required_without:school_year|string|max:20',
+            'semester' => 'required|string|max:30',
             'faculty_user_id' => 'required|exists:users,id',
         ], UploadLimits::maxMessages('file'));
 

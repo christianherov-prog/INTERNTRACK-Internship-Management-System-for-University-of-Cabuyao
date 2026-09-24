@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../services/api'
 import { InternTrackMark, LOGO_SUBTITLE } from '../components/InternTrackLogo'
 
-function LoginPage() {
+/**
+ * Campus sign-in for every role. Forgot Password exists only for Industry /
+ * Company Supervisors, on the dedicated Supervisor sign-in (supervisorMode);
+ * the backend also refuses reset links for all other roles.
+ */
+function LoginPage({ supervisorMode = false }) {
   const [studentNumber, setStudentNumber] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -25,18 +30,6 @@ function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      if (user.must_change_password) {
-        const settingsRoutes = {
-          student: '/student/settings',
-          director: '/director/settings',
-          supervisor: '/supervisor/settings',
-          faculty: '/faculty/settings',
-          coordinator: '/coordinator/settings',
-          admin: '/admin/settings',
-        }
-        navigate(settingsRoutes[user.role] || '/', { replace: true, state: { forcePasswordChange: true } })
-        return
-      }
       const roleRoutes = {
         student: '/student/dashboard',
         director: '/director/dashboard',
@@ -79,8 +72,10 @@ function LoginPage() {
     e.preventDefault()
     setForgotError('')
 
+    if (!supervisorMode) return
+
     if (!forgotIdentifier.trim()) {
-      setForgotError('Please enter your Student Number, Employee ID, or Email.')
+      setForgotError('Please enter your supervisor username or registered email.')
       return
     }
 
@@ -93,7 +88,7 @@ function LoginPage() {
       setForgotSuccess(true)
       setForgotSuccessMsg(
         res.data?.message ||
-          'If an account exists with the provided ID or email, password reset instructions have been sent to the registered email address.'
+          'If a Company Supervisor account exists with the provided username or email, password reset instructions have been sent to the registered email address.'
       )
       if (res.data?.debug_reset_url) {
         setDebugResetUrl(res.data.debug_reset_url)
@@ -162,11 +157,11 @@ function LoginPage() {
             
             <div className="campus-access-pill">
               <i className={`fa ${isForgotPassword ? 'fa-key' : 'fa-id-card'}`}></i>
-              {isForgotPassword ? 'PASSWORD RESET ASSISTANCE' : 'CAMPUS ACCESS PORTAL'}
+              {isForgotPassword ? 'PASSWORD RESET ASSISTANCE' : (supervisorMode ? 'INDUSTRY SUPERVISOR ACCESS' : 'CAMPUS ACCESS PORTAL')}
             </div>
           </div>
 
-          {isForgotPassword ? (
+          {isForgotPassword && supervisorMode ? (
             <div className="forgot-view-container">
               {forgotSuccess ? (
                 <div className="forgot-success-box">
@@ -206,7 +201,7 @@ function LoginPage() {
                       <strong>Self-Service Account Recovery</strong>
                     </div>
                     <p className="smart-detection-text">
-                      Enter your assigned Student Number, Employee ID, or registered email to receive password reset instructions.
+                      Industry Supervisors: enter your InternTrack username or registered email to receive password reset instructions.
                     </p>
                   </div>
 
@@ -219,7 +214,8 @@ function LoginPage() {
                         id="forgotIdentifier"
                         value={forgotIdentifier}
                         onChange={(e) => setForgotIdentifier(e.target.value)}
-                        placeholder="Username, Student Number, Employee ID, Supervisor ID, or Email"
+                        placeholder="Supervisor username or registered email"
+                        maxLength={150}
                         required
                         autoFocus
                       />
@@ -282,7 +278,9 @@ function LoginPage() {
                     id="studentNumber"
                     value={studentNumber}
                     onChange={(e) => setStudentNumber(e.target.value)}
-                    placeholder="Username, Student Number, Employee ID, Supervisor ID, or Email"
+                    placeholder={supervisorMode ? 'Supervisor username or registered email' : 'Username, Student Number, Employee ID, Supervisor ID, or Email'}
+                    maxLength={150}
+                    autoComplete="username"
                     required
                   />
                 </div>
@@ -296,6 +294,8 @@ function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
+                    maxLength={255}
+                    autoComplete="current-password"
                     required
                   />
                   <button
@@ -310,17 +310,23 @@ function LoginPage() {
 
                 <div className="login-meta-row">
                   <span className="authorized-text">Authorized users only.</span>
-                  <button
-                    type="button"
-                    className="forgot-password-link"
-                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                    onClick={() => {
-                      setError('')
-                      setIsForgotPassword(true)
-                    }}
-                  >
-                    Forgot Password?
-                  </button>
+                  {supervisorMode ? (
+                    <button
+                      type="button"
+                      className="forgot-password-link"
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                      onClick={() => {
+                        setError('')
+                        setIsForgotPassword(true)
+                      }}
+                    >
+                      Forgot Password?
+                    </button>
+                  ) : (
+                    <Link to="/supervisor/login" className="forgot-password-link">
+                      Industry Supervisor sign-in
+                    </Link>
+                  )}
                 </div>
 
                 <div className="login-error-slot" role="alert" aria-live="polite">
@@ -352,6 +358,12 @@ function LoginPage() {
                 </button>
               </form>
             </>
+          )}
+
+          {supervisorMode && !isForgotPassword && (
+            <div className="text-center mt-2" style={{ fontSize: '0.85rem' }}>
+              <Link to="/" className="forgot-password-link">University account? Use the campus sign-in</Link>
+            </div>
           )}
 
           <div className="login-features" role="list" aria-label="Platform highlights">

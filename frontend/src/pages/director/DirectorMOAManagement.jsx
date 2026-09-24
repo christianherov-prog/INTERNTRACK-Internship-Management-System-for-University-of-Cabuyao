@@ -86,7 +86,7 @@ function DirectorMOAManagement({ embedded = false }) {
         <div className="p-4">
           <div className="row g-3">
             <div className="col-md-6">
-              <input className="form-control" placeholder="Search Companies" value={search} onChange={e => setSearch(e.target.value)} />
+              <input maxLength={100} className="form-control" placeholder="Search Companies" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <div className="col-md-4">
               <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>

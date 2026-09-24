@@ -223,7 +223,7 @@ function COEDPortfolioBuilder() {
   const renderTextArea = (key, label, rows = 5, placeholder = "") => (
     <div className="mb-4">
       <label className="form-label fw-bold">{label}</label>
-      <textarea
+      <textarea maxLength={10000}
         className="form-control bg-white border shadow-sm"
         rows={rows}
         value={form[key]}
@@ -353,17 +353,17 @@ function COEDPortfolioBuilder() {
                     <div className="col-12 col-md-6">
                       <div className="mb-3">
                         <label className="portfolio-field-label">Teacher's Prayer</label>
-                        <textarea className="form-control portfolio-field-input" rows="5" value={form.teachers_prayer || ""} onChange={e => setFormField('teachers_prayer', e.target.value)}></textarea>
+                        <textarea maxLength={10000} className="form-control portfolio-field-input" rows="5" value={form.teachers_prayer || ""} onChange={e => setFormField('teachers_prayer', e.target.value)}></textarea>
                       </div>
                       <div className="mb-3">
                         <label className="portfolio-field-label">Acknowledgement</label>
-                        <textarea className="form-control portfolio-field-input" rows="5" value={form.acknowledgement || ""} onChange={e => setFormField('acknowledgement', e.target.value)}></textarea>
+                        <textarea maxLength={10000} className="form-control portfolio-field-input" rows="5" value={form.acknowledgement || ""} onChange={e => setFormField('acknowledgement', e.target.value)}></textarea>
                       </div>
                     </div>
                     <div className="col-12 col-md-6">
                       <div className="mb-3">
                         <label className="portfolio-field-label">Teacher's Creed / Personal Teaching Commitment (4 Pillars)</label>
-                        <textarea className="form-control portfolio-field-input" rows="12" value={form.teachers_creed || ""} onChange={e => setFormField('teachers_creed', e.target.value)} placeholder="Teacher's Creed"></textarea>
+                        <textarea maxLength={10000} className="form-control portfolio-field-input" rows="12" value={form.teachers_creed || ""} onChange={e => setFormField('teachers_creed', e.target.value)} placeholder="Teacher's Creed"></textarea>
                       </div>
                     </div>
                   </div>
@@ -396,18 +396,18 @@ function COEDPortfolioBuilder() {
                   <div className="row g-4">
                     <div className="col-12 col-md-6">
                       <h6 className="text-muted fw-bold mb-3">I. Introduction</h6>
-                      <div className="mb-3"><label className="portfolio-field-label">A. Personal Teaching Philosophy</label><textarea className="form-control portfolio-field-input" rows="4" value={form.teaching_philosophy || ""} onChange={e => setFormField('teaching_philosophy', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">B. Why I Chose Teaching as a Profession</label><textarea className="form-control portfolio-field-input" rows="4" value={form.why_teaching || ""} onChange={e => setFormField('why_teaching', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">C. My Beliefs about Learners and Learning</label><textarea className="form-control portfolio-field-input" rows="4" value={form.beliefs_about_learners || ""} onChange={e => setFormField('beliefs_about_learners', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">D. My Goals as a Future Elementary Teacher</label><textarea className="form-control portfolio-field-input" rows="4" value={form.goals_as_teacher || ""} onChange={e => setFormField('goals_as_teacher', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">A. Personal Teaching Philosophy</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.teaching_philosophy || ""} onChange={e => setFormField('teaching_philosophy', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">B. Why I Chose Teaching as a Profession</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.why_teaching || ""} onChange={e => setFormField('why_teaching', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">C. My Beliefs about Learners and Learning</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.beliefs_about_learners || ""} onChange={e => setFormField('beliefs_about_learners', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">D. My Goals as a Future Elementary Teacher</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.goals_as_teacher || ""} onChange={e => setFormField('goals_as_teacher', e.target.value)}></textarea></div>
                     </div>
                     <div className="col-12 col-md-6">
                       <h6 className="text-muted fw-bold mb-3">II. School Profile</h6>
-                      <div className="mb-3"><label className="portfolio-field-label">A. Brief History of the Cooperating School</label><textarea className="form-control portfolio-field-input" rows="4" value={form.cooperating_school_history || ""} onChange={e => setFormField('cooperating_school_history', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">B. DepEd Vision & Mission</label><textarea className="form-control portfolio-field-input" rows="4" value={form.deped_vision_mission || ""} onChange={e => setFormField('deped_vision_mission', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">C. School Vision and Mission (Optional)</label><textarea className="form-control portfolio-field-input" rows="3" value={form.school_vision_mission || ""} onChange={e => setFormField('school_vision_mission', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">D. School Programs and Initiatives</label><textarea className="form-control portfolio-field-input" rows="4" value={form.school_programs || ""} onChange={e => setFormField('school_programs', e.target.value)} placeholder="School Programs"></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">E. Description of Learner Population</label><textarea className="form-control portfolio-field-input" rows="4" value={form.learner_population || ""} onChange={e => setFormField('learner_population', e.target.value)} placeholder="Learner Population"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">A. Brief History of the Cooperating School</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.cooperating_school_history || ""} onChange={e => setFormField('cooperating_school_history', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">B. DepEd Vision & Mission</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.deped_vision_mission || ""} onChange={e => setFormField('deped_vision_mission', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">C. School Vision and Mission (Optional)</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="3" value={form.school_vision_mission || ""} onChange={e => setFormField('school_vision_mission', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">D. School Programs and Initiatives</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.school_programs || ""} onChange={e => setFormField('school_programs', e.target.value)} placeholder="School Programs"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">E. Description of Learner Population</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.learner_population || ""} onChange={e => setFormField('learner_population', e.target.value)} placeholder="Learner Population"></textarea></div>
                     </div>
                   </div>
                 </div>
@@ -441,8 +441,8 @@ function COEDPortfolioBuilder() {
                           <p className="mb-0 small"><i className="fa fa-info-circle me-2"></i>Your Weekly Internship Journals (FO-31) from the Logbook will be automatically inserted here in the final PDF.</p>
                         </div>
                       </div>
-                      <div className="mb-3"><label className="portfolio-field-label">Classroom Management Practices</label><textarea className="form-control portfolio-field-input" rows="4" value={form.classroom_management || ""} onChange={e => setFormField('classroom_management', e.target.value)} placeholder="Classroom Management"></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">Teaching Environment</label><textarea className="form-control portfolio-field-input" rows="4" value={form.teaching_environment || ""} onChange={e => setFormField('teaching_environment', e.target.value)} placeholder="Teaching Environment"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Classroom Management Practices</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.classroom_management || ""} onChange={e => setFormField('classroom_management', e.target.value)} placeholder="Classroom Management"></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Teaching Environment</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.teaching_environment || ""} onChange={e => setFormField('teaching_environment', e.target.value)} placeholder="Teaching Environment"></textarea></div>
                     </div>
                   </div>
                 </div>
@@ -470,10 +470,10 @@ function COEDPortfolioBuilder() {
                 <div className="content-card-header bg-light"><h6 className="mb-0"><i className="fa fa-lightbulb me-2 text-primary"></i>Reflections & Artifacts</h6></div>
                 <div className="p-3 p-lg-4">
                   <h6 className="text-muted fw-bold mb-3">VI. Culminating Reflection</h6>
-                  <div className="mb-3"><label className="portfolio-field-label">How did internship shape me as a teacher?</label><textarea className="form-control portfolio-field-input" rows="4" value={form.culminating_reflection || ""} onChange={e => setFormField('culminating_reflection', e.target.value)}></textarea></div>
-                  <div className="mb-3"><label className="portfolio-field-label">What strengths did I discover?</label><textarea className="form-control portfolio-field-input" rows="4" value={form.strengths_discovered || ""} onChange={e => setFormField('strengths_discovered', e.target.value)}></textarea></div>
-                  <div className="mb-3"><label className="portfolio-field-label">What areas need improvement?</label><textarea className="form-control portfolio-field-input" rows="4" value={form.areas_for_improvement || ""} onChange={e => setFormField('areas_for_improvement', e.target.value)}></textarea></div>
-                  <div className="mb-3"><label className="portfolio-field-label">Am I ready for the teaching profession?</label><textarea className="form-control portfolio-field-input" rows="4" value={form.ready_for_profession || ""} onChange={e => setFormField('ready_for_profession', e.target.value)}></textarea></div>
+                  <div className="mb-3"><label className="portfolio-field-label">How did internship shape me as a teacher?</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.culminating_reflection || ""} onChange={e => setFormField('culminating_reflection', e.target.value)}></textarea></div>
+                  <div className="mb-3"><label className="portfolio-field-label">What strengths did I discover?</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.strengths_discovered || ""} onChange={e => setFormField('strengths_discovered', e.target.value)}></textarea></div>
+                  <div className="mb-3"><label className="portfolio-field-label">What areas need improvement?</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.areas_for_improvement || ""} onChange={e => setFormField('areas_for_improvement', e.target.value)}></textarea></div>
+                  <div className="mb-3"><label className="portfolio-field-label">Am I ready for the teaching profession?</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.ready_for_profession || ""} onChange={e => setFormField('ready_for_profession', e.target.value)}></textarea></div>
                 </div>
               </div>
 
@@ -504,15 +504,15 @@ function COEDPortfolioBuilder() {
                   <h6 className="text-muted fw-bold mb-3">VII. Experiences Narrative</h6>
                   <div className="row g-4">
                     <div className="col-12 col-md-6">
-                      <div className="mb-3"><label className="portfolio-field-label">Phase 1: Observation Phase</label><textarea className="form-control portfolio-field-input" rows="4" value={form.narrative_observation || ""} onChange={e => setFormField('narrative_observation', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">Phase 2: Assisted Teaching Phase</label><textarea className="form-control portfolio-field-input" rows="4" value={form.narrative_assisted || ""} onChange={e => setFormField('narrative_assisted', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Phase 1: Observation Phase</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.narrative_observation || ""} onChange={e => setFormField('narrative_observation', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Phase 2: Assisted Teaching Phase</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.narrative_assisted || ""} onChange={e => setFormField('narrative_assisted', e.target.value)}></textarea></div>
                     </div>
                     <div className="col-12 col-md-6">
-                      <div className="mb-3"><label className="portfolio-field-label">Phase 3: Independent Teaching Phase</label><textarea className="form-control portfolio-field-input" rows="4" value={form.narrative_independent || ""} onChange={e => setFormField('narrative_independent', e.target.value)}></textarea></div>
-                      <div className="mb-3"><label className="portfolio-field-label">Phase 4: Final Demonstration Teaching</label><textarea className="form-control portfolio-field-input" rows="4" value={form.narrative_final_demo || ""} onChange={e => setFormField('narrative_final_demo', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Phase 3: Independent Teaching Phase</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.narrative_independent || ""} onChange={e => setFormField('narrative_independent', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Phase 4: Final Demonstration Teaching</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="4" value={form.narrative_final_demo || ""} onChange={e => setFormField('narrative_final_demo', e.target.value)}></textarea></div>
                     </div>
                     <div className="col-12">
-                      <div className="mb-3"><label className="portfolio-field-label">Highlight: Growth in confidence, Classroom management, Handling diverse learners</label><textarea className="form-control portfolio-field-input" rows="3" value={form.highlight_growth || ""} onChange={e => setFormField('highlight_growth', e.target.value)}></textarea></div>
+                      <div className="mb-3"><label className="portfolio-field-label">Highlight: Growth in confidence, Classroom management, Handling diverse learners</label><textarea maxLength={10000} className="form-control portfolio-field-input" rows="3" value={form.highlight_growth || ""} onChange={e => setFormField('highlight_growth', e.target.value)}></textarea></div>
                     </div>
                   </div>
                 </div>

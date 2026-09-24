@@ -567,7 +567,7 @@ function StudentAttendance({ embedded = false }) {
                   </>
                 )}
                 <label className="form-label mt-2">Reason</label>
-                <textarea className="form-control" rows={2} value={correctionForm.reason} onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })} />
+                <textarea maxLength={500} className="form-control" rows={2} value={correctionForm.reason} onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })} />
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setCorrectionForm(null)}>Cancel</button>

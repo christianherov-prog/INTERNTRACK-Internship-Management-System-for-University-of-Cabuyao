@@ -66,13 +66,8 @@
             <div>(UNIVERSITY OF CABUYAO)</div>
             <div><strong>Academic Affairs Division</strong></div>
         </div>
-        <div class="side">
-            @if (!empty($company_logo))
-                <img src="{{ $company_logo }}" alt="HTE Logo" style="max-width:78px;max-height:78px;">
-            @else
-                <div style="width:78px;height:78px;border:1px dashed #444;font-size:8px;color:#444;padding-top:18px;">Logo<br>of<br>HTE</div>
-            @endif
-        </div>
+        {{-- HTE logo removed from FO-31; the empty slot keeps the header centered. --}}
+        <div class="side"><div style="width:78px;height:78px;"></div></div>
     </div>
     <h1>WEEKLY STUDENT INTERNSHIP JOURNAL</h1>
     <div class="box">

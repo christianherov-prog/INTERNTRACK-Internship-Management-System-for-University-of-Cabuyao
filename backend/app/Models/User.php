@@ -21,14 +21,22 @@ class User extends Authenticatable
         'last_login_at', 'avatar_path', 'notification_preferences',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'failed_login_attempts'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'must_change_password' => 'boolean',
         'last_login_at' => 'datetime',
         'notification_preferences' => 'array',
+        // Lockout state is written with forceFill() only (never mass-assigned).
+        'failed_login_attempts' => 'integer',
+        'locked_at' => 'datetime',
     ];
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
+    }
 
     protected static function booted(): void
     {

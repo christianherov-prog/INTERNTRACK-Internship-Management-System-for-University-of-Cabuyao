@@ -133,7 +133,7 @@ function StatusChangeModal({ internshipId, studentName, currentStatus, apiBase =
               </div>
               <div className="mb-1">
                 <label className="form-label fw-semibold">Reason for change <span className="text-danger">*</span></label>
-                <textarea
+                <textarea maxLength={1000}
                   className="form-control"
                   rows={3}
                   value={reason}

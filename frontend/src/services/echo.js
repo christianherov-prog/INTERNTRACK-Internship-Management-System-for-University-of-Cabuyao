@@ -1,4 +1,5 @@
 import Echo from 'laravel-echo'
+import axios from 'axios'
 import Pusher from 'pusher-js'
 import { resolveApiOrigin } from '../utils/apiBase'
 
@@ -35,7 +36,6 @@ export function initEcho() {
 
   window.Pusher = Pusher
 
-  const token = sessionStorage.getItem('interntrack_token')
   try {
     echoInstance = new Echo({
       broadcaster: 'reverb',
@@ -46,12 +46,20 @@ export function initEcho() {
       forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'http') === 'https',
       enabledTransports: ['ws', 'wss'],
       authEndpoint: `${apiOrigin()}/broadcasting/auth`,
-      auth: {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-          Accept: 'application/json',
+      // Channel auth rides on the HttpOnly session cookie (no token in JS).
+      authorizer: (channel) => ({
+        authorize: (socketId, callback) => {
+          axios.post(`${apiOrigin()}/broadcasting/auth`, {
+            socket_id: socketId,
+            channel_name: channel.name,
+          }, {
+            withCredentials: true,
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          })
+            .then((res) => callback(null, res.data))
+            .catch((err) => callback(err, null))
         },
-      },
+      }),
     })
 
     const pusher = echoInstance.connector?.pusher

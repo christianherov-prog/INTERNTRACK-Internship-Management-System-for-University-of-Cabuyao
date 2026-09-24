@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\AuthenticateFromTokenCookie;
+use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Support\UniqueWrite;
 use Illuminate\Auth\AuthenticationException;
@@ -26,9 +27,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->redirectGuestsTo(fn () => null);
 
+        // SPA session: HttpOnly token cookie shared by all tabs (see App\Support\AuthCookie).
+        $middleware->prepend(AuthenticateFromTokenCookie::class);
+        $middleware->encryptCookies(except: [(string) env('INTERNTRACK_AUTH_COOKIE', 'interntrack_token')]);
+
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
-            'password.changed' => EnsurePasswordChanged::class,
+            'account.active' => EnsureAccountActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -40,7 +45,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
-                return response()->json(['message' => 'Validation failed.', 'errors' => $e->errors()], 422);
+                // Surface the first field error so every page shows clear min/max feedback.
+                $first = collect($e->errors())->flatten()->first();
+
+                return response()->json([
+                    'message' => is_string($first) && $first !== '' ? $first : 'Validation failed.',
+                    'errors' => $e->errors(),
+                ], 422);
             }
         });
 

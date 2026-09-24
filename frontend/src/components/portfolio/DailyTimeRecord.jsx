@@ -110,29 +110,12 @@ export function PageHeader({ companyLogoPath }) {
         </p>
       </div>
 
-      {/* Right Side: HTE Logo */}
+      {/* HTE logo removed from this official form; the empty slot keeps the header layout. */}
+
       <div style={styles.sideCol}>
-        {companyLogoPath ? (
-          <AuthenticatedFileImage
-            path={companyLogoPath}
-            alt="HTE Logo"
-            fallback={
-              <div style={styles.logoBox}>
-                Logo<br />of<br />HTE
-              </div>
-            }
-            style={{
-              width: "78px",
-              height: "78px",
-              objectFit: "contain",
-              objectPosition: "center",
-            }}
-          />
-        ) : (
-          <div style={styles.logoBox}>
-            Logo<br />of<br />HTE
-          </div>
-        )}
+
+        <div data-testid="hte-logo-slot" aria-hidden="true" style={{ width: '78px', height: '78px', margin: '0 auto' }} />
+
       </div>
     </div>
   );

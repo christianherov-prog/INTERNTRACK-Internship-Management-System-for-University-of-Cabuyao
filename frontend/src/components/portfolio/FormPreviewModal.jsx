@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useReactToPrint } from 'react-to-print';
 import InternTrackLoader from '../InternTrackLoader';
 import DailyTimeRecord from './DailyTimeRecord';
@@ -56,7 +57,7 @@ function JournalReviewFooter({ review, onClose }) {
           <label className="form-label fw-semibold">
             Feedback {action === 'needs_revision' && <span className="text-danger">*</span>}
           </label>
-          <textarea
+          <textarea maxLength={1000}
             className="form-control"
             rows={2}
             value={feedback}
@@ -227,7 +228,12 @@ const FormPreviewModal = ({
             </div>
           </div>
         </div>
-      ) : (
+      ) : createPortal(
+        // Portaled to <body>: a position:fixed overlay rendered inside a page card
+        // was re-anchored whenever that card's :hover transform applied, so the
+        // preview jumped between full screen and the card box (flicker) while the
+        // pointer moved over the sidebar. At the document root nothing can
+        // re-anchor it, and the sidebar's hover state cannot affect it.
         <div
           id="form-preview-root"
           className="fpm-backdrop"
@@ -366,7 +372,8 @@ const FormPreviewModal = ({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

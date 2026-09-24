@@ -130,6 +130,11 @@ class Internship extends Model
         return $this->hasMany(AttendanceCorrectionRequest::class);
     }
 
+    public function journalDeadlines()
+    {
+        return $this->hasMany(JournalDeadline::class);
+    }
+
     public function journals()
     {
         return $this->hasMany(JournalEntry::class);

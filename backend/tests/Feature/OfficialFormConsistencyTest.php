@@ -221,11 +221,13 @@ class OfficialFormConsistencyTest extends TestCase
         $this->assertNull($json['identity']['supervisor_signature_path']);
 
         $pdfData = app(OfficialFormDataService::class)->pdfDtr($party['internship']);
-        $this->assertNull($pdfData['company_logo']);
+        // FO-30 no longer carries an HTE logo or its "Logo of HTE" placeholder.
+        $this->assertArrayNotHasKey('company_logo', $pdfData);
         $this->assertNull($pdfData['student_signature']);
         $html = view('pdf.form30_dtr', $pdfData)->render();
-        $this->assertStringContainsString('Logo', $html);
-        $this->assertStringContainsString('HTE', $html);
+        $this->assertStringNotContainsString('Logo<br>of<br>HTE', $html);
+        $this->assertStringContainsString('logo-slot', $html);
+        $this->assertStringContainsString('HTE<br>Signature', $html);
     }
 
     public function test_logo_replace_and_remove_update_every_role_preview(): void
@@ -287,6 +289,14 @@ class OfficialFormConsistencyTest extends TestCase
             'general_comments' => 'Solid intern',
         ])->assertCreated();
 
+        // FO-24 details reach the student only after the assigned faculty releases them.
+        Sanctum::actingAs($party['student']);
+        $lockedFo24 = collect($this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json('evaluations'))->firstWhere('form_type', 'FO-24');
+        $this->assertTrue($lockedFo24['details_locked']);
+        $this->assertArrayNotHasKey('signature_path', $lockedFo24);
+        Sanctum::actingAs($party['faculty']);
+        $this->postJson('/api/v1/faculty/evaluations/'.$party['internship']->id.'/release-performance')->assertOk();
+
         Sanctum::actingAs($party['student']);
         $bundle = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
         $this->assertSame('signatures/'.$party['student']->id.'_processed.png', $bundle['identity']['student_signature_path']);
@@ -339,7 +349,15 @@ class OfficialFormConsistencyTest extends TestCase
     public function test_frontend_previews_use_shared_official_form_endpoint(): void
     {
         $faculty = file_get_contents(base_path('../frontend/src/pages/faculty/FacultyAssignedStudents.jsx'));
-        $this->assertStringContainsString('openOfficialFo30', $faculty);
+        // Student Roster row action is "Preview Portfolio"; FO-30 is previewed from the
+        // Attendance Monitor tab through the shared official-form endpoint.
+        $this->assertStringNotContainsString('DTR Preview (FO-30)', $faculty);
+        $this->assertStringContainsString('Preview Portfolio', $faculty);
+        $this->assertStringContainsString('openOfficialFo30(internshipId', $faculty);
+        $this->assertStringContainsString('Preview DTR FO-30', $faculty);
+        $this->assertStringContainsString('/faculty/assigned-students/${row.student.id}/portfolio', $faculty);
+        $supervisorPage = file_get_contents(base_path('../frontend/src/pages/supervisor/SupervisorAssignedInterns.jsx'));
+        $this->assertStringContainsString('openOfficialFo30', $supervisorPage);
         $this->assertStringContainsString('loadFacultyFo31Preview', $faculty);
         $this->assertStringContainsString('openReview', $faculty);
         $this->assertStringNotContainsString('Review Journal — Week', $faculty);

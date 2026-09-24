@@ -199,7 +199,7 @@ function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator
               </div>
               <div className="col-12">
                 <label className="form-label fw-semibold">Content <span className="text-danger">*</span></label>
-                <textarea className="form-control" rows={4} value={form.content} onChange={e => setForm(p => ({...p, content: e.target.value}))} required></textarea>
+                <textarea maxLength={5000} className="form-control" rows={4} value={form.content} onChange={e => setForm(p => ({...p, content: e.target.value}))} required></textarea>
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Target Audience</label>

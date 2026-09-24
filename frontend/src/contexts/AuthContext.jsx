@@ -3,6 +3,7 @@ import api from '../services/api'
 import { withAvatarCacheBust } from '../utils/avatar'
 import { disconnectEcho } from '../services/echo'
 import { cacheClear } from '../utils/pageCache'
+import { broadcastAuthEvent, onAuthEvent } from '../utils/authSync'
 
 const AuthContext = createContext()
 
@@ -17,16 +18,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
 
-  // ── Restore session on page reload — revalidate via GET /auth/user ──────────
+  // ── Restore session on load / new tab — the HttpOnly cookie is shared by all
+  // tabs, so always ask the server who is signed in (role + account status are
+  // revalidated there on every request).
   useEffect(() => {
-    const token = sessionStorage.getItem('interntrack_token')
-
-    if (!token) {
-      setLoading(false)
-      return
-    }
-
-    // Optimistic paint from cache while the token is verified.
+    // Optimistic paint from this tab's cache while the server confirms.
     const storedUser = sessionStorage.getItem('interntrack_session')
     if (storedUser) {
       try {
@@ -48,7 +44,6 @@ export function AuthProvider({ children }) {
         if (err.name === 'CanceledError' || err.name === 'AbortError') return
         if (err.response?.status === 401) {
           setUser(null)
-          sessionStorage.removeItem('interntrack_token')
           sessionStorage.removeItem('interntrack_session')
         }
       })
@@ -57,20 +52,40 @@ export function AuthProvider({ children }) {
     return () => controller.abort()
   }, [])
 
+  // ── Keep tabs consistent: logout (or a different login) in one tab resets the others.
+  useEffect(() => onAuthEvent((event) => {
+    if (event.type === 'logout') {
+      disconnectEcho()
+      cacheClear()
+      setUser(null)
+      sessionStorage.removeItem('interntrack_session')
+      sessionStorage.removeItem('interntrack_staff_workspace')
+      if (window.location.pathname !== '/') window.location.replace('/')
+      return
+    }
+    if (event.type === 'login') {
+      // Another tab signed in (maybe as someone else): reload so this tab uses
+      // the same account and never shows the previous user's data.
+      cacheClear()
+      sessionStorage.removeItem('interntrack_session')
+      window.location.reload()
+    }
+  }), [])
+
   // ── Login: authenticate against Laravel Sanctum API ─────────────────────────
   const login = async (username, password) => {
     setError(null)
     try {
       const { data } = await api.post('/auth/login', { username, password })
 
-      // Persist token and user in session storage
-      sessionStorage.setItem('interntrack_token', data.token)
+      // The token is kept by the browser as an HttpOnly cookie (never in JS storage).
       sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
       // Fresh login always starts in the account's own workspace.
       sessionStorage.removeItem('interntrack_staff_workspace')
 
       cacheClear()
       setUser(data.user)
+      broadcastAuthEvent('login', data.user?.id ?? null)
       return { success: true, user: data.user }
     } catch (err) {
       const apiMessage = err.response?.data?.message
@@ -96,9 +111,9 @@ export function AuthProvider({ children }) {
     disconnectEcho()
     cacheClear()
     setUser(null)
-    sessionStorage.removeItem('interntrack_token')
     sessionStorage.removeItem('interntrack_session')
     sessionStorage.removeItem('interntrack_staff_workspace')
+    broadcastAuthEvent('logout')
   }
 
   // ── Logout: revoke Sanctum token, then clear local session ──────────────────

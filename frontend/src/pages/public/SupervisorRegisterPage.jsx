@@ -213,7 +213,7 @@ function SupervisorRegisterPage() {
                 <i className="fa fa-exclamation-triangle fa-3x text-warning mb-3"></i>
                 <h5 className="fw-bold">Unable to Continue</h5>
                 <p className="text-muted">{errorMsg}</p>
-                <Link to="/" className="btn-green d-inline-flex align-items-center gap-2 mt-2">Return to Login</Link>
+                <Link to="/supervisor/login" className="btn-green d-inline-flex align-items-center gap-2 mt-2">Return to Supervisor Sign-in</Link>
               </div>
             ) : view === 'login' ? (
               <>
@@ -227,7 +227,7 @@ function SupervisorRegisterPage() {
                 <form onSubmit={handleLogin}>
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Username / Supervisor ID / Email</label>
-                    <input
+                    <input maxLength={255}
                       type="text"
                       className="form-control"
                       value={loginId}
@@ -240,7 +240,7 @@ function SupervisorRegisterPage() {
                   <div className="mb-3">
                     <label className="form-label small fw-semibold">Password</label>
                     <div className="position-relative">
-                      <input
+                      <input maxLength={255}
                         type={showPassword ? 'text' : 'password'}
                         className="form-control"
                         value={loginPassword}
@@ -283,17 +283,17 @@ function SupervisorRegisterPage() {
                   <div className="row mb-1">
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Last Name <span className="text-danger">*</span></label>
-                      <input type="text" name="last_name" className={`form-control ${errors.last_name ? 'is-invalid' : ''}`} value={form.last_name} onChange={handleChange} required />
+                      <input maxLength={100} type="text" name="last_name" className={`form-control ${errors.last_name ? 'is-invalid' : ''}`} value={form.last_name} onChange={handleChange} required />
                       {errors.last_name && <div className="invalid-feedback">{errors.last_name[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">First Name <span className="text-danger">*</span></label>
-                      <input type="text" name="first_name" className={`form-control ${errors.first_name ? 'is-invalid' : ''}`} value={form.first_name} onChange={handleChange} required />
+                      <input maxLength={100} type="text" name="first_name" className={`form-control ${errors.first_name ? 'is-invalid' : ''}`} value={form.first_name} onChange={handleChange} required />
                       {errors.first_name && <div className="invalid-feedback">{errors.first_name[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Middle Name</label>
-                      <input type="text" name="middle_name" className={`form-control ${errors.middle_name ? 'is-invalid' : ''}`} value={form.middle_name} onChange={handleChange} placeholder="Middle Name" />
+                      <input maxLength={100} type="text" name="middle_name" className={`form-control ${errors.middle_name ? 'is-invalid' : ''}`} value={form.middle_name} onChange={handleChange} placeholder="Middle Name" />
                       {errors.middle_name && <div className="invalid-feedback">{errors.middle_name[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
@@ -313,12 +313,12 @@ function SupervisorRegisterPage() {
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Email Address <span className="text-danger">*</span></label>
-                      <input type="email" name="email" className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={form.email} onChange={handleChange} required />
+                      <input maxLength={255} type="email" name="email" className={`form-control ${errors.email ? 'is-invalid' : ''}`} value={form.email} onChange={handleChange} required />
                       {errors.email && <div className="invalid-feedback">{errors.email[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Contact Number <span className="text-danger">*</span></label>
-                      <input type="text" name="contact_number" className={`form-control ${errors.contact_number ? 'is-invalid' : ''}`} value={form.contact_number} onChange={handleChange} placeholder="Contact Number" required />
+                      <input maxLength={30} type="text" name="contact_number" className={`form-control ${errors.contact_number ? 'is-invalid' : ''}`} value={form.contact_number} onChange={handleChange} placeholder="Contact Number" required />
                       {errors.contact_number && <div className="invalid-feedback">{errors.contact_number[0]}</div>}
                     </div>
                     <div className="col-md-6 col-lg-3">
@@ -332,7 +332,7 @@ function SupervisorRegisterPage() {
                     </div>
                     <div className="col-md-6 col-lg-3">
                       <label className="form-label small fw-semibold">Position / Designation <span className="text-danger">*</span></label>
-                      <input type="text" name="position" className={`form-control ${errors.position ? 'is-invalid' : ''}`} value={form.position} onChange={handleChange} placeholder="Position" required />
+                      <input maxLength={255} type="text" name="position" className={`form-control ${errors.position ? 'is-invalid' : ''}`} value={form.position} onChange={handleChange} placeholder="Position" required />
                       {errors.position && <div className="invalid-feedback">{errors.position[0]}</div>}
                     </div>
                     <div className="col-md-6">

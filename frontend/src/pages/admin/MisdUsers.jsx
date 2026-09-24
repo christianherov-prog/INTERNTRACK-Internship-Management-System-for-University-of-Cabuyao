@@ -80,6 +80,19 @@ function MisdUsers() {
     }
   }
 
+  // Accounts lock after repeated failed sign-ins; only Admin/MISD can unlock.
+  const unlock = async (row) => {
+    if (!(await confirm({ message: `Unlock ${row.username}? They will be able to sign in again.` }))) return
+    setMessage(null)
+    try {
+      const res = await api.post(`/admin/users/${row.id}/unlock`)
+      setMessage({ type: 'success', text: res.data?.message || `${row.username} unlocked.` })
+      load()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Unlock failed.' })
+    }
+  }
+
   return (
     <Layout title="Users" subtitle="Account lifecycle & access control" icon="fa-users" bodyClass="admin-page">
       {error && <PageError message={error} onRetry={() => load()} />}
@@ -100,7 +113,7 @@ function MisdUsers() {
                   <span className="input-group-text bg-light border-end-0 text-muted rounded-start-3">
                     <i className="fa fa-magnifying-glass"></i>
                   </span>
-                  <input
+                  <input maxLength={100}
                     className="form-control border-start-0 rounded-end-3"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -190,10 +203,20 @@ function MisdUsers() {
                         <span className={`badge ${row.is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'} fw-bold px-2.5 py-1 rounded-pill`} style={{ fontSize: '0.75rem' }}>
                           {row.is_active ? 'Active' : 'Inactive'}
                         </span>
+                        {row.is_locked ? (
+                          <span className="badge bg-danger-subtle text-danger fw-bold px-2.5 py-1 rounded-pill ms-1" style={{ fontSize: '0.75rem' }} title={row.locked_at ? `Locked ${new Date(row.locked_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}` : 'Locked'}>
+                            <i className="fa fa-lock me-1"></i>Locked
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-3 py-3 text-muted" style={{ whiteSpace: 'nowrap' }}>{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
                       <td className="px-4 py-3 text-center" style={{ whiteSpace: 'nowrap' }}>
                         <div className="btn-group btn-group-sm">
+                          {row.is_locked ? (
+                            <button className="btn btn-outline-danger" title="Unlock account" aria-label={`Unlock ${row.username}`} onClick={() => unlock(row)}>
+                              <i className="fa fa-lock-open"></i>
+                            </button>
+                          ) : null}
                           <button className="btn btn-outline-secondary" title="Reset Password" onClick={() => resetPw(row)}>
                             <i className="fa fa-key"></i>
                           </button>

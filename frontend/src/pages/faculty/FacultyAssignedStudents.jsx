@@ -13,6 +13,7 @@ import InternTrackLoader from '../../components/InternTrackLoader'
 import { loadFacultyFo31Preview, openOfficialFo30, openOfficialFo31 } from "../../utils/officialForm"
 import { useConfirm } from '../../contexts/ConfirmContext'
 import AsyncButton from '../../components/AsyncButton'
+import JournalDeadlineManager from '../../components/faculty/JournalDeadlineManager'
 import { formatDisplayDate } from '../../utils/manilaTime'
 
 function studentSection(row) {
@@ -110,6 +111,8 @@ function groupAttendanceByStudent(logs) {
     logs,
     (log) => ({
       key: log.internship?.student_id || log.internship?.student?.id || `name:${attendanceLogName(log)}`,
+      // Authoritative internship for the FO-30 preview (never a name or row index).
+      internshipId: log.internship_id || log.internship?.id || null,
       name: attendanceLogName(log),
       company: log.internship?.company?.company_name || "—",
     }),
@@ -143,8 +146,6 @@ function TabStudents() {
   const [placementFilter, setPlacementFilter] = useState("all")
 
   const [busyId, setBusyId] = useState(null)
-  const [previewModal, setPreviewModal] = useState(null)
-  const [previewBusy, setPreviewBusy] = useState(false)
 
   const fetchStudents = () => {
     setError(null)
@@ -198,7 +199,7 @@ function TabStudents() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 170 }} value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
           {programs.map(p => <option key={p} value={p}>{p === "all" ? "All Programs" : p}</option>)}
@@ -278,22 +279,17 @@ function TabStudents() {
                             </td>
                             <td>{statusBadge(row.status)}</td>
                             <td className="d-flex gap-1" onClick={e => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-info"
-                                title="DTR Preview (FO-30)"
-                                disabled={!row.id || previewBusy}
-                                onClick={() => {
-                                  if (!row.id) return
-                                  setPreviewBusy(true)
-                                  openOfficialFo30(row.id, setPreviewModal)
-                                    .catch((err) => alert(err.response?.data?.message || 'Unable to load FO-30 preview.'))
-                                    .finally(() => setPreviewBusy(false))
-                                }}
-                              >
-                                DTR Preview (FO-30)
-                                <i className="fa fa-clock"></i>
-                              </button>
+                              {row.can_preview_portfolio && row.student?.id ? (
+                                <Link
+                                  to={`/faculty/assigned-students/${row.student.id}/portfolio`}
+                                  className="btn btn-sm btn-outline-info"
+                                  title="Preview Portfolio"
+                                  aria-label="Preview Portfolio"
+                                >
+                                  <i className="fa fa-book-open me-1"></i>
+                                  Preview Portfolio
+                                </Link>
+                              ) : null}
                               <button type="button" className={`btn btn-sm ${archived ? "btn-outline-success" : "btn-outline-secondary"}`} title={archived ? "Unarchive" : "Archive"} disabled={busyId === row.student?.id} onClick={() => toggleArchive(row)}>
                                 <i className={`fa ${archived ? "fa-box-open" : "fa-box-archive"} ${busyId === row.student?.id ? "fa-spin" : ""}`}></i>
                                 {archived ? "Unarchive" : "Archive"}
@@ -310,14 +306,6 @@ function TabStudents() {
             </div>
           </div>
         )}
-
-      <FormPreviewModal
-        isOpen={!!previewModal}
-        onClose={() => setPreviewModal(null)}
-        type={previewModal?.type}
-        data={previewModal?.data || {}}
-        onDownload={previewModal?.onDownload}
-      />
     </>
   )
 }
@@ -415,6 +403,7 @@ function TabJournals() {
 
   return (
     <>
+      <JournalDeadlineManager />
       {error && <PageError message={error} onRetry={fetchJournals} />}
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
       {historyModal && (
@@ -485,9 +474,21 @@ function TabJournals() {
                         <div className="min-w-0">
                           <div className="d-flex flex-wrap align-items-center gap-2" style={{ fontSize: "0.82rem" }}>
                             <span className="text-primary fw-semibold">Week {weekLabel}</span>
-                            {j.date && <span className="text-muted">{j.date}</span>}
+                            {(j.range_display || j.date) && <span className="text-muted">{j.range_display || j.date}</span>}
                             <span className={`badge ${journalStatusClass(j.status)}`}>{(j.status || "—").replace(/_/g, " ")}</span>
+                            {j.deadline_display ? (
+                              <span className={`badge ${j.submitted_late ? "bg-danger" : "bg-success"}`} title={`Deadline: ${j.deadline_display}`}>
+                                {j.submitted_late ? "Late" : "On time"}
+                              </span>
+                            ) : null}
                           </div>
+                          {(j.deadline_display || j.submitted_at_display) ? (
+                            <div className="text-muted mt-1" style={{ fontSize: "0.78rem" }}>
+                              {j.deadline_display ? <>Deadline: {j.deadline_display}</> : null}
+                              {j.deadline_display && j.submitted_at_display ? " · " : null}
+                              {j.submitted_at_display ? <>Submitted: {j.submitted_at_display}</> : null}
+                            </div>
+                          ) : null}
                           {excerpt ? (
                             <p className="mt-1 mb-0 text-muted" style={{ fontSize: "0.85rem", lineHeight: 1.4 }}>{excerpt}</p>
                           ) : null}
@@ -538,6 +539,18 @@ function TabAttendance() {
   const [error, setError] = useState(null)
   const [processing, setProcessing] = useState(null)
   const [message, setMessage] = useState(null)
+  const [dtrModal, setDtrModal] = useState(null)
+  const [dtrBusy, setDtrBusy] = useState(null)
+
+  // Read-only FO-30 from the shared official-form service; the API authorizes
+  // the internship against this faculty's assignment.
+  const previewDtr = (internshipId) => {
+    if (!internshipId) return
+    setDtrBusy(internshipId)
+    openOfficialFo30(internshipId, setDtrModal)
+      .catch((err) => setMessage(err.response?.data?.message || 'Unable to load the FO-30 preview.'))
+      .finally(() => setDtrBusy(null))
+  }
 
   const fetchAttendance = () => {
     setError(null)
@@ -636,12 +649,24 @@ function TabAttendance() {
             <label className="form-label fw-semibold">Student</label>
             <select className="form-select" value={internshipId} onChange={e => setInternshipId(e.target.value)}>
               <option value="">All assigned students</option>
-              {students.map(s => {
+              {students.filter(s => s.id && (s.handled_by_faculty ?? true)).map(s => {
                 const p = s.student?.student_profile || s.student?.studentProfile
                 const name = p ? `${p.last_name || ""}, ${p.first_name || ""}`.trim() : (s.student?.username || `Internship #${s.id}`)
                 return <option key={s.id} value={s.id}>{name}</option>
               })}
             </select>
+          </div>
+          <div className="col-md-4 d-flex align-items-end">
+            <button
+              type="button"
+              className="btn btn-outline-info w-100"
+              disabled={!internshipId || dtrBusy === Number(internshipId)}
+              title="Preview DTR FO-30"
+              aria-label="Preview DTR FO-30 for the selected student"
+              onClick={() => previewDtr(Number(internshipId))}
+            >
+              <i className="fa fa-clock me-1"></i>Preview DTR FO-30 {internshipId ? '' : '(select a student)'}
+            </button>
           </div>
           <div className="col-md-4">
             <label className="form-label fw-semibold">Status</label>
@@ -692,6 +717,19 @@ function TabAttendance() {
                                     <span className="badge bg-secondary">{group.entries.length} record{group.entries.length === 1 ? "" : "s"}</span>
                                   </div>
                                   {latestDate ? <div className="text-muted mt-1" style={{ fontSize: "0.78rem", fontWeight: 400 }}>Latest {latestDate}</div> : null}
+                                  {group.internshipId ? (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-info mt-2"
+                                      title="Preview DTR FO-30"
+                                      aria-label={`Preview DTR FO-30 for ${group.name}`}
+                                      disabled={dtrBusy === group.internshipId}
+                                      onClick={() => previewDtr(group.internshipId)}
+                                    >
+                                      <i className={`fa ${dtrBusy === group.internshipId ? 'fa-spinner fa-spin' : 'fa-clock'} me-1`}></i>
+                                      Preview DTR FO-30
+                                    </button>
+                                  ) : null}
                                 </td>
                                 <td
                                   rowSpan={group.entries.length}
@@ -720,6 +758,14 @@ function TabAttendance() {
         </div>
         <p className="text-muted px-3 pb-3 mb-0" style={{ fontSize: "0.8rem" }}>Read-only monitoring of official DTR rows. Industry supervisors validate daily attendance; correction requests appear above only after supervisor approval.</p>
       </div>
+      {/* Kept outside every .content-card (and portaled to <body> by the modal). */}
+      <FormPreviewModal
+        isOpen={!!dtrModal}
+        onClose={() => setDtrModal(null)}
+        type={dtrModal?.type}
+        data={dtrModal?.data || {}}
+        onDownload={dtrModal?.onDownload}
+      />
     </>
   )
 }

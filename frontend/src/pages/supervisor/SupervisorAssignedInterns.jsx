@@ -51,7 +51,7 @@ function SupervisorAssignedInterns() {
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
         <div className="input-group input-group-sm" style={{ width: 260 }}>
           <span className="input-group-text bg-light text-muted border-end-0"><i className="fa fa-search"></i></span>
-          <input className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
+          <input maxLength={100} className="form-control border-start-0 ps-0" placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="form-select form-select-sm text-secondary" style={{ width: 160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All Status</option>
@@ -189,7 +189,7 @@ function SupervisorAssignedInterns() {
                   This only unlinks you from this intern. Your account and any other assigned internships stay intact. The student can invite a new supervisor.
                 </p>
                 <label className="form-label small fw-semibold">Reason (optional)</label>
-                <textarea className="form-control" rows={3} value={endReason} onChange={(e) => setEndReason(e.target.value)} />
+                <textarea maxLength={500} className="form-control" rows={3} value={endReason} onChange={(e) => setEndReason(e.target.value)} />
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline-secondary" onClick={() => setEndingId(null)} disabled={ending}>Cancel</button>

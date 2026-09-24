@@ -398,7 +398,7 @@ function COEPortfolioBuilder() {
                 <div className="content-card-header bg-light"><h6 className="mb-0"><i className="fa fa-handshake me-2 text-primary"></i>Acknowledgement</h6></div>
                 <div className="p-3 p-lg-4">
                   <label className="portfolio-field-label">Acknowledgement Statement</label>
-                  <textarea className="form-control portfolio-field-input" rows={6} placeholder="Acknowledgement" value={form.acknowledgement} onChange={e => setForm({ ...form, acknowledgement: e.target.value })}></textarea>
+                  <textarea maxLength={10000} className="form-control portfolio-field-input" rows={6} placeholder="Acknowledgement" value={form.acknowledgement} onChange={e => setForm({ ...form, acknowledgement: e.target.value })}></textarea>
                 </div>
               </div>
             </div>
@@ -419,16 +419,16 @@ function COEPortfolioBuilder() {
                   <div className="portfolio-hte-row mb-3">
                     <div>
                       <label className="portfolio-field-label">Host Company Name <span className="text-danger">*</span></label>
-                      <input type="text" className="form-control portfolio-field-input" placeholder="Company Name" value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} />
+                      <input maxLength={255} type="text" className="form-control portfolio-field-input" placeholder="Company Name" value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} />
                     </div>
                     <div>
                       <label className="portfolio-field-label">Host Company Address <span className="text-danger">*</span></label>
-                      <input type="text" className="form-control portfolio-field-input" placeholder="Company Address" value={form.company_address} onChange={e => setForm({ ...form, company_address: e.target.value })} />
+                      <input maxLength={255} type="text" className="form-control portfolio-field-input" placeholder="Company Address" value={form.company_address} onChange={e => setForm({ ...form, company_address: e.target.value })} />
                     </div>
                   </div>
                   <div className="mb-3">
                     <label className="portfolio-field-label">1.1 Company Profile / Description</label>
-                    <textarea className="form-control portfolio-field-input" rows={4} value={form.company_background} onChange={e => setForm({ ...form, company_background: e.target.value })}></textarea>
+                    <textarea maxLength={10000} className="form-control portfolio-field-input" rows={4} value={form.company_background} onChange={e => setForm({ ...form, company_background: e.target.value })}></textarea>
                   </div>
                 </div>
               </div>
@@ -513,7 +513,7 @@ function COEPortfolioBuilder() {
                     ].map(field => (
                       <div key={field.key}>
                         <label className="portfolio-field-label" htmlFor={`ch3-${field.key}`}>{field.label}</label>
-                        <textarea id={`ch3-${field.key}`} className="form-control portfolio-field-input" rows={4} value={form[field.key]} onChange={e => setForm({ ...form, [field.key]: e.target.value })}></textarea>
+                        <textarea maxLength={10000} id={`ch3-${field.key}`} className="form-control portfolio-field-input" rows={4} value={form[field.key]} onChange={e => setForm({ ...form, [field.key]: e.target.value })}></textarea>
                       </div>
                     ))}
                     <div className="w-100 mb-2 mt-4"><h5 className="mb-0 fw-bold border-bottom pb-2">3.2 Recommendations</h5></div>
@@ -525,7 +525,7 @@ function COEPortfolioBuilder() {
                     ].map(field => (
                       <div key={field.key}>
                         <label className="portfolio-field-label" htmlFor={`ch3-${field.key}`}>{field.label}</label>
-                        <textarea id={`ch3-${field.key}`} className="form-control portfolio-field-input" rows={3} value={form[field.key]} onChange={e => setForm({ ...form, [field.key]: e.target.value })}></textarea>
+                        <textarea maxLength={10000} id={`ch3-${field.key}`} className="form-control portfolio-field-input" rows={3} value={form[field.key]} onChange={e => setForm({ ...form, [field.key]: e.target.value })}></textarea>
                       </div>
                     ))}
                   </div>

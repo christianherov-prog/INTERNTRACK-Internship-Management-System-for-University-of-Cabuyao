@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Document;
 use App\Models\Evaluation;
 use App\Models\Internship;
+use App\Models\Notification;
 use App\Models\User;
 use App\Services\AbsorptionService;
 use App\Services\InternshipAnalyticsService;
@@ -80,7 +81,8 @@ class DirectorController extends Controller
     {
         $validated = $request->validate([
             'company_name' => 'required|string|max:255',
-            'address' => 'nullable|string|max:500',
+            // companies.address is VARCHAR(255)
+            'address' => 'nullable|string|max:255',
             'industry' => 'nullable|string|max:255',
             'organization_type' => \App\Support\OrganizationTypes::validationRule(false),
             'contact_person' => 'nullable|string|max:255',
@@ -89,8 +91,8 @@ class DirectorController extends Controller
             'moa_status' => 'required|in:active,pending,expired,for_renewal,on-process',
             'moa_start_date' => 'nullable|date',
             'moa_expiry_date' => 'nullable|date|after_or_equal:moa_start_date',
-            'slots_available' => 'nullable|integer|min:0',
-            'notes' => 'nullable|string',
+            'slots_available' => 'nullable|integer|min:0|max:1000',
+            'notes' => 'nullable|string|max:2000',
         ]);
         $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($validated['organization_type'] ?? null);
         if (! $resolvedType['ok']) {
@@ -109,7 +111,8 @@ class DirectorController extends Controller
     {
         $validated = $request->validate([
             'company_name' => 'sometimes|required|string|max:255',
-            'address' => 'nullable|string|max:500',
+            // companies.address is VARCHAR(255)
+            'address' => 'nullable|string|max:255',
             'industry' => 'nullable|string|max:255',
             'organization_type' => \App\Support\OrganizationTypes::validationRule(false),
             'contact_person' => 'nullable|string|max:255',
@@ -118,9 +121,9 @@ class DirectorController extends Controller
             'moa_status' => 'sometimes|required|in:active,pending,expired,for_renewal,on-process',
             'moa_start_date' => 'nullable|date',
             'moa_expiry_date' => 'nullable|date',
-            'slots_available' => 'nullable|integer|min:0',
+            'slots_available' => 'nullable|integer|min:0|max:1000',
             'is_active' => 'boolean',
-            'notes' => 'nullable|string',
+            'notes' => 'nullable|string|max:2000',
         ]);
         if (array_key_exists('organization_type', $validated)) {
             $resolvedType = \App\Support\OrganizationTypes::resolveForStorage($validated['organization_type']);
@@ -567,6 +570,60 @@ class DirectorController extends Controller
     public function hteEvaluations(Request $request)
     {
         return $this->evaluationsOverview($request);
+    }
+
+    /**
+     * POST /api/v1/director/evaluations/{evaluationId}/release
+     * Body: { released: bool } (default true)
+     *
+     * The Director authorizes (or withdraws) Student visibility of the FO-03
+     * HTE Evaluation of the University Internship Program.
+     */
+    public function releaseHteEvaluation(Request $request, int $evaluationId)
+    {
+        $data = $request->validate(['released' => 'sometimes|boolean']);
+        $release = $data['released'] ?? true;
+
+        $evaluation = Evaluation::with('internship')->findOrFail($evaluationId);
+
+        if ($evaluation->form_type !== 'FO-03') {
+            return response()->json([
+                'message' => 'Only the HTE Evaluation of the University Internship Program (FO-03) is released by the Director.',
+            ], 422);
+        }
+
+        if (! $evaluation->submitted_at || ! $evaluation->internship) {
+            return response()->json(['message' => 'This evaluation has not been submitted yet.'], 422);
+        }
+
+        $evaluation->forceFill([
+            'released_to_student_at' => $release ? ($evaluation->released_to_student_at ?? now()) : null,
+            'released_to_student_by' => $release ? ($evaluation->released_to_student_by ?? $request->user()->id) : null,
+        ])->save();
+
+        audit_log($request->user()->id, $release ? 'release_hte_evaluation' : 'withdraw_hte_evaluation', [
+            'evaluation_id' => $evaluation->id,
+            'internship_id' => $evaluation->internship_id,
+        ]);
+
+        if ($release) {
+            Notification::notify(
+                (int) $evaluation->internship->student_id,
+                'hte_evaluation_released',
+                'HTE evaluation released',
+                'The Director released the HTE Evaluation of the University Internship Program (FO-03). You can now view the details.',
+                '/student/evaluations',
+                ['internship_id' => $evaluation->internship_id]
+            );
+        }
+
+        return response()->json([
+            'message' => $release
+                ? 'HTE Evaluation released. The student can now view the details.'
+                : 'HTE Evaluation hidden from the student.',
+            'released' => $release,
+            'evaluation' => $evaluation->fresh(),
+        ]);
     }
 
     public function evaluationsOverview(Request $request)

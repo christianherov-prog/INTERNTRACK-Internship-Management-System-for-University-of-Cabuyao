@@ -20,6 +20,23 @@ export default function DirectorHTEEvaluations() {
   const [formCounts, setFormCounts] = useState(() => seed?.formCounts ?? {})
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)   // { eval, internship }
+  const [releasingId, setReleasingId] = useState(null)
+  const [actionMessage, setActionMessage] = useState(null)
+
+  // FO-03 details stay hidden from the student until the Director releases them.
+  const setFo03Release = async (evaluation, release) => {
+    setReleasingId(evaluation.id)
+    setActionMessage(null)
+    try {
+      const res = await api.post(`/director/evaluations/${evaluation.id}/release`, { released: release })
+      setActionMessage({ type: 'success', text: res.data?.message || 'Updated.' })
+      loadPage(currentPage)
+    } catch (err) {
+      setActionMessage({ type: 'danger', text: err.response?.data?.message || 'Failed to update FO-03 visibility.' })
+    } finally {
+      setReleasingId(null)
+    }
+  }
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState(() => seed?.pagination ?? null)
   const [filters, setFilters] = useState({ department_id: '', program_id: '', section: '' })
@@ -107,7 +124,7 @@ export default function DirectorHTEEvaluations() {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small text-muted mb-1">Section</label>
-                    <input type="text" className="form-control form-control-sm" placeholder="Section" value={filters.section} onChange={e => setFilters({...filters, section: e.target.value})} />
+                    <input maxLength={50} type="text" className="form-control form-control-sm" placeholder="Section" value={filters.section} onChange={e => setFilters({...filters, section: e.target.value})} />
                   </div>
                 </div>
               </div>
@@ -156,6 +173,13 @@ export default function DirectorHTEEvaluations() {
               </div>
             </div>
 
+            {actionMessage && (
+              <div className={`alert alert-${actionMessage.type} alert-dismissible mb-3`}>
+                {actionMessage.text}
+                <button className="btn-close" onClick={() => setActionMessage(null)}></button>
+              </div>
+            )}
+
             {/* Evaluations Table — grouped by student */}
             <div className="card border-0 shadow-sm">
               <div className="card-header bg-white border-bottom py-3 px-4">
@@ -170,11 +194,12 @@ export default function DirectorHTEEvaluations() {
                       <th>Company</th>
                       <th>Supervisor</th>
                       <th className="text-center">Preview Evaluations</th>
+                      <th className="text-center">Student access (FO-03)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {internships.length === 0 ? (
-                      <tr><td colSpan="5" className="text-center py-5 text-muted">No evaluations found with the current filters.</td></tr>
+                      <tr><td colSpan="6" className="text-center py-5 text-muted">No evaluations found with the current filters.</td></tr>
                     ) : internships.map(intern => {
                       const p = intern.student?.student_profile || intern.student?.studentProfile
                       const name = p ? `${p.last_name || ''}, ${p.first_name || ''}`.trim() : intern.student?.student_number || intern.student?.email || '—'
@@ -216,6 +241,25 @@ export default function DirectorHTEEvaluations() {
                                 )
                               })}
                             </div>
+                          </td>
+                          <td className="text-center">
+                            {(() => {
+                              const fo03 = evals.find(e => e.form_type === 'FO-03')
+                              if (!fo03) return <span className="text-muted small">Not yet submitted</span>
+                              const busy = releasingId === fo03.id
+                              return fo03.released_to_student_at ? (
+                                <div className="d-flex flex-column align-items-center gap-1">
+                                  <span className="badge bg-success"><i className="fa fa-user-check me-1"></i>Released</span>
+                                  <button className="btn btn-link btn-sm p-0 text-danger" disabled={busy} onClick={() => setFo03Release(fo03, false)}>
+                                    {busy ? '…' : 'Hide from student'}
+                                  </button>
+                                </div>
+                              ) : (
+                                <button className="btn btn-sm btn-success" disabled={busy} onClick={() => setFo03Release(fo03, true)}>
+                                  <i className={`fa ${busy ? 'fa-spinner fa-spin' : 'fa-share'} me-1`}></i>Release to Student
+                                </button>
+                              )
+                            })()}
                           </td>
                         </tr>
                       )

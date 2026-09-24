@@ -463,11 +463,19 @@ class SupervisorController extends Controller
     public function submitEvaluation(Request $request, int $internshipId)
     {
         $request->validate([
-            'evaluation_period' => 'required|string',
-            'form_type' => 'required|string',
-            'responses' => 'required|array',
-            'general_comments' => 'nullable|string',
+            'evaluation_period' => 'required|string|in:midterm,final',
+            'form_type' => 'required|string|in:FO-24,FO-03',
+            'responses' => 'required|array|max:60',
+            'responses.*' => 'nullable|max:2000',
+            'general_comments' => 'nullable|string|max:2000',
         ]);
+
+        // FO-24 criteria use the official 65–100 rating scale (mirrors the form inputs).
+        if ($request->input('form_type') === 'FO-24') {
+            $request->validate(collect(range(1, 10))
+                ->mapWithKeys(fn ($i) => ["responses.c{$i}" => 'nullable|numeric|min:65|max:100'])
+                ->all());
+        }
 
         $internship = Internship::where('supervisor_id', $request->user()->id)
             ->with(['student.studentProfile', 'coordinator'])
@@ -509,6 +517,12 @@ class SupervisorController extends Controller
                             'general_comments' => $request->input('general_comments'),
                             'evaluated_by' => $request->user()->id,
                             'submitted_at' => now(),
+                        ]);
+                        // A revised form must be reviewed and released again before
+                        // the Student can see it.
+                        $eval->forceFill([
+                            'released_to_student_at' => null,
+                            'released_to_student_by' => null,
                         ]);
                     } else {
                         $eval = new Evaluation([
@@ -578,6 +592,17 @@ class SupervisorController extends Controller
                     ['evaluation_id' => $eval->id, 'internship_id' => $internshipId, 'student_id' => $internship->student_id]
                 );
             }
+        }
+
+        if ($formType === 'FO-24' && $internship->faculty_id) {
+            Notification::notify(
+                (int) $internship->faculty_id,
+                'performance_evaluation_ready',
+                'Performance evaluation ready for review',
+                "{$studentName} — the industry supervisor submitted the FO-24 Performance Evaluation. Review it and release it to the student when ready.",
+                '/faculty/evaluations',
+                ['evaluation_id' => $eval->id, 'internship_id' => $internshipId]
+            );
         }
 
         audit_log($request->user()->id, 'submit_evaluation', [

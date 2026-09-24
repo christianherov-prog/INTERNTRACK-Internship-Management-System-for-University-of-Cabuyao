@@ -31,4 +31,12 @@ return [
     // Industry Supervisor narrative feedback (journal_entries.supervisor_feedback is TEXT).
     'supervisor_feedback_min_length' => (int) env('INTERNTRACK_FEEDBACK_MIN_LENGTH', 5),
     'supervisor_feedback_max_length' => (int) env('INTERNTRACK_FEEDBACK_MAX_LENGTH', 1000),
+
+    // Account lockout: consecutive failed sign-ins before the account is locked.
+    'max_failed_logins' => (int) env('INTERNTRACK_MAX_FAILED_LOGINS', 3),
+    // Shown in the lockout email; account unlocks are done by Admin/MISD.
+    'account_support_contact' => env('INTERNTRACK_ACCOUNT_SUPPORT_CONTACT', 'the University MISD office or your InternTrack system administrator'),
+
+    // Browser session cookie that carries the Sanctum token (HttpOnly, shared by all tabs).
+    'auth_cookie' => env('INTERNTRACK_AUTH_COOKIE', 'interntrack_token'),
 ];

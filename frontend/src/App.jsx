@@ -37,6 +37,7 @@ import SupervisorFeedback from './pages/supervisor/SupervisorFeedback'
 import SupervisorSettings from './pages/supervisor/SupervisorSettings'
 import FacultyDashboard from './pages/faculty/FacultyDashboard'
 import FacultyAssignedStudents from './pages/faculty/FacultyAssignedStudents'
+import FacultyPortfolioPreview from './pages/faculty/FacultyPortfolioPreview'
 import FacultySupervisors from './pages/faculty/FacultySupervisors'
 import FacultyJournals from './pages/faculty/FacultyJournals'
 import FacultyEvaluations from './pages/faculty/FacultyEvaluations'
@@ -85,6 +86,7 @@ function App() {
             <AccessDeniedOverlay />
             <Routes>
               <Route path="/" element={<LoginPage />} />
+              <Route path="/supervisor/login" element={<LoginPage supervisorMode />} />
               <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />
               <Route path="/change-password-confirm" element={<ChangePasswordConfirmPage />} />
               <Route path="/demo/*" element={<DemoApp />} />
@@ -133,6 +135,7 @@ function App() {
               {/* Faculty workspace — coordinators may also act as faculty supervisors with the same login. */}
               <Route path="/faculty/dashboard" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyDashboard /></ProtectedRoute>} />
               <Route path="/faculty/assigned-students" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyAssignedStudents /></ProtectedRoute>} />
+              <Route path="/faculty/assigned-students/:studentId/portfolio" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyPortfolioPreview /></ProtectedRoute>} />
               <Route path="/faculty/supervisors" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultySupervisors /></ProtectedRoute>} />
               <Route path="/faculty/journals" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyJournals /></ProtectedRoute>} />
               <Route path="/faculty/evaluations" element={<ProtectedRoute allowedRoles={['faculty', 'coordinator']}><FacultyEvaluations /></ProtectedRoute>} />
