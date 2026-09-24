@@ -1,0 +1,27 @@
+{
+    "student": {
+        "role": "student",
+        "label": "INTERNSHIP DASHBOARD",
+        "denied": "/api/v1/admin/audit-log"
+    },
+    "faculty": {
+        "role": "faculty",
+        "label": "FACULTY DASHBOARD",
+        "denied": "/api/v1/admin/audit-log"
+    },
+    "coordinator": {
+        "role": "coordinator",
+        "label": "COORDINATOR DASHBOARD",
+        "denied": "/api/v1/admin/audit-log"
+    },
+    "supervisor": {
+        "role": "supervisor",
+        "label": "SUPERVISOR DASHBOARD",
+        "denied": "/api/v1/admin/audit-log"
+    },
+    "admin": {
+        "role": "admin",
+        "label": "MISD DASHBOARD",
+        "denied": "/api/v1/student/dashboard"
+    }
+}

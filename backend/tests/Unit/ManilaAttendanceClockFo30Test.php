@@ -6,9 +6,9 @@ use App\Models\AttendanceLog;
 use App\Support\ManilaAttendanceClock;
 use App\Support\ManilaTime;
 use Carbon\Carbon;
-use Tests\TestCase;
+use Tests\Support\IsolatedTestCase;
 
-class ManilaAttendanceClockFo30Test extends TestCase
+class ManilaAttendanceClockFo30Test extends IsolatedTestCase
 {
     protected function tearDown(): void
     {

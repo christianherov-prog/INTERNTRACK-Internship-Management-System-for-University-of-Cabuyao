@@ -33,7 +33,7 @@ class WorkflowIntegrationTest extends TestCase
     protected function tearDown(): void
     {
         // Written before rollback, including when the final business assertion fails.
-        $dir = base_path('tests/integration-evidence/observations');
+        $dir = base_path(getenv('INTEGRATION_OBSERVATIONS_DIR') ?: 'tests/integration-evidence/observations');
         if (!is_dir($dir)) mkdir($dir, 0777, true);
         file_put_contents($dir.'/'.$this->name().'.json', json_encode($this->observations, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
         Carbon::setTestNow();

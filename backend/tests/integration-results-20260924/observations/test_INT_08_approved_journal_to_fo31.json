@@ -1,0 +1,18 @@
+{
+    "fo31": {
+        "id": 3,
+        "week_number": 1,
+        "week": 1,
+        "date": "2026-09-07",
+        "end_date": "2026-09-11",
+        "activities_summary": "Integration journal 2026-09-07",
+        "accomplishment": "Integration journal 2026-09-07",
+        "challenges": "Mapping",
+        "difficulties": "Mapping",
+        "learnings": "Authoritative IDs",
+        "insights": "Authoritative IDs",
+        "file_path": null,
+        "status": "approved"
+    },
+    "reviewer": 38
+}
