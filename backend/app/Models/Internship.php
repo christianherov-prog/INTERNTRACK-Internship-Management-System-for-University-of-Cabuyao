@@ -23,7 +23,6 @@ class Internship extends Model
         'absorption_status', 'absorbed_at', 'job_title', 'absorption_notes',
         'absorption_recorded_by', 'absorption_recorded_at', 'absorption_recorded_by_role',
         'student_declared_hired', 'student_declared_at', 'student_declaration_notes',
-        'certificate_eligible', 'certificate_issued_at',
         'evaluation_period_status', 'evaluation_period_approved_by', 'evaluation_period_approved_at',
     ];
 
@@ -35,8 +34,6 @@ class Internship extends Model
         'absorption_recorded_at' => 'datetime',
         'student_declared_at' => 'datetime',
         'student_declared_hired' => 'boolean',
-        'certificate_eligible' => 'boolean',
-        'certificate_issued_at' => 'datetime',
         'evaluation_period_approved_at' => 'datetime',
         'total_hours_rendered' => 'decimal:2',
         'final_grade' => 'decimal:2',

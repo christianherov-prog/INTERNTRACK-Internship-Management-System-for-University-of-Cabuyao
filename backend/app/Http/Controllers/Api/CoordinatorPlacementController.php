@@ -75,9 +75,9 @@ class CoordinatorPlacementController extends Controller
         if ($request->status === 'approved') {
             // Check if company already created for this request to avoid duplicates
             // We can search by name loosely, or just create it.
-            $company = Company::firstOrCreate(
-                ['company_name' => $hteRequest->company_name],
-                [
+            $company = \App\Support\CompanyNameNormalizer::findExisting($hteRequest->company_name)
+                ?? Company::create([
+                    'company_name' => $hteRequest->company_name,
                     'address' => $hteRequest->address,
                     'contact_person' => $hteRequest->contact_person,
                     'contact_email' => $hteRequest->contact_email,
@@ -85,8 +85,7 @@ class CoordinatorPlacementController extends Controller
                     'moa_status' => 'On Process',
                     'is_active' => true,
                     'slots_available' => 0, // No slots until active
-                ]
-            );
+                ]);
         }
 
         return response()->json([

@@ -1,7 +1,7 @@
 {
     "journal_rows": [
         {
-            "id": 4,
+            "id": 1327,
             "week_number": 1,
             "week": 1,
             "date": "2026-09-07",
@@ -16,6 +16,6 @@
             "status": "approved"
         }
     ],
-    "approved_id": 4,
-    "pending_id": 5
+    "approved_id": 1327,
+    "pending_id": 1328
 }

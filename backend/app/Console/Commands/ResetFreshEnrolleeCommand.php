@@ -171,8 +171,6 @@ class ResetFreshEnrolleeCommand extends Command
                 'student_declared_hired' => false,
                 'student_declared_at' => null,
                 'student_declaration_notes' => null,
-                'certificate_eligible' => false,
-                'certificate_issued_at' => null,
             ];
 
             if (Schema::hasColumn('internships', 'student_declaration_proofs')) {

@@ -112,13 +112,12 @@ class User extends Authenticatable
         return $this->hasMany(Internship::class, 'coordinator_id');
     }
 
-    /** Scope to get students whose section matches the faculty's assigned sections */
+    /** Scope to Students actually advised by this faculty (see FacultySectionAssignmentService::assignedStudentsQuery). */
     public function scopeAssignedToFaculty($query, int $facultyId)
     {
-        $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-
-        return $query->where('role', 'student')->whereHas('studentProfile', function ($q) use ($sections) {
-            $q->whereIn('section', $sections);
+        return $query->where('role', 'student')->whereHas('internshipsAsStudent', function ($i) use ($facultyId) {
+            \App\Services\FacultySectionAssignmentService::constrainToCurrentInternship($i)
+                ->where('internships.faculty_id', $facultyId);
         });
     }
 

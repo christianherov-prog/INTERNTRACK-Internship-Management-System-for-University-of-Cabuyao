@@ -216,10 +216,6 @@ class MessageController extends Controller
         foreach ($internships as $internship) {
             $messages = $byInternship->get($internship->id, collect());
             $statusNorm = InternshipStatuses::normalize($internship->status);
-            $isEnded = in_array($internship->status, self::ARCHIVED_INBOX_STATUSES, true)
-                || in_array($statusNorm, self::ARCHIVED_INBOX_STATUSES, true);
-            $isLive = in_array($internship->status, self::ACTIVE_INBOX_STATUSES, true)
-                || in_array($statusNorm, self::ACTIVE_INBOX_STATUSES, true);
 
             $peerIds = $internship->participantUserIds();
             foreach ($messages as $m) {
@@ -245,8 +241,15 @@ class MessageController extends Controller
                 $state = $states->get($stateKey);
                 $userArchived = $state && $state->archived_at !== null;
 
-                $inArchivedTab = $userArchived || $isEnded;
-                $inActiveTab = $isLive && ! $userArchived;
+                // Tab membership must match the SAME per-user flag the
+                // Archive/Unarchive button reflects (user_archived below) —
+                // an internship simply ending must not silently force a
+                // conversation into "Archived" without the acting user ever
+                // archiving it, or the button/tab fall out of sync (a
+                // conversation shown as archived but whose action still
+                // reads "Archive" instead of "Unarchive").
+                $inArchivedTab = $userArchived;
+                $inActiveTab = ! $userArchived;
 
                 if ($wantArchived && ! $inArchivedTab) {
                     continue;

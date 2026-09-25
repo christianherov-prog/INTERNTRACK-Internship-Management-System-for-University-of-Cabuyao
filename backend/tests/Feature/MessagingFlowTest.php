@@ -218,7 +218,12 @@ class MessagingFlowTest extends TestCase
         $this->assertSame('History for the faculty role slot', $thread->json('messages.0.body'));
     }
 
-    public function test_completed_internship_appears_in_archived_inbox(): void
+    /**
+     * Archive membership is the acting user's own archived_at state: an internship
+     * ending does not move a conversation by itself (that desynced the tab from
+     * the Archive/Unarchive action). The user archives it explicitly.
+     */
+    public function test_completed_internship_conversation_moves_to_archived_only_when_user_archives(): void
     {
         $student = $this->user('student', 'STU-M5', 'stu-m5@example.com');
         $faculty = $this->user('faculty', 'FAC-M5', 'fac-m5@example.com');
@@ -237,12 +242,20 @@ class MessagingFlowTest extends TestCase
         $active = $this->actingAs($student, 'sanctum')
             ->getJson('/api/v1/messages/conversations?archived=0');
         $active->assertOk();
-        $this->assertCount(0, $active->json('data'));
+        $this->assertGreaterThanOrEqual(1, count($active->json('data')));
+        $this->assertFalse(collect($active->json('data'))->contains('user_archived', true));
+        $this->assertCount(0, $this->actingAs($student, 'sanctum')
+            ->getJson('/api/v1/messages/conversations?archived=1')->json('data'));
+
+        $this->actingAs($student, 'sanctum')
+            ->postJson("/api/v1/messages/conversations/{$internship->id}/{$faculty->id}/archive", ['archived' => true])
+            ->assertOk();
 
         $archived = $this->actingAs($student, 'sanctum')
             ->getJson('/api/v1/messages/conversations?archived=1');
         $archived->assertOk();
         $this->assertGreaterThanOrEqual(1, count($archived->json('data')));
+        $this->assertTrue(collect($archived->json('data'))->every(fn ($t) => $t['user_archived'] === true));
     }
 
     public function test_send_is_rate_limited(): void

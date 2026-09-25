@@ -97,6 +97,9 @@ function badge(status) {
 /**
  * Shared absorption list + confirm modal for supervisor and coordinator.
  * Props preserve each role's existing columns/copy — no redesign.
+ * canRecord=false renders a read-only list: only the PALD Director may
+ * finalize absorption (AbsorptionService::recordOutcome), so roles without
+ * that right see each outcome but get no Confirm/Update action.
  */
 function RoleAbsorption({
   apiBase,
@@ -105,6 +108,7 @@ function RoleAbsorption({
   showSupervisorColumn = false,
   emptyMessage = 'No completed internships yet.',
   declaredHiredExtra = '',
+  canRecord = true,
 }) {
   const { loading, seed, run } = useCachedPage(`${apiBase}:absorption`)
   const [items, setItems] = useState(() => seed ?? [])
@@ -124,9 +128,20 @@ function RoleAbsorption({
   useEffect(() => { load() }, [apiBase])
 
   return (
-    <Layout title="Intern Absorption" subtitle="Confirm hire outcomes for completed interns" icon="fa-user-check" bodyClass={bodyClass}>
+    <Layout
+      title="Intern Absorption"
+      subtitle={canRecord ? 'Confirm hire outcomes for completed interns' : 'Hire outcomes for completed interns'}
+      icon="fa-user-check"
+      bodyClass={bodyClass}
+    >
       {error && <PageError message={error} onRetry={load} />}
-      {modal && (
+      {!canRecord && (
+        <div className="alert alert-info d-flex align-items-center gap-2 mb-3" role="note" data-testid="absorption-read-only-note">
+          <i className="fa fa-circle-info"></i>
+          <span>Absorption outcomes are finalized by the PALD Director. This page shows each intern&apos;s current outcome.</span>
+        </div>
+      )}
+      {canRecord && modal && (
         <AbsorptionModal
           internship={modal}
           apiBase={apiBase}
@@ -139,7 +154,7 @@ function RoleAbsorption({
       <div className="content-card mb-4">
         <div className="content-card-header">
           <i className="fa fa-user-check"></i>
-          <h6>Completed Interns — Hire Confirmation</h6>
+          <h6>{canRecord ? 'Completed Interns — Hire Confirmation' : 'Completed Interns — Hire Outcomes'}</h6>
         </div>
         {loading ? (
           <div className="text-center py-5"><InternTrackLoader /></div>
@@ -156,7 +171,7 @@ function RoleAbsorption({
                   {showSupervisorColumn && <th>Supervisor</th>}
                   <th>Student declared?</th>
                   <th>Outcome</th>
-                  <th></th>
+                  {canRecord && <th></th>}
                 </tr>
               </thead>
               <tbody>
@@ -176,11 +191,13 @@ function RoleAbsorption({
                       {showSupervisorColumn && <td>{supervisorName}</td>}
                       <td>{i.student_declared_hired ? <span className="badge bg-info text-dark">Yes</span> : '—'}</td>
                       <td><span className={badge(outcome)}>{outcome.replace('_', ' ')}</span></td>
-                      <td>
-                        <button className="btn btn-sm btn-primary" onClick={() => setModal(i)}>
-                          {outcome === 'pending' || !i.absorption_status ? 'Confirm' : 'Update'}
-                        </button>
-                      </td>
+                      {canRecord && (
+                        <td>
+                          <button className="btn btn-sm btn-primary" onClick={() => setModal(i)}>
+                            {outcome === 'pending' || !i.absorption_status ? 'Confirm' : 'Update'}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}

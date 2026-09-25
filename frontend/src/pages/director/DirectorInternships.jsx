@@ -138,7 +138,6 @@ function DirectorInternships() {
   const [statusTarget, setStatusTarget] = useState(null)
   const [historyTarget, setHistoryTarget] = useState(null)
   const [message, setMessage] = useState(null)
-  const [certLoading, setCertLoading] = useState(null)
   const [archiveBusy, setArchiveBusy] = useState(null)
   
   const [departments, setDepartments] = useState([])
@@ -207,31 +206,6 @@ function DirectorInternships() {
     }
   }
 
-  const downloadCertificate = async (internshipId) => {
-    setCertLoading(internshipId)
-    try {
-      // NOTE: Certificate generation is typically Coordinator, but we'll try Director if they have access.
-      const res = await api.get(`/coordinator/internships/${internshipId}/certificate`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `completion-certificate-${internshipId}.pdf`
-      a.click()
-      window.URL.revokeObjectURL(url)
-      setMessage({ type: 'success', text: 'Certificate PDF generated from student data.' })
-    } catch (err) {
-      let text = 'Could not generate certificate (status must be Completed).'
-      if (err.response?.data instanceof Blob) {
-        try {
-          const j = JSON.parse(await err.response.data.text())
-          text = j.message || text
-        } catch { /* ignore */ }
-      }
-      setMessage({ type: 'danger', text })
-    } finally {
-      setCertLoading(null)
-    }
-  }
   
   const sections = ["all", ...new Set(students.map(s => formatYearSection(s.student_profile?.section) || "—").filter(x => x !== "—"))]
 

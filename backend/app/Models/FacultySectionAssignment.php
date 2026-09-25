@@ -28,11 +28,18 @@ class FacultySectionAssignment extends Model
     {
         static::saved(function (FacultySectionAssignment $assignment) {
             if ($assignment->is_active && $assignment->section && $assignment->faculty_user_id) {
+                // In `saved` the original values are not yet synced, so this is
+                // the faculty the section pointed at before this change.
+                $previousFacultyId = $assignment->wasChanged('faculty_user_id')
+                    ? (int) $assignment->getOriginal('faculty_user_id') ?: null
+                    : null;
+
                 app(\App\Services\FacultySectionAssignmentService::class)->syncInternshipsForSection(
                     $assignment->section,
                     $assignment->program ?? '',
                     $assignment->school_year,
-                    $assignment->semester
+                    $assignment->semester,
+                    $previousFacultyId
                 );
             }
         });

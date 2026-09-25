@@ -6,6 +6,7 @@ function CoordAbsorption() {
       apiBase="coordinator"
       bodyClass="coordinator-page"
       showSupervisorColumn
+      canRecord={false}
       emptyMessage="No completed internships yet."
     />
   )

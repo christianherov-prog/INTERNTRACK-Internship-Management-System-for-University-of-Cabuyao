@@ -14704,32 +14704,43 @@ body.page-body{min-height:100vh;margin:0;overflow-x:hidden;background:var(--layo
 }
 
 /* ================================================================
-   GLOBAL TOPBAR AVATAR — no hover scale / glow / shadow animation
-   (shared Topbar .topbar-avatar + legacy role-specific classes)
+   GLOBAL TOPBAR AVATAR — static for every role (shared Topbar
+   .topbar-avatar + legacy role-specific classes). Hover/active look
+   exactly like the resting state: no transition, animation, scale,
+   glow, moving border or background change, so nothing shifts.
    ================================================================ */
 .topbar-avatar,
-.coord-topbar-avatar,
-.sp-topbar-avatar,
-.page-hero-avatar {
-  transform: none !important;
-}
-
 .topbar-avatar:hover,
 .topbar-avatar:active,
+.coord-topbar-avatar,
 .coord-topbar-avatar:hover,
 .coord-topbar-avatar:active,
+.sp-topbar-avatar,
 .sp-topbar-avatar:hover,
 .sp-topbar-avatar:active,
+.page-hero-avatar,
 .page-hero-avatar:hover,
 .page-hero-avatar:active {
+  background: linear-gradient(135deg, var(--green-main, #1a7a3f), var(--green-light, #2da85b)) !important;
+  color: #fff !important;
+  border: 2px solid rgba(255, 255, 255, .9) !important;
+  box-shadow: 0 6px 14px rgba(26, 122, 63, .22) !important;
   transform: none !important;
-  scale: none;
-  filter: none;
-  opacity: 1;
-  box-shadow: inherit;
-  border-color: inherit;
-  background: inherit;
-  brightness: inherit;
+  scale: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+.topbar-avatar img,
+.coord-topbar-avatar img,
+.sp-topbar-avatar img,
+.page-hero-avatar img {
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+  filter: none !important;
 }
 
 .topbar-avatar:focus-visible,
@@ -14738,7 +14749,6 @@ body.page-body{min-height:100vh;margin:0;overflow-x:hidden;background:var(--layo
 .page-hero-avatar:focus-visible {
   outline: 2px solid rgba(26, 122, 63, 0.45);
   outline-offset: 2px;
-  transform: none !important;
 }
 
 

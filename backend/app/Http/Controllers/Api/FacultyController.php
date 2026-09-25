@@ -7,7 +7,6 @@ use App\Models\Announcement;
 use App\Models\AttendanceLog;
 use App\Models\Document;
 use App\Models\Evaluation;
-use App\Models\FacultySectionAssignment;
 use App\Models\Internship;
 use App\Models\JournalEntry;
 use App\Models\Notification;
@@ -223,17 +222,12 @@ class FacultyController extends Controller
     {
         $request->validate(['archived' => 'required|boolean']);
 
-        $facultyId = $request->user()->id;
         $student = User::where('role', 'student')->findOrFail($userId);
         if (! User::inDepartment()->where('id', $userId)->exists()) {
             DepartmentScope::abortDifferentDepartment();
         }
 
-        $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-        $assigned = $sections->contains($student->studentProfile?->section)
-            || Internship::inDepartment()->where('faculty_id', $facultyId)
-                ->where('student_id', $userId)
-                ->exists();
+        $assigned = FacultySectionAssignmentService::advisesStudent($request->user(), $userId);
 
         if (! $assigned) {
             return response()->json(['message' => 'You can only archive students assigned to you.'], 403);
@@ -266,10 +260,7 @@ class FacultyController extends Controller
             DepartmentScope::abortDifferentDepartment();
         }
 
-        $facultyId = $request->user()->id;
-        $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-        $isAssigned = $sections->contains($student->studentProfile?->section)
-            || Internship::inDepartment()->where('faculty_id', $facultyId)->where('student_id', $userId)->exists();
+        $isAssigned = FacultySectionAssignmentService::advisesStudent($request->user(), $userId);
 
         if (! $isAssigned) {
             abort(403, 'Student is not assigned to you.');
@@ -1095,18 +1086,8 @@ class FacultyController extends Controller
     /** GET /api/v1/faculty/reports/student-summary — assigned students only */
     public function reportStudentSummary(Request $request)
     {
-        $facultyId = $request->user()->id;
-        $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-
-        $users = User::inDepartment()->where('role', 'student')
-            ->where(function ($q) use ($facultyId, $sections) {
-                $q->whereHas('studentProfile', function ($p) use ($sections) {
-                    $p->whereIn('section', $sections);
-                })
-                    ->orWhereHas('internshipsAsStudent', function ($i) use ($facultyId) {
-                        $i->where('faculty_id', $facultyId);
-                    });
-            })
+        // Reports cover the Students this faculty actually advises.
+        $users = FacultySectionAssignmentService::assignedStudentsQuery($request->user(), false)
             ->with([
                 'studentProfile.program',
                 'activeInternship.company',
@@ -1165,18 +1146,8 @@ class FacultyController extends Controller
     /** GET /api/v1/faculty/reports/compliance */
     public function reportCompliance(Request $request)
     {
-        $facultyId = $request->user()->id;
-        $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-
-        $users = User::inDepartment()->where('role', 'student')
-            ->where(function ($q) use ($facultyId, $sections) {
-                $q->whereHas('studentProfile', function ($p) use ($sections) {
-                    $p->whereIn('section', $sections);
-                })
-                    ->orWhereHas('internshipsAsStudent', function ($i) use ($facultyId) {
-                        $i->where('faculty_id', $facultyId);
-                    });
-            })
+        // Reports cover the Students this faculty actually advises.
+        $users = FacultySectionAssignmentService::assignedStudentsQuery($request->user(), false)
             ->with(['studentProfile.program', 'activeInternship'])
             ->get();
 
@@ -1188,18 +1159,8 @@ class FacultyController extends Controller
     /** GET /api/v1/faculty/reports/performance */
     public function reportPerformance(Request $request)
     {
-        $facultyId = $request->user()->id;
-        $sections = FacultySectionAssignment::where('faculty_user_id', $facultyId)->pluck('section');
-
-        $users = User::inDepartment()->where('role', 'student')
-            ->where(function ($q) use ($facultyId, $sections) {
-                $q->whereHas('studentProfile', function ($p) use ($sections) {
-                    $p->whereIn('section', $sections);
-                })
-                    ->orWhereHas('internshipsAsStudent', function ($i) use ($facultyId) {
-                        $i->where('faculty_id', $facultyId);
-                    });
-            })
+        // Reports cover the Students this faculty actually advises.
+        $users = FacultySectionAssignmentService::assignedStudentsQuery($request->user(), false)
             ->with(['studentProfile.program', 'activeInternship'])
             ->get();
 

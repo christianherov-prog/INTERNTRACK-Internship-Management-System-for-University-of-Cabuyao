@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { disconnectEcho } from './echo'
 import { resolveApiBaseUrl } from '../utils/apiBase'
+import { clearUserScopedState, getActiveInternshipId } from '../utils/sessionState'
 
 /**
  * INTERNTRACK API Service
@@ -24,8 +25,10 @@ const api = axios.create({
 
 // ── Request Interceptor ───────────────────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const selectedInternshipId = sessionStorage.getItem('interntrack_active_internship')
-  if (selectedInternshipId) {
+  // Only an internship selected by the account signed in on this tab is sent;
+  // another account's leftover selection is discarded, never forwarded.
+  const selectedInternshipId = getActiveInternshipId()
+  if (selectedInternshipId && config.headers?.['X-Internship-Id'] === undefined) {
     config.headers['X-Internship-Id'] = selectedInternshipId
   }
 
@@ -55,7 +58,7 @@ api.interceptors.response.use(
     const isAuthProbe = requestUrl.includes('/auth/logout') || requestUrl.includes('/auth/user') || requestUrl.includes('/auth/login')
     if (status === 401 && !isAuthProbe) {
       disconnectEcho()
-      sessionStorage.removeItem('interntrack_session')
+      clearUserScopedState()
       if (window.location.pathname !== '/' && !window.location.pathname.startsWith('/supervisor/login')) {
         window.location.href = '/'
       }

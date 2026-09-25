@@ -2,7 +2,7 @@
     "faculty": {
         "summary": {
             "student_name": "Test Student",
-            "student_number": "2074-32450",
+            "student_number": "2055-96329",
             "program": "Bachelor of Science in Information Technology",
             "company": "Integration HTE",
             "status": "active",
@@ -41,7 +41,7 @@
     "coordinator": {
         "summary": {
             "student_name": "Student, Test",
-            "student_number": "2074-32450",
+            "student_number": "2055-96329",
             "program": "Bachelor of Science in Information Technology",
             "company": "Integration HTE",
             "industry": "\u2014",
@@ -76,7 +76,7 @@
             "filters": {
                 "programs": [
                     {
-                        "id": 25,
+                        "id": 172,
                         "name": "Bachelor of Science in Information Technology"
                     }
                 ],

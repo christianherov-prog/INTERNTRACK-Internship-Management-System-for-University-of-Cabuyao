@@ -210,7 +210,7 @@ function ConversationRow({ thread, isActive, onSelect, onToggleArchive, archiveB
       <button
         type="button"
         className="msg-conv-archive-btn"
-        title={isUserArchived ? 'Move to Active' : 'Archive conversation'}
+        title={isUserArchived ? 'Unarchive conversation' : 'Archive conversation'}
         aria-label={isUserArchived ? 'Unarchive conversation' : 'Archive conversation'}
         disabled={archiveBusy}
         onClick={(e) => {
@@ -1482,7 +1482,7 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
                       !activeUserArchived
                     )}
                     disabled={archiveBusyKey === activeKey}
-                    title={activeUserArchived ? 'Move to Active' : 'Archive'}
+                    title={activeUserArchived ? 'Unarchive conversation' : 'Archive'}
                   >
                     <i className={`fa ${activeUserArchived ? 'fa-inbox' : 'fa-archive'}`} aria-hidden="true" />
                     <span>{activeUserArchived ? 'Unarchive' : 'Archive'}</span>

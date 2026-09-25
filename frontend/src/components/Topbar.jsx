@@ -12,13 +12,12 @@ import {
 } from '../services/echo'
 import { isMultiHteProgram } from '../utils/hteProgram'
 import RoleWorkspaceSwitcher from './RoleWorkspaceSwitcher'
+import { getActiveInternshipId, setActiveInternshipId } from '../utils/sessionState'
 
 function StudentDeploymentSwitcher() {
   const { user } = useAuth()
   const [internships, setInternships] = useState([])
-  const [selectedId, setSelectedId] = useState(
-    sessionStorage.getItem('interntrack_active_internship') || ''
-  )
+  const [selectedId, setSelectedId] = useState(() => getActiveInternshipId(user?.id) || '')
   const showSwitcher = user?.role === 'student' && isMultiHteProgram(user)
 
   useEffect(() => {
@@ -29,11 +28,12 @@ function StudentDeploymentSwitcher() {
     }).then(res => {
       const data = res.data.internships || []
       setInternships(data)
-      if (data.length > 0 && !selectedId) {
-        // Default to the first one if not set
-        setSelectedId(data[0].id)
-        sessionStorage.setItem('interntrack_active_internship', data[0].id)
-      }
+      // Keep the stored selection only if it is one of THIS student's internships.
+      const stored = getActiveInternshipId(user?.id)
+      const valid = data.find((i) => String(i.id) === String(stored))
+      const next = valid ? valid.id : (data[0]?.id ?? '')
+      setSelectedId(next)
+      setActiveInternshipId(next, user?.id)
     }).catch(() => {})
   }, [user, showSwitcher])
 
@@ -42,7 +42,7 @@ function StudentDeploymentSwitcher() {
   const handleChange = (e) => {
     const id = e.target.value
     setSelectedId(id)
-    sessionStorage.setItem('interntrack_active_internship', id)
+    setActiveInternshipId(id, user?.id)
     window.location.reload()
   }
 

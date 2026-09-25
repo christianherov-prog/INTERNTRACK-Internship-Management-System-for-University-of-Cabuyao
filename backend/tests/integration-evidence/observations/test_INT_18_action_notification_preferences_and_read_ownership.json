@@ -1,6 +1,6 @@
 {
-    "notification_id": 40,
-    "recipient": 86,
+    "notification_id": 55,
+    "recipient": 837,
     "type": "meeting_invite",
     "read": true,
     "outsider_count": 0,

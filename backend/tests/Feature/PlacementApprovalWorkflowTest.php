@@ -291,6 +291,7 @@ class PlacementApprovalWorkflowTest extends TestCase
     {
         $coordinator = $this->makeUser('coordinator', 'COR-CCS-APP');
         $student = $this->makeStudentWithSection();
+        $this->assignFixtureAdviser($student); // required before applying / requesting an HTE
         $company = $this->makeEligibleCompany(['company_name' => 'TechCorp PH']);
 
         return [$student, $coordinator, $company];

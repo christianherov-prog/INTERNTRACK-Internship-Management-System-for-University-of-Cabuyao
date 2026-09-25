@@ -503,6 +503,10 @@ class CoordinatorController extends Controller
                 ], 422);
             }
             DepartmentScope::assertFacultySameDepartment($assignedFaculty, $internship->student ?? $profile);
+        } elseif (FacultySectionAssignmentService::isValidAdviser($internship->faculty_id)) {
+            // No adviser chosen: keep the Student's existing adviser rather than
+            // silently re-deriving it from the section.
+            $assignedFaculty = User::find($internship->faculty_id);
         } else {
             $assignedFaculty = $service->suggestFacultyForSection(
                 $profile?->section,
@@ -1055,9 +1059,7 @@ class CoordinatorController extends Controller
             }
 
             if ($data['status'] === 'approved') {
-                $company = Company::query()
-                    ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($req->company_name)])
-                    ->first();
+                $company = \App\Support\CompanyNameNormalizer::findExisting($req->company_name);
 
                 if (! $company) {
                     $company = Company::create([

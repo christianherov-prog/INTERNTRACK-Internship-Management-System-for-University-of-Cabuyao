@@ -206,6 +206,8 @@ class Fo30AmPmMappingTest extends TestCase
             'last_name' => 'Reyes',
         ]);
 
+        // The demo writes generated portfolio images; keep them off the real disk.
+        \Illuminate\Support\Facades\Storage::fake('local');
         $result = $demo->reconcileStudent('2300592');
         $internship = $result['internship'];
 

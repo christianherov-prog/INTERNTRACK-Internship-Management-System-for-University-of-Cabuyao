@@ -13,7 +13,6 @@ use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\Notification;
 use App\Services\AbsorptionService;
-use App\Services\CertificateEligibilityService;
 use App\Services\DocumentComplianceService;
 use App\Services\DtrWorkflowService;
 use App\Services\FacultySectionAssignmentService;
@@ -53,6 +52,11 @@ class StudentController extends Controller
         $requestedId = $request->header('X-Internship-Id') ?: $request->input('internship_id');
         if ($requestedId) {
             $internship = $query->where('id', $requestedId)->first();
+            // Another student's (or a stale) internship id is refused outright —
+            // never silently replaced by provisioning a new internship below.
+            if (! $internship) {
+                abort(403, 'Unauthorized access to this internship.');
+            }
         } else {
             $internship = InternshipProvisioning::openForStudent($user->id);
             if ($internship) {
@@ -1077,31 +1081,6 @@ class StudentController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/v1/student/certificate/eligibility
-     * Returns whether the student is eligible for an OJT Completion Certificate,
-     * along with a checklist of individual requirements.
-     */
-    public function certificateEligibility(Request $request)
-    {
-        $internship = $this->internship($request);
-        $internship->load(['documents', 'evaluations']);
-
-        $eligible = CertificateEligibilityService::isEligible($internship);
-        $checklist = CertificateEligibilityService::checklist($internship);
-
-        // If newly eligible and never issued, mark the flag
-        if ($eligible && ! $internship->certificate_eligible) {
-            $internship->update(['certificate_eligible' => true]);
-        }
-
-        return response()->json([
-            'eligible' => $eligible,
-            'issued_at' => $internship->certificate_issued_at,
-            'checklist' => $checklist,
-        ]);
-    }
-
     public function companies()
     {
         $companies = Company::where('moa_status', 'active')->get();
@@ -1139,6 +1118,7 @@ class StudentController extends Controller
         return response()->json([
             'applications' => $applications,
             'placement_lock' => PlacementEligibility::forStudent($request->user()),
+            'adviser' => PlacementEligibility::adviserFor($request->user()),
         ]);
     }
 
@@ -1149,6 +1129,14 @@ class StudentController extends Controller
             'moa' => PlacementMoa::rule(),
         ]);
         $internship = $this->internship($request);
+
+        $adviser = PlacementEligibility::adviserFor($request->user(), $internship);
+        if (! $adviser['assigned']) {
+            return response()->json([
+                'message' => PlacementEligibility::ADVISER_MESSAGE,
+                'adviser' => $adviser,
+            ], 422);
+        }
 
         $existing = InternshipApplication::where('student_id', $request->user()->id)
             ->where('company_id', $data['company_id'])
@@ -1187,7 +1175,11 @@ class StudentController extends Controller
                 if ($lock['locked'] && (int) $lock['company_id'] !== (int) $data['company_id']) {
                     throw new \App\Exceptions\PlacementLockedException();
                 }
-                $internship->update(['company_id' => $data['company_id']]);
+                // Only a Student still seeking placement records their selection on
+                // the internship; a placed/finished internship is never re-pointed here.
+                if ($internship->status === 'pending_placement') {
+                    $internship->update(['company_id' => $data['company_id']]);
+                }
 
                 $payload = [
                     'student_id' => $request->user()->id,
@@ -1248,6 +1240,47 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * "Change Company": withdraw the Student's own PENDING application so
+     * they become eligible to apply elsewhere. Never touches an already
+     * ACCEPTED/active placement — that requires the Coordinator/Faculty
+     * institutional workflow (e.g. transitioning the internship status),
+     * not a self-service student action, per PlacementEligibility's lock.
+     */
+    public function withdrawApplication(Request $request, int $id)
+    {
+        $application = InternshipApplication::where('student_id', $request->user()->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        if ($application->status !== 'pending') {
+            return response()->json([
+                'message' => $application->status === 'approved'
+                    ? 'This application was already accepted. Contact your Coordinator or Faculty to change your placement.'
+                    : 'Only a pending application can be withdrawn.',
+            ], 422);
+        }
+
+        $internship = $this->internship($request);
+
+        DB::transaction(function () use ($application, $internship) {
+            Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+
+            $application->update(['status' => 'withdrawn']);
+
+            if ((int) $internship->company_id === (int) $application->company_id
+                && $internship->status === 'pending_placement') {
+                $internship->update(['company_id' => null]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Application withdrawn. You may now apply to another company.',
+            'application' => $this->serializeApplication($application->fresh('company')),
+            'placement_lock' => PlacementEligibility::forStudent($request->user()),
+        ]);
+    }
+
     public function hteRequests(Request $request)
     {
         $requests = HteRequest::where('student_id', $request->user()->id)
@@ -1272,6 +1305,14 @@ class StudentController extends Controller
             'moa' => PlacementMoa::rule(),
         ]);
 
+        $adviser = PlacementEligibility::adviserFor($request->user());
+        if (! $adviser['assigned']) {
+            return response()->json([
+                'message' => PlacementEligibility::ADVISER_MESSAGE,
+                'adviser' => $adviser,
+            ], 422);
+        }
+
         // A new-HTE request is an application to another company; blocked once placed.
         $lock = PlacementEligibility::forStudent($request->user());
         if ($lock['locked']) {
@@ -1289,20 +1330,20 @@ class StudentController extends Controller
         }
         $data['organization_type'] = $resolvedType['value'];
 
-        $accredited = Company::query()
-            ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
-            ->exists();
+        $accredited = \App\Support\CompanyNameNormalizer::findExisting($data['company_name']);
 
         if ($accredited) {
             return response()->json([
                 'message' => 'This HTE already exists in the accredited company list.',
+                'company' => $accredited,
             ], 422);
         }
 
+        $needle = \App\Support\CompanyNameNormalizer::key($data['company_name']);
         $duplicate = HteRequest::where('student_id', $request->user()->id)
             ->where('status', 'pending')
-            ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
-            ->exists();
+            ->get(['id', 'company_name'])
+            ->contains(fn ($r) => \App\Support\CompanyNameNormalizer::key($r->company_name) === $needle);
 
         if ($duplicate) {
             return response()->json([

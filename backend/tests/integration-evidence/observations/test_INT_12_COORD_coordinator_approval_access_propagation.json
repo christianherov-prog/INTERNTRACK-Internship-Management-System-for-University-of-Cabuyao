@@ -1,11 +1,11 @@
 {
     "http": 200,
     "invite_status": "approved",
-    "assigned_supervisor": 48,
+    "assigned_supervisor": 799,
     "supervisor_list": {
         "data": [
             {
-                "id": 14,
+                "id": 303,
                 "term": "AY 2024-2025, Sem 2",
                 "status": "active",
                 "status_label": "Active",
@@ -15,17 +15,17 @@
                 "remaining_hours": 360,
                 "progress_pct": 0,
                 "company": {
-                    "id": 9,
+                    "id": 266,
                     "company_name": "Integration HTE",
                     "company_logo_path": null
                 },
                 "student": {
-                    "id": 47,
-                    "username": "2050-04345",
+                    "id": 798,
+                    "username": "2079-20261",
                     "student_profile": {
                         "first_name": "Test",
                         "last_name": "Student",
-                        "student_number": "2050-04345",
+                        "student_number": "2079-20261",
                         "course_name": "Bachelor of Science in Information Technology",
                         "program": "Bachelor of Science in Information Technology"
                     }
@@ -55,14 +55,14 @@
         }
     },
     "student": {
-        "id": 14,
+        "id": 303,
         "term": "AY 2024-2025, Sem 2",
         "status": "active",
         "status_label": "Active",
         "status_reason": null,
         "company_name": "Integration HTE",
         "supervisor_name": "Industry Reviewer",
-        "supervisor_faculty_number": "SUPERVISOR-0968",
+        "supervisor_faculty_number": "SUPERVISOR-1606",
         "start_date": "2026-09-01",
         "placements": [],
         "current_placement": null

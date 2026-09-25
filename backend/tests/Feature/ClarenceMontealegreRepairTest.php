@@ -96,6 +96,8 @@ class ClarenceMontealegreRepairTest extends TestCase
             ]);
         }
 
+        // The demo writes generated portfolio images; keep them off the real disk.
+        \Illuminate\Support\Facades\Storage::fake('local');
         $result = app(OneWeekOjtDemoService::class)->reconcileStudent('2300592');
 
         // Magtibay no longer current supervisor for this internship.

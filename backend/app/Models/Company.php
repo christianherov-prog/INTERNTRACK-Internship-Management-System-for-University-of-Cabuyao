@@ -23,10 +23,23 @@ class Company extends Model
         'is_active' => 'boolean',
     ];
 
+    protected $hidden = ['normalized_name', 'active_name_key'];
+
     protected $appends = [
         'moa_expires_in_days',
         'organization_type_label',
     ];
+
+    protected static function booted(): void
+    {
+        // Keep the persisted identity key in step with the name so the
+        // database-level unique index (active_name_key) sees every write.
+        static::saving(function (Company $company) {
+            if ($company->isDirty('company_name') || blank($company->normalized_name)) {
+                $company->normalized_name = \App\Support\CompanyNameNormalizer::key($company->company_name);
+            }
+        });
+    }
 
     public function getOrganizationTypeLabelAttribute(): string
     {

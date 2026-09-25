@@ -64,7 +64,9 @@ class FacultySectionAssignmentSeeder extends Seeder
                 'sex' => 'Male',
                 'department' => 'College of Computing Studies',
                 'position' => 'CCS Faculty',
-                'sections' => ['4IT-A', '4IT-B'],
+                // 4IT-B belongs to the CCS Coordinator acting as Faculty, and
+                // BSCS 4CS-A / 4CS-B come from CcsSectionDirectory below.
+                'sections' => ['4IT-A', '4IT-D'],
             ],
             [
                 'faculty_number' => 'FAC-1002',
@@ -75,7 +77,7 @@ class FacultySectionAssignmentSeeder extends Seeder
                 'sex' => 'Female',
                 'department' => 'College of Computing Studies',
                 'position' => 'CCS Faculty',
-                'sections' => ['4IT-C', '4IT-D'],
+                'sections' => ['4IT-C'],
             ],
         ];
 
@@ -130,6 +132,8 @@ class FacultySectionAssignmentSeeder extends Seeder
 
         $this->assignCollegeFacultySections($ay, $sem);
         $this->restoreBsitSectionsToPrimaryFaculty($ay, $sem);
+        // Controlled CCS split (4IT-A/4IT-D/4CS-A → FAC-1001, 4IT-B/4CS-B → COR-CCS-001).
+        \App\Support\CcsSectionDirectory::apply();
 
         $this->command?->info('✅ Faculty section assignments seeded. Login: FAC-1001 / FAC-1002, password='.config('interntrack.default_password'));
     }
@@ -184,19 +188,21 @@ class FacultySectionAssignmentSeeder extends Seeder
             return;
         }
 
+        $ccsCoordinator = User::where('faculty_number', 'COR-CCS-001')->first();
+
         $ownerBySection = [
             '4IT-A' => $primaryA->id,
             '4ITA' => $primaryA->id,
-            '4IT-B' => $primaryA->id,
-            '4ITB' => $primaryA->id,
+            '4IT-B' => $ccsCoordinator?->id ?? $primaryA->id,
+            '4ITB' => $ccsCoordinator?->id ?? $primaryA->id,
             '4IT-C' => $primaryB?->id ?? $primaryA->id,
             '4ITC' => $primaryB?->id ?? $primaryA->id,
-            '4IT-D' => $primaryB?->id ?? $primaryA->id,
-            '4ITD' => $primaryB?->id ?? $primaryA->id,
+            '4IT-D' => $primaryA->id,
+            '4ITD' => $primaryA->id,
         ];
 
         FacultySectionAssignment::query()
-            ->where(function ($q) use ($dummy) {
+            ->where(function ($q) use ($dummy, $ownerBySection) {
                 $q->where('faculty_user_id', $dummy->id)
                     ->orWhereIn('section', array_keys($ownerBySection));
             })

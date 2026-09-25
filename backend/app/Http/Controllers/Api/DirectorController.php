@@ -101,7 +101,29 @@ class DirectorController extends Controller
             ]);
         }
         $validated['organization_type'] = $resolvedType['value'];
-        $company = Company::create($validated);
+
+        $existing = \App\Support\CompanyNameNormalizer::findExisting($validated['company_name']);
+        if ($existing) {
+            return response()->json([
+                'message' => 'A company with this name already exists.',
+                'company' => $existing,
+            ], 422);
+        }
+
+        try {
+            $company = Company::create($validated);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // A concurrent request created the same company between the
+            // check above and the insert; the unique identity index caught it.
+            if (! \App\Support\UniqueWrite::isDuplicate($e)) {
+                throw $e;
+            }
+
+            return response()->json([
+                'message' => 'A company with this name already exists.',
+                'company' => \App\Support\CompanyNameNormalizer::findExisting($validated['company_name']),
+            ], 422);
+        }
         audit_log($request->user()->id, 'create_company', ['company_name' => $request->company_name]);
 
         return response()->json(['message' => 'Company added.', 'company' => $company], 201);
@@ -135,6 +157,15 @@ class DirectorController extends Controller
             $validated['organization_type'] = $resolvedType['value'];
         }
         $company = Company::findOrFail($id);
+        if (isset($validated['company_name'])) {
+            $existing = \App\Support\CompanyNameNormalizer::findExisting($validated['company_name'], $company->id);
+            if ($existing) {
+                return response()->json([
+                    'message' => 'A company with this name already exists.',
+                    'company' => $existing,
+                ], 422);
+            }
+        }
         $company->update($validated);
         audit_log($request->user()->id, 'update_company', ['company_id' => $id]);
 
@@ -371,7 +402,9 @@ class DirectorController extends Controller
         }
 
         $faculty = User::findOrFail((int) $request->faculty_id);
-        if ($faculty->role !== 'faculty') {
+        // A Coordinator may also advise Students in Faculty capacity (same account),
+        // matching Coordinator placement and MISD section assignment.
+        if (! in_array($faculty->role, \App\Services\FacultySectionAssignmentService::ADVISER_ROLES, true)) {
             return response()->json([
                 'message' => 'Validation failed.',
                 'errors' => ['faculty_id' => ['The selected faculty must have the faculty role.']],
