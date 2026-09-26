@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef } from 'react'
+import { useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import useModalLayer from './useModalLayer'
 
 /**
  * Themed logout confirmation modal (replaces window.confirm).
@@ -17,52 +19,9 @@ function ConfirmLogoutModal({ open, loading = false, error = null, onCancel, onC
   const dialogRef = useRef(null)
   const cancelRef = useRef(null)
   const confirmRef = useRef(null)
-  const previouslyFocused = useRef(null)
-
-  useEffect(() => {
-    if (!open) return undefined
-
-    previouslyFocused.current = document.activeElement
-    const timer = window.setTimeout(() => cancelRef.current?.focus(), 0)
-
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape' && !loading) {
-        e.preventDefault()
-        onCancel?.()
-        return
-      }
-
-      if (e.key !== 'Tab' || !dialogRef.current) return
-
-      const focusable = dialogRef.current.querySelectorAll(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
-      const list = Array.from(focusable).filter((el) => el.offsetParent !== null || el === document.activeElement)
-      if (list.length === 0) return
-
-      const first = list[0]
-      const last = list[list.length - 1]
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      window.clearTimeout(timer)
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = prevOverflow
-      previouslyFocused.current?.focus?.()
-    }
-  }, [open, loading, onCancel])
+  // Shared overlay behaviour: page scroll lock on <html>, Escape (unless
+  // loading), Tab trap, focus on Cancel, and focus returned on close.
+  useModalLayer({ open, onClose: onCancel, busy: loading, dialogRef, initialFocusRef: cancelRef })
 
   if (!open) return null
 
@@ -71,7 +30,7 @@ function ConfirmLogoutModal({ open, loading = false, error = null, onCancel, onC
     if (e.target === e.currentTarget) onCancel?.()
   }
 
-  return (
+  return createPortal(
     <div
       className="it-confirm-overlay"
       role="presentation"
@@ -128,7 +87,8 @@ function ConfirmLogoutModal({ open, loading = false, error = null, onCancel, onC
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

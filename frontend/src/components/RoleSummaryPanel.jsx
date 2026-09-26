@@ -4,6 +4,7 @@ import DashboardHeroBanner from './DashboardHeroBanner'
 import { formatYearSection } from '../utils/formatSection'
 import { useCachedPage } from '../hooks/useCachedPage'
 import { useStaffWorkspace } from '../hooks/useStaffWorkspace'
+import { formatManilaDate } from '../utils/manilaTime'
 
 /** Role-specific metric tiles rendered under the shared hero banner. */
 const ROLE_METRICS = {
@@ -45,7 +46,7 @@ function formatLastLogin(iso) {
   if (diffHours < 24) return `${diffHours}h ago`
   const diffDays = Math.floor(diffHours / 24)
   if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
+  return formatManilaDate(date)
 }
 
 function formatInternshipStatus(status) {

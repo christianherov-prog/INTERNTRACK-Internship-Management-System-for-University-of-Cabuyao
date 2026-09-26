@@ -9,6 +9,7 @@ import { documentStatusLabel } from '../../utils/documentStatus'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { invalidateStudentDocuments } from '../../utils/pageCache'
+import AppModal from '../../components/modals/AppModal'
 
 /**
  * Faculty stage of document routing: only pending_faculty / current_stage=faculty.
@@ -113,67 +114,61 @@ function FacultyDocuments() {
         </div>
       )}
 
-      {verifyModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Approve Document</h5>
-                <button className="btn-close" onClick={() => setVerifyModal(null)}></button>
-              </div>
-              <div className="modal-body">
-                <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  Confirm approval of this document. The student will be notified once approved.
-                </p>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Remarks (optional)</label>
-                  <textarea maxLength={1000}
-                    className="form-control"
-                    rows={2}
-                    value={remarks}
-                    onChange={e => setRemarks(e.target.value)}
-                    placeholder="Note"
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setVerifyModal(null)}>Cancel</button>
-                <button
-                  className="btn btn-success"
-                  onClick={submitVerify}
-                  disabled={processing === verifyModal.id}
-                >
-                  <i className={`fa fa-${processing === verifyModal.id ? 'spinner fa-spin' : 'check'} me-2`}></i>
-                  Approve
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppModal
+        open={!!verifyModal}
+        onClose={() => setVerifyModal(null)}
+        size="md"
+        title="Approve Document"
+        icon="fa-circle-check"
+        busy={!!verifyModal && processing === verifyModal.id}
+        footer={verifyModal && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setVerifyModal(null)} disabled={processing === verifyModal.id}>Cancel</button>
+            <button
+              type="button"
+              className="btn btn-success"
+              onClick={submitVerify}
+              disabled={processing === verifyModal.id}
+            >
+              <i className={`fa fa-${processing === verifyModal.id ? 'spinner fa-spin' : 'check'} me-2`}></i>
+              Approve
+            </button>
+          </>
+        )}
+      >
+        <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+          Confirm approval of this document. The student will be notified once approved.
+        </p>
+        <label className="form-label fw-semibold" htmlFor="faculty-verify-remarks">Remarks (optional)</label>
+        <textarea maxLength={1000}
+          id="faculty-verify-remarks"
+          className="form-control"
+          rows={2}
+          value={remarks}
+          onChange={e => setRemarks(e.target.value)}
+          placeholder="Note"
+        ></textarea>
+      </AppModal>
 
-      {remarkModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Reject Document</h5>
-                <button className="btn-close" onClick={() => setRemarkModal(null)}></button>
-              </div>
-              <div className="modal-body">
-                <label className="form-label fw-semibold">Remarks <span className="text-danger">*</span></label>
-                <textarea maxLength={1000} className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Reason" />
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
-                <button className="btn btn-danger" onClick={submitReject} disabled={!remark.trim() || processing === remarkModal.id}>
-                  Reject
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppModal
+        open={!!remarkModal}
+        onClose={() => setRemarkModal(null)}
+        size="md"
+        title="Reject Document"
+        icon="fa-circle-xmark"
+        busy={!!remarkModal && processing === remarkModal.id}
+        footer={remarkModal && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
+            <button type="button" className="btn btn-danger" onClick={submitReject} disabled={!remark.trim() || processing === remarkModal.id}>
+              Reject
+            </button>
+          </>
+        )}
+      >
+        <label className="form-label fw-semibold" htmlFor="faculty-reject-remarks">Remarks <span className="text-danger">*</span></label>
+        <textarea maxLength={1000} id="faculty-reject-remarks" className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Reason" />
+      </AppModal>
 
       <div className="content-card">
         <div className="content-card-header">
@@ -185,7 +180,7 @@ function FacultyDocuments() {
           Documents uploaded by your assigned students appear here directly for your approval.
         </p>
         {selected.length > 0 && (
-          <div className="d-flex align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
+          <div className="d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
             <span className="fw-semibold" style={{ fontSize: '0.85rem' }}>{selected.length} selected</span>
             <button className="btn btn-sm btn-outline-primary ms-auto" onClick={downloadSelected} disabled={downloading}>
               <i className={`fa fa-${downloading ? 'spinner fa-spin' : 'file-zipper'} me-1`}></i>Download ZIP

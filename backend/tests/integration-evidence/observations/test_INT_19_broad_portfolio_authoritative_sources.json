@@ -2,7 +2,7 @@
     "identity": {
         "student_name": "STUDENT, TEST",
         "student_name_natural": "Test Student",
-        "student_number": "2011-69177",
+        "student_number": "2026-32761",
         "program": "Bachelor of Science in Information Technology",
         "section": "4ITD",
         "academic_year": "2024-2025",
@@ -10,9 +10,9 @@
         "semester_raw": "2",
         "company_name": "Integration HTE",
         "company_address": null,
-        "company_logo_path": "internships/14/portfolio/ea7c1504-d917-4ac7-be58-c574d6ca86c5_integration-logo.png",
+        "company_logo_path": "internships/313/portfolio/392aec9a-52c2-45c3-ad54-3d6e7e7ece89_integration-logo.png",
         "supervisor_name": "REVIEWER, INDUSTRY",
-        "supervisor_faculty_number": "SUPERVISOR-8642",
+        "supervisor_faculty_number": "SUPERVISOR-9647",
         "supervisor_position": "Mentor",
         "faculty_name": "FACULTY, TEST",
         "coordinator_name": "COORDINATOR, TEST",
@@ -24,11 +24,11 @@
         "timezone": "Asia/Manila"
     },
     "journal_ids": [
-        3
+        1329
     ],
     "evaluation_ids": [
-        1
+        268
     ],
-    "attendance_id": 36,
+    "attendance_id": 6949,
     "logo_count": 1
 }

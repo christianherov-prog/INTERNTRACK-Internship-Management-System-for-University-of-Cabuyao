@@ -12,6 +12,7 @@ import { useCurrentTerm } from '../../hooks/useCurrentTerm'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { prefetchPage } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 function CoordMonitoring() {
   const currentTerm = useCurrentTerm()
@@ -65,6 +66,7 @@ function CoordMonitoring() {
     setExportPreview({
       title: 'Intern Monitoring Report',
       filename: 'intern-monitoring',
+      statusColumns: ['Journal Status'],
       rows: rows.map(r => ({
         Student: r.student_name, Section: r.section, Faculty: r.faculty_name, Sex: r.sex, Program: r.program, Supervisor: r.supervisor_name, Company: r.company,
         'Hours Rendered': r.hours_rendered, 'Target Hours': r.target_hours, 'Progress %': r.progress_percent,
@@ -192,7 +194,7 @@ function CoordMonitoring() {
                       </td>
                       <td style={{fontSize:'0.82rem'}}>
                         {r.last_journal_date ? (
-                          <><span className={`badge-status ${r.journal_status === 'approved' ? 'badge-active' : 'badge-pending'}`}>{r.journal_status}</span><br/><span style={{fontSize:'0.75rem',color:'#64748b'}}>{r.last_journal_date}</span></>
+                          <><span className={`badge-status ${r.journal_status === 'approved' ? 'badge-active' : 'badge-pending'}`}>{r.journal_status}</span><br/><span style={{fontSize:'0.75rem',color:'#64748b'}}>{formatDisplayDate(r.last_journal_date, { month: 'short', day: 'numeric', year: 'numeric' })}</span></>
                         ) : <span className="text-muted">No entries</span>}
                       </td>
                       <td style={{fontSize:'0.78rem', maxWidth: 160}}>

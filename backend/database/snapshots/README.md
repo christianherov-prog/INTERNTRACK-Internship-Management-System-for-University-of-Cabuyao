@@ -1,31 +1,42 @@
-# Sanitized database schema snapshot
+# Database snapshots
 
-`interntrack-schema-2026-09-24.sql` contains the current structure of all 52
-tables in the local `interntrack` database. It was exported with MariaDB
-mysqldump using `--no-data --skip-triggers --skip-comments --skip-add-locks`.
-Auto-increment counters were removed from table options.
+## `interntrack-defense-demo-2026-09-26.sql` — controlled demonstration database
 
-This schema-only export contains no account records, password hashes, tokens,
-sessions, or other application rows. It does not include uploaded files or
-the application `.env`. Importing it creates empty tables, not populated accounts.
+A full MariaDB export (schema, migration history, and records) of the controlled
+CCS demonstration dataset as of September 26, 2026. It is intended for
+development, demonstration, thesis defense, and team reproduction — not
+production. Restore and account setup steps are in the repository README
+(*Database Restore*, *Demo File Restore*, *Demo / Defense Accounts*).
 
-To restore into a separate database, open the MySQL/MariaDB client and run:
+Exported with `mysqldump --single-transaction --routines --skip-comments
+--skip-dump-date --no-tablespaces` (MariaDB 10.4). Timestamps are written in
+UTC (`TIME_ZONE='+00:00'`), matching the application timezone.
 
-```sql
-CREATE DATABASE interntrack_restored CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE interntrack_restored;
-SOURCE /absolute/path/to/interntrack-schema-2026-09-24.sql;
-```
+Prepared from a staging copy of the development database, never the live one:
 
-Use forward slashes in the SOURCE path on Windows. The dump drops and recreates
-tables in the selected database, so select a fresh database for restoration.
-Set `DB_DATABASE=interntrack_restored` in the local backend `.env` to use it.
-The migration history table is also empty; do not run migrations blindly over
-this imported schema. For a fresh application installation, use the repository's
-normal migration and seeding setup instead of importing this reference snapshot.
+- Emptied: `personal_access_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`,
+  `failed_jobs`, `password_reset_tokens`.
+- `users.remember_token` and `users.avatar_path` cleared (no profile photos);
+  lockout counters reset.
+- Contact numbers replaced with fictional values; test supervisor-invitation
+  names, e-mail addresses, and related notification text anonymized.
+- Two uploaded images and one message attachment that are unsuitable for
+  distribution were excluded.
+- Password hashes are included so accounts stay usable; set your own local
+  password with `php artisan interntrack:set-demo-passwords`.
 
-Validation for the accompanying code: frontend production build passed;
-64 unit tests passed with 132 assertions. Integration tests were not rerun for
-this snapshot commit. The export completed successfully and was checked for
-52 CREATE TABLE statements and absence of data insertion statements and password
-hashes. A restore was not run.
+Verification: restored into an empty database (import exit code 0),
+`php artisan migrate:status` showed no pending migrations, record counts and
+per-Student totals matched the source apart from the three excluded items, and
+Student, Faculty, Coordinator, Industry Supervisor, Director, and MISD accounts
+signed in against the restored copy.
+
+Files referenced by the snapshot are provided as synthetic stand-ins in
+`../demo-files/private/` (restore with `php artisan interntrack:restore-demo-files`).
+
+## `interntrack-schema-2026-09-24.sql` — schema-only reference
+
+Structure of the 52 tables without any rows, password hashes, tokens, or
+sessions. Importing it creates empty tables with an empty migration history; do
+not run migrations blindly over it. Use the demonstration snapshot above or the
+normal migration and seeding setup for a working installation.

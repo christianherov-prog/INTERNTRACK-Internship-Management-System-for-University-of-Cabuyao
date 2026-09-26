@@ -10,6 +10,7 @@ import { useToast } from '../../../contexts/ToastContext'
 import { safeUploadError } from '../../../utils/safeApiError'
 import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../../../config/uploads'
 import { uploadErrorMessage, validateUploadFiles } from '../../../utils/uploadValidation'
+import { DEV_TOOLS_ENABLED } from '../../../config/devTools'
 
 /** Per-field limit for Chapter III (now dynamically paginated across A4 sheets without clipping). */
 const CHAPTER3_MAX = 5000
@@ -381,6 +382,7 @@ function PortfolioBuilder() {
 
             {/* Right actions */}
             <div className="d-flex align-items-center gap-2">
+              {DEV_TOOLS_ENABLED && (
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm px-3"
@@ -404,6 +406,7 @@ function PortfolioBuilder() {
               >
                 <i className="fa fa-wand-magic-sparkles me-1"></i>Fill Sample
               </button>
+              )}
               <Link to="/student/portfolio/preview" className="btn btn-primary btn-sm px-3 shadow-sm" title="Web Preview (Draft Mode Available)">
                 <i className="fa fa-eye me-1"></i>Preview Portfolio
               </Link>

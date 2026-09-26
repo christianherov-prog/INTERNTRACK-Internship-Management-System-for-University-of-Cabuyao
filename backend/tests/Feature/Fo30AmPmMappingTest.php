@@ -176,7 +176,8 @@ class Fo30AmPmMappingTest extends TestCase
         $this->postJson('/api/v1/student/attendance/corrections', [
             'date' => '2026-09-09',
             'correction_type' => 'clock_in',
-            'requested_clock_in' => substr(ManilaAttendanceClock::storedTime('08:00'), 0, 5),
+            // Students enter Asia/Manila wall-clock time.
+            'requested_clock_in' => '08:00',
             'reason' => 'Forgot morning punch',
         ])->assertCreated();
 
@@ -206,6 +207,8 @@ class Fo30AmPmMappingTest extends TestCase
             'last_name' => 'Reyes',
         ]);
 
+        // The demo writes generated portfolio images; keep them off the real disk.
+        \Illuminate\Support\Facades\Storage::fake('local');
         $result = $demo->reconcileStudent('2300592');
         $internship = $result['internship'];
 

@@ -9,6 +9,8 @@ import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import AsyncButton from '../../components/AsyncButton'
+import AppModal from '../../components/modals/AppModal'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 function CoordLogbookReview() {
   const confirm = useConfirm()
@@ -72,42 +74,46 @@ function CoordLogbookReview() {
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
       {/* Review Modal */}
-      {modal && (
-        <div className="modal show d-block" tabIndex="-1" style={{background:'rgba(0,0,0,0.4)'}}>
-          <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Review Journal Entry #{modal.entry_number}</h5><button className="btn-close" onClick={() => setModal(null)}></button></div>
-              <div className="modal-body">
-                <div className="mb-3 p-3 rounded" style={{background:'#f8fafc',fontSize:'0.88rem'}}>
-                  <div className="fw-semibold mb-2">
-                    {modal.internship?.student?.studentProfile ? `${modal.internship.student.studentProfile.last_name}, ${modal.internship.student.studentProfile.first_name}` : '—'} · {modal.date}
-                  </div>
-                  <p className="mb-1"><strong>Activities:</strong> {modal.activities_summary}</p>
-                  {modal.learnings && <p className="mb-1 text-muted"><strong>Learnings:</strong> {modal.learnings}</p>}
-                  {modal.supervisor_feedback && <div className="mt-2 p-2 rounded" style={{background:'#f0fdf4',fontSize:'0.82rem',color:'#15803d'}}><strong>Supervisor Feedback:</strong> {modal.supervisor_feedback}</div>}
-                </div>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Decision</label>
-                  <div className="d-flex gap-3">
-                    <div className="form-check"><input type="radio" className="form-check-input" id="coordApprove" checked={action==='approved'} onChange={()=>setAction('approved')}/><label className="form-check-label" htmlFor="coordApprove">✅ Approve</label></div>
-                    <div className="form-check"><input type="radio" className="form-check-input" id="coordRevise" checked={action==='needs_revision'} onChange={()=>setAction('needs_revision')}/><label className="form-check-label" htmlFor="coordRevise">🔄 Needs Revision</label></div>
-                  </div>
-                </div>
-                <div>
-                  <label className="form-label fw-semibold">Remarks / Feedback</label>
-                  <textarea maxLength={1000} className="form-control" rows={3} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Feedback"></textarea>
-                </div>
+      <AppModal
+        open={!!modal}
+        onClose={() => setModal(null)}
+        size="lg"
+        title={`Review Journal Entry #${modal?.entry_number ?? ''}`}
+        icon="fa-book-open"
+        busy={!!modal && processing === modal.id}
+        footer={modal && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setModal(null)} disabled={processing === modal.id}>Cancel</button>
+            <AsyncButton className="btn btn-primary" busy={processing === modal.id} busyLabel="Submitting…" onClick={submitReview}>
+              <i className="fa fa-check me-2"></i>Submit
+            </AsyncButton>
+          </>
+        )}
+      >
+        {modal && (
+          <>
+            <div className="mb-3 p-3 rounded" style={{background:'#f8fafc',fontSize:'0.88rem', overflowWrap: 'anywhere'}}>
+              <div className="fw-semibold mb-2">
+                {modal.internship?.student?.studentProfile ? `${modal.internship.student.studentProfile.last_name}, ${modal.internship.student.studentProfile.first_name}` : '—'} · {modal.date}
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setModal(null)} disabled={processing === modal.id}>Cancel</button>
-                <AsyncButton className="btn btn-primary" busy={processing === modal.id} busyLabel="Submitting…" onClick={submitReview}>
-                  <i className="fa fa-check me-2"></i>Submit
-                </AsyncButton>
+              <p className="mb-1"><strong>Activities:</strong> {modal.activities_summary}</p>
+              {modal.learnings && <p className="mb-1 text-muted"><strong>Learnings:</strong> {modal.learnings}</p>}
+              {modal.supervisor_feedback && <div className="mt-2 p-2 rounded" style={{background:'#f0fdf4',fontSize:'0.82rem',color:'#15803d'}}><strong>Supervisor Feedback:</strong> {modal.supervisor_feedback}</div>}
+            </div>
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Decision</label>
+              <div className="d-flex flex-wrap gap-3">
+                <div className="form-check"><input type="radio" className="form-check-input" id="coordApprove" checked={action==='approved'} onChange={()=>setAction('approved')}/><label className="form-check-label" htmlFor="coordApprove">✅ Approve</label></div>
+                <div className="form-check"><input type="radio" className="form-check-input" id="coordRevise" checked={action==='needs_revision'} onChange={()=>setAction('needs_revision')}/><label className="form-check-label" htmlFor="coordRevise">🔄 Needs Revision</label></div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+            <div>
+              <label className="form-label fw-semibold" htmlFor="coord-logbook-feedback">Remarks / Feedback</label>
+              <textarea maxLength={1000} id="coord-logbook-feedback" className="form-control" rows={3} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="Feedback"></textarea>
+            </div>
+          </>
+        )}
+      </AppModal>
 
       <div className="content-card">
         <div className="content-card-header">
@@ -127,7 +133,7 @@ function CoordLogbookReview() {
                 <div className="d-flex align-items-center justify-content-between">
                   <div>
                     <div className="fw-semibold">{name} · Entry #{j.entry_number}</div>
-                    <div className="text-muted" style={{fontSize:'0.82rem'}}>{new Date(j.date).toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric'})}</div>
+                    <div className="text-muted" style={{fontSize:'0.82rem'}}>{formatDisplayDate(j.date, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
                     <p className="mb-0 mt-1" style={{fontSize:'0.85rem'}}>{j.activities_summary?.substring(0,100)}…</p>
                   </div>
                   <button className="btn btn-sm btn-outline-primary ms-3 flex-shrink-0" onClick={() => openModal(j)}>

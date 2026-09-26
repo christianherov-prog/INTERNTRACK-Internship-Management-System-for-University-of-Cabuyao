@@ -7,6 +7,7 @@ use App\Models\AttendanceLog;
 use App\Models\DtrRequestAudit;
 use App\Models\OvertimeEntry;
 use App\Models\WorkSchedule;
+use App\Support\ManilaAttendanceClock;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -246,11 +247,12 @@ class DtrWorkflowTest extends TestCase
         Sanctum::actingAs($party['student']);
 
         $yesterday = Carbon::parse('2026-09-04')->toDateString();
+        // 8:00 AM Manila, stored like a live clock-in (app timezone).
         AttendanceLog::create([
             'internship_id' => $party['internship']->id,
             'date' => $yesterday,
-            'clock_in' => '08:00:00',
-            'am_time_in' => '08:00:00',
+            'clock_in' => ManilaAttendanceClock::storedTime('08:00'),
+            'am_time_in' => ManilaAttendanceClock::storedTime('08:00'),
             'status' => 'pending',
         ]);
 
@@ -286,19 +288,21 @@ class DtrWorkflowTest extends TestCase
             'action' => 'approved',
         ])->assertOk()->assertJsonPath('correction.status', 'approved');
 
+        // The Student typed 17:00 (Manila); it is stored like a live clock-out.
         $this->assertDatabaseHas('attendance_logs', [
             'internship_id' => $party['internship']->id,
             'date' => $yesterday,
-            'clock_in' => '08:00:00',
-            'clock_out' => '17:00:00',
+            'clock_in' => ManilaAttendanceClock::storedTime('08:00'),
+            'clock_out' => ManilaAttendanceClock::storedTime('17:00'),
         ]);
 
         $correction = AttendanceCorrectionRequest::find($requestId);
         $this->assertSame('clock_out', $correction->correction_type);
-        $this->assertSame('08:00:00', $correction->original_clock_in);
+        $this->assertSame(ManilaAttendanceClock::storedTime('08:00'), $correction->original_clock_in);
         $this->assertNull($correction->original_clock_out);
-        $this->assertSame('08:00:00', $correction->applied_clock_in);
-        $this->assertSame('17:00:00', $correction->applied_clock_out);
+        $this->assertSame(ManilaAttendanceClock::storedTime('08:00'), $correction->applied_clock_in);
+        $this->assertSame(ManilaAttendanceClock::storedTime('17:00'), $correction->applied_clock_out);
+        $this->assertEquals(9.0, (float) $correction->applied_hours_rendered);
         $this->assertGreaterThan(1, DtrRequestAudit::where('auditable_id', $requestId)->count());
 
         Carbon::setTestNow();

@@ -6,6 +6,7 @@ import HireProgressTracker from '../../components/HireProgressTracker'
 import api from '../../services/api'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 function profileOf(student) {
   return student?.student_profile || student?.studentProfile || null
@@ -46,7 +47,7 @@ function SupervisorAbsorption() {
       <div className="content-card mb-4">
         <div className="content-card-header">
           <i className="fa fa-route"></i>
-          <h6>Hire path (for demos)</h6>
+          <h6>How Hire Progress Works</h6>
         </div>
         <div className="p-3">
           <HireProgressTracker
@@ -54,8 +55,8 @@ function SupervisorAbsorption() {
             showLegend
           />
           <p className="text-muted small mb-0 mt-2">
-            Completed interns sit at <strong>75%</strong> until <code>DIR-1001</code> confirms Absorbed or Not Hired (<strong>100%</strong>).
-            Demo: DEMO-0075 (pending), DEMO-0100H / DEMO-0100N (finalized by Director).
+            Completed interns stay at <strong>75%</strong> until the PALD Director records the final outcome —
+            Absorbed or Not Hired (<strong>100%</strong>).
           </p>
         </div>
       </div>
@@ -95,7 +96,7 @@ function SupervisorAbsorption() {
                     <tr key={i.id}>
                       <td className="fw-semibold">{name}</td>
                       <td>{i.company?.company_name || '—'}</td>
-                      <td>{i.end_date ? new Date(i.end_date).toLocaleDateString() : '—'}</td>
+                      <td>{formatDisplayDate(i.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
                       <td>{i.student_declared_hired ? <span className="badge bg-info text-dark">Yes</span> : '—'}</td>
                       <td style={{ minWidth: 220 }}><HireProgressTracker internship={i} compact /></td>
                       <td><span className={badge(outcome)}>{outcome.replace('_', ' ')}</span></td>

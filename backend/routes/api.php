@@ -140,6 +140,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies', [StudentController::class, 'companies']);
             Route::post('/applications', [StudentController::class, 'applyCompany']);
             Route::get('/applications', [StudentController::class, 'applications']);
+            Route::post('/applications/{id}/withdraw', [StudentController::class, 'withdrawApplication']);
             Route::post('/hte-requests', [StudentController::class, 'submitHteRequest']);
             Route::get('/hte-requests', [StudentController::class, 'hteRequests']);
             Route::post('/absorption/declare', [StudentController::class, 'declareAbsorption']);

@@ -17,7 +17,6 @@ function StudentDashboard() {
   const { loading, seed, run } = useCachedPage('student:dashboard')
   const [data, setData] = useState(seed ?? null)
   const [error, setError] = useState(null)
-  const [certData, setCertData] = useState(null)
   const chartRef = useRef(null)
   const chartInstance = useRef(null)
 
@@ -74,14 +73,6 @@ function StudentDashboard() {
   }
 
   useEffect(() => { load() }, [])
-
-  // Fetch certificate eligibility whenever internship status changes
-  useEffect(() => {
-    if (!data) return
-    api.get('/student/certificate/eligibility')
-      .then(res => setCertData(res.data))
-      .catch(() => setCertData(null))
-  }, [data?.internship?.status])
 
   // Render Chart.js weekly hours bar chart
   useEffect(() => {
@@ -154,51 +145,6 @@ function StudentDashboard() {
       {internship?.status_reason && (
         <div className="alert alert-light border mb-3" style={{ fontSize: '0.88rem' }}>
           <strong>Status note:</strong> {internship.status_reason}
-        </div>
-      )}
-
-
-
-      {internship?.status === 'completed' && (
-        <div className="mb-3">
-          {certData?.eligible ? (
-            <div>
-              <button
-                type="button"
-                className="btn btn-success me-2"
-                onClick={async () => {
-                  try {
-                    const res = await api.get('/student/certificates/completion', { responseType: 'blob' })
-                    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = 'completion-certificate.pdf'
-                    a.click()
-                    window.URL.revokeObjectURL(url)
-                  } catch {
-                    alert('Certificate download failed. Please try again.')
-                  }
-                }}
-              >
-                <i className="fa fa-certificate me-2"></i>Download Completion Certificate
-              </button>
-              {certData?.issued_at && (
-                <small className="text-muted ms-2">Last downloaded: {new Date(certData.issued_at).toLocaleDateString()}</small>
-              )}
-            </div>
-          ) : (
-            <div className="alert alert-warning" style={{fontSize:'0.9rem'}}>
-              <div className="fw-semibold mb-2"><i className="fa fa-exclamation-triangle me-2"></i>Certificate Not Yet Available</div>
-              <ul className="mb-0 ps-3">
-                {(certData?.checklist || []).map((item, i) => (
-                  <li key={i} style={{color: item.passed ? '#16a34a' : '#dc2626'}}>
-                    <i className={`fa ${item.passed ? 'fa-check-circle' : 'fa-times-circle'} me-1`}></i>
-                    {item.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
       )}
 

@@ -12,6 +12,7 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 const emptyForm = () => ({
   company_name: '',
@@ -217,7 +218,7 @@ function DirectorCompanies() {
                       <td style={{fontSize:'0.82rem'}}>{c.industry ?? '—'}</td>
                       <td style={{fontSize:'0.82rem'}}>{c.contact_person ?? '—'}</td>
                       <td><span className={`badge-status ${moaBadge[c.moa_status]}`}>{moaLabel[c.moa_status]}</span></td>
-                      <td style={{fontSize:'0.82rem',color: c.moa_status === 'expired' ? '#dc2626' : '#64748b'}}>{c.moa_expiry_date ?? '—'}</td>
+                      <td className="text-nowrap" style={{fontSize:'0.82rem',color: c.moa_status === 'expired' ? '#dc2626' : '#64748b'}}>{formatDisplayDate(c.moa_expiry_date, { month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
                       <td>{c.slots_available}</td>
                       <td className="text-center">
                         <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(c)}><i className="fa fa-pen"></i></button>

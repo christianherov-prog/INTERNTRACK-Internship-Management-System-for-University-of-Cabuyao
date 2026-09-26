@@ -4,6 +4,7 @@ import { withAvatarCacheBust } from '../utils/avatar'
 import { disconnectEcho } from '../services/echo'
 import { cacheClear } from '../utils/pageCache'
 import { broadcastAuthEvent, onAuthEvent } from '../utils/authSync'
+import { SESSION_KEY, adoptSessionUser, clearUserScopedState } from '../utils/sessionState'
 
 const AuthContext = createContext()
 
@@ -23,13 +24,13 @@ export function AuthProvider({ children }) {
   // revalidated there on every request).
   useEffect(() => {
     // Optimistic paint from this tab's cache while the server confirms.
-    const storedUser = sessionStorage.getItem('interntrack_session')
+    const storedUser = sessionStorage.getItem(SESSION_KEY)
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser))
         setLoading(false)
       } catch {
-        sessionStorage.removeItem('interntrack_session')
+        sessionStorage.removeItem(SESSION_KEY)
       }
     }
 
@@ -37,14 +38,17 @@ export function AuthProvider({ children }) {
 
     api.get('/auth/user', { signal: controller.signal })
       .then(({ data }) => {
+        // The server is authoritative: if this tab's cached state belongs to a
+        // different account, it is dropped before anything is rendered with it.
+        adoptSessionUser(data.user)
         setUser(data.user)
-        sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
       })
       .catch((err) => {
         if (err.name === 'CanceledError' || err.name === 'AbortError') return
         if (err.response?.status === 401) {
           setUser(null)
-          sessionStorage.removeItem('interntrack_session')
+          cacheClear()
+          clearUserScopedState()
         }
       })
       .finally(() => setLoading(false))
@@ -57,9 +61,8 @@ export function AuthProvider({ children }) {
     if (event.type === 'logout') {
       disconnectEcho()
       cacheClear()
+      clearUserScopedState()
       setUser(null)
-      sessionStorage.removeItem('interntrack_session')
-      sessionStorage.removeItem('interntrack_staff_workspace')
       if (window.location.pathname !== '/') window.location.replace('/')
       return
     }
@@ -67,7 +70,7 @@ export function AuthProvider({ children }) {
       // Another tab signed in (maybe as someone else): reload so this tab uses
       // the same account and never shows the previous user's data.
       cacheClear()
-      sessionStorage.removeItem('interntrack_session')
+      clearUserScopedState()
       window.location.reload()
     }
   }), [])
@@ -79,11 +82,11 @@ export function AuthProvider({ children }) {
       const { data } = await api.post('/auth/login', { username, password })
 
       // The token is kept by the browser as an HttpOnly cookie (never in JS storage).
-      sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
-      // Fresh login always starts in the account's own workspace.
-      sessionStorage.removeItem('interntrack_staff_workspace')
-
+      // A fresh login starts from nothing of the previous account on this tab:
+      // no internship selection, workspace, message thread or cached pages.
       cacheClear()
+      clearUserScopedState()
+      adoptSessionUser(data.user)
       setUser(data.user)
       broadcastAuthEvent('login', data.user?.id ?? null)
       return { success: true, user: data.user }
@@ -110,10 +113,8 @@ export function AuthProvider({ children }) {
   const clearSession = () => {
     disconnectEcho()
     cacheClear()
+    clearUserScopedState()
     setUser(null)
-    sessionStorage.removeItem('interntrack_session')
-    sessionStorage.removeItem('interntrack_staff_workspace')
-    sessionStorage.removeItem('interntrack_active_internship')
     broadcastAuthEvent('logout')
   }
 
@@ -145,8 +146,8 @@ export function AuthProvider({ children }) {
   const refreshUser = async () => {
     try {
       const { data } = await api.get('/auth/user')
+      adoptSessionUser(data.user)
       setUser(data.user)
-      sessionStorage.setItem('interntrack_session', JSON.stringify(data.user))
     } catch {
       // silently fail
     }
@@ -163,7 +164,7 @@ export function AuthProvider({ children }) {
     }
 
     setUser(next)
-    sessionStorage.setItem('interntrack_session', JSON.stringify(next))
+    adoptSessionUser(next)
   }
 
   return (

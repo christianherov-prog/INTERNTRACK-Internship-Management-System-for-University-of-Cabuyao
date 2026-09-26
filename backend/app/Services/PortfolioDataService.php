@@ -12,6 +12,7 @@ use App\Models\JournalEntry;
 use App\Models\PortfolioSection;
 use App\Models\StudentPortfolio;
 use App\Models\User;
+use App\Support\EvaluationSignature;
 use App\Support\EvaluationVisibility;
 use App\Support\ManilaAttendanceClock;
 use App\Support\ManilaTime;
@@ -346,12 +347,9 @@ class PortfolioDataService
                 ?? $this->fo22Interpretation((float) $evaluation->average_score);
         }
 
-        $evaluator = $evaluation->evaluator;
         $evaluatorName = $this->evaluatorDisplayName($evaluation, $identity);
-        $signaturePath = $evaluation->signature_path;
-        if (! $signaturePath && $evaluator) {
-            $signaturePath = SignatureCapture::profilePath($evaluator);
-        }
+        // Same resolver as the Faculty/Coordinator/Director/Supervisor previews.
+        $signaturePath = EvaluationSignature::path($evaluation);
 
         $submitted = $evaluation->submitted_at
             ? $evaluation->submitted_at->copy()->timezone(ManilaTime::TZ)->toIso8601String()
@@ -373,6 +371,7 @@ class PortfolioDataService
             'status' => $evaluation->submitted_at ? 'completed' : 'pending',
             'signer_name' => $evaluation->signer_name ?: $evaluatorName,
             'signature_path' => $signaturePath,
+            'resolved_signature_path' => $signaturePath,
             'evaluator_name' => $evaluatorName,
             'released_to_student_at' => $evaluation->released_to_student_at?->toIso8601String(),
             'release_authority' => EvaluationVisibility::authorityFor($evaluation->form_type),
@@ -580,18 +579,7 @@ class PortfolioDataService
 
     private function lastFirst(?object $profile): string
     {
-        if (! $profile) {
-            return '';
-        }
-        $last = trim((string) ($profile->last_name ?? ''));
-        $first = trim((string) ($profile->first_name ?? ''));
-        if ($last === '' && $first === '') {
-            return '';
-        }
-        $mi = trim((string) ($profile->middle_name ?? ''));
-        $middle = $mi !== '' ? ' '.mb_strtoupper(mb_substr($mi, 0, 1)).'.' : '';
-
-        return mb_strtoupper($last).', '.mb_strtoupper($first).$middle;
+        return NameParts::lastFirst($profile);
     }
 
     private function semesterLabel(mixed $raw): string
@@ -612,15 +600,9 @@ class PortfolioDataService
 
     private function evaluatorDisplayName(Evaluation $evaluation, array $identity): ?string
     {
-        $evaluator = $evaluation->evaluator;
-        if ($evaluator) {
-            $profile = $evaluator->supervisorProfile
-                ?? $evaluator->facultyProfile
-                ?? $evaluator->studentProfile;
-            $named = $this->lastFirst($profile) ?: NameParts::fromProfile($profile);
-            if ($named !== '') {
-                return $named;
-            }
+        $named = EvaluationSignature::evaluatorName($evaluation);
+        if ($named !== null) {
+            return $named;
         }
 
         return match ($evaluation->evaluator_type) {

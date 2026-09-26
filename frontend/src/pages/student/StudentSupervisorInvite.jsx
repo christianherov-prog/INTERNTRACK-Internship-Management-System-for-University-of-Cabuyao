@@ -4,6 +4,7 @@ import api from '../../services/api'
 import PageError from '../../components/PageError'
 import { useToast } from '../../contexts/ToastContext'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatManilaDate } from '../../utils/manilaTime'
 
 function StudentSupervisorInvite({ embedded = false, initialStatusData = null, onStatusChange = () => { } }) {
   const toast = useToast()
@@ -186,7 +187,7 @@ function StudentSupervisorInvite({ embedded = false, initialStatusData = null, o
 
             <div className="invite-link-box bg-light rounded p-3 text-start mx-auto mb-4" style={{ maxWidth: '500px' }}>
               <div className="invite-meta d-flex justify-content-between align-items-center mb-2">
-                <span className="text-muted small">Invited: {new Date(invite?.created_at || Date.now()).toLocaleDateString()}</span>
+                <span className="text-muted small">Invited: {formatManilaDate(invite?.created_at || Date.now())}</span>
                 <span className="text-muted small"><i className="fa fa-clock me-1"></i>Waiting for registration</span>
               </div>
               <div className="input-group">

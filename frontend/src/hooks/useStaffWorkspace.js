@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { cacheClear } from '../utils/pageCache'
 
-export const STAFF_WORKSPACE_KEY = 'interntrack_staff_workspace'
+export { STAFF_WORKSPACE_KEY } from '../utils/sessionState'
+import { STAFF_WORKSPACE_KEY } from '../utils/sessionState'
 
 const WORKSPACE_HOME = {
   coordinator: '/coordinator/monitoring',

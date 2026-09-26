@@ -1,5 +1,12 @@
-import { useEffect } from 'react'
+import { useMemo } from 'react'
 import { downloadCsv } from '../../utils/csv'
+import AppModal from './AppModal'
+import StatusChip from '../StatusChip'
+import { RequirementChipList, parseRequirementsStatusCsv } from '../ComplianceRequirementsStatus'
+
+// Columns whose values run longer than this wrap inside a readable width
+// instead of stretching the table; everything else stays on one line.
+const LONG_VALUE = 48
 
 /**
  * ReportExportModal
@@ -7,128 +14,114 @@ import { downloadCsv } from '../../utils/csv'
  * Ensures all roles and reports share the exact same UI and preview pattern.
  *
  * Props:
- *   preview: { title?: string, filename: string, rows: Array<Object> } | null
+ *   preview: {
+ *     title?: string, filename: string, rows: Array<Object>,
+ *     statusColumns?: string[]       // columns rendered as one status chip (text unchanged)
+ *     requirementColumns?: string[]  // "Name: Status; …" columns rendered as requirement chips
+ *   } | null
  *   onClose: () => void
+ *
+ * Chips are on-screen presentation only — the downloaded CSV is built from the
+ * same plain `rows`, so it never contains markup.
  */
 function ReportExportModal({ preview, onClose }) {
-  useEffect(() => {
-    if (!preview) return
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose?.()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [preview, onClose])
+  const rows = preview?.rows ?? []
+  const columns = useMemo(() => (rows.length > 0 ? Object.keys(rows[0]) : []), [rows])
+  const longColumns = useMemo(() => new Set(
+    columns.filter((col) => rows.some((row) => String(row[col] ?? '').length > LONG_VALUE))
+  ), [columns, rows])
 
   if (!preview) return null
 
-  const rows = preview.rows ?? []
+  const statusColumns = new Set(preview.statusColumns ?? [])
+  const requirementColumns = new Set(preview.requirementColumns ?? [])
+
+  const renderCell = (col, val) => {
+    if (val === null || val === undefined || val === '') return '—'
+    if (statusColumns.has(col)) return <StatusChip status={val} label={String(val)} />
+    if (requirementColumns.has(col)) {
+      const items = parseRequirementsStatusCsv(val)
+      if (items.length > 0) return <RequirementChipList items={items} />
+      return <StatusChip status="approved" label={String(val)} />
+    }
+    return String(val)
+  }
+
   const filename = preview.filename || 'report-export'
   const title = preview.title || 'CSV Export Preview'
-  const columns = rows.length > 0 ? Object.keys(rows[0]) : []
 
   const handleConfirmDownload = () => {
     downloadCsv(filename, rows)
     onClose?.()
   }
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose?.()
-    }
-  }
-
   return (
-    <div
-      className="modal fade show d-block"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)', zIndex: 1060 }}
-      role="dialog"
-      aria-modal="true"
-      onClick={handleBackdropClick}
+    <AppModal
+      onClose={onClose}
+      size="data"
+      title={title}
+      icon="fa-file-csv"
+      closeOnBackdrop
+      fillBody
+      testId="report-export-modal"
+      footerAlign="between"
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
+            <i className="fa fa-times me-1"></i>Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-success btn-sm px-3"
+            onClick={handleConfirmDownload}
+            disabled={rows.length === 0}
+          >
+            <i className="fa fa-download me-1"></i>Confirm & Download CSV
+          </button>
+        </>
+      )}
     >
-      <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div className="modal-content shadow-lg border-0">
-          <div className="modal-header bg-light py-3">
-            <h5 className="modal-title d-flex align-items-center mb-0">
-              <i className="fa fa-file-csv text-success me-2"></i>
-              <span>{title}</span>
-            </h5>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-              aria-label="Close"
-            ></button>
-          </div>
-
-          <div className="modal-body p-4">
-            <div className="alert alert-interntrack py-2 px-3 mb-3 d-flex flex-wrap justify-content-between align-items-center">
-              <small className="mb-1 mb-sm-0">
-                <i className="fa fa-info-circle me-1"></i>
-                You are previewing the exact data (<strong>{rows.length}</strong> {rows.length === 1 ? 'row' : 'rows'}) that will be downloaded as <strong>{filename.endsWith('.csv') ? filename : `${filename}.csv`}</strong>.
-              </small>
-              {columns.length > 0 && (
-                <span className="badge bg-success ms-auto">{columns.length} Columns</span>
-              )}
-            </div>
-
-            {rows.length === 0 ? (
-              <div className="text-center py-5 text-muted">
-                <i className="fa fa-folder-open fa-2x mb-2 d-block"></i>
-                No data rows available for this report export.
-              </div>
-            ) : (
-              <div className="table-responsive border rounded" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
-                <table className="table table-sm table-hover table-striped table-bordered mb-0 text-nowrap" style={{ fontSize: '0.875rem' }}>
-                  <thead className="table-dark sticky-top" style={{ zIndex: 1 }}>
-                    <tr>
-                      <th className="text-center" style={{ width: '40px' }}>#</th>
-                      {columns.map((col) => (
-                        <th key={col}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, idx) => (
-                      <tr key={idx}>
-                        <td className="text-center text-muted fw-bold">{idx + 1}</td>
-                        {columns.map((col) => {
-                          const val = row[col]
-                          const displayVal = val !== null && val !== undefined ? String(val) : '—'
-                          return <td key={col}>{displayVal}</td>
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          <div className="modal-footer bg-light py-2 d-flex justify-content-between">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={onClose}
-            >
-              <i className="fa fa-times me-1"></i>Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-success btn-sm px-3"
-              onClick={handleConfirmDownload}
-              disabled={rows.length === 0}
-            >
-              <i className="fa fa-download me-1"></i>Confirm & Download CSV
-            </button>
-          </div>
-        </div>
+      <div className="alert alert-interntrack py-2 px-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <small>
+          <i className="fa fa-info-circle me-1"></i>
+          You are previewing the exact data (<strong>{rows.length}</strong> {rows.length === 1 ? 'row' : 'rows'}) that will be downloaded as <strong>{filename.endsWith('.csv') ? filename : `${filename}.csv`}</strong>.
+        </small>
+        {columns.length > 0 && (
+          <span className="badge bg-success">{columns.length} Columns</span>
+        )}
       </div>
-    </div>
+
+      {rows.length === 0 ? (
+        <div className="it-modal__empty border rounded">
+          <i className="fa fa-folder-open fa-2x"></i>
+          No data rows available for this report export.
+        </div>
+      ) : (
+        <div className="it-modal__table-wrap">
+          <table className="table table-sm table-hover table-striped table-bordered mb-0 text-nowrap it-report-preview" style={{ fontSize: '0.875rem' }}>
+            <thead className="it-report-preview__head">
+              <tr>
+                <th className="text-center" style={{ width: '40px' }}>#</th>
+                {columns.map((col) => (
+                  <th key={col}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="text-center text-muted fw-bold">{idx + 1}</td>
+                  {columns.map((col) => {
+                    const cellClass = requirementColumns.has(col) ? 'it-cell-chips' : (longColumns.has(col) ? 'it-cell-long' : undefined)
+                    return <td key={col} className={cellClass}>{renderCell(col, row[col])}</td>
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </AppModal>
   )
 }
 

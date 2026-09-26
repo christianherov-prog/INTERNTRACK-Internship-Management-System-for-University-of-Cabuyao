@@ -66,8 +66,10 @@ class StudentAccountsSeeder extends Seeder
     {
         $password = Hash::make(config('interntrack.default_password'));
 
-        $techCorp = Company::where('company_name', 'TechCorp PH')->first();
-        $accenture = Company::where('company_name', 'Accenture PH')->first();
+        // "TechCorp PH" is a retired demo company; "Accenture PH" resolves to the
+        // canonical "Accenture Philippines" through the identity key.
+        $techCorp = null;
+        $accenture = \App\Support\CompanyNameNormalizer::findExisting('Accenture Philippines');
         $ccsFaculty = User::where('faculty_number', 'FAC-CCS-001')->first()
             ?? User::where('faculty_number', 'FAC-1001')->first();
         $supervisorUser = User::where('faculty_number', 'SUP-0002')->first()

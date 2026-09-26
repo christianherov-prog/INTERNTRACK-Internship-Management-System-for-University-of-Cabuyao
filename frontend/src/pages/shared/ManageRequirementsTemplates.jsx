@@ -9,8 +9,10 @@ import { AuthenticatedFileLink } from '../../components/AuthenticatedFile'
 import { documentStatusConfig } from '../../utils/documentStatus'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import AppModal from '../../components/modals/AppModal'
 import { invalidateStudentDocuments } from '../../utils/pageCache'
 import { UPLOAD_MAX_FILES, UPLOAD_MAX_MB } from '../../config/uploads'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 import {
   formatFileSize,
   uploadErrorMessage,
@@ -445,414 +447,413 @@ export default function ManageRequirementsTemplates({ embedded = false }) {
       </div>
 
       {/* Add/Edit Modal */}
-      {isModalOpen && (
-        <>
-          <div className="modal-backdrop fade show"></div>
-          <div className="modal fade show d-block" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered modal-xl" >
-              <div className="modal-content border-0 shadow">
-                <div className="modal-header border-bottom-0 pb-0">
-                  <h5 className="modal-title fw-bold">
-                    {editingReq ? 'Edit Requirement' : 'Add Requirement'}
-                  </h5>
-                  <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)}></button>
-                </div>
-                <div className="modal-body">
-                  <form id="requirementForm" onSubmit={handleSubmit}>
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">Requirement Name</label>
-                      <input maxLength={255}
-                        required
-                        type="text"
-                        className="form-control"
-                        value={formData.name}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Requirement Name"
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">Submission Deadline <span className="text-muted fw-normal">(Optional)</span></label>
-                      <input
-                        type="datetime-local"
-                        className="form-control"
-                        value={formData.deadline}
-                        onChange={e => setFormData({ ...formData, deadline: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">Description <span className="text-muted fw-normal">(Optional)</span></label>
-                      <textarea maxLength={2000}
-                        className="form-control"
-                        value={formData.description}
-                        onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        rows="2"
-                        placeholder="Instructions"
-                      ></textarea>
-                    </div>
-
-                    {editingReq?.is_system ? (
-                      <div className="alert alert-light border small mb-3">
-                        This is a <strong>standard</strong> InternTrack requirement. It automatically applies to all eligible students in your scope. Targeting is not required.
-                      </div>
-                    ) : (
-                    <div className="row mb-3">
-                      <div className="col-md-12 mb-3">
-                        <label className="form-label fw-semibold">Target By</label>
-                        <select
-                          className="form-select"
-                          value={formData.targetType}
-                          onChange={e => {
-                            setFormData({ ...formData, targetType: e.target.value, selectedTargets: [] })
-                            setTargetSearch('')
-                          }}
-                        >
-                          <option value="student">Students</option>
-                          <option value="section">Sections</option>
-                          {isCoordinator && <option value="program">Programs</option>}
-                        </select>
-                      </div>
-                      <div className="col-md-12">
-                        <label className="form-label fw-semibold">Select Targets</label>
-                        <input maxLength={100}
-                          type="search"
-                          className="form-control form-control-sm mb-2"
-                          placeholder="Search"
-                          value={targetSearch}
-                          onChange={e => setTargetSearch(e.target.value)}
-                        />
-                        {visibleTargets.length > 0 && (
-                          <button
-                            type="button"
-                            className="btn btn-link btn-sm px-0 mb-1"
-                            onClick={() => {
-                              const ids = visibleTargets.map(item => String(item.id))
-                              const allSelected = ids.every(id => isTargetSelected(id))
-                              setFormData(prev => ({
-                                ...prev,
-                                selectedTargets: allSelected
-                                  ? prev.selectedTargets.filter(t => !ids.includes(String(t)))
-                                  : [...new Set([...prev.selectedTargets.map(String), ...ids])],
-                              }))
-                            }}
-                          >
-                            {visibleTargets.every(item => isTargetSelected(item.id)) ? 'Clear visible' : 'Select visible'}
-                          </button>
-                        )}
-                        <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                          {visibleTargets.map(item => (
-                            <div className="form-check" key={`${formData.targetType}_${item.id}`}>
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`target_${formData.targetType}_${item.id}`}
-                                checked={isTargetSelected(item.id)}
-                                onChange={(e) => toggleTarget(item.id, e.target.checked)}
-                              />
-                              <label className="form-check-label" htmlFor={`target_${formData.targetType}_${item.id}`}>
-                                {formData.targetType === 'section' ? (formatYearSection(item.name) || item.name) : item.name}
-                                {formData.targetType === 'student' && (
-                                  <span className="text-muted small"> ({formatYearSection(item.section) || item.section || 'No Section'})</span>
-                                )}
-                              </label>
-                            </div>
-                          ))}
-                          {targetList.length === 0 && (
-                            <div className="text-muted small py-2">No {formData.targetType}s available.</div>
-                          )}
-                          {targetList.length > 0 && visibleTargets.length === 0 && (
-                            <div className="text-muted small py-2">No matches for “{targetSearch}”.</div>
-                          )}
-                        </div>
-                        {formData.selectedTargets.length > 0 && (
-                          <div className="form-text small text-muted mt-1">
-                            {formData.selectedTargets.length} target(s) selected
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    )}
-
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold" htmlFor="requirement-template-files">
-                        File Upload <span className="text-muted fw-normal">(Optional)</span>
-                      </label>
-                      <input
-                        id="requirement-template-files"
-                        type="file"
-                        className={`form-control ${fileError ? 'is-invalid' : ''}`}
-                        multiple
-                        onChange={(e) => applyTemplateFiles(Array.from(e.target.files || []))}
-                        accept=".doc,.docx,.pdf,.jpg,.jpeg,.png"
-                        ref={fileInputRef}
-                        aria-describedby="requirement-file-hint requirement-file-error"
-                      />
-                      <div id="requirement-file-hint" className="form-text small text-muted">
-                        {uploadLimitHint(REQUIREMENT_FILE_TYPES)}. Up to {UPLOAD_MAX_FILES} files.
-                      </div>
-                      {fileError && (
-                        <div id="requirement-file-error" className="invalid-feedback d-block" role="alert" aria-live="polite">
-                          <i className="fa fa-triangle-exclamation me-1" aria-hidden="true"></i>
-                          {fileError}
-                        </div>
-                      )}
-
-                      {/* Show newly selected files */}
-                      {formData.templateFiles.length > 0 && (
-                        <div className="mt-3">
-                          <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Files to upload</h6>
-                          <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
-                            {formData.templateFiles.map((f, i) => {
-                              const over = (f.size || 0) > UPLOAD_MAX_MB * 1024 * 1024
-                              return (
-                                <div key={`${f.name}-${i}`} className="d-flex align-items-center justify-content-between gap-2">
-                                  <div className="d-flex align-items-center min-w-0">
-                                    <div className="bg-white border rounded p-1 me-2 shadow-sm d-flex justify-content-center align-items-center flex-shrink-0" style={{ width: '30px', height: '30px' }}>
-                                      <i className={`fa ${over ? 'fa-triangle-exclamation text-danger' : 'fa-file text-secondary'}`} aria-hidden="true"></i>
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '260px' }} title={f.name}>{f.name}</div>
-                                      <div className={`small ${over ? 'text-danger' : 'text-muted'}`}>
-                                        {formatFileSize(f.size)}
-                                        {over ? ` · Exceeds ${UPLOAD_MAX_MB} MB` : ''}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-danger border-0"
-                                    onClick={() => removeSelectedFile(i)}
-                                    aria-label={`Remove ${f.name}`}
-                                    title="Remove"
-                                  >
-                                    <i className="fa fa-times" aria-hidden="true"></i>
-                                  </button>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Show existing files */}
-                      {editingReq && ( (editingReq.attachments && editingReq.attachments.length > 0) || editingReq.drive_link) && (
-                        <div className="mt-4 mb-2">
-                          <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Attached Files & Links</h6>
-                          <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
-                            {editingReq.attachments && editingReq.attachments.filter(att => !formData.removeAttachments.includes(att.id)).map(att => (
-                              <div key={att.id} className="d-flex align-items-center justify-content-between border-bottom pb-2 mb-1 last-border-none">
-                                <div className="d-flex align-items-center">
-                                  <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
-                                    <i className="fa fa-file-pdf text-danger fs-5"></i>
-                                  </div>
-                                  <div>
-                                    <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.9rem', maxWidth: '300px' }}>{att.file_name || `${editingReq.name} Template`}</div>
-                                    <div className="text-muted small fw-normal">Currently attached file</div>
-                                  </div>
-                                </div>
-                                <button type="button" className="btn btn-sm btn-outline-danger border-0 rounded-circle" onClick={() => setFormData(prev => ({ ...prev, removeAttachments: [...prev.removeAttachments, att.id] }))} title="Remove File">
-                                  <i className="fa fa-times"></i>
-                                </button>
-                              </div>
-                            ))}
-
-                            {editingReq.drive_link && (
-                              <div className="d-flex align-items-center mt-2">
-                                <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '40px', height: '40px' }}>
-                                  <i className="fa fa-link text-primary fs-5"></i>
-                                </div>
-                                <div>
-                                  <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.9rem', maxWidth: '300px' }}>{editingReq.drive_link.replace(/^https?:\/\//, '')}</div>
-                                  <div className="text-muted small fw-normal">External Link</div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">Link <span className="text-muted fw-normal">(Optional)</span></label>
-                      <input maxLength={2048}
-                        type="url"
-                        className="form-control"
-
-                        value={formData.driveLink}
-                        onChange={e => setFormData({ ...formData, driveLink: e.target.value })}
-                      />
-                      <div className="form-text small text-muted">Provide a link</div>
-                    </div>
-                  </form>
-                </div>
-                <div className="modal-footer border-top-0 pt-0">
-                  <button type="button" className="btn btn-light" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                  <button type="submit" form="requirementForm" className="btn btn-primary px-4" disabled={submitting || !!fileError}>
-                    {submitting ? 'Saving…' : (editingReq ? 'Save Changes' : 'Create Requirement')}
-                  </button>
-                </div>
-              </div>
-            </div>
+      <AppModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        size="lg"
+        title={editingReq ? 'Edit Requirement' : 'Add Requirement'}
+        icon="fa-file-circle-plus"
+        busy={submitting}
+        onSubmit={handleSubmit}
+        testId="requirement-form-modal"
+        footer={(
+          <>
+            <button type="button" className="btn btn-light" onClick={() => setIsModalOpen(false)} disabled={submitting}>Cancel</button>
+            <button type="submit" className="btn btn-primary px-4" disabled={submitting || !!fileError}>
+              {submitting ? 'Saving…' : (editingReq ? 'Save Changes' : 'Create Requirement')}
+            </button>
+          </>
+        )}
+      >
+        <div className="it-form-grid">
+          <div>
+            <label className="form-label fw-semibold" htmlFor="requirement-name">Requirement Name</label>
+            <input maxLength={255}
+              id="requirement-name"
+              required
+              type="text"
+              className="form-control"
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Requirement Name"
+            />
           </div>
-        </>
-      )}
 
-      {/* Submissions Modal */}
-      {isSubmissionsModalOpen && activeReqSubmissions && (
-        <>
-          <div className="modal-backdrop fade show"></div>
-          <div className="modal fade show d-block" tabIndex="-1">
-            <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: '1000px' }}>
-              <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">
-                  Submissions for: {activeReqSubmissions.name}
-                </h5>
-                <button type="button" className="btn-close" onClick={() => setIsSubmissionsModalOpen(false)}></button>
+          <div>
+            <label className="form-label fw-semibold" htmlFor="requirement-deadline">Submission Deadline <span className="text-muted fw-normal">(Optional)</span></label>
+            <input
+              id="requirement-deadline"
+              type="datetime-local"
+              className="form-control"
+              value={formData.deadline}
+              onChange={e => setFormData({ ...formData, deadline: e.target.value })}
+            />
+          </div>
+
+          <div className={editingReq?.is_system ? 'it-span-2' : undefined}>
+            <label className="form-label fw-semibold" htmlFor="requirement-description">Description <span className="text-muted fw-normal">(Optional)</span></label>
+            <textarea maxLength={2000}
+              id="requirement-description"
+              className="form-control"
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              rows="3"
+              placeholder="Instructions"
+            ></textarea>
+          </div>
+
+          {editingReq?.is_system ? (
+            <div className="alert alert-light border small mb-0 it-span-2">
+              This is a <strong>standard</strong> InternTrack requirement. It automatically applies to all eligible students in your scope. Targeting is not required.
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="form-label fw-semibold" htmlFor="requirement-target-type">Target By</label>
+                <select
+                  id="requirement-target-type"
+                  className="form-select"
+                  value={formData.targetType}
+                  onChange={e => {
+                    setFormData({ ...formData, targetType: e.target.value, selectedTargets: [] })
+                    setTargetSearch('')
+                  }}
+                >
+                  <option value="student">Students</option>
+                  <option value="section">Sections</option>
+                  {isCoordinator && <option value="program">Programs</option>}
+                </select>
+                <div className="form-text small text-muted">
+                  Choose who must submit this requirement, then pick them below.
+                </div>
               </div>
-              <div className="modal-body">
-                <div className="d-flex justify-content-between mb-3 px-1">
-                  <span className="text-muted small">
-                    Tracking compliance for {activeReqSubmissions.total_assigned} assigned student(s).
-                  </span>
-                  <span className="fw-bold text-primary small">
-                    {activeReqSubmissions.completed_count} Completed
+
+              <div className="it-span-2">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                  <span className="form-label fw-semibold mb-0" id="requirement-targets-label">Select Targets</span>
+                  <span className={`badge ${formData.selectedTargets.length ? 'bg-success' : 'bg-secondary-subtle text-secondary-emphasis'}`} aria-live="polite">
+                    {formData.selectedTargets.length} selected
                   </span>
                 </div>
-
-                <div className="border rounded">
-                  {activeReqSubmissions.submissions && activeReqSubmissions.submissions.length > 0 ? (
-                    <table className="table table-hover mb-0 align-middle">
-                      <thead className="table-light sticky-top">
-                        <tr>
-                          <th>Student Name</th>
-                          <th>Section</th>
-                          <th>Status</th>
-                          <th>Submitted At</th>
-                          <th>Remarks</th>
-                          <th className="text-end">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeReqSubmissions.submissions.map((sub, idx) => (
-                          <tr key={sub.document_id || sub.student_id || idx}>
-                            <td>{sub.student_name}</td>
-                            <td>{formatYearSection(sub.section) || '—'}</td>
-                            <td>
-                              {(() => {
-                                const cfg = documentStatusConfig(sub.status)
-                                return (
-                                  <span className={`badge ${cfg.badge}`}>
-                                    <i className={`fa ${cfg.icon} me-1`}></i>{cfg.label}
-                                  </span>
-                                )
-                              })()}
-                            </td>
-                            <td>
-                              {sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '—'}
-                            </td>
-                            <td className="small" style={{ maxWidth: '180px' }}>
-                              {sub.remarks ? (
-                                <span className={sub.status === 'rejected' ? 'text-danger' : 'text-muted'}>{sub.remarks}</span>
-                              ) : '—'}
-                            </td>
-                            <td className="text-end">
-                              <div className="d-flex flex-wrap justify-content-end align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                {sub.attachments && sub.attachments.length > 0 && sub.attachments.map(att => (
-                                  <AuthenticatedFileLink key={att.id} path={att.file_path} className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 shadow-sm transition-hover">
-                                    <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
-                                      <i className="fa fa-file-pdf text-success fs-5"></i>
-                                    </div>
-                                    <div style={{ lineHeight: '1.2' }}>
-                                      <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '200px' }}>{att.file_name || 'Submission'}</div>
-                                      <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>Click to preview</div>
-                                    </div>
-                                  </AuthenticatedFileLink>
-                                ))}
-                                {sub.drive_link && (
-                                  <a href={sub.drive_link} target="_blank" rel="noreferrer" className="text-decoration-none d-inline-flex align-items-center fw-medium text-start border bg-light rounded-3 p-1 pe-3 shadow-sm transition-hover">
-                                    <div className="bg-white border rounded p-2 me-2 shadow-sm d-flex justify-content-center align-items-center" style={{ width: '35px', height: '35px' }}>
-                                      <i className="fa fa-link text-primary fs-5"></i>
-                                    </div>
-                                    <div style={{ lineHeight: '1.2' }}>
-                                      <div className="text-dark mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '120px' }}>{sub.drive_link.replace('https://', '').replace('http://', '')}</div>
-                                      <div className="text-muted small fw-normal" style={{ fontSize: '0.7rem' }}>External Link</div>
-                                    </div>
-                                  </a>
-                                )}
-                                {REVIEWABLE_STATUSES.includes(sub.status) && sub.document_id && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-primary"
-                                    onClick={() => setReviewingDoc(sub.document_id)}
-                                  >
-                                    <i className="fa fa-gavel me-1"></i>Review
-                                  </button>
-                                )}
-                                {sub.status === 'not_submitted' || sub.status === 'no_submission' ? (
-                                  <span className="text-muted small">Waiting for upload</span>
-                                ) : null}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="text-center py-4 text-muted small">
-                      No students are currently targeted by this requirement.
+                <div className="it-target-picker" role="group" aria-labelledby="requirement-targets-label">
+                  <div className="it-target-picker__toolbar">
+                    <input maxLength={100}
+                      type="search"
+                      className="form-control form-control-sm it-target-picker__search"
+                      placeholder={`Search ${formData.targetType === 'student' ? 'students or sections' : `${formData.targetType}s`}`}
+                      aria-label="Search targets"
+                      value={targetSearch}
+                      onChange={e => setTargetSearch(e.target.value)}
+                    />
+                    {visibleTargets.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={() => {
+                          const ids = visibleTargets.map(item => String(item.id))
+                          const allSelected = ids.every(id => isTargetSelected(id))
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedTargets: allSelected
+                              ? prev.selectedTargets.filter(t => !ids.includes(String(t)))
+                              : [...new Set([...prev.selectedTargets.map(String), ...ids])],
+                          }))
+                        }}
+                      >
+                        {visibleTargets.every(item => isTargetSelected(item.id)) ? 'Clear visible' : 'Select visible'}
+                      </button>
+                    )}
+                  </div>
+                  {visibleTargets.length > 0 && (
+                    <div className="it-target-picker__list">
+                      {visibleTargets.map(item => (
+                        <label className="it-target-picker__item" key={`${formData.targetType}_${item.id}`} htmlFor={`target_${formData.targetType}_${item.id}`}>
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id={`target_${formData.targetType}_${item.id}`}
+                            checked={isTargetSelected(item.id)}
+                            onChange={(e) => toggleTarget(item.id, e.target.checked)}
+                          />
+                          <span className="it-target-picker__text">
+                            {formData.targetType === 'section' ? (formatYearSection(item.name) || item.name) : item.name}
+                            {formData.targetType === 'student' && (
+                              <span className="it-target-picker__meta">{formatYearSection(item.section) || item.section || 'No Section'}</span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
                     </div>
+                  )}
+                  {targetList.length === 0 && (
+                    <div className="it-target-picker__status">No {formData.targetType}s available.</div>
+                  )}
+                  {targetList.length > 0 && visibleTargets.length === 0 && (
+                    <div className="it-target-picker__status">No matches for “{targetSearch}”.</div>
                   )}
                 </div>
               </div>
-              <div className="modal-footer border-top-0 pt-0 mt-2">
-                <button type="button" className="btn btn-light" onClick={() => setIsSubmissionsModalOpen(false)}>Close</button>
-              </div>
-            </div>
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          )}
 
-      {/* Review Modal */}
-      {
-        reviewingDoc && (
-          <>
-            <div className="modal-backdrop fade show" style={{ zIndex: 1060 }}></div>
-            <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1065 }}>
-              <div className=" modal-dialog modal-dialog-centered">
-                <div className="modal-content border-0 shadow">
-                  <div className="modal-header border-bottom-0 pb-0">
-                    <h5 className="modal-title fw-bold">Review Submission</h5>
-                    <button type="button" className="btn-close" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }}></button>
-                  </div>
-                  <div className="modal-body">
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">Remarks (Optional)</label>
-                      <textarea maxLength={2000}
-                        className="form-control"
-                        rows="3"
-                        placeholder="Feedback"
-                        value={reviewRemarks}
-                        onChange={e => setReviewRemarks(e.target.value)}
-                      ></textarea>
-                    </div>
-                  </div>
-                  <div className="modal-footer border-top-0 pt-0">
-                    <button type="button" className="btn btn-light" onClick={() => { setReviewingDoc(null); setReviewRemarks(''); }} disabled={reviewingBusy}>Cancel</button>
-                    <button type="button" className="btn btn-danger" onClick={() => handleReview(reviewingDoc, 'reject')} disabled={reviewingBusy}>
-                      {reviewingBusy ? 'Saving…' : 'Reject'}
-                    </button>
-                    <button type="button" className="btn btn-success" onClick={() => handleReview(reviewingDoc, 'approve')} disabled={reviewingBusy}>
-                      {reviewingBusy ? 'Saving…' : 'Approve'}
-                    </button>
-                  </div>
+          <div>
+            <label className="form-label fw-semibold" htmlFor="requirement-template-files">
+              File Upload <span className="text-muted fw-normal">(Optional)</span>
+            </label>
+            <input
+              id="requirement-template-files"
+              type="file"
+              className={`form-control ${fileError ? 'is-invalid' : ''}`}
+              multiple
+              onChange={(e) => applyTemplateFiles(Array.from(e.target.files || []))}
+              accept=".doc,.docx,.pdf,.jpg,.jpeg,.png"
+              ref={fileInputRef}
+              aria-describedby="requirement-file-hint requirement-file-error"
+            />
+            <div id="requirement-file-hint" className="form-text small text-muted">
+              {uploadLimitHint(REQUIREMENT_FILE_TYPES)}. Up to {UPLOAD_MAX_FILES} files.
+            </div>
+            {fileError && (
+              <div id="requirement-file-error" className="invalid-feedback d-block" role="alert" aria-live="polite">
+                <i className="fa fa-triangle-exclamation me-1" aria-hidden="true"></i>
+                {fileError}
+              </div>
+            )}
+
+            {/* Show newly selected files */}
+            {formData.templateFiles.length > 0 && (
+              <div className="mt-3">
+                <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Files to upload</h6>
+                <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
+                  {formData.templateFiles.map((f, i) => {
+                    const over = (f.size || 0) > UPLOAD_MAX_MB * 1024 * 1024
+                    return (
+                      <div key={`${f.name}-${i}`} className="d-flex align-items-center justify-content-between gap-2">
+                        <div className="d-flex align-items-center min-w-0">
+                          <div className="bg-white border rounded p-1 me-2 shadow-sm d-flex justify-content-center align-items-center flex-shrink-0" style={{ width: '30px', height: '30px' }}>
+                            <i className={`fa ${over ? 'fa-triangle-exclamation text-danger' : 'fa-file text-secondary'}`} aria-hidden="true"></i>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.85rem', maxWidth: '260px' }} title={f.name}>{f.name}</div>
+                            <div className={`small ${over ? 'text-danger' : 'text-muted'}`}>
+                              {formatFileSize(f.size)}
+                              {over ? ` · Exceeds ${UPLOAD_MAX_MB} MB` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger border-0"
+                          onClick={() => removeSelectedFile(i)}
+                          aria-label={`Remove ${f.name}`}
+                          title="Remove"
+                        >
+                          <i className="fa fa-times" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+            )}
+          </div>
+
+          <div>
+            <label className="form-label fw-semibold" htmlFor="requirement-link">Link <span className="text-muted fw-normal">(Optional)</span></label>
+            <input maxLength={2048}
+              id="requirement-link"
+              type="url"
+              className="form-control"
+              placeholder="https://"
+              value={formData.driveLink}
+              onChange={e => setFormData({ ...formData, driveLink: e.target.value })}
+            />
+            <div className="form-text small text-muted">Provide a link</div>
+          </div>
+
+          {/* Show existing files */}
+          {editingReq && ((editingReq.attachments && editingReq.attachments.length > 0) || editingReq.drive_link) && (
+            <div className="it-span-2">
+              <h6 className="fw-bold text-secondary mb-2 text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Attached Files & Links</h6>
+              <div className="d-flex flex-column gap-2 bg-light p-3 rounded-3 border">
+                {editingReq.attachments && editingReq.attachments.filter(att => !formData.removeAttachments.includes(att.id)).map(att => (
+                  <div key={att.id} className="d-flex align-items-center justify-content-between gap-2 border-bottom pb-2 mb-1 last-border-none">
+                    <div className="d-flex align-items-center min-w-0">
+                      <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                        <i className="fa fa-file-pdf text-danger fs-5"></i>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.9rem' }} title={att.file_name || undefined}>{att.file_name || `${editingReq.name} Template`}</div>
+                        <div className="text-muted small fw-normal">Currently attached file</div>
+                      </div>
+                    </div>
+                    <button type="button" className="btn btn-sm btn-outline-danger border-0 rounded-circle flex-shrink-0" onClick={() => setFormData(prev => ({ ...prev, removeAttachments: [...prev.removeAttachments, att.id] }))} title="Remove File" aria-label={`Remove ${att.file_name || 'attached file'}`}>
+                      <i className="fa fa-times"></i>
+                    </button>
+                  </div>
+                ))}
+
+                {editingReq.drive_link && (
+                  <div className="d-flex align-items-center mt-2 min-w-0">
+                    <div className="bg-white border rounded p-2 me-3 shadow-sm d-flex justify-content-center align-items-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                      <i className="fa fa-link text-primary fs-5"></i>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-dark fw-medium mb-0 text-truncate" style={{ fontSize: '0.9rem' }}>{editingReq.drive_link.replace(/^https?:\/\//, '')}</div>
+                      <div className="text-muted small fw-normal">External Link</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+        </div>
+      </AppModal>
+
+      {/* Submissions Modal */}
+      <AppModal
+        open={isSubmissionsModalOpen && !!activeReqSubmissions}
+        onClose={() => setIsSubmissionsModalOpen(false)}
+        size="data"
+        title={`Submissions for: ${activeReqSubmissions?.name ?? ''}`}
+        icon="fa-users"
+        closeOnBackdrop
+        fillBody
+        testId="requirement-submissions-modal"
+        footer={<button type="button" className="btn btn-light" onClick={() => setIsSubmissionsModalOpen(false)}>Close</button>}
+      >
+        <div className="d-flex flex-wrap justify-content-between gap-2 px-1">
+          <span className="text-muted small">
+            Tracking compliance for {activeReqSubmissions?.total_assigned ?? 0} assigned student(s).
+          </span>
+          <span className="fw-bold text-primary small">
+            {activeReqSubmissions?.completed_count ?? 0} Completed
+          </span>
+        </div>
+
+        {activeReqSubmissions?.submissions?.length > 0 ? (
+          <div className="it-modal__table-wrap">
+            <table className="table table-hover mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th scope="col" className="it-col-name">Student Name</th>
+                  <th scope="col">Section</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Submitted At</th>
+                  <th scope="col">File</th>
+                  <th scope="col">Reviewer</th>
+                  <th scope="col">Remarks</th>
+                  <th scope="col" className="text-end it-col-sticky-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeReqSubmissions.submissions.map((sub, idx) => {
+                  const cfg = documentStatusConfig(sub.status)
+                  const hasFiles = (sub.attachments && sub.attachments.length > 0) || sub.drive_link
+                  return (
+                    <tr key={sub.document_id || sub.student_id || idx}>
+                      <td className="it-col-name">
+                        <div className="fw-semibold text-dark" style={{ overflowWrap: 'anywhere' }}>{sub.student_name}</div>
+                        {sub.student_id_number && <div className="text-muted small">{sub.student_id_number}</div>}
+                      </td>
+                      <td className="it-col-nowrap">{formatYearSection(sub.section) || '—'}</td>
+                      <td className="it-col-nowrap">
+                        <span className={`badge ${cfg.badge}`}>
+                          <i className={`fa ${cfg.icon} me-1`}></i>{cfg.label}
+                        </span>
+                      </td>
+                      <td className="it-col-nowrap small">
+                        {formatManilaDateTime(sub.submitted_at)}
+                      </td>
+                      <td style={{ minWidth: '12rem' }}>
+                        {hasFiles ? (
+                          <div className="d-flex flex-column gap-1">
+                            {sub.attachments && sub.attachments.map(att => (
+                              <AuthenticatedFileLink key={att.id} path={att.file_path} className="text-decoration-none d-inline-flex align-items-center gap-2 fw-medium text-start border bg-light rounded-3 px-2 py-1 transition-hover" title={att.file_name || 'Submission'}>
+                                <i className="fa fa-file-pdf text-success" aria-hidden="true"></i>
+                                <span className="text-dark text-truncate" style={{ fontSize: '0.84rem', maxWidth: '14rem' }}>{att.file_name || 'Submission'}</span>
+                              </AuthenticatedFileLink>
+                            ))}
+                            {sub.drive_link && (
+                              <a href={sub.drive_link} target="_blank" rel="noreferrer" className="text-decoration-none d-inline-flex align-items-center gap-2 fw-medium text-start border bg-light rounded-3 px-2 py-1 transition-hover" title={sub.drive_link}>
+                                <i className="fa fa-link text-primary" aria-hidden="true"></i>
+                                <span className="text-dark text-truncate" style={{ fontSize: '0.84rem', maxWidth: '14rem' }}>{sub.drive_link.replace(/^https?:\/\//, '')}</span>
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted small">{sub.status === 'not_submitted' || sub.status === 'no_submission' ? 'Waiting for upload' : '—'}</span>
+                        )}
+                      </td>
+                      <td className="small" style={{ minWidth: '9rem' }}>
+                        {sub.reviewed_by_name ? (
+                          <>
+                            <div className="text-dark">{sub.reviewed_by_name}</div>
+                            {sub.reviewed_by_role && <div className="text-muted">{sub.reviewed_by_role}</div>}
+                          </>
+                        ) : '—'}
+                      </td>
+                      <td className="small it-col-wrap">
+                        {sub.remarks ? (
+                          <span className={sub.status === 'rejected' ? 'text-danger' : 'text-muted'}>{sub.remarks}</span>
+                        ) : '—'}
+                      </td>
+                      <td className="text-end it-col-nowrap it-col-sticky-end">
+                        {REVIEWABLE_STATUSES.includes(sub.status) && sub.document_id ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setReviewingDoc(sub.document_id)}
+                          >
+                            <i className="fa fa-gavel me-1"></i>Review
+                          </button>
+                        ) : <span className="text-muted small">—</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="it-modal__empty border rounded">
+            <i className="fa fa-users-slash fa-2x"></i>
+            No students are currently targeted by this requirement.
+          </div>
+        )}
+      </AppModal>
+
+      {/* Review Modal */}
+      <AppModal
+        open={!!reviewingDoc}
+        onClose={() => { setReviewingDoc(null); setReviewRemarks('') }}
+        size="sm"
+        title="Review Submission"
+        icon="fa-gavel"
+        busy={reviewingBusy}
+        testId="requirement-review-modal"
+        footer={(
+          <>
+            <button type="button" className="btn btn-light" onClick={() => { setReviewingDoc(null); setReviewRemarks('') }} disabled={reviewingBusy}>Cancel</button>
+            <button type="button" className="btn btn-danger" onClick={() => handleReview(reviewingDoc, 'reject')} disabled={reviewingBusy}>
+              {reviewingBusy ? 'Saving…' : 'Reject'}
+            </button>
+            <button type="button" className="btn btn-success" onClick={() => handleReview(reviewingDoc, 'approve')} disabled={reviewingBusy}>
+              {reviewingBusy ? 'Saving…' : 'Approve'}
+            </button>
           </>
-        )
-      }
+        )}
+      >
+        <label className="form-label fw-semibold" htmlFor="requirement-review-remarks">Remarks (Optional)</label>
+        <textarea maxLength={2000}
+          id="requirement-review-remarks"
+          className="form-control"
+          rows="3"
+          placeholder="Feedback"
+          value={reviewRemarks}
+          onChange={e => setReviewRemarks(e.target.value)}
+        ></textarea>
+      </AppModal>
     </Wrapper >
   )
 }

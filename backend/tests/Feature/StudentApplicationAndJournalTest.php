@@ -16,6 +16,7 @@ class StudentApplicationAndJournalTest extends TestCase
     public function test_company_application_persists_company_name(): void
     {
         $student = $this->makeStudentWithSection();
+        $this->assignFixtureAdviser($student); // required before applying
         $company = $this->makeEligibleCompany(['company_name' => 'TechCorp PH']);
         Sanctum::actingAs($student);
 

@@ -4,10 +4,11 @@ import Layout from '../../components/Layout'
 import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import ReportExportModal from '../../components/modals/ReportExportModal'
-import ComplianceApprovedProgress from '../../components/ComplianceApprovedProgress'
-import ComplianceRequirementsStatus, { formatRequirementsStatusCsv } from '../../components/ComplianceRequirementsStatus'
+import { formatRequirementsStatusCsv } from '../../components/ComplianceRequirementsStatus'
+import { StudentSummaryTable, ComplianceTable } from '../../components/reports/ReportTables'
 import { displayLabel } from '../../utils/displayLabel'
 import { reportPrintOptions } from '../../utils/reportPrint'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 import InternTrackLoader from '../../components/InternTrackLoader'
 
 const REPORT_TYPES = [
@@ -34,92 +35,6 @@ const REPORT_TYPES = [
   },
 ]
 
-function StatusBadge({ status }) {
-  const map = {
-    ongoing:          'badge bg-success',
-    completed:        'badge bg-primary',
-    pending_placement:'badge bg-warning text-dark',
-    for_evaluation:   'badge bg-info',
-    terminated:       'badge bg-danger',
-  }
-  return <span className={map[status] ?? 'badge bg-secondary'}>{status}</span>
-}
-
-function StudentSummaryTable({ data }) {
-  const rows = data.students ?? []
-  if (rows.length === 0) return <p className="text-muted">No data available.</p>
-  return (
-    <div className="table-responsive">
-      <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
-        <thead className="table-light">
-          <tr>
-            <th>#</th><th>Student</th><th>Program</th><th>Company</th>
-            <th>Status</th><th>Hours</th><th>Progress</th>
-            <th>Days</th><th>Journals ✓</th><th>Docs ✓</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>
-                <div className="fw-semibold">{r.student_name}</div>
-                <div className="text-muted">{r.student_number}</div>
-              </td>
-              <td>{displayLabel(r.program, '—')}</td>
-              <td>{r.company}</td>
-              <td><StatusBadge status={r.status} /></td>
-              <td>{r.hours_rendered}/{r.target_hours}</td>
-              <td>
-                <div className="progress" style={{ height: '6px', minWidth: '80px' }}>
-                  <div className="progress-bar bg-success" style={{ width: `${r.progress_pct}%` }}></div>
-                </div>
-                <small>{r.progress_pct}%</small>
-              </td>
-              <td>{r.validated_days}</td>
-              <td>{r.approved_journals}</td>
-              <td>{r.approved_docs}/{r.required_docs}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function ComplianceTable({ data }) {
-  const rows = data.rows ?? []
-  if (rows.length === 0) return <p className="text-muted">No data available.</p>
-  return (
-    <div className="table-responsive">
-      <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
-        <thead className="table-light">
-          <tr><th>#</th><th>Student</th><th>Program</th><th>Compliance</th><th>Requirements Status</th></tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td className="fw-semibold">{r.student_name}</td>
-              <td>{displayLabel(r.program, '—')}</td>
-              <td>
-                <ComplianceApprovedProgress
-                  pct={r.compliance_pct}
-                  approved={r.approved_docs}
-                  required={r.required_docs}
-                />
-              </td>
-              <td>
-                <ComplianceRequirementsStatus row={r} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
 function PerformanceTable({ data }) {
   const byProgram = data.by_program ?? []
   const evalAvg   = data.eval_averages ?? []
@@ -130,7 +45,7 @@ function PerformanceTable({ data }) {
       <div className="table-responsive mb-4">
         <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
           <thead className="table-light">
-            <tr><th>Program</th><th>Total</th><th>Completed</th><th>Avg Hours</th><th>Completion Rate</th></tr>
+            <tr><th>Program</th><th className="it-col-num">Total</th><th className="it-col-num">Completed</th><th className="it-col-num">Avg Hours</th><th className="it-col-num">Completion Rate</th></tr>
           </thead>
           <tbody>
             {byProgram.map((p, i) => (
@@ -219,6 +134,7 @@ function CoordReports() {
       setExportPreview({
         title: 'Student Summary Report',
         filename: 'student-summary-report',
+        statusColumns: ['Status'],
         rows: (reportData.students ?? []).map(r => ({
           Student: r.student_name, 'Student No.': r.student_number, Program: r.program, Company: r.company,
           Industry: r.industry, Status: r.status, 'Hours Rendered': r.hours_rendered, 'Target Hours': r.target_hours,
@@ -230,6 +146,7 @@ function CoordReports() {
       setExportPreview({
         title: 'Document Compliance Report',
         filename: 'document-compliance-report',
+        requirementColumns: ['Requirements Status'],
         rows: (reportData.rows ?? []).map(r => ({
           Student: r.student_name, Program: r.program, Industry: r.industry, 'Compliance %': r.compliance_pct,
           'Approved Docs': r.approved_docs, 'Required Docs': r.required_docs,
@@ -283,7 +200,7 @@ function CoordReports() {
             {activeReport && (
               <button
                 type="button"
-                className="btn btn-outline-primary ms-2"
+                className="btn btn-outline-success ms-2"
                 onClick={() => generateReport(activeReport)}
                 disabled={loading}
               >
@@ -299,8 +216,8 @@ function CoordReports() {
         {REPORT_TYPES.map(r => (
           <div key={r.key} className="col-md-4">
             <div
-              className={`content-card h-100 cursor-pointer ${activeReport === r.key ? 'border-2 border-primary' : ''}`}
-              style={{ cursor: 'pointer', borderColor: activeReport === r.key ? '#6366f1' : undefined }}
+              className={`content-card h-100 cursor-pointer ${activeReport === r.key ? 'report-card--active' : ''}`}
+              style={{ cursor: 'pointer' }}
               onClick={() => generateReport(r.key)}
             >
               <div className="p-3 text-center">
@@ -310,7 +227,7 @@ function CoordReports() {
                 <div className="fw-semibold mb-1">{r.title}</div>
                 <p className="text-muted mb-3" style={{ fontSize: '0.82rem' }}>{r.desc}</p>
                 <button
-                  className={`btn btn-sm ${activeReport === r.key ? 'btn-primary' : 'btn-outline-primary'}`}
+                  className={`btn btn-sm ${activeReport === r.key ? 'btn-success' : 'btn-outline-success'}`}
                   onClick={e => { e.stopPropagation(); generateReport(r.key) }}
                   disabled={loading && activeReport === r.key}
                 >
@@ -330,7 +247,7 @@ function CoordReports() {
           <div className="content-card-header d-print-none">
             <i className={`fa ${REPORT_TYPES.find(r => r.key === activeReport)?.icon}`}></i>
             <h6>{REPORT_TYPES.find(r => r.key === activeReport)?.title}</h6>
-            {generatedAt && <small className="ms-auto text-muted">Generated: {generatedAt}</small>}
+            {generatedAt && <small className="ms-auto text-muted">Generated: {formatManilaDateTime(generatedAt)}</small>}
             <button className="btn btn-sm btn-outline-success ms-2" onClick={handleExportCsv} disabled={!reportData}>
               <i className="fa fa-file-csv me-1"></i>Export CSV
             </button>
@@ -358,8 +275,8 @@ function CoordReports() {
               <div className="text-center py-4"><InternTrackLoader /></div>
             ) : reportData ? (
               <>
-                {activeReport === 'student-summary' && <StudentSummaryTable data={reportData} />}
-                {activeReport === 'compliance'      && <ComplianceTable      data={reportData} />}
+                {activeReport === 'student-summary' && <StudentSummaryTable data={reportData} empty={<p className="text-muted">No data available.</p>} />}
+                {activeReport === 'compliance'      && <ComplianceTable      data={reportData} empty={<p className="text-muted">No data available.</p>} />}
                 {activeReport === 'performance'     && <PerformanceTable     data={reportData} />}
               </>
             ) : (

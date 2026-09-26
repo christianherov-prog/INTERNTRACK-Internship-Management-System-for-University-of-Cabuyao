@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import '../styles/announcement-attachments.css'
 import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../config/uploads'
 import { formatFileSize } from '../utils/uploadValidation'
+import Lightbox from './modals/Lightbox'
 
 const ATTACH_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png,image/gif,image/webp,application/pdf'
 const ATTACH_EXT_OK = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx'])
@@ -81,32 +82,33 @@ export function AnnouncementAttachmentView({ attachment }) {
             onError={() => setBroken(true)}
           />
         </button>
-        {lightbox && (
-          <div
-            className="ann-lightbox"
-            role="dialog"
-            aria-modal="true"
-            aria-label={lightbox.filename}
-            onClick={() => setLightbox(null)}
-          >
-            <button
-              type="button"
-              className="ann-lightbox-close"
-              aria-label="Close image"
-              onClick={() => setLightbox(null)}
-            >
-              <i className="fa fa-times" aria-hidden="true" />
-            </button>
-            <img
-              src={lightbox.url}
-              alt={lightbox.filename}
-              className="ann-lightbox-img"
-              onClick={(e) => e.stopPropagation()}
-              onError={() => setLightbox(null)}
-            />
-            <div className="ann-lightbox-caption">{lightbox.filename}</div>
-          </div>
-        )}
+        <Lightbox
+          open={!!lightbox}
+          onClose={() => setLightbox(null)}
+          label={lightbox?.filename}
+          className="ann-lightbox"
+        >
+          {lightbox && (
+            <>
+              <button
+                type="button"
+                className="ann-lightbox-close"
+                aria-label="Close image"
+                onClick={() => setLightbox(null)}
+              >
+                <i className="fa fa-times" aria-hidden="true" />
+              </button>
+              <img
+                src={lightbox.url}
+                alt={lightbox.filename}
+                className="ann-lightbox-img"
+                onClick={(e) => e.stopPropagation()}
+                onError={() => setLightbox(null)}
+              />
+              <div className="ann-lightbox-caption">{lightbox.filename}</div>
+            </>
+          )}
+        </Lightbox>
       </>
     )
   }

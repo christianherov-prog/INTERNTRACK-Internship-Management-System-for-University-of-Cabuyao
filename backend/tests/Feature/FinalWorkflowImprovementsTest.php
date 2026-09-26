@@ -459,10 +459,14 @@ class FinalWorkflowImprovementsTest extends TestCase
         $companyA = $this->makeEligibleCompany(['company_name' => 'Alpha HTE']);
         $companyB = $this->makeEligibleCompany(['company_name' => 'Bravo HTE']);
 
-        // PLACEMENT-LOCK-01: a student without an accepted placement applies normally.
+        // PLACEMENT-LOCK-01: a student without a current application applies normally;
+        // the pending application then becomes their one current selection.
         Sanctum::actingAs($student);
-        $this->postJson('/api/v1/student/applications', ['company_id' => $companyA->id])->assertSuccessful();
         $this->assertFalse($this->getJson('/api/v1/student/applications')->json('placement_lock.locked'));
+        $this->postJson('/api/v1/student/applications', ['company_id' => $companyA->id])->assertSuccessful();
+        $pendingLock = $this->getJson('/api/v1/student/applications')->json('placement_lock');
+        $this->assertTrue($pendingLock['locked']);
+        $this->assertSame('pending_application', $pendingLock['source']);
 
         Sanctum::actingAs($coordinator);
         $application = InternshipApplication::where('student_id', $student->id)->where('company_id', $companyA->id)->firstOrFail();
@@ -484,6 +488,8 @@ class FinalWorkflowImprovementsTest extends TestCase
         $this->assertSame(0, InternshipApplication::where('student_id', $student->id)->where('company_id', $companyB->id)->count());
 
         // Cancelled placement: eligibility is recomputed from the authoritative status.
+        // The new internship cycle takes its Faculty adviser from the section.
+        $this->mapFacultyForSection($this->makeUser('faculty'), '4ITA');
         Internship::where('student_id', $student->id)->update(['status' => 'cancelled']);
         Carbon::setTestNow(now()->addMinutes(5));
         $this->postJson('/api/v1/student/applications', ['company_id' => $companyB->id])->assertSuccessful();

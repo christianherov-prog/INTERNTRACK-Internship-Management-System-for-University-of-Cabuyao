@@ -75,7 +75,7 @@ final class InternshipStatuses
             'for_evaluation',
             'suspended',
             'deferred',
-            'completed', // keep visible for certificate + status history on roster
+            'completed', // keep visible for status history, portfolio and absorption on roster
             'expelled',
         ];
     }

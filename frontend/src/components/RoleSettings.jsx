@@ -6,6 +6,7 @@ import ImageCropModal from './ImageCropModal'
 import api from '../services/api'
 import { getAvatarSrc } from '../utils/avatar'
 import { displayLabel } from '../utils/displayLabel'
+import { formatManilaDate, formatManilaDateTime } from '../utils/manilaTime'
 
 /**
  * Shared Settings UI for all roles (Student, Coordinator, Supervisor, Faculty, Director, Admin).
@@ -289,7 +290,7 @@ function RoleSettings({
     if (hours < 24) return `${hours}h ago`
     const days = Math.floor(hours / 24)
     if (days < 7) return `${days}d ago`
-    return date.toLocaleDateString()
+    return formatManilaDate(date)
   }
 
   const resolveRoleBadgeText = (u) => {
@@ -599,7 +600,7 @@ function RoleSettings({
                   <div className="col-sm-4">
                     <div
                       className="profile-stat-card h-100 d-flex align-items-center gap-3"
-                      title={user?.lastLoginAt ? `Exact time: ${new Date(user.lastLoginAt).toLocaleString()}` : 'Recent Activity'}
+                      title={user?.lastLoginAt ? `Exact time: ${formatManilaDateTime(user.lastLoginAt)}` : 'Recent Activity'}
                     >
                       <div
                         className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"

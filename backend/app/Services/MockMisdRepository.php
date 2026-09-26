@@ -182,6 +182,17 @@ class MockMisdRepository implements MisdRepositoryInterface
                 'employment_status' => 'Regular',
             ],
 
+            'ADMIN-MISD-001' => [
+                'faculty_number'   => 'ADMIN-MISD-001',
+                'first_name'        => 'Alon Isagani',
+                'middle_name'       => null,
+                'last_name'         => 'Dimaculangan',
+                'email'             => 'admin.misd.001@uc.edu.ph',
+                'department'        => 'Management Information Systems Department',
+                'position'          => 'MISD Administrator',
+                'employment_status' => 'Regular',
+            ],
+
             'DIR-1001' => [
                 'faculty_number'   => 'DIR-1001',
                 'first_name'        => 'Gina',

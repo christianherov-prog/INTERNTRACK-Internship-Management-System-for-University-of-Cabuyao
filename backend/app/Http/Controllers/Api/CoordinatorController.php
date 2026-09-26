@@ -28,6 +28,7 @@ use App\Services\SupervisorDirectoryService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
+use App\Support\EvaluationSignature;
 use App\Support\InternshipStatuses;
 use App\Support\NameParts;
 use App\Support\RequiredDocuments;
@@ -503,6 +504,10 @@ class CoordinatorController extends Controller
                 ], 422);
             }
             DepartmentScope::assertFacultySameDepartment($assignedFaculty, $internship->student ?? $profile);
+        } elseif (FacultySectionAssignmentService::isValidAdviser($internship->faculty_id)) {
+            // No adviser chosen: keep the Student's existing adviser rather than
+            // silently re-deriving it from the section.
+            $assignedFaculty = User::find($internship->faculty_id);
         } else {
             $assignedFaculty = $service->suggestFacultyForSection(
                 $profile?->section,
@@ -659,7 +664,7 @@ class CoordinatorController extends Controller
             'counts_by_status' => $countsByStatus,
             'total_students' => $totalStudents,
             'pending_docs' => $pendingDocs,
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -706,7 +711,7 @@ class CoordinatorController extends Controller
                 'program' => $request->input('program'),
                 'industry' => $request->input('industry'),
             ],
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -784,7 +789,7 @@ class CoordinatorController extends Controller
                 'program' => $request->input('program'),
                 'industry' => $request->input('industry'),
             ],
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -848,7 +853,8 @@ class CoordinatorController extends Controller
                 'supervisor.supervisorProfile',
                 'faculty.facultyProfile',
                 'evaluations' => function ($q) use ($formTypes) {
-                    $q->whereIn('form_type', $formTypes);
+                    $q->whereIn('form_type', $formTypes)
+                        ->with(EvaluationSignature::evaluatorRelations());
                 },
             ])
             ->whereHas('evaluations', function ($q) use ($formTypes) {
@@ -884,6 +890,7 @@ class CoordinatorController extends Controller
         }
 
         $internships = $query->orderByDesc('created_at')->paginate(40);
+        EvaluationSignature::present($internships->getCollection());
 
         // Faculty options for filter dropdown
         $facultyOptions = User::inStaffDepartment()
@@ -1055,9 +1062,7 @@ class CoordinatorController extends Controller
             }
 
             if ($data['status'] === 'approved') {
-                $company = Company::query()
-                    ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($req->company_name)])
-                    ->first();
+                $company = \App\Support\CompanyNameNormalizer::findExisting($req->company_name);
 
                 if (! $company) {
                     $company = Company::create([

@@ -179,7 +179,7 @@ function LoginPage({ supervisorMode = false }) {
                   {debugResetUrl ? (
                     <a href={debugResetUrl} className="btn-dev-reset-link">
                       <i className="fa fa-external-link-alt"></i>
-                      Open Reset Link (Dev Link)
+                      Open Reset Link (local environment)
                     </a>
                   ) : null}
 

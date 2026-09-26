@@ -15,9 +15,9 @@ use Illuminate\Validation\Rule;
 
 class InternshipStatusController extends Controller
 {
-    private const OCCUPYING = ['active', 'ongoing', 'placed', 'for_evaluation', 'suspended'];
+    public const OCCUPYING = ['active', 'ongoing', 'placed', 'for_evaluation', 'suspended'];
 
-    private const FREEING = ['completed', 'expelled', 'deferred', 'terminated', 'failed'];
+    public const FREEING = ['completed', 'expelled', 'deferred', 'terminated', 'failed'];
 
     /** GET /api/v1/{coordinator|director}/internships/{id}/status-history */
     public function history(Request $request, int $id)

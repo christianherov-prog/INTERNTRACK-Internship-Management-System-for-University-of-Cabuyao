@@ -42,10 +42,37 @@ export function formatDisplayDate(value, options = { month: 'long', day: 'numeri
   return new Date(year, month - 1, day).toLocaleDateString('en-PH', options)
 }
 
+/**
+ * Asia/Manila wall-clock "HH:mm" / "HH:mm:ss" → "8:00 AM", "1:00 PM".
+ * Use for values the API already resolved to Manila (clock_in_display,
+ * *_display correction fields, schedule start/end). No timezone is applied
+ * here, so a time is never converted twice.
+ */
+export function formatClock12(value, fallback = '—') {
+  if (value == null || value === '') return fallback
+  const match = String(value).trim().match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return fallback
+  const hour = Number(match[1])
+  if (hour > 23) return fallback
+  return `${hour % 12 || 12}:${match[2]} ${hour >= 12 ? 'PM' : 'AM'}`
+}
+
 export function formatManilaTime(value = new Date(), options = { hour: 'numeric', minute: '2-digit', hour12: true }) {
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
   return date.toLocaleTimeString('en-PH', { timeZone: MANILA_TZ, ...options })
+}
+
+/**
+ * Calendar date of a real timestamp (created_at, submitted_at, …) in Asia/Manila.
+ * Use formatDisplayDate for date-only fields; this one converts the instant first,
+ * so 2026-09-25T17:30:00Z correctly reads as September 26, 2026 in Manila.
+ */
+export function formatManilaDate(value, options = { month: 'short', day: 'numeric', year: 'numeric' }) {
+  if (!value) return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('en-PH', { timeZone: MANILA_TZ, ...options })
 }
 
 export function formatManilaDateTime(value) {

@@ -8,13 +8,17 @@ use App\Models\StudentProfile;
 use App\Models\User;
 use App\Support\DepartmentScope;
 use App\Support\InternshipProvisioning;
+use App\Support\InternshipStatuses;
 use App\Support\ProgramCatalog;
 use Illuminate\Database\Eloquent\Builder;
 
 class FacultySectionAssignmentService
 {
-    /** Canonical UC BSIT section codes for practicum. */
-    public const SECTIONS = ['4ITA', '4ITB', '4ITC', '4ITD'];
+    /** Canonical UC CCS (BSIT / BSCS) section codes for practicum. */
+    public const SECTIONS = ['4ITA', '4ITB', '4ITC', '4ITD', '4CSA', '4CSB'];
+
+    /** Roles that may act as a Student's Faculty adviser (a Coordinator uses the same account). */
+    public const ADVISER_ROLES = ['faculty', 'coordinator'];
 
     /**
      * Normalize UC section codes (4ITA, 4ITB, 4ITC, 4ITD).
@@ -38,38 +42,21 @@ class FacultySectionAssignmentService
     }
 
     /**
-     * Students assigned to this faculty via section mapping or internship.faculty_id.
+     * Students whose CURRENT internship is advised by this faculty-capable user.
+     *
+     * The actual adviser (internships.faculty_id) is authoritative. Section
+     * assignment only supplies the default adviser when an internship is
+     * created or has none (see Internship::booted / StudentProfile::booted);
+     * it never adds Students to a roster on its own, so transfers and
+     * deliberate reassignments are respected and a Coordinator's Faculty
+     * workspace shows only the Students he personally advises.
      */
     public static function assignedStudentsQuery(User $faculty, bool $activeOnly = true): Builder
     {
-        $normalized = FacultySectionAssignment::query()
-            ->where('faculty_user_id', $faculty->id)
-            ->where('is_active', true)
-            ->pluck('section')
-            ->map(fn ($section) => self::normalizeSection($section))
-            ->filter()
-            ->unique()
-            ->values();
-
         $query = User::inDepartment()
             ->where('role', 'student')
-            ->where(function ($q) use ($faculty, $normalized) {
-                $q->whereHas('internshipsAsStudent', function ($i) use ($faculty) {
-                    $i->where('faculty_id', $faculty->id);
-                });
-
-                if ($normalized->isNotEmpty()) {
-                    $q->orWhereHas('studentProfile', function ($p) use ($normalized) {
-                        $p->where(function ($inner) use ($normalized) {
-                            foreach ($normalized as $section) {
-                                $inner->orWhereRaw(
-                                    "REPLACE(REPLACE(UPPER(TRIM(section)), ' ', ''), '-', '') = ?",
-                                    [$section]
-                                );
-                            }
-                        });
-                    });
-                }
+            ->whereHas('internshipsAsStudent', function ($i) use ($faculty) {
+                self::constrainToCurrentInternship($i)->where('internships.faculty_id', $faculty->id);
             });
 
         if ($activeOnly) {
@@ -77,6 +64,44 @@ class FacultySectionAssignmentService
         }
 
         return $query;
+    }
+
+    /** Whether $faculty is the actual adviser of the Student's current internship. */
+    public static function advisesStudent(User $faculty, int $studentId): bool
+    {
+        return self::assignedStudentsQuery($faculty, false)->whereKey($studentId)->exists();
+    }
+
+    /**
+     * Restrict an internships query to each Student's current internship: the
+     * newest row in a current status (open, or completed and still shown).
+     * Older superseded/cancelled rows never decide who advises the Student.
+     */
+    public static function constrainToCurrentInternship($query)
+    {
+        $statuses = InternshipStatuses::currentRelation();
+
+        return $query->whereIn('internships.status', $statuses)
+            ->whereNotExists(function ($newer) use ($statuses) {
+                $newer->from('internships as newer_internship')
+                    ->whereColumn('newer_internship.student_id', 'internships.student_id')
+                    ->whereColumn('newer_internship.id', '>', 'internships.id')
+                    ->whereIn('newer_internship.status', $statuses)
+                    ->whereNull('newer_internship.deleted_at');
+            });
+    }
+
+    /** An adviser id is valid when it points at an active, faculty-capable account. */
+    public static function isValidAdviser(?int $userId): bool
+    {
+        if (! $userId) {
+            return false;
+        }
+
+        return User::whereKey($userId)
+            ->whereIn('role', self::ADVISER_ROLES)
+            ->where('is_active', true)
+            ->exists();
     }
 
     /**
@@ -247,13 +272,15 @@ class FacultySectionAssignmentService
     }
 
     /**
-     * Ensure all students in a section have an initialized internship record assigned to the section's faculty.
+     * Ensure all students in a section have an initialized internship record with a valid adviser.
+     * When a mapping moves to a new faculty, $previousFacultyId lets Students who followed the old default move with it.
      */
     public function syncInternshipsForSection(
         ?string $section,
         ?string $program = null,
         ?string $schoolYear = null,
-        ?string $semester = null
+        ?string $semester = null,
+        ?int $previousFacultyId = null
     ): void {
         $normalized = self::normalizeSection($section);
         if (! $normalized) {
@@ -293,7 +320,13 @@ class FacultySectionAssignmentService
                         'total_hours_rendered' => 0,
                     ]);
                 }
-            } elseif ($assignableFacultyId && $internship->faculty_id !== $assignableFacultyId) {
+            } elseif ($assignableFacultyId
+                && (int) $internship->faculty_id !== (int) $assignableFacultyId
+                && (! self::isValidAdviser($internship->faculty_id)
+                    || ($previousFacultyId && (int) $internship->faculty_id === (int) $previousFacultyId))) {
+                // Only Students without a valid adviser, or still following the
+                // section's previous default faculty, move with the section.
+                // A Student deliberately reassigned elsewhere keeps that adviser.
                 $internship->forceFill(['faculty_id' => $assignableFacultyId])->saveQuietly();
             }
         }

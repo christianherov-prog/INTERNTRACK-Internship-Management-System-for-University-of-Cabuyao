@@ -13,7 +13,6 @@ use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
 use App\Models\Notification;
 use App\Services\AbsorptionService;
-use App\Services\CertificateEligibilityService;
 use App\Services\DocumentComplianceService;
 use App\Services\DtrWorkflowService;
 use App\Services\FacultySectionAssignmentService;
@@ -22,6 +21,7 @@ use App\Services\JournalPeriodValidator;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
+use App\Support\EvaluationSignature;
 use App\Support\EvaluationVisibility;
 use App\Support\PlacementEligibility;
 use App\Support\InternshipProvisioning;
@@ -53,6 +53,11 @@ class StudentController extends Controller
         $requestedId = $request->header('X-Internship-Id') ?: $request->input('internship_id');
         if ($requestedId) {
             $internship = $query->where('id', $requestedId)->first();
+            // Another student's (or a stale) internship id is refused outright —
+            // never silently replaced by provisioning a new internship below.
+            if (! $internship) {
+                abort(403, 'Unauthorized access to this internship.');
+            }
         } else {
             $internship = InternshipProvisioning::openForStudent($user->id);
             if ($internship) {
@@ -301,6 +306,26 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * Guard for new attendance activity. A completed internship answers 409 so
+     * no row is created or changed even if the client sends the request
+     * directly; placement/supervisor locks keep their existing 403.
+     */
+    private function newAttendanceBlocked(Internship $internship): ?\Illuminate\Http\JsonResponse
+    {
+        if ($internship->isCompleted()) {
+            return response()->json([
+                'message' => Internship::ATTENDANCE_COMPLETED_MESSAGE,
+                'code' => 'internship_completed',
+            ], 409);
+        }
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
+        }
+
+        return null;
+    }
+
     /** GET /api/v1/student/attendance */
     public function attendance(Request $request)
     {
@@ -342,6 +367,12 @@ class StudentController extends Controller
             'pending_schedule' => $this->dtr->serializeSchedule($this->dtr->pendingScheduleFor($internship)),
             'schedule_history' => $this->dtr->scheduleHistory($internship)->map(fn ($s) => $this->dtr->serializeSchedule($s))->values(),
             'incomplete_dtr_days' => $this->dtr->incompleteDays($internship),
+            'internship_status' => InternshipStatuses::normalize($internship->status),
+            'internship_completed' => $internship->isCompleted(),
+            'new_attendance_allowed' => $internship->newAttendanceLockReason() === null,
+            'new_attendance_lock_reason' => $internship->newAttendanceLockReason(),
+            'hours_rendered' => (float) $internship->total_hours_rendered,
+            'target_hours' => InternshipProgressService::targetHoursForInternship($internship),
             'server_now' => $manilaNow->toIso8601String(),
             'server_now_display' => ManilaTime::clockDisplay($manilaNow),
             'server_timezone' => ManilaTime::TZ,
@@ -352,8 +383,8 @@ class StudentController extends Controller
     public function clockIn(Request $request)
     {
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
 
         try {
@@ -385,8 +416,8 @@ class StudentController extends Controller
         ]);
 
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
         $today = $this->dtr->manilaToday();
         try {
@@ -434,8 +465,8 @@ class StudentController extends Controller
     public function breakStart(Request $request)
     {
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
         $today = $this->dtr->manilaToday();
 
@@ -473,8 +504,8 @@ class StudentController extends Controller
     public function breakEnd(Request $request)
     {
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
         $today = $this->dtr->manilaToday();
 
@@ -959,7 +990,10 @@ class StudentController extends Controller
     public function evaluations(Request $request)
     {
         $internship = $this->internship($request);
-        $evaluations = $internship->evaluations()->with('evaluator')->get();
+        $evaluations = $internship->evaluations()->with(EvaluationSignature::evaluatorRelations())->get();
+        // Released forms carry the submitting evaluator's signature (the
+        // student-safe filter below strips it from unreleased ones).
+        EvaluationSignature::present($evaluations);
 
         // Unreleased FO-24 (Faculty release) and FO-03 (Director release) are
         // reduced to completion status before they leave the server.
@@ -1077,31 +1111,6 @@ class StudentController extends Controller
         ]);
     }
 
-    /**
-     * GET /api/v1/student/certificate/eligibility
-     * Returns whether the student is eligible for an OJT Completion Certificate,
-     * along with a checklist of individual requirements.
-     */
-    public function certificateEligibility(Request $request)
-    {
-        $internship = $this->internship($request);
-        $internship->load(['documents', 'evaluations']);
-
-        $eligible = CertificateEligibilityService::isEligible($internship);
-        $checklist = CertificateEligibilityService::checklist($internship);
-
-        // If newly eligible and never issued, mark the flag
-        if ($eligible && ! $internship->certificate_eligible) {
-            $internship->update(['certificate_eligible' => true]);
-        }
-
-        return response()->json([
-            'eligible' => $eligible,
-            'issued_at' => $internship->certificate_issued_at,
-            'checklist' => $checklist,
-        ]);
-    }
-
     public function companies()
     {
         $companies = Company::where('moa_status', 'active')->get();
@@ -1139,6 +1148,7 @@ class StudentController extends Controller
         return response()->json([
             'applications' => $applications,
             'placement_lock' => PlacementEligibility::forStudent($request->user()),
+            'adviser' => PlacementEligibility::adviserFor($request->user()),
         ]);
     }
 
@@ -1149,6 +1159,14 @@ class StudentController extends Controller
             'moa' => PlacementMoa::rule(),
         ]);
         $internship = $this->internship($request);
+
+        $adviser = PlacementEligibility::adviserFor($request->user(), $internship);
+        if (! $adviser['assigned']) {
+            return response()->json([
+                'message' => PlacementEligibility::ADVISER_MESSAGE,
+                'adviser' => $adviser,
+            ], 422);
+        }
 
         $existing = InternshipApplication::where('student_id', $request->user()->id)
             ->where('company_id', $data['company_id'])
@@ -1187,7 +1205,11 @@ class StudentController extends Controller
                 if ($lock['locked'] && (int) $lock['company_id'] !== (int) $data['company_id']) {
                     throw new \App\Exceptions\PlacementLockedException();
                 }
-                $internship->update(['company_id' => $data['company_id']]);
+                // Only a Student still seeking placement records their selection on
+                // the internship; a placed/finished internship is never re-pointed here.
+                if ($internship->status === 'pending_placement') {
+                    $internship->update(['company_id' => $data['company_id']]);
+                }
 
                 $payload = [
                     'student_id' => $request->user()->id,
@@ -1248,6 +1270,47 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * "Change Company": withdraw the Student's own PENDING application so
+     * they become eligible to apply elsewhere. Never touches an already
+     * ACCEPTED/active placement — that requires the Coordinator/Faculty
+     * institutional workflow (e.g. transitioning the internship status),
+     * not a self-service student action, per PlacementEligibility's lock.
+     */
+    public function withdrawApplication(Request $request, int $id)
+    {
+        $application = InternshipApplication::where('student_id', $request->user()->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        if ($application->status !== 'pending') {
+            return response()->json([
+                'message' => $application->status === 'approved'
+                    ? 'This application was already accepted. Contact your Coordinator or Faculty to change your placement.'
+                    : 'Only a pending application can be withdrawn.',
+            ], 422);
+        }
+
+        $internship = $this->internship($request);
+
+        DB::transaction(function () use ($application, $internship) {
+            Internship::whereKey($internship->id)->lockForUpdate()->firstOrFail();
+
+            $application->update(['status' => 'withdrawn']);
+
+            if ((int) $internship->company_id === (int) $application->company_id
+                && $internship->status === 'pending_placement') {
+                $internship->update(['company_id' => null]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Application withdrawn. You may now apply to another company.',
+            'application' => $this->serializeApplication($application->fresh('company')),
+            'placement_lock' => PlacementEligibility::forStudent($request->user()),
+        ]);
+    }
+
     public function hteRequests(Request $request)
     {
         $requests = HteRequest::where('student_id', $request->user()->id)
@@ -1272,6 +1335,14 @@ class StudentController extends Controller
             'moa' => PlacementMoa::rule(),
         ]);
 
+        $adviser = PlacementEligibility::adviserFor($request->user());
+        if (! $adviser['assigned']) {
+            return response()->json([
+                'message' => PlacementEligibility::ADVISER_MESSAGE,
+                'adviser' => $adviser,
+            ], 422);
+        }
+
         // A new-HTE request is an application to another company; blocked once placed.
         $lock = PlacementEligibility::forStudent($request->user());
         if ($lock['locked']) {
@@ -1289,20 +1360,20 @@ class StudentController extends Controller
         }
         $data['organization_type'] = $resolvedType['value'];
 
-        $accredited = Company::query()
-            ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
-            ->exists();
+        $accredited = \App\Support\CompanyNameNormalizer::findExisting($data['company_name']);
 
         if ($accredited) {
             return response()->json([
                 'message' => 'This HTE already exists in the accredited company list.',
+                'company' => $accredited,
             ], 422);
         }
 
+        $needle = \App\Support\CompanyNameNormalizer::key($data['company_name']);
         $duplicate = HteRequest::where('student_id', $request->user()->id)
             ->where('status', 'pending')
-            ->whereRaw('LOWER(company_name) = ?', [mb_strtolower($data['company_name'])])
-            ->exists();
+            ->get(['id', 'company_name'])
+            ->contains(fn ($r) => \App\Support\CompanyNameNormalizer::key($r->company_name) === $needle);
 
         if ($duplicate) {
             return response()->json([

@@ -147,16 +147,19 @@ class DepartmentOwnershipRepairTest extends TestCase
         // active placement locks new applications (PLACEMENT-LOCK).
         $ccs['internship']->update(['status' => 'pending_placement', 'company_id' => null, 'supervisor_id' => null]);
 
+        // The HTE request goes first: once the student has a pending application,
+        // that application is their one current selection and a new-HTE request
+        // is locked like any other company application (PLACE-LOCK).
         Sanctum::actingAs($ccs['student']);
-        $this->postJson('/api/v1/student/applications', [
-            'company_id' => $company->id,
-        ])->assertSuccessful();
         $this->postJson('/api/v1/student/hte-requests', [
             'company_name' => 'Unique CCS HTE '.uniqid(),
             'address' => 'Cabuyao',
             'contact_person' => 'HR',
             'contact_email' => 'hr@unique-ccs.example',
             'contact_number' => '09171234567',
+        ])->assertSuccessful();
+        $this->postJson('/api/v1/student/applications', [
+            'company_id' => $company->id,
         ])->assertSuccessful();
 
         $this->assertTrue(
@@ -327,6 +330,7 @@ class DepartmentOwnershipRepairTest extends TestCase
 
         for ($i = 0; $i < 10; $i++) {
             $ccsStudent = $this->makeStudentWithSection('4ITD');
+            $this->assignFixtureAdviser($ccsStudent); // required before requesting an HTE
             Sanctum::actingAs($ccsStudent);
             $this->postJson('/api/v1/student/hte-requests', [
                 'company_name' => 'CCS Concurrent '.$i.' '.uniqid(),
@@ -337,6 +341,7 @@ class DepartmentOwnershipRepairTest extends TestCase
             ])->assertSuccessful();
 
             $chasStudent = $this->makeStudentInCollege('CHAS', 'Bachelor of Science in Nursing', 'BSN', '4BSN-A');
+            $this->assignFixtureAdviser($chasStudent);
             Sanctum::actingAs($chasStudent);
             $this->postJson('/api/v1/student/hte-requests', [
                 'company_name' => 'CHAS Concurrent '.$i.' '.uniqid(),

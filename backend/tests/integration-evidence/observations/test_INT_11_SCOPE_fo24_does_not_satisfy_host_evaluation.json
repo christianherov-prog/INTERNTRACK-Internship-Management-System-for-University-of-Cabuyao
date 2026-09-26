@@ -1,7 +1,7 @@
 {
     "faculty_requirements": [
         {
-            "template_id": 6,
+            "template_id": 292,
             "system_code": "host_evaluation",
             "name": "Host Evaluation",
             "is_system": true,
@@ -17,7 +17,7 @@
     ],
     "coordinator_requirements": [
         {
-            "template_id": 6,
+            "template_id": 292,
             "system_code": "host_evaluation",
             "name": "Host Evaluation",
             "is_system": true,

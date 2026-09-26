@@ -4,6 +4,8 @@ import PageError from './PageError'
 import api from '../services/api'
 import { useCachedPage } from '../hooks/useCachedPage'
 import InternTrackLoader from './InternTrackLoader'
+import AppModal from './modals/AppModal'
+import { formatDisplayDate } from '../utils/manilaTime'
 
 function profileOf(student) {
   return student?.student_profile || student?.studentProfile || null
@@ -36,55 +38,54 @@ function AbsorptionModal({ internship, apiBase, onClose, onSaved, declaredHiredE
   }
 
   return (
-    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <form onSubmit={submit}>
-            <div className="modal-header">
-              <h5 className="modal-title">Confirm Absorption — {name}</h5>
-              <button type="button" className="btn-close" onClick={onClose}></button>
+    <AppModal
+      onClose={onClose}
+      size="md"
+      title={`Confirm Absorption — ${name}`}
+      icon="fa-user-check"
+      busy={saving}
+      onSubmit={submit}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Outcome'}</button>
+        </>
+      )}
+    >
+      {error && <div className="alert alert-danger">{error}</div>}
+      {internship.student_declared_hired && (
+        <div className="alert alert-info py-2">
+          Student declared they were hired
+          {internship.student_declaration_notes ? `: ${internship.student_declaration_notes}` : '.'}
+          {declaredHiredExtra ? ` ${declaredHiredExtra}` : ''}
+        </div>
+      )}
+      <div className="it-form-grid">
+        <div className="it-span-2">
+          <label className="form-label fw-semibold" htmlFor="absorption-status">Was this intern hired / absorbed?</label>
+          <select id="absorption-status" className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="absorbed">Yes — Absorbed / Hired</option>
+            <option value="not_hired">No — Not Hired</option>
+          </select>
+        </div>
+        {status === 'absorbed' && (
+          <>
+            <div>
+              <label className="form-label" htmlFor="absorption-date">Hire date</label>
+              <input id="absorption-date" type="date" className="form-control" value={absorbedAt} onChange={(e) => setAbsorbedAt(e.target.value)} required />
             </div>
-            <div className="modal-body">
-              {error && <div className="alert alert-danger">{error}</div>}
-              {internship.student_declared_hired && (
-                <div className="alert alert-info py-2">
-                  Student declared they were hired
-                  {internship.student_declaration_notes ? `: ${internship.student_declaration_notes}` : '.'}
-                  {declaredHiredExtra ? ` ${declaredHiredExtra}` : ''}
-                </div>
-              )}
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Was this intern hired / absorbed?</label>
-                <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
-                  <option value="absorbed">Yes — Absorbed / Hired</option>
-                  <option value="not_hired">No — Not Hired</option>
-                </select>
-              </div>
-              {status === 'absorbed' && (
-                <>
-                  <div className="mb-3">
-                    <label className="form-label">Hire date</label>
-                    <input type="date" className="form-control" value={absorbedAt} onChange={(e) => setAbsorbedAt(e.target.value)} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Job title (optional)</label>
-                    <input maxLength={255} className="form-control" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job Title" />
-                  </div>
-                </>
-              )}
-              <div className="mb-2">
-                <label className="form-label">Notes (optional)</label>
-                <textarea maxLength={2000} className="form-control" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </div>
+            <div>
+              <label className="form-label" htmlFor="absorption-title">Job title (optional)</label>
+              <input id="absorption-title" maxLength={255} className="form-control" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Job Title" />
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Outcome'}</button>
-            </div>
-          </form>
+          </>
+        )}
+        <div className="it-span-2">
+          <label className="form-label" htmlFor="absorption-notes">Notes (optional)</label>
+          <textarea id="absorption-notes" maxLength={2000} className="form-control" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
       </div>
-    </div>
+    </AppModal>
   )
 }
 
@@ -97,6 +98,9 @@ function badge(status) {
 /**
  * Shared absorption list + confirm modal for supervisor and coordinator.
  * Props preserve each role's existing columns/copy — no redesign.
+ * canRecord=false renders a read-only list: only the PALD Director may
+ * finalize absorption (AbsorptionService::recordOutcome), so roles without
+ * that right see each outcome but get no Confirm/Update action.
  */
 function RoleAbsorption({
   apiBase,
@@ -105,6 +109,7 @@ function RoleAbsorption({
   showSupervisorColumn = false,
   emptyMessage = 'No completed internships yet.',
   declaredHiredExtra = '',
+  canRecord = true,
 }) {
   const { loading, seed, run } = useCachedPage(`${apiBase}:absorption`)
   const [items, setItems] = useState(() => seed ?? [])
@@ -124,9 +129,20 @@ function RoleAbsorption({
   useEffect(() => { load() }, [apiBase])
 
   return (
-    <Layout title="Intern Absorption" subtitle="Confirm hire outcomes for completed interns" icon="fa-user-check" bodyClass={bodyClass}>
+    <Layout
+      title="Intern Absorption"
+      subtitle={canRecord ? 'Confirm hire outcomes for completed interns' : 'Hire outcomes for completed interns'}
+      icon="fa-user-check"
+      bodyClass={bodyClass}
+    >
       {error && <PageError message={error} onRetry={load} />}
-      {modal && (
+      {!canRecord && (
+        <div className="alert alert-info d-flex align-items-center gap-2 mb-3" role="note" data-testid="absorption-read-only-note">
+          <i className="fa fa-circle-info"></i>
+          <span>Absorption outcomes are finalized by the PALD Director. This page shows each intern&apos;s current outcome.</span>
+        </div>
+      )}
+      {canRecord && modal && (
         <AbsorptionModal
           internship={modal}
           apiBase={apiBase}
@@ -139,7 +155,7 @@ function RoleAbsorption({
       <div className="content-card mb-4">
         <div className="content-card-header">
           <i className="fa fa-user-check"></i>
-          <h6>Completed Interns — Hire Confirmation</h6>
+          <h6>{canRecord ? 'Completed Interns — Hire Confirmation' : 'Completed Interns — Hire Outcomes'}</h6>
         </div>
         {loading ? (
           <div className="text-center py-5"><InternTrackLoader /></div>
@@ -156,7 +172,7 @@ function RoleAbsorption({
                   {showSupervisorColumn && <th>Supervisor</th>}
                   <th>Student declared?</th>
                   <th>Outcome</th>
-                  <th></th>
+                  {canRecord && <th></th>}
                 </tr>
               </thead>
               <tbody>
@@ -171,16 +187,18 @@ function RoleAbsorption({
                       <td className="fw-semibold">{name}</td>
                       <td>{i.company?.company_name || '—'}</td>
                       {showEndedColumn && (
-                        <td>{i.end_date ? new Date(i.end_date).toLocaleDateString() : '—'}</td>
+                        <td>{formatDisplayDate(i.end_date, { month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
                       )}
                       {showSupervisorColumn && <td>{supervisorName}</td>}
                       <td>{i.student_declared_hired ? <span className="badge bg-info text-dark">Yes</span> : '—'}</td>
                       <td><span className={badge(outcome)}>{outcome.replace('_', ' ')}</span></td>
-                      <td>
-                        <button className="btn btn-sm btn-primary" onClick={() => setModal(i)}>
-                          {outcome === 'pending' || !i.absorption_status ? 'Confirm' : 'Update'}
-                        </button>
-                      </td>
+                      {canRecord && (
+                        <td>
+                          <button className="btn btn-sm btn-primary" onClick={() => setModal(i)}>
+                            {outcome === 'pending' || !i.absorption_status ? 'Confirm' : 'Update'}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}

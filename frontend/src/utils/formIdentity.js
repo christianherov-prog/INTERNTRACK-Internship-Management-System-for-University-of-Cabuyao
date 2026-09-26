@@ -187,6 +187,17 @@ export function resolveFormIdentity(internship, extras = {}) {
   }
 }
 
+/**
+ * Signature printed on a submitted evaluation form: the submitting evaluator's,
+ * resolved server-side (resolved_signature_path). Never the internship's current
+ * supervisor, which would sign another person's form.
+ */
+export function evaluationSignaturePath(evalData) {
+  if (!evalData?.id) return ''
+  if ('resolved_signature_path' in evalData) return evalData.resolved_signature_path || ''
+  return evalData.signature_path || ''
+}
+
 export function identityValue(identity, key) {
   if (!identity) return ''
   const value = identity[key]

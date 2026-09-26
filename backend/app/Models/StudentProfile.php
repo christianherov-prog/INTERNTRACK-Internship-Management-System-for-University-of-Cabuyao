@@ -65,7 +65,19 @@ class StudentProfile extends Model
                             'total_hours_rendered' => 0,
                         ]);
                     }
-                } elseif ($facultyId && $internship->faculty_id !== $facultyId) {
+                } elseif (
+                    $facultyId
+                    && (int) $internship->faculty_id !== (int) $facultyId
+                    && (
+                        // No usable adviser yet: the section default fills it.
+                        ! FacultySectionAssignmentService::isValidAdviser($internship->faculty_id)
+                        // A section/program transfer (MISD registry sync) moves the
+                        // Student to the new section's faculty.
+                        || $profile->wasChanged(['section', 'program_id'])
+                    )
+                ) {
+                    // Any other profile save (contact details, address, …) never
+                    // replaces a deliberate adviser assignment.
                     $internship->forceFill(['faculty_id' => $facultyId])->saveQuietly();
                 }
             }

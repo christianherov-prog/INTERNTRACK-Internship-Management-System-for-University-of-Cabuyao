@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 
+use App\Support\EvaluationSignature;
 use App\Support\SignatureCapture;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -44,6 +45,15 @@ class Evaluation extends Model {
 
     public function getSignatureUrlAttribute(): ?string {
         return SignatureCapture::url($this->signature_path);
+    }
+
+    /** Submitting evaluator's signature; serialized via EvaluationSignature::present(). */
+    public function getResolvedSignaturePathAttribute(): ?string {
+        return EvaluationSignature::path($this);
+    }
+
+    public function getEvaluatorNameAttribute(): ?string {
+        return EvaluationSignature::evaluatorName($this);
     }
 
     public function computeScores(): void {

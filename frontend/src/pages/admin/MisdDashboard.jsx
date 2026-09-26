@@ -7,15 +7,56 @@ import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { prefetchPage } from '../../utils/pageCache'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 import InternTrackLoader from '../../components/InternTrackLoader'
 
-const ROLE_META = [
-  { key: 'student', label: 'Students', to: '/admin/users?role=student', color: '#0f766e' },
-  { key: 'faculty', label: 'Faculty', to: '/admin/users?role=faculty', color: '#1d4ed8' },
-  { key: 'director', label: 'Directors', to: '/admin/directors', color: '#b45309' },
-  { key: 'coordinator', label: 'Coordinators', to: '/admin/coordinators', color: '#7c3aed' },
-  { key: 'supervisor', label: 'Supervisors', to: '/admin/users?role=supervisor', color: '#be123c' },
+const ROLE_METRICS = [
+  { key: 'student', label: 'Students', icon: 'fa-user-graduate', to: '/admin/users?role=student' },
+  { key: 'faculty', label: 'Faculty', icon: 'fa-chalkboard-user', to: '/admin/users?role=faculty' },
+  { key: 'director', label: 'Directors', icon: 'fa-user-tie', to: '/admin/directors' },
+  { key: 'coordinator', label: 'Coordinators', icon: 'fa-user-check', to: '/admin/coordinators' },
+  { key: 'supervisor', label: 'Supervisors', icon: 'fa-briefcase', to: '/admin/users?role=supervisor' },
 ]
+
+const QUICK_ACTIONS = [
+  { to: '/admin/directors', icon: 'fa-user-tie', label: 'Assign Director', hint: 'Set the PALD Director' },
+  { to: '/admin/coordinators', icon: 'fa-user-check', label: 'Manage Coordinators', hint: 'Assign college coordinators' },
+  { to: '/admin/section-mappings', icon: 'fa-sitemap', label: 'Section Mappings', hint: 'Map sections to faculty' },
+  { to: '/admin/users', icon: 'fa-users', label: 'All Users', hint: 'Accounts and access' },
+  { to: '/admin/sync', icon: 'fa-arrows-rotate', label: 'Sync Students', hint: 'Refresh enrollment profiles' },
+]
+
+/** "validate_attendance" / "staff.activated" → "Validate Attendance" / "Staff Activated" */
+function humanizeAction(action) {
+  return String(action || '—')
+    .replace(/[._]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatCacheDuration(seconds) {
+  const s = Number(seconds)
+  if (!Number.isFinite(s) || s <= 0) return '—'
+  if (s % 3600 === 0) return `${s / 3600} ${s === 3600 ? 'hour' : 'hours'}`
+  if (s % 60 === 0) return `${s / 60} min`
+  return `${s} s`
+}
+
+function MetricCard({ label, icon, to, active, total, tone = 'green' }) {
+  const inactive = Math.max(0, total - active)
+  return (
+    <Link to={to} className="misd-metric text-decoration-none" data-tone={tone}>
+      <div className="misd-metric__head">
+        <span className="misd-metric__icon" aria-hidden="true"><i className={`fa ${icon}`}></i></span>
+        <span className="misd-metric__label">{label}</span>
+      </div>
+      <div className="misd-metric__value">{active}</div>
+      <div className="misd-metric__caption">active {active === 1 ? 'account' : 'accounts'}</div>
+      <div className="misd-metric__meta">
+        {total} total{inactive > 0 ? ` · ${inactive} inactive` : ''}
+      </div>
+    </Link>
+  )
+}
 
 function MisdDashboard() {
   const { loading, seed, run } = useCachedPage('admin:dashboard')
@@ -43,9 +84,11 @@ function MisdDashboard() {
 
   const counts = data?.users_by_role || {}
   const status = data?.misd_status
+  const unmapped = data?.unmapped_count ?? 0
+  const recent = data?.recent_activity || []
 
   return (
-    <Layout title="MISD Dashboard" subtitle="Enrollment & Staff Administration" icon="fa-server" bodyClass="admin-page">
+    <Layout title="MISD Dashboard" subtitle="Enrollment & Staff Administration" icon="fa-server" bodyClass="admin-page misd-dashboard">
       <RoleSummaryPanel showMetrics={false} />
       {error && <PageError message={error} onRetry={load} />}
 
@@ -53,126 +96,139 @@ function MisdDashboard() {
         <div className="text-center py-5"><InternTrackLoader /></div>
       ) : data && (
         <>
-          <div className="row g-3 mb-4">
-            {ROLE_META.map((r) => (
-              <div className="col-6 col-md-4 col-xl" key={r.key}>
-                <Link to={r.to} className="text-decoration-none">
-                  <div className="content-card h-100 p-3" style={{ borderTop: `3px solid ${r.color}` }}>
-                    <div className="text-muted" style={{ fontSize: '0.8rem' }}>{r.label}</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: r.color }}>
-                      {counts[r.key]?.active ?? 0}
-                    </div>
-                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      {counts[r.key]?.total ?? 0} total
-                    </div>
-                  </div>
-                </Link>
-              </div>
-            ))}
-            <div className="col-6 col-md-4 col-xl">
-              <Link to="/admin/section-mappings" className="text-decoration-none">
-                <div className="content-card h-100 p-3" style={{ borderTop: '3px solid #dc2626' }}>
-                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>Unmapped Sections</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#dc2626' }}>
-                    {data.unmapped_count ?? 0}
-                  </div>
-                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>need faculty mapping</div>
+          {/* 1. Key metrics */}
+          <section className="misd-section" aria-labelledby="misd-metrics-title">
+            <h2 id="misd-metrics-title" className="misd-section__title">Accounts Overview</h2>
+            <div className="misd-metrics">
+              {ROLE_METRICS.map((m) => (
+                <MetricCard
+                  key={m.key}
+                  label={m.label}
+                  icon={m.icon}
+                  to={m.to}
+                  active={counts[m.key]?.active ?? 0}
+                  total={counts[m.key]?.total ?? 0}
+                />
+              ))}
+              <Link to="/admin/section-mappings" className="misd-metric text-decoration-none" data-tone={unmapped > 0 ? 'danger' : 'green'}>
+                <div className="misd-metric__head">
+                  <span className="misd-metric__icon" aria-hidden="true"><i className="fa fa-sitemap"></i></span>
+                  <span className="misd-metric__label">Unmapped Sections</span>
                 </div>
+                <div className="misd-metric__value">{unmapped}</div>
+                <div className="misd-metric__caption">{unmapped === 1 ? 'section group' : 'section groups'}</div>
+                <div className="misd-metric__meta">{unmapped > 0 ? 'need a faculty mapping' : 'All sections mapped'}</div>
               </Link>
             </div>
-          </div>
+          </section>
 
-          <div className="row g-3 mb-4">
-            <div className="col-lg-5">
-              <div className="content-card h-100">
-                <div className="content-card-header"><i className="fa fa-plug"></i><h6>MISD Integration</h6></div>
-                <div className="p-3">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Mode</span>
-                    <span className={`badge ${status?.use_mock ? 'bg-warning text-dark' : 'bg-success'}`}>
-                      {status?.use_mock ? 'Mock iEnroll' : 'Live API'}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Reachable</span>
-                    <span className={`badge ${status?.reachable ? 'bg-success' : 'bg-danger'}`}>
-                      {status?.reachable ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Latency</span>
-                    <span>{status?.latency_ms != null ? `${status.latency_ms} ms` : '—'}</span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Cache TTL</span>
-                    <span>{status?.cache_ttl ?? '—'} s</span>
-                  </div>
-                  <div className="text-muted mt-2" style={{ fontSize: '0.78rem', wordBreak: 'break-all' }}>
-                    {status?.base_url}
-                  </div>
-                  {status?.error && <div className="alert alert-warning mt-3 mb-0 py-2">{status.error}</div>}
-                  <Link to="/admin/sync" className="btn btn-outline-primary btn-sm mt-3">
-                    Open Sync Monitor
-                  </Link>
-                </div>
+          {/* 2. Quick Actions */}
+          <section className="content-card misd-section" aria-labelledby="misd-actions-title">
+            <div className="content-card-header">
+              <i className="fa fa-bolt"></i><h6 id="misd-actions-title">Quick Actions</h6>
+            </div>
+            <div className="misd-actions">
+              {QUICK_ACTIONS.map((a) => (
+                <Link key={a.to} to={a.to} className="misd-action text-decoration-none">
+                  <span className="misd-action__icon" aria-hidden="true"><i className={`fa ${a.icon}`}></i></span>
+                  <span className="misd-action__text">
+                    <span className="misd-action__label">{a.label}</span>
+                    <span className="misd-action__hint">{a.hint}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+            {unmapped > 0 && (
+              <div className="misd-actions__notice">
+                <i className="fa fa-triangle-exclamation me-2" aria-hidden="true"></i>
+                <strong>{unmapped}</strong>&nbsp;section group(s) have students without a faculty mapping.
+                <Link to="/admin/section-mappings" className="ms-2 fw-semibold">Fix mappings</Link>
               </div>
-            </div>
+            )}
+          </section>
 
-            <div className="col-lg-7">
-              <div className="content-card h-100">
-                <div className="content-card-header"><i className="fa fa-bolt"></i><h6>Quick Actions</h6></div>
-                <div className="p-3 d-flex flex-wrap gap-2">
-                  <Link to="/admin/directors" className="btn btn-primary"><i className="fa fa-user-tie me-2"></i>Assign Director</Link>
-                  <Link to="/admin/coordinators" className="btn btn-outline-primary"><i className="fa fa-user-check me-2"></i>Manage Coordinators</Link>
-                  <Link to="/admin/section-mappings" className="btn btn-outline-primary"><i className="fa fa-sitemap me-2"></i>Section Mappings</Link>
-                  <Link to="/admin/users" className="btn btn-outline-secondary"><i className="fa fa-users me-2"></i>All Users</Link>
-                  <Link to="/admin/sync" className="btn btn-outline-secondary"><i className="fa fa-sync me-2"></i>Sync Student</Link>
-                </div>
-                {(data.unmapped_sections?.length > 0) && (
-                  <div className="px-3 pb-3">
-                    <div className="alert alert-warning mb-0">
-                      <strong>{data.unmapped_count}</strong> section group(s) have students without a faculty mapping.
-                      <Link to="/admin/section-mappings" className="ms-2">Fix mappings</Link>
-                    </div>
-                  </div>
-                )}
+          {/* 3. Integration status + 4. Activity today */}
+          <div className="misd-split misd-section">
+            <section className="content-card" aria-labelledby="misd-status-title">
+              <div className="content-card-header">
+                <i className="fa fa-plug"></i><h6 id="misd-status-title">iEnroll Directory</h6>
               </div>
-            </div>
+              <dl className="misd-status">
+                <div className="misd-status__row">
+                  <dt>Source</dt>
+                  <dd>{status?.mode_label || '—'}</dd>
+                </div>
+                <div className="misd-status__row">
+                  <dt>Status</dt>
+                  <dd>
+                    <span className={`it-status-chip it-status-chip--${status?.reachable ? 'success' : 'danger'}`}>
+                      <i className={`fa ${status?.reachable ? 'fa-circle-check' : 'fa-circle-xmark'}`} aria-hidden="true"></i>
+                      <span className="it-status-chip__status">{status?.reachable ? 'Available' : 'Unavailable'}</span>
+                    </span>
+                  </dd>
+                </div>
+                <div className="misd-status__row">
+                  <dt>Response time</dt>
+                  <dd>{status?.latency_ms != null ? `${status.latency_ms} ms` : '—'}</dd>
+                </div>
+                <div className="misd-status__row">
+                  <dt>Profile cache</dt>
+                  <dd>{formatCacheDuration(status?.cache_ttl)}</dd>
+                </div>
+                <div className="misd-status__row">
+                  <dt>Last checked</dt>
+                  <dd>{formatManilaDateTime(status?.checked_at)}</dd>
+                </div>
+              </dl>
+              {status?.source_label && <p className="misd-status__note">{status.source_label}</p>}
+              {status?.error && <div className="alert alert-warning mx-3 mb-3 py-2">{status.error}</div>}
+              <div className="px-3 pb-3">
+                <Link to="/admin/sync" className="btn btn-outline-success btn-sm">
+                  <i className="fa fa-arrows-rotate me-1"></i>Open Sync Monitor
+                </Link>
+              </div>
+            </section>
+
+            <section className="content-card misd-today" aria-labelledby="misd-today-title">
+              <div className="content-card-header">
+                <i className="fa fa-calendar-day"></i><h6 id="misd-today-title">Activity Today</h6>
+              </div>
+              <div className="misd-today__body">
+                <div className="misd-today__value">{data.activities_today ?? 0}</div>
+                <div className="misd-today__caption">recorded system {Number(data.activities_today) === 1 ? 'event' : 'events'} today (Asia/Manila)</div>
+                <Link to="/admin/audit-logs" className="btn btn-success btn-sm mt-3">
+                  <i className="fa fa-clipboard-list me-1"></i>View Audit Logs
+                </Link>
+              </div>
+            </section>
           </div>
 
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div className="content-card p-3 flex-grow-1 me-3" style={{ borderTop: '3px solid #0f766e' }}>
-              <div className="text-muted" style={{ fontSize: '0.8rem' }}>Activities Today</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{data.activities_today ?? 0}</div>
-            </div>
-            <Link to="/admin/audit-logs" className="btn btn-outline-primary">View full Audit Logs</Link>
-          </div>
-
-          <div className="content-card">
-            <div className="content-card-header d-flex justify-content-between align-items-center">
-              <div className="d-flex align-items-center gap-2"><i className="fa fa-history"></i><h6 className="mb-0">Recent System Activity</h6></div>
-              <Link to="/admin/audit-logs" className="small">Open Audit Logs</Link>
+          {/* 5. Recent activity */}
+          <section className="content-card" aria-labelledby="misd-recent-title">
+            <div className="content-card-header">
+              <i className="fa fa-history"></i><h6 id="misd-recent-title">Recent System Activity</h6>
+              <Link to="/admin/audit-logs" className="ms-auto small fw-semibold">Open Audit Logs</Link>
             </div>
             <div className="table-responsive">
-              <table className="table table-hover mb-0" style={{ fontSize: '0.85rem' }}>
+              <table className="table table-hover mb-0 misd-activity-table" style={{ fontSize: '0.85rem' }}>
                 <thead className="table-light">
                   <tr><th>When</th><th>Action</th><th>Actor</th><th>Summary</th></tr>
                 </thead>
                 <tbody>
-                  {(data.recent_activity || []).length === 0 ? (
+                  {recent.length === 0 ? (
                     <tr><td colSpan={4} className="text-center text-muted py-4">No recent activity yet.</td></tr>
-                  ) : data.recent_activity.map((row) => (
+                  ) : recent.map((row) => (
                     <tr key={row.id}>
-                      <td>{row.created_at_display || (row.created_at ? new Date(row.created_at).toLocaleString() : '—')}</td>
-                      <td><code>{row.action}</code></td>
-                      <td>{row.actor?.label || row.actor?.username || '—'}</td>
+                      <td className="text-nowrap">{row.created_at_display || formatManilaDateTime(row.created_at)}</td>
+                      <td><span className="it-status-chip it-status-chip--neutral"><span className="it-status-chip__status">{humanizeAction(row.action)}</span></span></td>
+                      <td className="text-nowrap">{row.actor?.label || row.actor?.username || '—'}</td>
                       <td className="text-muted">{row.summary || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         </>
       )}
     </Layout>

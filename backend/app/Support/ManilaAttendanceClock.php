@@ -31,6 +31,19 @@ final class ManilaAttendanceClock
             ->format('H:i:s');
     }
 
+    /**
+     * A Manila calendar date + Manila wall-clock time as a stored instant
+     * (app timezone), e.g. 2026-06-03 12:00 Manila → 2026-06-03 04:00:00 UTC.
+     * Used for break_start / break_end, which are datetime columns.
+     */
+    public static function storedInstant(mixed $manilaDate, string $manilaClock): Carbon
+    {
+        $day = Carbon::parse($manilaDate)->toDateString();
+
+        return Carbon::parse($day.' '.self::normalize($manilaClock), ManilaTime::TZ)
+            ->timezone(config('app.timezone', 'UTC'));
+    }
+
     public static function minutesBetweenClocks(string $from, string $to): int
     {
         $start = Carbon::parse('2000-06-15 '.self::normalize($from), ManilaTime::TZ);
@@ -83,6 +96,23 @@ final class ManilaAttendanceClock
         $pmIn = null;
         $pmOut = null;
 
+        // A day split by a break is a morning session and an afternoon
+        // session: the break start closes the morning (AM Time Out) even when
+        // it falls on or just after 12:00, and the resume opens the afternoon.
+        $sessions = self::sessions($events);
+        if (count($sessions) >= 2 && $sessions[0]['in'] && self::isAm($sessions[0]['in']) && $sessions[0]['out']) {
+            $last = $sessions[count($sessions) - 1];
+
+            return [
+                'am_time_in' => ManilaTime::clockHm($sessions[0]['in']),
+                'am_time_out' => ManilaTime::clockHm($sessions[0]['out']),
+                'pm_time_in' => ManilaTime::clockHm($sessions[1]['in']),
+                'pm_time_out' => ManilaTime::clockHm($last['out']),
+                'am_absent' => false,
+                'day_absent' => false,
+            ];
+        }
+
         foreach ($events as $event) {
             /** @var CarbonInterface $at */
             $at = $event['at'];
@@ -117,6 +147,38 @@ final class ManilaAttendanceClock
             'am_absent' => false,
             'day_absent' => false,
         ];
+    }
+
+    /**
+     * Chronological events paired into work sessions (in → out).
+     *
+     * @param  list<array{role: 'in'|'out', at: CarbonInterface}>  $events
+     * @return list<array{in: ?CarbonInterface, out: ?CarbonInterface}>
+     */
+    private static function sessions(array $events): array
+    {
+        $sessions = [];
+        $open = null;
+        foreach ($events as $event) {
+            if ($event['role'] === 'in') {
+                $open ??= ['in' => $event['at'], 'out' => null];
+
+                continue;
+            }
+            if ($open === null) {
+                $sessions[] = ['in' => null, 'out' => $event['at']];
+
+                continue;
+            }
+            $open['out'] = $event['at'];
+            $sessions[] = $open;
+            $open = null;
+        }
+        if ($open !== null) {
+            $sessions[] = $open;
+        }
+
+        return $sessions;
     }
 
     public static function isAm(CarbonInterface $at): bool

@@ -75,3 +75,13 @@ backend/php-local.ini
 mysql-start.err.log
 mysql-start.out.log
 
+
+# MariaDB/MySQL crash dumps and local test-server configs (generated, never ship)
+*.dmp
+backend/phpunit.local*.xml
+
+# Local QA / restore artefacts (never ship)
+backend/storage/app/backups/
+*.junit.xml
+# Synthetic demonstration files referenced by the database snapshot are tracked
+!backend/database/demo-files/**/*.pdf

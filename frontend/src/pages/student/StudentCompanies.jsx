@@ -34,11 +34,18 @@ function applicationForCompany(applications, companyId) {
 function sendButtonState(app) {
   if (!app) return { label: 'Send', disabled: false }
   const status = String(app.status || '').toLowerCase()
-  if (status.includes('rejected')) return { label: 'Send', disabled: false }
+  if (status.includes('rejected') || status.includes('withdrawn')) return { label: 'Send', disabled: false }
   if (status.includes('pending') || status.includes('approved') || status.includes('accepted')) {
     return { label: 'Sent', disabled: true }
   }
   return { label: 'Send', disabled: false }
+}
+
+/** Why other companies are locked, from the authoritative placement_lock.source. */
+function lockNotice(source) {
+  if (source === 'pending_application') return 'You already have an active company application. Choose Change Company to apply elsewhere.'
+  if (source === 'completed') return 'Your internship placement is already completed.'
+  return 'You already have an active internship placement.'
 }
 
 function StudentCompanies() {
@@ -48,6 +55,9 @@ function StudentCompanies() {
   const [applications, setApplications] = useState(() => seed?.applications ?? [])
   // Authoritative lock from the API: once a placement is accepted, no new applications.
   const [placementLock, setPlacementLock] = useState(() => seed?.placementLock ?? null)
+  // Institutional rule from the API: no Faculty adviser, no application / HTE request.
+  const [adviser, setAdviser] = useState(() => seed?.adviser ?? null)
+  const adviserMissing = adviser ? !adviser.assigned : false
   const [hteRequests, setHteRequests] = useState(() => seed?.hteRequests ?? [])
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
@@ -57,6 +67,8 @@ function StudentCompanies() {
   const [submitting, setSubmitting] = useState(false)
   const [applyTarget, setApplyTarget] = useState(null)
   const [applyMoa, setApplyMoa] = useState(null)
+  const [showChangeCompany, setShowChangeCompany] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
 
   const loadData = async () => {
     setError(null)
@@ -71,6 +83,7 @@ function StudentCompanies() {
           companies: compRes.data.companies || [],
           applications: appRes.data.applications || [],
           placementLock: appRes.data.placement_lock || null,
+          adviser: appRes.data.adviser || null,
           hteRequests: hteRes.data.requests || [],
         }
       })
@@ -78,6 +91,7 @@ function StudentCompanies() {
         setCompanies(payload.companies)
         setApplications(payload.applications)
         setPlacementLock(payload.placementLock)
+        setAdviser(payload.adviser)
         setHteRequests(payload.hteRequests)
       }
     } catch (err) {
@@ -133,6 +147,24 @@ function StudentCompanies() {
       setError(err.response?.data?.message || err.response?.data?.errors?.moa?.[0] || 'Failed to send application.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const withdrawCurrentApplication = async () => {
+    if (!placementLock?.application_id) return
+    setWithdrawing(true)
+    setError(null)
+    try {
+      const res = await api.post(`/student/applications/${placementLock.application_id}/withdraw`)
+      setSuccessMsg(res.data.message || 'Application withdrawn.')
+      setPlacementLock(res.data.placement_lock || null)
+      setShowChangeCompany(false)
+      cacheDelete('student:companies')
+      loadData()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to withdraw application.')
+    } finally {
+      setWithdrawing(false)
     }
   }
 
@@ -217,6 +249,13 @@ function StudentCompanies() {
         </div>
       )}
 
+      {adviserMissing && (
+        <div className="alert alert-warning d-flex align-items-center gap-2 mb-3" role="status" data-testid="adviser-required-banner">
+          <i className="fa fa-user-clock"></i>
+          <span>{adviser.message}</span>
+        </div>
+      )}
+
       {/* ── Tab Bar ── */}
       <div className="placement-tabs-bar mb-4">
         {TABS.map(tab => (
@@ -262,12 +301,22 @@ function StudentCompanies() {
               ) : (
                 <div className="table-responsive">
                   {placementLock?.locked && (
-                    <div className="alert alert-info d-flex align-items-center gap-2 m-3 mb-2" role="status" data-testid="placement-lock-banner">
+                    <div className="alert alert-info d-flex align-items-center gap-2 m-3 mb-2 flex-wrap" role="status" data-testid="placement-lock-banner">
                       <i className="fa fa-lock"></i>
-                      <span>
-                        {placementLock.message}
-                        {placementLock.company_name ? <> Current placement: <strong>{placementLock.company_name}</strong>.</> : null}
+                      <span className="flex-grow-1">
+                        {lockNotice(placementLock.source)}
+                        {placementLock.company_name ? <> Current company: <strong>{placementLock.company_name}</strong>.</> : null}
                       </span>
+                      {placementLock.source === 'pending_application' && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary"
+                          data-testid="change-company-btn"
+                          onClick={() => setShowChangeCompany(true)}
+                        >
+                          <i className="fa fa-right-left me-1"></i>Change Company
+                        </button>
+                      )}
                     </div>
                   )}
                   <table className="table table-hover mb-0">
@@ -287,7 +336,7 @@ function StudentCompanies() {
                         const send = sendButtonState(existing)
                         const noSlots = c.slots_available === 0
                         const locked = Boolean(placementLock?.locked)
-                        const isAcceptedCompany = locked && Number(placementLock.company_id) === Number(c.id)
+                        const isCurrentCompany = locked && Number(placementLock.company_id) === Number(c.id)
                         return (
                         <tr key={c.id}>
                           <td>
@@ -309,17 +358,37 @@ function StudentCompanies() {
                             </span>
                           </td>
                           <td className="text-center">
-                            {isAcceptedCompany ? (
-                              <span className="badge bg-success" data-testid={`accepted-company-${c.id}`}>
-                                <i className="fa fa-circle-check me-1"></i>Current placement
-                              </span>
+                            {isCurrentCompany ? (
+                              placementLock.source === 'pending_application' ? (
+                                <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" data-testid={`pending-company-${c.id}`}>
+                                  <i className="fa fa-hourglass-half me-1"></i>Applied / Pending
+                                </span>
+                              ) : placementLock.source === 'completed' ? (
+                                <span className="badge bg-secondary" data-testid={`completed-company-${c.id}`}>
+                                  <i className="fa fa-flag-checkered me-1"></i>Completed Placement
+                                </span>
+                              ) : (
+                                <span className="badge bg-success" data-testid={`accepted-company-${c.id}`}>
+                                  <i className="fa fa-circle-check me-1"></i>Accepted / Current Placement
+                                </span>
+                              )
+                            ) : !locked && adviserMissing ? (
+                              <button
+                                id={`apply-company-${c.id}`}
+                                className="btn btn-sm px-3 btn-outline-secondary"
+                                disabled
+                                title={adviser.message}
+                                aria-label={`Apply to ${c.company_name} unavailable: ${adviser.message}`}
+                              >
+                                <i className="fa fa-user-clock me-1"></i>Adviser required
+                              </button>
                             ) : locked ? (
                               <button
                                 id={`apply-company-${c.id}`}
                                 className="btn btn-sm px-3 btn-outline-secondary"
                                 disabled
-                                title={placementLock.message}
-                                aria-label={`Apply to ${c.company_name} unavailable: ${placementLock.message}`}
+                                title={lockNotice(placementLock.source)}
+                                aria-label={`Apply to ${c.company_name} unavailable: you already have an active application or placement.`}
                               >
                                 <i className="fa fa-lock me-1"></i>Locked
                               </button>
@@ -460,6 +529,12 @@ function StudentCompanies() {
                 <div className="hte-info-banner">
                   Request an HTE that is not yet listed. The Coordinator will review the request and its MOA before approval.
                 </div>
+                {adviserMissing && (
+                  <div className="alert alert-warning d-flex align-items-center gap-2 mb-3" role="status">
+                    <i className="fa fa-user-clock"></i>
+                    <span>{adviser.message}</span>
+                  </div>
+                )}
                 {placementLock?.locked && (
                   <div className="alert alert-info d-flex align-items-center gap-2 mb-3" role="status">
                     <i className="fa fa-lock"></i>
@@ -567,7 +642,7 @@ function StudentCompanies() {
                     >
                       Clear
                     </button>
-                    <button id="hte-submit-btn" type="submit" className="btn btn-primary px-4" disabled={submitting || placementLock?.locked}>
+                    <button id="hte-submit-btn" type="submit" className="btn btn-primary px-4" disabled={submitting || placementLock?.locked || adviserMissing}>
                       {submitting
                         ? <><i className="fa fa-spinner fa-spin me-2"></i>Sending...</>
                         : <><i className="fa fa-paper-plane me-2"></i>Send Request</>
@@ -601,6 +676,19 @@ function StudentCompanies() {
           disabled={submitting}
         />
       </ConfirmModal>
+
+      <ConfirmModal
+        open={showChangeCompany}
+        title="Change Company"
+        message={`Your current application to ${placementLock?.company_name || 'this company'} will be withdrawn and cannot be undone. You will then be able to apply to a different company. Continue?`}
+        confirmLabel="Withdraw & Change Company"
+        loadingLabel="Withdrawing..."
+        cancelLabel="Keep Current Application"
+        variant="danger"
+        loading={withdrawing}
+        onCancel={() => { if (!withdrawing) setShowChangeCompany(false) }}
+        onConfirm={withdrawCurrentApplication}
+      />
       <style>{`
         .placement-tabs-bar {
           display: flex;

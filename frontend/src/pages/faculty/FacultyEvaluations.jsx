@@ -10,6 +10,7 @@ import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import AsyncButton from '../../components/AsyncButton'
+import AppModal from '../../components/modals/AppModal'
 
 function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
   const [period, setPeriod] = useState(existing?.evaluation_period || 'midterm')
@@ -51,41 +52,41 @@ function FacultyEvalModal({ internship, existing, onClose, onSaved }) {
   }
 
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Faculty Evaluation</h5>
-            <button className="btn-close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            {error && <div className="alert alert-danger py-2">{error}</div>}
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Period</label>
-              <select className="form-select" value={period} onChange={e => setPeriod(e.target.value)}>
-                <option value="midterm">Midterm</option>
-                <option value="final">Final</option>
-              </select>
-            </div>
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Overall score (0-100)</label>
-              <input type="number" className="form-control" min="0" max="100" step="1" required value={score} onChange={e => setScore(e.target.value)} />
-            </div>
-            <div>
-              <label className="form-label fw-semibold">Comments</label>
-              <textarea className="form-control" rows={3} maxLength={2000} value={comments} onChange={e => setComments(e.target.value)} placeholder="Remarks" />
-              <div className="form-text text-end">{comments.length}/2000</div>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={submit} disabled={saving}>
-              <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>Submit Evaluation
-            </button>
-          </div>
+    <AppModal
+      onClose={onClose}
+      size="md"
+      title="Faculty Evaluation"
+      icon="fa-pen"
+      busy={saving}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="button" className="btn btn-primary" onClick={submit} disabled={saving}>
+            <i className={`fa fa-${saving ? 'spinner fa-spin' : 'check'} me-2`}></i>Submit Evaluation
+          </button>
+        </>
+      )}
+    >
+      {error && <div className="alert alert-danger py-2">{error}</div>}
+      <div className="it-form-grid">
+        <div>
+          <label className="form-label fw-semibold" htmlFor="faculty-eval-period">Period</label>
+          <select id="faculty-eval-period" className="form-select" value={period} onChange={e => setPeriod(e.target.value)}>
+            <option value="midterm">Midterm</option>
+            <option value="final">Final</option>
+          </select>
+        </div>
+        <div>
+          <label className="form-label fw-semibold" htmlFor="faculty-eval-score">Overall score (0-100)</label>
+          <input id="faculty-eval-score" type="number" className="form-control" min="0" max="100" step="1" required value={score} onChange={e => setScore(e.target.value)} />
+        </div>
+        <div className="it-span-2">
+          <label className="form-label fw-semibold" htmlFor="faculty-eval-comments">Comments</label>
+          <textarea id="faculty-eval-comments" className="form-control" rows={3} maxLength={2000} value={comments} onChange={e => setComments(e.target.value)} placeholder="Remarks" />
+          <div className="form-text text-end">{comments.length}/2000</div>
         </div>
       </div>
-    </div>
+    </AppModal>
   )
 }
 
@@ -215,15 +216,6 @@ function FacultyEvaluations() {
             <i className="fa fa-check-circle text-success" aria-hidden="true"></i>
             <h6 id="fo24-review-title">FO-24 — Student Internship Performance Evaluation (Official Basis for Grading)</h6>
             <span className="ms-auto badge bg-success" aria-label={`${internships.length} students`}>{internships.length}</span>
-          </div>
-
-          <div className="fo24-review__info" role="note">
-            <i className="fa fa-info-circle" aria-hidden="true"></i>
-            <p className="mb-0">
-              As Faculty, you have access to the <strong>FO-24</strong> (Supervisor Performance Evaluation) submitted by the Company Supervisor.
-              It is the official basis for grading your assigned students. <strong>Approve period</strong> unlocks the intern&apos;s Student
-              (FO-22, FO-23) and Supervisor (FO-24, FO-03) forms. <strong>Release to Student</strong> lets the student see the FO-24 details.
-            </p>
           </div>
 
           <div className="fo24-review__filters row g-2 g-md-3 align-items-end">

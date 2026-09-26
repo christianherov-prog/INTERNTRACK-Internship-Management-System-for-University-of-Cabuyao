@@ -86,9 +86,9 @@ class DatabaseSeeder extends Seeder
         // ─── 2. Staff faculty profiles ────────────────────────────────────────
         FacultyProfile::updateOrCreate(['user_id' => $admin->id], [
             'faculty_number'    => 'ADMIN-MISD-001',
-            'first_name'        => 'MISD',
+            'first_name'        => 'Alon Isagani',
             'middle_name'       => null,
-            'last_name'         => 'Administrator',
+            'last_name'         => 'Dimaculangan',
             'email'             => 'misd.admin@uc.edu.ph',
             'contact_number'    => '09175557800',
             'department_id'     => $misdDepartmentId,
@@ -189,35 +189,28 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ─── 3. Companies (created before student accounts so demo internships can link) ─
-        Company::firstOrCreate(['company_name' => 'TechCorp PH'], [
-            'address'        => 'Alabang, Muntinlupa',
-            'industry'       => 'Information Technology',
-            'contact_person' => 'Ms. Rivera',
-            'contact_email'  => 'hr@techcorp.ph',
-            'contact_number' => '028001234',
-            'moa_status'     => 'active',
-            'moa_start_date' => '2024-01-01',
-            'moa_expiry_date'=> '2026-12-31',
-            'slots_available'=> 10,
-        ]);
-        Company::firstOrCreate(['company_name' => 'Accenture PH'], [
+        // Only the canonical CCS company is seeded here; the rest of the controlled
+        // directory comes from `interntrack:seed-ccs-demo` (CcsCompanyDirectory).
+        // The legacy demo names "TechCorp PH" and "Accenture PH" are retired.
+        $accentureRow = \App\Support\CcsCompanyDirectory::COMPANIES[0];
+        Company::firstOrCreate(['company_name' => $accentureRow['name']], [
             'address'        => 'BGC, Taguig',
-            'industry'       => 'IT Consulting',
+            'industry'       => $accentureRow['industry'],
             'contact_person' => 'Mr. Lim',
             'contact_email'  => 'hr@accenture.ph',
             'contact_number' => '028009876',
             'moa_status'     => 'active',
             'moa_start_date' => '2024-03-01',
-            'moa_expiry_date'=> '2026-02-28',
-            'slots_available'=> 15,
+            'moa_expiry_date'=> '2028-01-05',
+            'slots_available'=> $accentureRow['slots'],
         ]);
 
         // ─── 3b. Supervisor demo accounts ────────────────────────────────────
         // SUP-0001 Patrick Bateman is retained only as an inactive reserved ID so
         // the generator never recycles it. Active local supervisors:
-        // SUP-0002 Adrian Reyes (Accenture PH) and later SUP-0003 Arthur Morgan.
-        $techCorp = Company::where('company_name', 'TechCorp PH')->first();
-        $accenture = Company::where('company_name', 'Accenture PH')->first();
+        // SUP-0002 Adrian Reyes (Accenture Philippines) and later SUP-0003 Arthur Morgan.
+        $techCorp = null; // retired demo company; Patrick stays unassigned
+        $accenture = Company::where('company_name', 'Accenture Philippines')->first();
 
         $patrick = User::where('email', 'patrick.bateman@techcorp.ph')->first()
             ?? User::where('faculty_number', 'SUP-0001')->where('role', 'supervisor')->first();

@@ -4,6 +4,7 @@ import PageError from '../../components/PageError'
 import api from '../../services/api'
 import { unwrapList } from '../../utils/apiList'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import AppModal from '../../components/modals/AppModal'
 
 const ROLE_OPTIONS = [
   { value: '', label: 'All roles' },
@@ -160,34 +161,33 @@ function MisdAuditLogs() {
         )}
       </div>
 
-      {detail && (
-        <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.45)' }} role="dialog">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Audit Event Details</h5>
-                <button type="button" className="btn-close" onClick={() => setDetail(null)} aria-label="Close"></button>
+      <AppModal
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        size="lg"
+        title="Audit Event Details"
+        icon="fa-shield-halved"
+        closeOnBackdrop
+        footer={<button type="button" className="btn btn-secondary" onClick={() => setDetail(null)}>Close</button>}
+      >
+        {detail && (
+          <>
+            <dl className="row mb-0 small" style={{ overflowWrap: 'anywhere' }}>
+              <dt className="col-sm-3">Action</dt><dd className="col-sm-9">{detail.action}</dd>
+              <dt className="col-sm-3">Module</dt><dd className="col-sm-9">{detail.module}</dd>
+              <dt className="col-sm-3">Actor</dt><dd className="col-sm-9">{detail.actor?.label || detail.actor?.username || 'System'} ({detail.actor?.role || '—'})</dd>
+              <dt className="col-sm-3">When</dt><dd className="col-sm-9">{detail.created_at_display || detail.created_at}</dd>
+              <dt className="col-sm-3">Summary</dt><dd className="col-sm-9">{detail.summary}</dd>
+            </dl>
+            {detail.new_values && (
+              <div className="mt-3">
+                <div className="fw-semibold mb-1">Safe details</div>
+                <pre className="bg-light border rounded p-2 small mb-0" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(detail.new_values, null, 2)}</pre>
               </div>
-              <div className="modal-body">
-                <div className="mb-2"><strong>Action:</strong> {detail.action}</div>
-                <div className="mb-2"><strong>Module:</strong> {detail.module}</div>
-                <div className="mb-2"><strong>Actor:</strong> {detail.actor?.label || detail.actor?.username || 'System'} ({detail.actor?.role || '—'})</div>
-                <div className="mb-2"><strong>When:</strong> {detail.created_at_display || detail.created_at}</div>
-                <div className="mb-2"><strong>Summary:</strong> {detail.summary}</div>
-                {detail.new_values && (
-                  <div className="mt-3">
-                    <div className="fw-semibold mb-1">Safe details</div>
-                    <pre className="bg-light border rounded p-2 small mb-0" style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(detail.new_values, null, 2)}</pre>
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setDetail(null)}>Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
+          </>
+        )}
+      </AppModal>
     </Layout>
   )
 }

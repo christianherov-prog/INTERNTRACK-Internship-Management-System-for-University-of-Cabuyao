@@ -131,6 +131,13 @@ trait CreatesInternshipFixtures
 
     protected function makeEligibleCompany(array $overrides = []): Company
     {
+        // Company identity is unique (companies_active_name_key_unique): two
+        // fixture parties "at TechCorp PH" share the one existing company row.
+        if (isset($overrides['company_name'])
+            && $existing = \App\Support\CompanyNameNormalizer::findExisting($overrides['company_name'])) {
+            return $existing;
+        }
+
         return Company::create(array_merge([
             'company_name' => 'Eligible HTE '.fake()->unique()->numerify('###'),
             'moa_status' => 'active',
@@ -152,9 +159,44 @@ trait CreatesInternshipFixtures
             'term' => 'AY 2024-2025, Sem 2',
             'program' => 'BSIT',
         ]);
+        // A Student seeking placement is always under a Faculty adviser
+        // (institutional rule enforced by PlacementEligibility::adviserFor).
+        if (! $internship->faculty_id) {
+            $internship->faculty_id = $this->fixtureAdviser($student)->id;
+        }
         $internship->save();
 
         return $internship;
+    }
+
+    /**
+     * Put a Student under a Faculty adviser from their own department, as the
+     * section assignment would. Needed before the Student may apply or
+     * request a new HTE.
+     */
+    protected function assignFixtureAdviser(User $student): Internship
+    {
+        $internship = Internship::where('student_id', $student->id)->orderByDesc('id')->first()
+            ?? $this->makePendingInternship($student);
+        if (! \App\Services\FacultySectionAssignmentService::isValidAdviser($internship->faculty_id)) {
+            $internship->forceFill(['faculty_id' => $this->fixtureAdviser($student)->id])->save();
+        }
+
+        return $internship->fresh();
+    }
+
+    private function fixtureAdviser(User $student): User
+    {
+        $deptCode = \App\Models\Department::whereKey($student->studentProfile()->value('department_id'))->value('code') ?: 'CCS';
+        $existing = User::where('faculty_number', 'FAC-ADVISER-'.$deptCode)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $faculty = $this->makeUser('faculty', 'FAC-ADVISER-'.$deptCode);
+        $this->ensureStaffDepartment($faculty, $deptCode);
+
+        return $faculty;
     }
 
     protected function makeActiveInternship(User $student, Company $company, User $supervisor, User $faculty, User $coordinator): Internship

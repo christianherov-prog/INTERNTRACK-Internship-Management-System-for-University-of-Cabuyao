@@ -16,6 +16,7 @@ use App\Services\InternshipProgressService;
 use App\Services\OfficialFormDataService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
+use App\Support\EvaluationSignature;
 use App\Support\InternshipStatuses;
 use App\Support\NameParts;
 use App\Support\SignatureCapture;
@@ -109,9 +110,10 @@ class SupervisorController extends Controller
             });
 
         $completedEvaluations = Evaluation::where('evaluated_by', $supervisorId)
-            ->with(['internship.student.studentProfile'])
+            ->with(['internship.student.studentProfile', ...EvaluationSignature::evaluatorRelations()])
             ->orderByDesc('created_at')
             ->get();
+        EvaluationSignature::present($completedEvaluations);
 
         return response()->json([
             'profile' => $supervisor->supervisorProfile,
@@ -424,8 +426,9 @@ class SupervisorController extends Controller
 
         $evaluations = Evaluation::whereIn('internship_id', $internships->pluck('id'))
             ->where('evaluator_type', 'supervisor')
-            ->with(['internship.student.studentProfile.program', 'internship.company', 'internship.supervisor.supervisorProfile', 'internship.faculty.facultyProfile'])
+            ->with(['internship.student.studentProfile.program', 'internship.company', 'internship.supervisor.supervisorProfile', 'internship.faculty.facultyProfile', ...EvaluationSignature::evaluatorRelations()])
             ->get();
+        EvaluationSignature::present($evaluations);
 
         $pending = $internships
             ->map(function (Internship $internship) {

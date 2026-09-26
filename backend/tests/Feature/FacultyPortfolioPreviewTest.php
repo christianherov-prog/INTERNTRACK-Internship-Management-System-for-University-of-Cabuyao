@@ -291,28 +291,41 @@ class FacultyPortfolioPreviewTest extends TestCase
      * gains preview access through the normal workflow. If the internship is
      * later handled by someone else, the section listing alone does not grant it.
      */
-    public function test_section_mapping_grants_preview_only_through_internship_faculty(): void
+    /**
+     * The actual adviser (internship faculty) decides roster membership and
+     * preview access. Mapping a section to someone else neither takes over a
+     * Student who already has an adviser nor lists them on that roster.
+     */
+    public function test_section_mapping_does_not_override_actual_adviser_or_grant_preview(): void
     {
         $party = $this->party('4ITC');
         $sectionFaculty = $this->makeUser('faculty');
         $this->mapFacultyForSection($sectionFaculty, '4ITC');
-        $this->assertSame($sectionFaculty->id, (int) $party['internship']->fresh()->faculty_id);
+        $this->assertSame($party['faculty']->id, (int) $party['internship']->fresh()->faculty_id);
+
+        Sanctum::actingAs($sectionFaculty);
+        $row = collect($this->getJson('/api/v1/faculty/assigned-students')->assertOk()->json('data'))
+            ->firstWhere('student_id', $party['student']->id);
+        $this->assertNull($row, 'A section mapping alone does not list a Student advised by someone else.');
+        $this->getJson($this->portfolioUrl($party['student']))->assertForbidden();
+
+        Sanctum::actingAs($party['faculty']);
+        $row = collect($this->getJson('/api/v1/faculty/assigned-students')->assertOk()->json('data'))
+            ->firstWhere('student_id', $party['student']->id);
+        $this->assertNotNull($row);
+        $this->assertTrue($row['can_preview_portfolio']);
+
+        // Deliberate reassignment to the section faculty moves roster and access.
+        Internship::whereKey($party['internship']->id)->update(['faculty_id' => $sectionFaculty->id]);
 
         Sanctum::actingAs($sectionFaculty);
         $row = collect($this->getJson('/api/v1/faculty/assigned-students')->assertOk()->json('data'))
             ->firstWhere('student_id', $party['student']->id);
         $this->assertNotNull($row);
         $this->assertTrue($row['can_preview_portfolio']);
-        $this->getJson($this->portfolioUrl($party['student']))->assertOk()
-            ->assertJsonPath('user.id', $party['student']->id);
+        $this->getJson($this->portfolioUrl($party['student']))->assertOk();
 
-        // Internship now handled by a different faculty; the section mapping remains.
-        Internship::whereKey($party['internship']->id)->update(['faculty_id' => $party['faculty']->id]);
-
-        $row = collect($this->getJson('/api/v1/faculty/assigned-students')->assertOk()->json('data'))
-            ->firstWhere('student_id', $party['student']->id);
-        $this->assertNotNull($row, 'Section mapping still lists the student.');
-        $this->assertFalse($row['can_preview_portfolio']);
+        Sanctum::actingAs($party['faculty']);
         $this->getJson($this->portfolioUrl($party['student']))->assertForbidden();
     }
 

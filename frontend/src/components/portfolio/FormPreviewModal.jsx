@@ -1,5 +1,4 @@
-import React, { useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import InternTrackLoader from '../InternTrackLoader';
 import DailyTimeRecord from './DailyTimeRecord';
@@ -7,6 +6,7 @@ import WeeklyInternshipJournal from './WeeklyInternshipJournal';
 import { PrintFO24, PrintFO03, PrintFO22, PrintFO23, PrintFacultyEval } from './EvaluationsPreview';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import AsyncButton from '../AsyncButton';
+import AppModal from '../modals/AppModal';
 
 function JournalReviewFooter({ review, onClose }) {
   const confirm = useConfirm();
@@ -83,6 +83,53 @@ function JournalReviewFooter({ review, onClose }) {
   );
 }
 
+/**
+ * Screen-only fit for official documents: on screens narrower than the page
+ * (794px A4), the page is scaled to the preview's exact width. The zoom sits
+ * on this wrapper, outside the element Print Preview (react-to-print) copies,
+ * so printed and PDF output keep the official dimensions. The observer only
+ * reacts to real size changes (no polling, no feedback loop).
+ */
+function DocumentFit({ children }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const wrapper = ref.current;
+    const stage = wrapper?.parentElement;
+    if (!wrapper || !stage || typeof ResizeObserver === 'undefined') return undefined;
+
+    const fit = () => {
+      const page = wrapper.firstElementChild;
+      if (!page || !page.offsetWidth) return;
+      const cs = getComputedStyle(stage);
+      const available = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const scale = Math.min(1, available / page.offsetWidth);
+      wrapper.style.zoom = scale < 0.999 ? String(Math.max(0.2, Math.floor(scale * 1000) / 1000)) : '';
+    };
+
+    const observer = new ResizeObserver(fit);
+    observer.observe(stage);
+    if (wrapper.firstElementChild) observer.observe(wrapper.firstElementChild);
+    fit();
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={ref} className="it-doc-fit">{children}</div>;
+}
+
+const PREVIEW_TITLES = {
+  dtr: 'Preview: Daily Time Record (PNC:AA-FO-30)',
+  'FO-24': 'Preview: Student Intern Performance (PNC:AA-FO-24)',
+  'FO-03': 'Preview: HTE To University Evaluation (PNC:AA-FO-03)',
+  'FO-22': 'Preview: HTE Evaluation (PNC:AA-FO-22)',
+  'FO-23': 'Preview: Program Evaluation (PNC:AA-FO-23)',
+  faculty_eval: 'Preview: Faculty Evaluation',
+};
+
+function previewTitle(type) {
+  return PREVIEW_TITLES[type] || 'Preview: Weekly Internship Journal (PNC:AA-FO-31)';
+}
+
 const FormPreviewModal = ({
   isOpen,
   onClose,
@@ -140,7 +187,7 @@ const FormPreviewModal = ({
   );
 
   const printDownloadButtons = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
       <button
         type="button"
         className="btn btn-sm btn-outline-secondary"
@@ -184,7 +231,9 @@ const FormPreviewModal = ({
             padding: 0;
           }
           .fpm-no-print { display: none !important; }
-          .fpm-backdrop, .fpm-dialog, .fpm-body, .fpm-inline {
+          .it-doc-fit { zoom: 1 !important; }
+          .fpm-backdrop, .fpm-dialog, .fpm-body, .fpm-inline,
+          .it-modal-layer, .it-modal-viewport {
             position: static !important;
             background: none !important;
             box-shadow: none !important;
@@ -211,7 +260,7 @@ const FormPreviewModal = ({
             {printDownloadButtons}
           </div>
           <div
-            className="fpm-body"
+            className="fpm-body it-doc-stage"
             style={{
               overflowY: 'auto',
               overflowX: 'auto',
@@ -223,157 +272,55 @@ const FormPreviewModal = ({
               maxHeight: '70vh',
             }}
           >
-            <div id="print-area-inline" className="fpm-print-area" ref={printRef}>
-              {documentNode}
-            </div>
+            <DocumentFit key={type}>
+              <div id="print-area-inline" className="fpm-print-area" ref={printRef}>
+                {documentNode}
+              </div>
+            </DocumentFit>
           </div>
         </div>
-      ) : createPortal(
-        // Portaled to <body>: a position:fixed overlay rendered inside a page card
-        // was re-anchored whenever that card's :hover transform applied, so the
-        // preview jumped between full screen and the card box (flicker) while the
-        // pointer moved over the sidebar. At the document root nothing can
-        // re-anchor it, and the sidebar's hover state cannot affect it.
-        <div
-          id="form-preview-root"
-          className="fpm-backdrop"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1060,
-            background: 'rgba(0,0,0,0.78)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '12px',
-          }}
-          onClick={onClose}
-        >
-          <div
-            className="fpm-dialog"
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: '1400px',
-              height: '95vh',
-              display: 'flex',
-              flexDirection: 'column',
-              background: '#fff',
-              borderRadius: '10px',
-              boxShadow: '0 25px 80px rgba(0,0,0,0.55)',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              className="fpm-no-print"
-              style={{
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '10px 20px',
-                background: '#f8f9fa',
-                borderBottom: '1px solid #dee2e6',
-              }}
-            >
-              <h5
-                style={{
-                  margin: 0,
-                  fontSize: '1.05rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: '#212529',
-                }}
-              >
-                <i className={`fa fa-${type === 'dtr' ? 'clock' : type.startsWith('FO') ? 'star' : 'book'}`} style={{ color: '#0d6efd' }}></i>
-                {type === 'dtr'
-                  ? 'Preview: Daily Time Record (PNC:AA-FO-30)'
-                  : type === 'FO-24' ? 'Preview: Student Intern Performance (PNC:AA-FO-24)'
-                  : type === 'FO-03' ? 'Preview: HTE To University Evaluation (PNC:AA-FO-03)'
-                  : type === 'FO-22' ? 'Preview: HTE Evaluation (PNC:AA-FO-22)'
-                  : type === 'FO-23' ? 'Preview: Program Evaluation (PNC:AA-FO-23)'
-                  : type === 'faculty_eval' ? 'Preview: Faculty Evaluation'
-                  : 'Preview: Weekly Internship Journal (PNC:AA-FO-31)'}
-              </h5>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {printDownloadButtons}
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={onClose}
-                  aria-label="Close"
-                  style={{ marginLeft: '4px' }}
-                />
-              </div>
-            </div>
-
-            <div
-              className="fpm-no-print"
-              style={{
-                flexShrink: 0,
-                padding: '8px 20px',
-                background: '#e7f0ff',
-                borderBottom: '1px solid #c9d9f5',
-                fontSize: '0.85rem',
-                color: '#0d6efd',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <i className="fa fa-circle-info"></i>
+      ) : (
+        // Shared document dialog (AppModal): portaled to <body>, so a hover-lifted
+        // page card can never re-anchor it (the old DTR preview flicker), plus
+        // Escape, focus return and the shared scroll lock.
+        <AppModal
+          onClose={onClose}
+          size="document"
+          title={previewTitle(type)}
+          icon={`fa-${type === 'dtr' ? 'clock' : type.startsWith('FO') ? 'star' : 'book'}`}
+          className="fpm-dialog"
+          bodyClassName="it-doc-stage fpm-body"
+          headerActions={printDownloadButtons}
+          closeOnBackdrop={!review}
+          busy={!!review?.processing}
+          testId="form-preview-modal"
+          banner={(
+            <p className="it-doc-notice fpm-no-print">
+              <i className="fa fa-circle-info" aria-hidden="true"></i>
               <span>
                 This is a live preview of the official document template. You can print this layout directly or download the server-generated official PDF.
               </span>
-            </div>
-
-            <div
-              className="fpm-body"
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                overflowX: 'auto',
-                background: '#525659',
-                padding: '24px',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'flex-start',
-              }}
-            >
-              {loading ? (
-                <div className="text-center py-5"><InternTrackLoader /></div>
-              ) : (
-                <div id="print-area" className="fpm-print-area" ref={printRef}>
-                  {documentNode}
-                </div>
-              )}
-            </div>
-
-            {review ? (
-              <JournalReviewFooter key={review.journal?.id || 'review'} review={review} onClose={onClose} />
-            ) : (
-              <div
-                className="fpm-no-print"
-                style={{
-                  flexShrink: 0,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  padding: '10px 20px',
-                  background: '#f8f9fa',
-                  borderTop: '1px solid #dee2e6',
-                }}
-              >
-                <button type="button" className="btn btn-sm btn-secondary" onClick={onClose}>
-                  Close
-                </button>
+            </p>
+          )}
+          footerBare={!!review}
+          footer={review ? (
+            <JournalReviewFooter key={review.journal?.id || 'review'} review={review} onClose={onClose} />
+          ) : (
+            <button type="button" className="btn btn-sm btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          )}
+        >
+          {loading ? (
+            <div className="text-center py-5"><InternTrackLoader /></div>
+          ) : (
+            <DocumentFit key={type}>
+              <div id="print-area" className="fpm-print-area" ref={printRef}>
+                {documentNode}
               </div>
-            )}
-          </div>
-        </div>,
-        document.body
+            </DocumentFit>
+          )}
+        </AppModal>
       )}
     </>
   );
