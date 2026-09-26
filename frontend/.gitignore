@@ -25,3 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Stale Next.js build cache and generated bundles (this project uses Vite)
+.next/
+check-out.js

@@ -1,7 +1,7 @@
 import React from 'react';
 import '../../assets/css/portfolio-print.css';
 import { displayLabel } from '../../utils/displayLabel';
-import { identityValue, resolveFormIdentity } from '../../utils/formIdentity';
+import { evaluationSignaturePath, identityValue, resolveFormIdentity } from '../../utils/formIdentity';
 import { AuthenticatedFileImage } from '../AuthenticatedFile';
 import PortfolioSignature from './PortfolioSignature';
 
@@ -143,7 +143,7 @@ export const PrintFO24 = ({ evalData, internship, tocId, user, identity: identit
   const program = identityText(identity, 'program');
   const semStr = identityText(identity, 'semester');
   const ayStr = identityText(identity, 'academicYear');
-  const signaturePath = evalData?.id ? (evalData.signature_path || identity.supervisorSignaturePath) : '';
+  const signaturePath = evaluationSignaturePath(evalData);
   const supervisorName = evalData?.id
     ? (evalData.signer_name || evalData.evaluator_name || identityText(identity, 'supervisorName'))
     : identityText(identity, 'supervisorName');
@@ -408,13 +408,13 @@ export const PrintFO03 = ({ evalData, internship, tocId, user, identity: identit
 
       <div style={{ fontSize: '9pt', fontFamily: 'Arial, sans-serif', fontWeight: 'bold', marginTop: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
-          <span style={{ marginRight: '6px', width: '120px' }}>Evaluator's Name:</span><PrintLine text={evalData?.signer_name || identityText(identity, 'supervisorName')} width="220px" />
+          <span style={{ marginRight: '6px', width: '120px' }}>Evaluator's Name:</span><PrintLine text={evalData?.signer_name || evalData?.evaluator_name || identityText(identity, 'supervisorName')} width="220px" />
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
           <span style={{ marginRight: '6px', width: '120px' }}>Signature:</span>
-          {evalData?.signature_path ? (
+          {evaluationSignaturePath(evalData) ? (
             <div style={{ width: '220px', borderBottom: '1px solid #000', margin: '0 4px', paddingBottom: '2px', background: 'transparent' }}>
-              <AuthenticatedFileImage path={evalData.signature_path} alt="" className="portfolio-signature-img" style={{ height: '30px', display: 'block', objectFit: 'contain', background: 'transparent' }} />
+              <AuthenticatedFileImage path={evaluationSignaturePath(evalData)} alt="" className="portfolio-signature-img" style={{ height: '30px', display: 'block', objectFit: 'contain', background: 'transparent' }} />
             </div>
           ) : <PrintLine text="" width="220px" />}
         </div>

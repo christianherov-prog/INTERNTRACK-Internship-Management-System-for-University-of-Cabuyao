@@ -7,6 +7,7 @@ import { CURRENT_TERM } from '../../config/term'
 import { formatStudentName } from '../../utils/formatName'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatDisplayDate, formatClock12 } from '../../utils/manilaTime'
 
 function studentName(log) {
   if (log?.internship?.student) return formatStudentName(log.internship.student)
@@ -105,9 +106,9 @@ function FacultyAttendance() {
                     <tr key={log.id}>
                       <td className="fw-semibold">{studentName(log)}</td>
                       <td>{log.internship?.company?.company_name || '—'}</td>
-                      <td>{log.date ? String(log.date).slice(0, 10) : '—'}</td>
-                      <td>{log.clock_in_display || log.clock_in || '—'}</td>
-                      <td>{log.clock_out_display || log.clock_out || '—'}</td>
+                      <td>{formatDisplayDate(log.date_display || log.date, { month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
+                      <td>{formatClock12(log.clock_in_display)}</td>
+                      <td>{formatClock12(log.clock_out_display)}</td>
                       <td>{log.hours_rendered != null ? Number(log.hours_rendered).toFixed(2) : '—'}</td>
                       <td>
                         <span className={`badge ${statusBadge(log.status)}`}>{log.status}</span>

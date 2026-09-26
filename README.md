@@ -1,288 +1,263 @@
-# InternTrack
+# INTERNTRACK
 ## Internship Management System for the University of Cabuyao
 
-InternTrack is a web-based internship management system for the **University of Cabuyao (Pamantasan ng Cabuyao)**. It centralizes the internship lifecycle: placement and HTE selection, supervisor invitation and approval, attendance, weekly journals, documents and compliance, evaluations, portfolio generation, reporting, messaging, and administration.
+INTERNTRACK is a web-based internship management system for the **University of Cabuyao (Pamantasan ng Cabuyao)**. It supports the whole internship lifecycle — placement and Host Training Establishment (HTE) selection, Industry Supervisor invitation and approval, attendance, weekly journals, document compliance, evaluations, portfolio generation, reports, messaging, appointments, and system administration.
 
-This README is for **IT evaluators** who have never used InternTrack. It explains how to set up, run, and walk through the system.
+This README explains the current system, the controlled demonstration dataset shipped with the repository, and how to reproduce it locally.
 
-**Evaluation branch:** [`Internet-Develop`](https://github.com/christianherov-prog/INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao/tree/Internet-Develop)
+**Branch:** `Internet-Develop`
 
 ---
 
-## System Overview
+## Purpose
 
-InternTrack supports these implemented capabilities:
+- Give Students one place to complete every internship requirement.
+- Let Faculty advisers monitor and review only their own advisees.
+- Give Coordinators, the PALD Director, and MISD administrators the oversight and administration tools their roles need.
+- Produce official forms (FO-30 Daily Time Record, FO-31 Weekly Journal) and the internship Portfolio directly from authoritative records.
 
-- Student profiles and academic scoping
-- Placement Hub (partner companies / HTEs)
-- Company applications and New HTE requests
-- Industry Supervisor invitations and registration
-- Acceptance Form upload and Faculty approval/rejection
-- Attendance (clock in/out, break/resume, end day)
-- Dynamic Supervisor QR attendance
-- Attendance validation and correction requests
-- Weekly Journals with Faculty review
-- Document requirements, submissions, and compliance reports
-- Evaluations (including supervisor performance evaluation / FO-24)
-- Portfolio Builder (college builders; image-only manual uploads)
-- Reports and analytics
-- Messaging and meetings
-- In-app notifications and email alerts (when mail is configured)
-- MISD / Admin user management and **Audit Logs**
+## Current System Status
+
+- All modules listed below are implemented and covered by automated tests (backend PHPUnit and frontend Node test runner).
+- The repository includes a **controlled demonstration database snapshot dated September 26, 2026** for the College of Computing Studies (CCS), together with synthetic demonstration files. It is intended for development, demonstration, thesis defense, and team reproduction — **not production**.
 
 ---
 
 ## Technology Stack
 
-Verified from this repository:
-
 | Layer | Technology |
 |-------|------------|
-| Backend | PHP **^8.2**, **Laravel ^12**, Laravel Sanctum |
-| Frontend | **React 18**, **Vite 6**, Bootstrap 5 |
-| Database | **MySQL** (required for app and tests) |
+| Backend | PHP 8.2+, Laravel 12, Laravel Sanctum |
+| Frontend | React 18, Vite 6, Bootstrap 5 |
+| Database | MySQL / MariaDB (MariaDB 10.4 is used locally) |
 | PDF | barryvdh/laravel-dompdf |
-| QR (frontend) | qrcode.react |
 | Realtime (optional) | Laravel Reverb / Echo |
 | Package managers | Composer, npm |
 
----
-
-## Project Structure
-
 ```
-├── backend/     Laravel API, migrations, seeders, PHPUnit tests
-├── frontend/    React (Vite) SPA
-├── README.md    This evaluator guide
-└── .gitignore
+├── backend/     Laravel API, migrations, seeders, console commands, PHPUnit tests
+│   └── database/
+│       ├── snapshots/    controlled demonstration database snapshot (+ schema-only reference)
+│       └── demo-files/   synthetic files referenced by the snapshot
+├── frontend/    React (Vite) single-page application and Node tests
+└── README.md
 ```
 
 ---
 
-## User Roles
+## Main Roles
 
-### Student
+| Role | Scope |
+|------|-------|
+| Student | Own internship records only |
+| Faculty | Assigned advisees (from section mappings or an explicit adviser assignment) |
+| Coordinator | College-wide scope for their college (CCS for the demonstration dataset) |
+| Industry Supervisor | Interns whose placement they supervise |
+| Director (PALD) | Partner companies, MOAs, supervisors, placement analytics, HTE evaluations, absorption |
+| MISD / Administrator | Accounts, staff assignments, section mappings, directory synchronization, audit logs |
 
-- Dashboard
-- Placement Hub
-- Attendance (including QR scan and corrections)
-- Weekly Journal
-- Documents
-- Portfolio
-- Evaluations
-- Records
-- Messages / Meetings
-- Settings
-
-### Faculty
-
-- Assigned Students
-- Journal review (approve / needs revision)
-- Document review
-- Supervisor registration / Acceptance Form approval or rejection
-- Manage Requirements (standard + own customs)
-- Reports
-- Messages / Meetings / Settings
-
-**Faculty reviews Student Journals.** Industry Supervisors do **not**.
-
-### Coordinator
-
-- Internship monitoring and analytics
-- Internship management (applications, placements, HTE requests)
-- Custom / additional requirements
-- Supervisors, evaluations, absorption, records, reports
-- Announcements, messages, meetings
-
-### Industry Supervisor
-
-- Invitation acceptance / registration with username
-- Acceptance Form per Student invitation
-- Multiple Student assignments on one account
-- Attendance QR and attendance validation
-- Working schedule / DTR participation
-- Feedback and evaluations
-- Messages / Meetings / Settings
-
-**No Journal preview or Journal validation.**
-
-### Director
-
-- Partner companies and organization type
-- Supervisors overview
-- MOA management
-- Analytics and reports
-- HTE evaluations
-- Placement and absorption
-- Announcements / messages / meetings
-
-### MISD / Administrator
-
-- Directors / Coordinators assignment
-- Section mappings
-- Users and directory sync
-- Dashboard activity summary
-- Audit Logs (meaningful workflow events — not keystroke tracking)
-- Settings
+A Coordinator account that is also mapped to sections works in two workspaces from one account: the **Coordinator** workspace (college-wide) and the **Faculty** workspace (only that person's advisees). The workspace switcher is in the top bar.
 
 ---
 
-## Internship Workflow
+## System Features
+
+**Student** — Dashboard · Placement Hub (company applications and new HTE requests) · Attendance (clock in/out, break/resume, working schedule, correction requests) · Supervisor Details and invitation · Weekly Journal · Documents · My Portfolio · Evaluations · My Records · Messages · Appointments · Settings.
+
+**Faculty** — Dashboard · Assigned Students (Student Roster, Journal Review Queue, Attendance Monitor, Portfolio Preview) · Journal review and journal deadlines · Supervisor Approvals (acceptance forms) · Manage Requirements · Document review · Evaluations (FO-24 review, evaluation-period approval, release to Student) · Reports · Messages · Appointments · Settings.
+
+**Coordinator** — Intern Monitoring · Internship Management (applications, placements, HTE requests) · Records · Supervisors · Absorption · Document approvals · Journal review · Requirements · Evaluations · Analytics · Reports · Announcements · Messages · Appointments · Settings.
+
+**Industry Supervisor** — Dashboard · Assigned Interns · Attendance Validation (schedules, overtime, correction reviews) · Feedback · Performance Evaluation (FO-24, FO-03) · Absorption · Messages · Settings. Industry Supervisors do **not** review weekly journals.
+
+**Director** — Dashboard · Analytics · Partner Companies · Supervisors · MOA Management (monitoring and updates) · Placement / internships · HTE Evaluations (FO-03 release) · Absorption · Reports · Announcements · Messages · Appointments · Settings.
+
+**MISD / Administrator** — Dashboard (account overview, quick actions, directory status, recent activity) · Directors · Coordinators · Section Mappings · Users · MISD Sync (iEnroll directory lookup and student sync) · Audit Logs · Settings.
+
+---
+
+## Current Workflow
 
 ```
-Student account
-  → Placement / HTE selection
-  → Company application or New HTE request
-  → Review / approval
-  → Supervisor invitation
-  → Supervisor login or registration
-  → Acceptance Form upload
-  → Faculty approval / rejection
-  → Supervisor assignment becomes active
-  → Working schedule
-  → Attendance
-  → Weekly Journal (Faculty review)
-  → Documents
-  → Evaluation
-  → Portfolio
-  → Reports / completion
+Student account (from the iEnroll directory)
+ → Placement Hub: company application or new HTE request → Coordinator review
+ → Student invites an Industry Supervisor → Supervisor registers / signs in
+ → Supervisor uploads the Acceptance Form → Faculty approves or rejects
+ → Assignment becomes active → Supervisor approves the working schedule
+ → Daily attendance → Supervisor validation
+ → Weekly journals → Faculty review
+ → Documents → review → compliance
+ → Evaluations (evaluation period approved by Faculty)
+ → Portfolio (FO-30, FO-31, evaluations) → reports → completion / absorption
 ```
 
 ---
 
-## Supervisor Workflow
+## CCS Controlled Demonstration Dataset
 
-### New Supervisor
+Values below were verified against the snapshot on September 26, 2026.
 
-1. Student sends an invitation.
-2. Supervisor registers, creates a username, uploads an Acceptance Form for that invitation.
-3. Faculty reviews and approves or rejects.
-4. Supervisor is notified (in-app / email when configured).
-5. Student assignment activates only after approval.
+### Programs and Target Hours
 
-### Existing Supervisor
+Target hours come from each program's HTE requirements (`program_hte_requirements`), never from hard-coded values.
 
-1. Existing Supervisor receives another Student invitation.
-2. Signs in with the **existing** account (no duplicate Supervisor account).
-3. Uploads a **new** Acceptance Form for the new Student invitation.
-4. Faculty reviews; assignment activates only after approval.
+| Program | Target hours |
+|---------|-------------:|
+| BS Information Technology (BSIT) | 500 |
+| BS Computer Science (BSCS) | 300 |
 
-Acceptance Forms belong to the **specific Student invitation**.
+### Sections and Faculty Assignments
+
+| Adviser | ID | Role | Sections | Advisees |
+|---------|----|------|----------|---------:|
+| Marvin M. Bicua | FAC-1001 | Faculty | 4IT-A, 4IT-D, 4CS-A | 7 |
+| Arcelito C. Quiatchon | COR-CCS-001 | Coordinator (+ Faculty workspace) | 4IT-B, 4CS-B | 5 |
+
+### Summary
+
+| Category | Count |
+|----------|------:|
+| CCS Students | 12 |
+| BSIT Students | 9 |
+| BSCS Students | 3 |
+| Finished (completed) | 4 |
+| Ongoing (active) | 4 |
+| Fresh / pending placement | 4 |
+| Partner companies | 10 |
+| CCS Faculty-capable advisers | 2 |
+| Industry Supervisors | 9 |
+
+### Demo Students
+
+| Student No. | Student | Program | Section | Adviser | Status | Company | Hours | Supervisor |
+|---|---|---|---|---|---|---|---:|---|
+| 2300592 | Clarence Montealegre | BSIT | 4ITA | Marvin M. Bicua | Completed | Infor | 500 / 500 | Miguel Santos (SUP-0003) |
+| 2300590 | Angel Luis Taac-Taac | BSIT | 4ITB | Arcelito C. Quiatchon | Completed | Accenture Philippines | 500 / 500 | Patricia Gomez (SUP-0004) |
+| 2300595 | Arthur Morgan | BSIT | 4ITA | Marvin M. Bicua | Completed | Microsoft Philippines | 500 / 500 | Daniel Cruz (SUP-0005) |
+| 2300613 | Terrence John Manlapaz | BSCS | 4CSA | Marvin M. Bicua | Completed | Cognizant Philippines | 300 / 300 | Rafael Villanueva (SUP-0009) |
+| 2300600 | Christian Hero Aboy Valinado | BSIT | 4ITA | Marvin M. Bicua | Active | Oracle Philippines | 240 / 500 | Andrea Lim (SUP-0006) |
+| 2300609 | Lara Croft | BSIT | 4ITB | Arcelito C. Quiatchon | Active | IBM Philippines | 184 / 500 | Kevin Tan (SUP-0007) |
+| 2300610 | Max Payne | BSIT | 4ITA | Marvin M. Bicua | Active | DXC Technology Philippines | 296 / 500 | Melissa Ramos (SUP-0008) |
+| 2300611 | Ada Wong | BSCS | 4CSB | Arcelito C. Quiatchon | Active | NTT DATA Philippines | 216 / 300 | Katrina Mendoza (SUP-0010) |
+| 2300500 | Mark Joseph V. Taduran | BSIT | 4ITA | Marvin M. Bicua | Pending placement | — | 0 / 500 | — |
+| 2300501 | Ellie Williams | BSIT | 4ITB | Arcelito C. Quiatchon | Pending placement | — | 0 / 500 | — |
+| 2300502 | Leon Kennedy | BSIT | 4ITB | Arcelito C. Quiatchon | Pending placement | — | 0 / 500 | — |
+| 2300612 | Nathan Drake | BSCS | 4CSA | Marvin M. Bicua | Pending placement | — | 0 / 300 | — |
+
+- **Finished** Students have validated attendance equal to the program target, approved weekly journals, FO-30/FO-31, evaluations, requirements, and a portfolio. No attendance exists after an internship's end date.
+- **Ongoing** Students are below target, with realistic 8:00 AM–5:00 PM attendance (Asia/Manila), a mix of approved and pending journals, and partial document compliance.
+- **Fresh** Students have no company, supervisor, attendance, journals, or evaluations.
+
+The snapshot also contains placeholder accounts for other colleges (CAS, CBAA, CHAS, COE, COED) that are used for college scoping and program-hour configuration; they have no placements.
+
+### Industry Supervisors
+
+| Supervisor ID | Name | Company | Assigned Student(s) | Status |
+|---|---|---|---|---|
+| SUP-0002 | Adrian Reyes | Accenture Philippines | — | Active |
+| SUP-0003 | Miguel Santos | Infor | Clarence Montealegre (2300592, completed) | Active |
+| SUP-0004 | Patricia Gomez | Accenture Philippines | Angel Luis Taac-Taac (2300590, completed) | Active |
+| SUP-0005 | Daniel Cruz | Microsoft Philippines | Arthur Morgan (2300595, completed) | Active |
+| SUP-0006 | Andrea Lim | Oracle Philippines | Christian Hero Aboy Valinado (2300600, active) | Active |
+| SUP-0007 | Kevin Tan | IBM Philippines | Lara Croft (2300609, active) | Active |
+| SUP-0008 | Melissa Ramos | DXC Technology Philippines | Max Payne (2300610, active) | Active |
+| SUP-0009 | Rafael Villanueva | Cognizant Philippines | Terrence John Manlapaz (2300613, completed) | Active |
+| SUP-0010 | Katrina Mendoza | NTT DATA Philippines | Ada Wong (2300611, active) | Active |
+
+Supervisor e-mail addresses in the dataset use the reserved `interntrack.test` domain so no message can reach a real mailbox.
+
+### Companies and Available Slots
+
+Slots are consumed when an internship becomes active and released when it is completed, so *Capacity = Occupied + Available*.
+
+| Company | Industry | MOA expiry | Occupied | Available | Capacity |
+|---|---|---|---:|---:|---:|
+| Accenture Philippines | IT Consulting | Jan 5, 2028 | 0 | 72 | 72 |
+| Cognizant Philippines | IT Consulting | Jan 5, 2028 | 0 | 59 | 59 |
+| DXC Technology Philippines | IT Services | Jan 5, 2028 | 1 | 79 | 80 |
+| IBM Philippines | IT Services | Jan 5, 2028 | 1 | 63 | 64 |
+| Infor | Enterprise Software | Jan 5, 2028 | 0 | 38 | 38 |
+| Microsoft Philippines | Software | Jan 5, 2028 | 0 | 47 | 47 |
+| NTT DATA Philippines | IT Services | Jan 5, 2028 | 1 | 32 | 33 |
+| Oracle Philippines | Enterprise Software | Jan 5, 2028 | 1 | 54 | 55 |
+| Tata Consultancy Services (TCS) Philippines | IT Services | Jan 5, 2028 | 0 | 68 | 68 |
+| Wipro Philippines | IT Services | Jan 5, 2028 | 0 | 41 | 41 |
 
 ---
 
-## Attendance
+## Attendance Workflow
 
-Official attendance uses **server-generated timestamps** (display timezone: **Asia/Manila**).
+- **Timezone:** business time is **Asia/Manila**. Clock events are stored in the application timezone (UTC) and converted exactly once for display; approved schedules are Manila wall-clock times.
+- **Working schedule:** the Student proposes working hours; the Industry Supervisor approves them. The approved schedule is authoritative for credited time (any schedule is supported, e.g. 7–4, 8–5, 9–6).
+- **Clock In / Clock Out / Break / Resume:** recorded from server time. Credited hours count only the part of the day inside the approved schedule, minus the break — arriving early or leaving late adds nothing; excess time can be submitted as overtime for Supervisor approval.
+- **Validation:** the Industry Supervisor validates or rejects each day.
+- **Corrections:** a Student may request a correction for a recent day (entered in Manila time); it applies only after Supervisor and Faculty approval.
+- **FO-30:** the Daily Time Record is generated from validated attendance with AM/PM sessions and the Supervisor's signature.
+- **Completed internships:** once an internship is marked **Completed**, no new attendance, breaks, schedules, or corrections can be created (the API answers `409`); history and FO-30 remain available.
 
-- Supervisor generates a short-lived dynamic QR.
-- Student scans the QR; the server records the time.
-- Students cannot manually type official clock-in/out for QR-backed events.
-- Supports break start / resume and end day / clock out.
-- Supervisor validates attendance.
-- Legitimate discrepancies use attendance correction requests.
+## Weekly Journal Workflow
 
-QR is a practical capture control, not an absolute anti-fraud guarantee.
+- The Student submits one journal per week with a date range; ranges cannot overlap and must fall within the internship period.
+- Faculty can set journal deadlines; late submissions are marked.
+- The **assigned Faculty adviser** approves or returns each journal. Industry Supervisors do **not** approve journals.
+- Approved journals feed the **FO-31** Weekly Journal and the Portfolio.
 
----
+## Document Compliance
 
-## Journals
+- Standard requirements (13 canonical documents) apply to every eligible Student; Faculty/Coordinators can add custom requirements for targeted Students.
+- Students upload submissions; reviewers approve or reject them.
+- Compliance uses one shared resolver and a dynamic denominator: an **approved** submission satisfies its requirement; pending does not; rejected stays unsatisfied until a later approval.
+- **Certificate of Completion** is a standard *uploaded* requirement provided by the HTE. The former system-generated completion certificate feature has been removed because it is outside the system objectives.
 
-1. Student submits a **Weekly Journal**.
-2. Journal date ranges **cannot overlap**.
-3. **Faculty** reviews (approve / needs revision).
-4. Journal data feeds Portfolio FO-31 content.
+## Evaluations
 
-**Industry Supervisors do not review Student Journals.**
+| Form | Evaluator | Purpose | Student visibility |
+|------|-----------|---------|--------------------|
+| FO-24 | Industry Supervisor | Student Internship Performance Evaluation (official grading basis) | Completion only, until the assigned Faculty releases it |
+| FO-03 | Industry Supervisor | HTE evaluation of the University internship program | Completion only, until the Director releases it |
+| FO-22 | Student | Student's evaluation of the HTE | Own submission |
+| FO-23 | Student | Student's evaluation of the internship program | Own submission |
 
----
-
-## Documents and Compliance
-
-- Standard / fixed requirements are system-defined and apply to eligible Students.
-- Students submit documents; Faculty approve or reject.
-- Coordinators may add custom / additional requirements for targeted Students.
-- Document Compliance Report uses one shared resolver: an **approved** submission satisfies the matching requirement and leaves **Missing Documents**.
-- Pending is not treated as approved; rejected stays unsatisfied unless a later approved submission exists.
-
----
+Faculty approve the evaluation period before evaluation forms unlock for a Student and Supervisor.
 
 ## Portfolio
 
-Portfolio content is built from authoritative system records where available:
+- Student-entered sections (company profile, reflections, recommendations) plus image uploads.
+- Official content generated from records: FO-30 (attendance), FO-31 (approved journals), and evaluations.
+- Faculty have a read-only **Portfolio Preview** for each advisee.
+- Printable, paginated preview that adapts to smaller screens.
 
-| Form / data | Source |
-|-------------|--------|
-| FO-30 | Attendance / DTR |
-| FO-31 | Weekly Journal |
-| FO-24 | Supervisor evaluation |
-| Company / HTE | Placement and portfolio fields |
-| Signatures | Saved authorized signature sources |
+## Reports
 
-Portfolio Builder **manual uploads accept images only**. Other document workflows may allow PDF where that module permits it.
+- **Faculty / Coordinator:** Student Summary, Document Compliance (per-requirement status chips), Performance Analytics.
+- **Coordinator:** Intern Monitoring export. **Director:** Internship Summary, Company Partnerships, MOA Status, CHED Annual report, MOA Monitoring export.
+- Every report can be previewed before **Export CSV** (plain data) and printed with **Print / Save PDF**.
+- Report data is derived from authoritative records (validated attendance, approved journals, compliance resolver).
 
----
+## Messaging and Appointments
 
-## Notifications
+- Internship-scoped conversations between Students, their Faculty adviser, and their Industry Supervisor (attachments, unsend, archive).
+- Staff can schedule appointments; invited participants respond (RSVP).
+- In-app notifications for workflow events; e-mail notifications when mail is configured.
 
-Workflow notifications (in-app and email when configured) cover events such as:
+## MISD / Admin
 
-- Application / HTE decisions
-- Supervisor invitation and Acceptance Form approve/reject (email to Supervisor when configured)
-- Document decisions
-- Journal review outcomes
-- Attendance-related notices
-- Evaluation-related events
+- Account overview, quick actions, and recent activity; Directors and Coordinators assignment; section-to-Faculty mappings; users.
+- **MISD Sync:** Student and staff identity data come from the iEnroll directory. In this repository the directory is served **locally by the application** (a local directory interface) — no external iEnroll service is contacted.
+- **Audit Logs** of meaningful events (logins, approvals, document and attendance decisions, account changes). Passwords and tokens are never logged.
 
----
+## Security and Authorization
 
-## Audit Logs
-
-Administrators can review **meaningful** activity, for example:
-
-- Login / logout / password changes
-- Document upload and approval/rejection
-- Requirement changes
-- Attendance validation and related DTR events
-- Supervisor approval/rejection
-- Account / staff administration changes
-
-This is not surveillance of mouse or keystroke activity. Ordinary roles cannot access global Audit Logs.
-
----
-
-## Important Business Rules
-
-- Academic users only access authorized Students (program / section / department scoping).
-- Supervisor access is based on internship / placement assignment.
-- Supervisor assignment requires the Faculty approval workflow.
-- Existing Supervisors can accept additional Students without duplicate accounts.
-- Acceptance Forms are invitation-specific.
-- Official attendance timestamps for QR/server flows are server-generated; timezone is Asia/Manila.
-- Supervisor validates attendance; Faculty reviews journals.
-- Journal date ranges cannot overlap.
-- Portfolio manual uploads are images only.
-- Standard document requirements are predefined; authorized custom requirements remain supported.
-- Approved documents satisfy compliance and leave the Missing list.
-
----
-
-## Prerequisites
-
-- PHP **8.2+**
-- Composer
-- Node.js with **npm** (Vite 6 compatible)
-- MySQL **8.x** recommended
-- Git
-
-```sql
-CREATE DATABASE interntrack;
-CREATE DATABASE interntrack_testing;
-```
+- Every API route checks the role and the record scope (own records, advisees, college, supervised placements).
+- Student-facing evaluation data passes through a visibility filter so unreleased details cannot be requested directly.
+- Protected files are served only through authorized API routes.
+- Secrets live only in local `.env` files, which are ignored by Git.
 
 ---
 
 ## Installation
+
+Prerequisites: PHP 8.2+, Composer, Node.js with npm, MySQL/MariaDB, Git.
 
 ```bash
 git clone https://github.com/christianherov-prog/INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao.git
@@ -290,174 +265,168 @@ cd INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao
 git checkout Internet-Develop
 ```
 
-### Backend
+### Backend Setup
 
 ```bash
 cd backend
 composer install
-copy .env.example .env          # Windows
-# cp .env.example .env          # macOS / Linux
+copy .env.example .env          # Windows  (macOS/Linux: cp .env.example .env)
 php artisan key:generate
 ```
 
-Configure MySQL in `.env` (`DB_DATABASE=interntrack`, username/password). Keep `APP_URL` aligned with the port you serve (example: `http://127.0.0.1:8001`).
-
-```bash
-php artisan migrate --seed
-php artisan storage:link
-php artisan serve --host=127.0.0.1 --port=8001
-```
-
-### Frontend
+### Frontend Setup
 
 ```bash
 cd frontend
 npm install
-copy .env.example .env          # Windows
-# cp .env.example .env          # macOS / Linux
-npm run dev
+copy .env.example .env          # Windows  (macOS/Linux: cp .env.example .env)
 ```
 
-Typical local URLs when using the examples above:
+### Environment Setup
 
-- Frontend: `http://localhost:5173` or `http://127.0.0.1:5173`
-- API: `http://127.0.0.1:8001`
+| File | Keys to set |
+|------|-------------|
+| `backend/.env` | `APP_URL`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, mail settings (optional), `DEMO_PASSWORD` (local only) |
+| `frontend/.env` | `VITE_API_BASE_URL` (e.g. `http://127.0.0.1:8001/api/v1`) |
 
-Set `VITE_API_BASE_URL` in `frontend/.env` to match your API (e.g. `http://127.0.0.1:8001/api/v1`).
+Never commit `.env` files or real credentials.
 
 ---
 
-## Environment Setup
+## Database Restore
 
-Copy `.env.example` → `.env` for backend and frontend. Configure categories only:
+The snapshot is `backend/database/snapshots/interntrack-defense-demo-2026-09-26.sql` (schema, migration history, and all controlled records). These steps were tested on a clean database.
 
-| Category | Examples |
-|----------|----------|
-| App | `APP_URL`, `FRONTEND_URL` |
-| Database | `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` |
-| Mail | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` |
-| Frontend | `VITE_API_BASE_URL` |
+1. Create an empty database:
+   ```sql
+   CREATE DATABASE interntrack CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+2. Set `DB_DATABASE=interntrack` (and your credentials) in `backend/.env`.
+3. Import the snapshot (from `backend/`):
+   ```bash
+   mysql -u root -p interntrack < database/snapshots/interntrack-defense-demo-2026-09-26.sql
+   ```
+4. Confirm nothing is pending: `php artisan migrate:status` (all migrations show **Ran**). Do not run `migrate:fresh` on the restored database.
 
-Never commit real secrets. Use placeholders in documentation and templates.
+## Demo File Restore
+
+The snapshot references signatures and documents. Synthetic copies are in `backend/database/demo-files/private/`. Copy them into storage (from `backend/`):
+
+```bash
+php artisan interntrack:restore-demo-files
+php artisan storage:link
+```
+
+Existing files are kept; add `--force` to overwrite them.
+
+## Demo / Defense Accounts
+
+No passwords are published in this repository. After restoring, choose a local password and apply it to every account in the snapshot (from `backend/`, not available in production):
+
+```bash
+php artisan interntrack:set-demo-passwords --password="YourLocalPassword"
+# or set DEMO_PASSWORD=... in backend/.env and run the command without --password
+```
+
+Sign in with the account identifier below and that password.
+
+### Student Accounts
+
+| Student No. | Name | Program | Section | Status | Company |
+|---|---|---|---|---|---|
+| 2300592 | Clarence Montealegre | BSIT | 4ITA | Completed | Infor |
+| 2300590 | Angel Luis Taac-Taac | BSIT | 4ITB | Completed | Accenture Philippines |
+| 2300595 | Arthur Morgan | BSIT | 4ITA | Completed | Microsoft Philippines |
+| 2300613 | Terrence John Manlapaz | BSCS | 4CSA | Completed | Cognizant Philippines |
+| 2300600 | Christian Hero Aboy Valinado | BSIT | 4ITA | Active | Oracle Philippines |
+| 2300609 | Lara Croft | BSIT | 4ITB | Active | IBM Philippines |
+| 2300610 | Max Payne | BSIT | 4ITA | Active | DXC Technology Philippines |
+| 2300611 | Ada Wong | BSCS | 4CSB | Active | NTT DATA Philippines |
+| 2300500 | Mark Joseph V. Taduran | BSIT | 4ITA | Pending placement | — |
+| 2300501 | Ellie Williams | BSIT | 4ITB | Pending placement | — |
+| 2300502 | Leon Kennedy | BSIT | 4ITB | Pending placement | — |
+| 2300612 | Nathan Drake | BSCS | 4CSA | Pending placement | — |
+
+### Faculty / Coordinator Accounts
+
+| ID | Name | Role | Scope |
+|---|---|---|---|
+| FAC-1001 | Marvin M. Bicua | Faculty | Advisees in 4IT-A, 4IT-D, 4CS-A (7) |
+| COR-CCS-001 | Arcelito C. Quiatchon | Coordinator + Faculty workspace | CCS-wide; advisees in 4IT-B, 4CS-B (5) |
+
+### Industry Supervisor Accounts
+
+| ID | Name | Company | Assigned Intern |
+|---|---|---|---|
+| SUP-0002 (login `adrian.reyes`) | Adrian Reyes | Accenture Philippines | — |
+| SUP-0003 | Miguel Santos | Infor | Clarence Montealegre |
+| SUP-0004 | Patricia Gomez | Accenture Philippines | Angel Luis Taac-Taac |
+| SUP-0005 | Daniel Cruz | Microsoft Philippines | Arthur Morgan |
+| SUP-0006 | Andrea Lim | Oracle Philippines | Christian Hero Aboy Valinado |
+| SUP-0007 | Kevin Tan | IBM Philippines | Lara Croft |
+| SUP-0008 | Melissa Ramos | DXC Technology Philippines | Max Payne |
+| SUP-0009 | Rafael Villanueva | Cognizant Philippines | Terrence John Manlapaz |
+| SUP-0010 | Katrina Mendoza | NTT DATA Philippines | Ada Wong |
+
+### Director / MISD Accounts
+
+| ID | Name | Role |
+|---|---|---|
+| DIR-1001 | Gina M. Oloresisimo | PALD Director |
+| ADMIN-MISD-001 | Alon Isagani Dimaculangan | MISD Administrator |
+
+Suggested walkthrough: a completed Student (2300592) → an ongoing Student (2300600) → a fresh Student (2300500) → Faculty (FAC-1001) → Coordinator (COR-CCS-001) → Industry Supervisor (SUP-0003) → Director (DIR-1001) → MISD Administrator (ADMIN-MISD-001).
 
 ---
 
 ## Running the System
 
-1. Start MySQL.
-2. Start backend: `php artisan serve --host=127.0.0.1 --port=8001` (from `backend/`).
-3. Start frontend: `npm run dev` (from `frontend/`).
-4. Open the Vite URL shown in the terminal.
-
-Optional evaluator data helper (no credentials in README):
-
 ```bash
-cd backend
-php artisan interntrack:reset-fresh-enrollee {student_number}
+# backend/
+php artisan serve --host=127.0.0.1 --port=8001
+
+# frontend/
+npm run dev          # http://127.0.0.1:5173
 ```
 
----
-
-## Evaluation Accounts
-
-To support system evaluation, the current InternTrack environment includes preconfigured accounts representing the primary user roles involved in the internship lifecycle. The accounts listed below correspond to the currently configured evaluation workflow. Additional departmental configurations are being integrated progressively and are therefore not included in this evaluation set.
-
-> **Current Evaluation Scope:** The account set below represents the currently configured internship workflow available for evaluation under the College of Computing Studies. Additional departmental configurations are being integrated progressively and are not included in this evaluation account list.
-
-> **Evaluation Access:** The accounts below are preconfigured for the current evaluation environment. Use the passwords shown in each table when signing in locally.
-
-### Student Accounts
-
-| Name | Student Number | Password | Program | Current Evaluation State |
-|------|----------------|----------|---------|--------------------------|
-| Christian Hero Aboy Valinado | 2300600 | `interntrack123` | BSIT | Fresh Enrollee — no company or Industry Supervisor; Faculty = Marvin Bicua; 0 internship hours. Suitable for demonstrating Placement Hub, New HTE request, document requirements, and the start of the internship lifecycle. |
-| Clarence Montealegre | 2300592 | `interntrack123` | BSIT | Active Internship — Accenture PH; Industry Supervisor = Adrian Reyes (`SUP-0002`); Faculty = Marvin Bicua; validated attendance hours in progress. Suitable for Attendance / QR, Weekly Journal, Faculty review, and Portfolio (FO-30 / FO-31) workflows. |
-
-### Faculty Account
-
-| Name | Employee ID / Login ID | Password | Role | Evaluation Coverage |
-|------|------------------------|----------|------|---------------------|
-| Marvin M. Bicua | FAC-1001 | `interntrack123` | Faculty | Assigned Students, journal review, document review, Supervisor Acceptance Form approval/rejection, requirements, and reports |
-
-### Coordinator Account
-
-| Name | Employee ID / Login ID | Password | Role | Evaluation Coverage |
-|------|------------------------|----------|------|---------------------|
-| Arcelito C. Quiatchon | COR-CCS-001 | `interntrack123` | Coordinator | Internship monitoring, placement / HTE oversight, custom requirements, records, and reports |
-
-### Industry Supervisor Accounts
-
-| Name | Supervisor ID | Username | Password | Assigned Student(s) | Evaluation Coverage |
-|------|---------------|----------|----------|---------------------|---------------------|
-| Adrian Reyes | SUP-0002 | adrian.reyes | `interntrack123` | Clarence Montealegre (2300592) | Assigned Students, Attendance QR / validation, feedback, and evaluation |
-
-### Director Account
-
-| Name | Employee ID / Login ID | Password | Role | Evaluation Coverage |
-|------|------------------------|----------|------|---------------------|
-| Gina M. Oloresisimo | DIR-1001 | `interntrack123` | Director | Partner companies, supervisors, MOA management, analytics, and reports |
-
-### MISD / Administrator Account
-
-| Name | Admin ID / Login ID | Password | Role | Evaluation Coverage |
-|------|---------------------|----------|------|---------------------|
-| MISD Administrator | ADMIN-MISD-001 | `interntrack123` | MISD / Administrator | User management, Directors / Coordinators, recent system activity, Audit Logs, and administrative monitoring |
-
-### Recommended Account Sequence
-
-IT evaluators can understand InternTrack by testing roles in this order:
-
-1. **Student** — internship-user experience (start with `2300600` for fresh enrolment; then `2300592` for an active deployment).
-2. **Faculty** — academic monitoring, journal review, document review, and Supervisor approval (`FAC-1001`).
-3. **Coordinator** — placement and internship oversight (`COR-CCS-001`).
-4. **Industry Supervisor** — company-side supervision and attendance validation (`SUP-0002` / `adrian.reyes`).
-5. **Director** — companies, supervisors, reporting, and analytics (`DIR-1001`).
-6. **MISD / Administrator** — account administration and Audit Logs (`ADMIN-MISD-001`).
-
----
-
-## IT Evaluator Quick Start
-
-Assume no prior knowledge of InternTrack. Use the evaluation accounts and passwords listed above.
-
-1. Start the application (backend + frontend).
-2. Sign in as Student **2300600** / `interntrack123` (Fresh Enrollee) — review Dashboard, Settings, Placement Hub, Documents.
-3. Sign in as Student **2300592** / `interntrack123` (Active Internship) — review Attendance, Journal, Portfolio.
-4. Sign in as Faculty **FAC-1001** / `interntrack123` — Assigned Students, Journals, Documents, Supervisor Approvals.
-5. Sign in as Coordinator **COR-CCS-001** / `interntrack123` — internship monitoring, requirements, reports.
-6. Sign in as Industry Supervisor **SUP-0002** or **adrian.reyes** / `interntrack123` — Assigned Students, Attendance Validation, Evaluations (no Journal module).
-7. Sign in as Director **DIR-1001** / `interntrack123` — companies, MOA, reporting.
-8. Sign in as Administrator **ADMIN-MISD-001** / `interntrack123` — Users, recent activity, Audit Logs.
-
----
-
-## Testing
-
-### Backend
+### Fresh install without the snapshot
 
 ```bash
-cd backend
+# backend/
+php artisan migrate --seed
+php artisan interntrack:seed-ccs-demo
+```
+
+`interntrack:seed-ccs-demo` recreates the controlled CCS dataset (companies, Students, supervisors, attendance, journals, requirements, evaluations, portfolios). Generated records follow the same rules, but identifiers, timestamps, and message/audit history differ from the snapshot.
+
+## Running Tests
+
+```bash
+# backend/ — uses the MySQL database interntrack_testing (see phpunit.xml)
 php artisan test
+
+# frontend/
+npm test
 ```
 
-PHPUnit uses MySQL database `interntrack_testing` (see `backend/phpunit.xml`).
-
-### Frontend
+## Build Commands
 
 ```bash
-cd frontend
+# frontend/
 npm run build
 ```
 
-There is no separate `npm test` or `npm run lint` script in the current frontend package. Production build is the primary frontend validation command.
-
 ---
 
-## Security Notes
+## Known Limitations
 
-- Role-based access control across Student, Faculty, Coordinator, Supervisor, Director, and Admin.
-- Academic scoping for Faculty/Coordinator; placement scoping for Supervisors.
-- Protected document access through authorized API routes.
-- Server-generated attendance timestamps for QR-backed events.
-- Secrets stay in local `.env` files — never in the repository.
-- Audit payloads are sanitized to avoid logging passwords and tokens.
+- The iEnroll directory is served locally by the application; no live connection to an external iEnroll service is configured.
+- E-mail delivery requires local mail credentials in `backend/.env`; with the default `MAIL_MAILER=log`, messages are written to the Laravel log.
+- Stored uploads in the snapshot are **synthetic stand-ins** (typed-script signatures and labelled placeholder documents); original uploads, profile photos, and a small number of unsuitable test uploads are not distributed.
+- Contact numbers and invitation details in the snapshot were replaced with fictional values.
+- The system does not generate a completion certificate; the HTE's Certificate of Completion is handled as an uploaded document.
+- Placeholder accounts for colleges other than CCS exist but have no internship data.
+
+## Current Branch
+
+`Internet-Develop` — the controlled demonstration snapshot is dated **September 26, 2026**.

@@ -7,10 +7,12 @@ import { StudentInternPerformanceForm } from '../../components/evaluations/Stude
 
 import { HTEToUniversityEvaluationForm } from '../../components/evaluations/HTEToUniversityEvaluationForm'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import AppModal from '../../components/modals/AppModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { useConfirm } from '../../contexts/ConfirmContext'
+import { formatManilaDate } from '../../utils/manilaTime'
 
 function profileOf(entity) {
   return entity?.student?.student_profile || entity?.student?.studentProfile || null
@@ -23,36 +25,33 @@ function displayName(entity) {
 }
 
 function EvalModal({ internship, activeForm, onClose, onSubmit, processing }) {
-  const formTitle = activeForm === 'FO-24' 
-    ? 'Student Performance (FO-24)' 
+  const formTitle = activeForm === 'FO-24'
+    ? 'Student Performance (FO-24)'
     : 'Program Evaluation (FO-03)'
 
   return (
-    <div className="modal show d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="modal-content modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: '950px' }}>
-        <div className="modal-header bg-white pb-3 pt-3 px-4 border-bottom flex-shrink-0 align-items-center justify-content-between w-100">
-          <h5 className="modal-title fw-bold text-primary mb-0">{formTitle}</h5>
-          <button type="button" className="btn-close" onClick={onClose} aria-label="Close"></button>
-        </div>
-        <div className="modal-body bg-light p-4">
+    <AppModal
+      onClose={onClose}
+      size="lg"
+      title={formTitle}
+      icon="fa-clipboard-check"
+      busy={processing}
+      bodyClassName="bg-light"
+    >
       {activeForm === 'FO-24' ? (
-        <StudentInternPerformanceForm 
-          internship={internship} 
-          onSubmit={(data) => onSubmit(internship.id, data, data.evaluation_period)} 
-          processing={processing} 
+        <StudentInternPerformanceForm
+          internship={internship}
+          onSubmit={(data) => onSubmit(internship.id, data, data.evaluation_period)}
+          processing={processing}
         />
       ) : (
-        <HTEToUniversityEvaluationForm 
-          internship={internship} 
-          onSubmit={(data) => onSubmit(internship.id, data, data.evaluation_period)} 
-          processing={processing} 
+        <HTEToUniversityEvaluationForm
+          internship={internship}
+          onSubmit={(data) => onSubmit(internship.id, data, data.evaluation_period)}
+          processing={processing}
         />
       )}
-    </div>
-    
-  </div>
-  
-</div>
+    </AppModal>
   )
 }
 
@@ -240,7 +239,7 @@ export default function SupervisorPerformanceEvaluation() {
                           <div className="col-6">Period: <span className="text-body text-capitalize">{ev.evaluation_period}</span></div>
                           <div className="col-6">Score: <span className="text-body fw-semibold">{ev.average_score}</span></div>
                           <div className="col-12 d-flex justify-content-between align-items-center">
-                            <span>Submitted: {new Date(ev.submitted_at).toLocaleDateString()}</span>
+                            <span>Submitted: {formatManilaDate(ev.submitted_at)}</span>
                             <button className="btn btn-sm btn-outline-primary" onClick={() => setPreviewEval(ev)}>
                               <i className="fa fa-print me-1"></i> Preview Form
                             </button>

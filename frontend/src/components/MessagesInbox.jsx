@@ -18,6 +18,7 @@ import { getAvatarSrc } from '../utils/avatar'
 import { UPLOAD_MAX_BYTES, UPLOAD_MAX_MB } from '../config/uploads'
 import { formatFileSize, uploadErrorMessage } from '../utils/uploadValidation'
 import '../styles/messages.css'
+import Lightbox from './modals/Lightbox'
 
 function roleLabel(role) {
   const map = {
@@ -1381,6 +1382,11 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
     listAbortRef.current?.abort()
   }, [])
 
+  const closeLightbox = () => {
+    if (lightbox?.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
+    setLightbox(null)
+  }
+
   return (
     <Layout title="Messages" subtitle={titleSubtitle} icon="fa-envelope" bodyClass={bodyClass}>
       {error && <PageError message={error} onRetry={() => loadThreads(1, { silent: false })} />}
@@ -1587,47 +1593,33 @@ function MessagesInbox({ titleSubtitle, bodyClass }) {
         </div>
       </div>
 
-      {lightbox && (
-        <div
-          className="msg-lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={lightbox.filename}
-          onClick={() => {
-            if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
-            setLightbox(null)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
-              setLightbox(null)
-            }
-          }}
-        >
-          <button
-            type="button"
-            className="msg-lightbox-close"
-            aria-label="Close image"
-            onClick={() => {
-              if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
-              setLightbox(null)
-            }}
-          >
-            <i className="fa fa-times" aria-hidden="true" />
-          </button>
-          <img
-            src={lightbox.url}
-            alt={lightbox.filename}
-            className="msg-lightbox-img"
-            onClick={(e) => e.stopPropagation()}
-            onError={() => {
-              if (lightbox.revokeOnClose && lightbox.url) URL.revokeObjectURL(lightbox.url)
-              setLightbox(null)
-            }}
-          />
-          <div className="msg-lightbox-caption">{lightbox.filename}</div>
-        </div>
-      )}
+      <Lightbox
+        open={!!lightbox}
+        onClose={closeLightbox}
+        label={lightbox?.filename}
+        className="msg-lightbox"
+      >
+        {lightbox && (
+          <>
+            <button
+              type="button"
+              className="msg-lightbox-close"
+              aria-label="Close image"
+              onClick={closeLightbox}
+            >
+              <i className="fa fa-times" aria-hidden="true" />
+            </button>
+            <img
+              src={lightbox.url}
+              alt={lightbox.filename}
+              className="msg-lightbox-img"
+              onClick={(e) => e.stopPropagation()}
+              onError={closeLightbox}
+            />
+            <div className="msg-lightbox-caption">{lightbox.filename}</div>
+          </>
+        )}
+      </Lightbox>
     </Layout>
   )
 }

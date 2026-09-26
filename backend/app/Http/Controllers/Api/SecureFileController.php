@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\Evaluation;
 use App\Models\Internship;
 use App\Models\OjtRequirementTemplate;
 use App\Models\RequirementTemplateAttachment;
@@ -127,7 +128,9 @@ class SecureFileController extends Controller
                     $q->where('student_id', $ownerId)
                         ->orWhere('supervisor_id', $ownerId)
                         ->orWhere('faculty_id', $ownerId)
-                        ->orWhere('coordinator_id', $ownerId);
+                        ->orWhere('coordinator_id', $ownerId)
+                        // The signer of a submitted form (FO-24/FO-03), even after reassignment.
+                        ->orWhereIn('id', Evaluation::where('evaluated_by', $ownerId)->select('internship_id'));
                 })
                 ->get();
 

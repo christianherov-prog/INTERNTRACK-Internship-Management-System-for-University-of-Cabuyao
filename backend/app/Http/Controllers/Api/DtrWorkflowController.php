@@ -11,6 +11,8 @@ use App\Models\WorkSchedule;
 use App\Services\DtrWorkflowService;
 use App\Support\ApiResponse;
 use App\Support\InternshipProvisioning;
+use App\Support\ManilaAttendanceClock;
+use App\Support\ManilaTime;
 use Illuminate\Http\Request;
 
 class DtrWorkflowController extends Controller
@@ -19,7 +21,7 @@ class DtrWorkflowController extends Controller
 
     public function undoClockOut(Request $request)
     {
-        $internship = $this->studentInternship($request);
+        $internship = $this->studentInternship($request, true);
         $today = $this->dtr->manilaToday();
         $log = $internship->attendance()
             ->whereDate('date', $today)
@@ -53,7 +55,7 @@ class DtrWorkflowController extends Controller
             'reason' => 'nullable|string|max:500',
         ]);
 
-        $internship = $this->studentInternship($request);
+        $internship = $this->studentInternship($request, true);
         $log = $internship->attendance()->with('internship')->findOrFail($request->integer('attendance_log_id'));
 
         $entry = $this->dtr->decideOvertime($log, $request->user(), (bool) $request->boolean('accept'), $request->input('reason'));
@@ -84,7 +86,7 @@ class DtrWorkflowController extends Controller
             'end_time' => ['required', 'regex:/^\d{1,2}:\d{2}(:\d{2})?$/'],
         ]);
 
-        $internship = $this->studentInternship($request);
+        $internship = $this->studentInternship($request, true);
         $schedule = $this->dtr->proposeSchedule(
             $internship,
             $request->user(),
@@ -125,7 +127,7 @@ class DtrWorkflowController extends Controller
             'reason' => 'nullable|string|max:1000',
         ]);
 
-        $internship = $this->studentInternship($request);
+        $internship = $this->studentInternship($request, true);
         $correction = $this->dtr->submitCorrection(
             $internship,
             $request->user(),
@@ -392,6 +394,21 @@ class DtrWorkflowController extends Controller
             'applied_at' => optional($r->applied_at)?->toIso8601String(),
         ];
 
+        // Stored values are app-timezone; these are the Asia/Manila clock
+        // times (HH:MM) every screen shows, resolved once here.
+        $date = $r->date?->toDateString();
+        $clock = fn (mixed $stored) => $date ? ManilaTime::clockHm(ManilaAttendanceClock::resolveEventAt($date, $stored)) : null;
+        foreach (['original', 'requested', 'applied'] as $kind) {
+            foreach (['clock_in', 'clock_out'] as $field) {
+                $payload["{$kind}_{$field}_display"] = $clock($r->{"{$kind}_{$field}"});
+            }
+        }
+        foreach (['original', 'requested'] as $kind) {
+            foreach (['break_start', 'break_end'] as $field) {
+                $payload["{$kind}_{$field}_display"] = $clock($r->{"{$kind}_{$field}"});
+            }
+        }
+
         if ($withStudent || $r->relationLoaded('internship')) {
             $profile = $r->internship?->student?->studentProfile;
             $payload['student_name'] = $profile
@@ -403,7 +420,13 @@ class DtrWorkflowController extends Controller
         return $payload;
     }
 
-    private function studentInternship(Request $request): Internship
+    /**
+     * @param  bool  $forNewEntry  true for requests that add or change attendance
+     *                             (undo, overtime, schedule, correction). A completed
+     *                             internship keeps read access to its history but
+     *                             answers 409 to new entries.
+     */
+    private function studentInternship(Request $request, bool $forNewEntry = false): Internship
     {
         $user = $request->user();
         $requestedId = $request->header('X-Internship-Id') ?: $request->input('internship_id');
@@ -413,6 +436,9 @@ class DtrWorkflowController extends Controller
             abort(404, 'No internship found.');
         }
         $internship->loadMissing('currentPlacement');
+        if ($forNewEntry && $internship->isCompleted()) {
+            abort(409, Internship::ATTENDANCE_COMPLETED_MESSAGE);
+        }
         if ($reason = $internship->attendanceLockReason()) {
             abort(403, $reason);
         }

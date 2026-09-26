@@ -17,6 +17,8 @@ import {
   validateUploadFiles,
 } from '../../utils/uploadValidation'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import AppModal from '../../components/modals/AppModal'
+import { formatManilaDate, formatManilaDateTime } from '../../utils/manilaTime'
 
 const REVIEWABLE = ['pending', 'pending_review', 'pending_faculty', 'under_review', 'resubmitted']
 const NEEDS_UPLOAD = ['not_submitted', 'no_submission', 'rejected']
@@ -154,57 +156,54 @@ function StudentDocuments() {
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
 
       {/* Upload/Submit Modal */}
-      {showModal && (
-        <div className="modal fade show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1" onClick={handleCloseModal}>
-          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Submit Document: {activeType}</h5>
-                <button type="button" className="btn-close" onClick={handleCloseModal}></button>
-              </div>
-              <div className="modal-body">
-                <form id="submissionForm" onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">File Upload (Optional)</label>
-                    <input type="file" className="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => onSelectFiles(e.target.files)} />
-                    <div className="form-text">{uploadLimitHint('PDF, JPG, PNG, DOC, DOCX')}. You can select multiple files.</div>
-                    {fileError && <div className="text-danger small mt-1" role="alert">{fileError}</div>}
-                    {selectedFiles.length > 0 && (
-                      <ul className="list-unstyled small mt-2 mb-0">
-                        {selectedFiles.map((f, i) => (
-                          <li key={`${f.name}-${i}`} className="d-flex justify-content-between gap-2">
-                            <span className="text-truncate" title={f.name}>{f.name}</span>
-                            <span className="text-muted flex-shrink-0">{formatFileSize(f.size)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Google Drive Link (Optional)</label>
-                    <input maxLength={2048}
-                      type="url" 
-                      className="form-control" 
-                      placeholder="File Link" 
-                      value={driveLink} 
-                      onChange={e => setDriveLink(e.target.value)} 
-                    />
-                  </div>
-                  <div className="alert alert-info py-2" style={{ fontSize: '0.85rem' }}>
-                    <i className="fa fa-info-circle me-1"></i> You can provide a file, a link, or both.
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
-                <button type="submit" form="submissionForm" className="btn btn-primary" disabled={!!uploading || (selectedFiles.length === 0 && !driveLink)}>
-                  <i className="fa fa-paper-plane me-1"></i> {uploading ? 'Submitting…' : 'Submit'}
-                </button>
-              </div>
-            </div>
-          </div>
+      <AppModal
+        open={showModal}
+        onClose={handleCloseModal}
+        size="md"
+        title={`Submit Document: ${activeType ?? ''}`}
+        icon="fa-upload"
+        busy={!!uploading}
+        onSubmit={handleSubmit}
+        footer={(
+          <>
+            <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={!!uploading}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={!!uploading || (selectedFiles.length === 0 && !driveLink)}>
+              <i className="fa fa-paper-plane me-1"></i> {uploading ? 'Submitting…' : 'Submit'}
+            </button>
+          </>
+        )}
+      >
+        <div className="mb-3">
+          <label className="form-label fw-semibold" htmlFor="student-document-files">File Upload (Optional)</label>
+          <input id="student-document-files" type="file" className="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => onSelectFiles(e.target.files)} />
+          <div className="form-text">{uploadLimitHint('PDF, JPG, PNG, DOC, DOCX')}. You can select multiple files.</div>
+          {fileError && <div className="text-danger small mt-1" role="alert">{fileError}</div>}
+          {selectedFiles.length > 0 && (
+            <ul className="list-unstyled small mt-2 mb-0">
+              {selectedFiles.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="d-flex justify-content-between gap-2 min-w-0">
+                  <span className="text-truncate" title={f.name}>{f.name}</span>
+                  <span className="text-muted flex-shrink-0">{formatFileSize(f.size)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      )}
+        <div className="mb-3">
+          <label className="form-label fw-semibold" htmlFor="student-document-link">Google Drive Link (Optional)</label>
+          <input maxLength={2048}
+            id="student-document-link"
+            type="url"
+            className="form-control"
+            placeholder="File Link"
+            value={driveLink}
+            onChange={e => setDriveLink(e.target.value)}
+          />
+        </div>
+        <div className="alert alert-info py-2 mb-0" style={{ fontSize: '0.85rem' }}>
+          <i className="fa fa-info-circle me-1"></i> You can provide a file, a link, or both.
+        </div>
+      </AppModal>
 
       {/* Summary */}
       <div className="row g-3 mb-4">
@@ -272,7 +271,7 @@ function StudentDocuments() {
                       <div className="fw-bold text-dark small">{doc.sender.name}</div>
                       <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                         {doc.sender.role} 
-                        {doc.deadline && <span className="text-danger ms-1"> Due: {new Date(doc.deadline).toLocaleDateString()}</span>}
+                        {doc.deadline && <span className="text-danger ms-1"> Due: {formatManilaDate(doc.deadline)}</span>}
                       </div>
                     </div>
                   )}
@@ -385,7 +384,7 @@ function StudentDocuments() {
                       {doc.submitted_at && (
                         <div className="border-start ps-3">
                           <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: '0.75rem' }}>Submitted On</div>
-                          <div className="small fw-medium text-dark">{new Date(doc.submitted_at).toLocaleString()}</div>
+                          <div className="small fw-medium text-dark">{formatManilaDateTime(doc.submitted_at)}</div>
                         </div>
                       )}
                     </div>

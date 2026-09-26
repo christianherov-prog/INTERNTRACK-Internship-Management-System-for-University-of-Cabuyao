@@ -15,6 +15,7 @@ use App\Services\InternshipProgressService;
 use App\Services\SupervisorDirectoryService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
+use App\Support\EvaluationSignature;
 use App\Support\InternshipStatuses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -523,7 +524,7 @@ class DirectorController extends Controller
             'school_years' => $years,
             'rows' => $rows,
             'by_company' => $companies,
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ];
     }
 
@@ -668,7 +669,8 @@ class DirectorController extends Controller
             'company',
             'supervisor.supervisorProfile',
             'evaluations' => function ($q) use ($formTypes) {
-                $q->whereIn('form_type', $formTypes);
+                $q->whereIn('form_type', $formTypes)
+                    ->with(EvaluationSignature::evaluatorRelations());
             },
         ])
             ->whereHas('evaluations', function ($q) use ($formTypes) {
@@ -721,6 +723,7 @@ class DirectorController extends Controller
             ->pluck('count', 'form_type');
 
         $internships = $query->orderByDesc('created_at')->paginate(20);
+        EvaluationSignature::present($internships->getCollection());
 
         return response()->json([
             'stats' => $stats,
@@ -798,7 +801,7 @@ class DirectorController extends Controller
             'rows' => $byCompany,
             'totals' => $totals,
             'filters' => ['school_year' => $year, 'semester' => $semester],
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 

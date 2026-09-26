@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../services/api'
+import AppModal from './modals/AppModal'
+import { formatManilaDateTime } from '../utils/manilaTime'
 
 const SCOPE_STATUSES = [
   { value: 'active', label: 'Active' },
@@ -12,7 +14,7 @@ const SCOPE_STATUSES = [
 function formatChangedAt(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return formatManilaDateTime(iso)
   } catch {
     return iso
   }
@@ -81,80 +83,83 @@ function StatusChangeModal({ internshipId, studentName, currentStatus, apiBase =
   }
 
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div className="modal-content">
-          <form onSubmit={handleSubmit}>
-            <div className="modal-header">
-              <h5 className="modal-title">Change Internship Status</h5>
-              <button type="button" className="btn-close" onClick={onClose} disabled={saving}></button>
-            </div>
-            <div className="modal-body">
-              <p className="mb-3 text-muted" style={{ fontSize: '0.9rem' }}>
-                Student: <strong>{studentName}</strong>
-                {currentStatus ? <> · Current: <strong>{String(currentStatus).replace(/_/g, ' ')}</strong></> : null}
-              </p>
+    <AppModal
+      onClose={onClose}
+      size="lg"
+      title="Change Internship Status"
+      subtitle={(
+        <>
+          Student: <strong>{studentName}</strong>
+          {currentStatus ? <> · Current: <strong>{String(currentStatus).replace(/_/g, ' ')}</strong></> : null}
+        </>
+      )}
+      icon="fa-arrows-rotate"
+      busy={saving}
+      onSubmit={handleSubmit}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={saving || reason.trim().length < 5}>
+            {saving ? 'Saving…' : 'Update Status'}
+          </button>
+        </>
+      )}
+    >
+      <div className="it-form-grid">
+        <div>
+          {error && <div className="alert alert-danger py-2">{error}</div>}
+          <div className="mb-3">
+            <label className="form-label fw-semibold" htmlFor="status-change-status">New status <span className="text-danger">*</span></label>
+            <select id="status-change-status" className="form-select" value={status} onChange={e => setStatus(e.target.value)} required>
+              {SCOPE_STATUSES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="form-label fw-semibold" htmlFor="status-change-reason">Reason for change <span className="text-danger">*</span></label>
+            <textarea maxLength={1000}
+              id="status-change-reason"
+              className="form-control"
+              rows={4}
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Reason"
+              required
+              minLength={5}
+            />
+            <div className="form-text">Minimum 5 characters. Recorded in status history.</div>
+          </div>
+        </div>
 
-              <div className="mb-4">
-                <div className="fw-semibold mb-2">Status history</div>
-                {historyLoading && <div className="text-muted small">Loading timeline…</div>}
-                {!historyLoading && historyError && <div className="alert alert-warning py-2 mb-0">{historyError}</div>}
-                {!historyLoading && !historyError && history.length === 0 && (
-                  <div className="text-muted small">No status changes recorded yet.</div>
-                )}
-                {!historyLoading && !historyError && history.length > 0 && (
-                  <ul className="list-unstyled mb-0 border rounded px-3 py-2" style={{ maxHeight: 220, overflowY: 'auto' }}>
-                    {history.map((h) => (
-                      <li key={h.id} className="py-2 border-bottom border-light" style={{ fontSize: '0.875rem' }}>
-                        <div className="d-flex flex-wrap justify-content-between gap-2">
-                          <span>
-                            <strong>{h.from_label || h.from_status || '—'}</strong>
-                            {' → '}
-                            <strong>{h.to_label || h.to_status}</strong>
-                          </span>
-                          <span className="text-muted">{formatChangedAt(h.changed_at)}</span>
-                        </div>
-                        <div className="text-muted">{h.changed_by || '—'}</div>
-                        {h.reason ? <div className="mt-1">{h.reason}</div> : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {error && <div className="alert alert-danger py-2">{error}</div>}
-              <div className="mb-3">
-                <label className="form-label fw-semibold">New status <span className="text-danger">*</span></label>
-                <select className="form-select" value={status} onChange={e => setStatus(e.target.value)} required>
-                  {SCOPE_STATUSES.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="mb-1">
-                <label className="form-label fw-semibold">Reason for change <span className="text-danger">*</span></label>
-                <textarea maxLength={1000}
-                  className="form-control"
-                  rows={3}
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  placeholder="Reason"
-                  required
-                  minLength={5}
-                />
-                <div className="form-text">Minimum 5 characters. Recorded in status history.</div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={saving || reason.trim().length < 5}>
-                {saving ? 'Saving…' : 'Update Status'}
-              </button>
-            </div>
-          </form>
+        <div>
+          <div className="fw-semibold mb-2">Status history</div>
+          {historyLoading && <div className="text-muted small">Loading timeline…</div>}
+          {!historyLoading && historyError && <div className="alert alert-warning py-2 mb-0">{historyError}</div>}
+          {!historyLoading && !historyError && history.length === 0 && (
+            <div className="text-muted small">No status changes recorded yet.</div>
+          )}
+          {!historyLoading && !historyError && history.length > 0 && (
+            <ul className="list-unstyled mb-0 border rounded px-3 py-2" style={{ maxHeight: 280, overflowY: 'auto' }}>
+              {history.map((h) => (
+                <li key={h.id} className="py-2 border-bottom border-light" style={{ fontSize: '0.875rem' }}>
+                  <div className="d-flex flex-wrap justify-content-between gap-2">
+                    <span>
+                      <strong>{h.from_label || h.from_status || '—'}</strong>
+                      {' → '}
+                      <strong>{h.to_label || h.to_status}</strong>
+                    </span>
+                    <span className="text-muted">{formatChangedAt(h.changed_at)}</span>
+                  </div>
+                  <div className="text-muted">{h.changed_by || '—'}</div>
+                  {h.reason ? <div className="mt-1" style={{ overflowWrap: 'anywhere' }}>{h.reason}</div> : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
-    </div>
+    </AppModal>
   )
 }
 

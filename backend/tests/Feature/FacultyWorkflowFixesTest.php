@@ -345,9 +345,13 @@ class FacultyWorkflowFixesTest extends TestCase
         $src = fn (string $path) => file_get_contents(base_path('../frontend/src/'.$path));
 
         // DTR preview flicker: overlay portaled to <body>, never nested in a hover-lifted card.
+        // The preview now uses the shared AppModal, which owns the portal for every dialog.
         $modal = $src('components/portfolio/FormPreviewModal.jsx');
-        $this->assertStringContainsString('createPortal(', $modal);
-        $this->assertStringContainsString('document.body', $modal);
+        $this->assertStringContainsString("import AppModal from '../modals/AppModal'", $modal);
+        $this->assertStringContainsString('size="document"', $modal);
+        $shell = $src('components/modals/AppModal.jsx');
+        $this->assertStringContainsString('createPortal(', $shell);
+        $this->assertStringContainsString('document.body', $shell);
         $css = $src('styles/styles.css');
         $this->assertStringContainsString('.content-card:has(.fpm-backdrop', $css);
         $attendanceTab = substr($src('pages/faculty/FacultyAssignedStudents.jsx'), strpos($src('pages/faculty/FacultyAssignedStudents.jsx'), 'function TabAttendance'));

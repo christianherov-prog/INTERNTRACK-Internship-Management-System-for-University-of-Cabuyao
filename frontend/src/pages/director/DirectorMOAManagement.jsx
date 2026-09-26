@@ -3,6 +3,7 @@ import Layout from "../../components/Layout"
 import api from "../../services/api"
 import { useCachedPage } from "../../hooks/useCachedPage"
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 const MOA_STATUS_OPTIONS = ["active", "pending", "for_renewal", "expired", "on-process"]
 
@@ -146,11 +147,11 @@ function DirectorMOAManagement({ embedded = false }) {
                               </select>
                             : <span className={`badge-status ${statusColor(c.moa_status)}`}>{c.moa_status}</span>}
                         </td>
-                        <td>{c.moa_start_date ?? "—"}</td>
+                        <td>{formatDisplayDate(c.moa_start_date, { month: 'short', day: 'numeric', year: 'numeric' }) || "—"}</td>
                         <td>
                           {editId === c.id
                             ? <input type="date" className="form-control form-control-sm" value={editExpiry} onChange={e => setEditExpiry(e.target.value)} />
-                            : c.moa_expiry_date ?? "—"}
+                            : (formatDisplayDate(c.moa_expiry_date, { month: 'short', day: 'numeric', year: 'numeric' }) || "—")}
                         </td>
                         <td className="text-center">{c.internships_count ?? "—"}</td>
                         <td>

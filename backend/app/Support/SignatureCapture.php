@@ -79,9 +79,16 @@ final class SignatureCapture
             return null;
         }
 
-        $path = "signatures/{$user->id}_processed.png";
+        return self::profilePathForUserId((int) $user->id);
+    }
 
-        return self::usableStoredPath($path);
+    public static function profilePathForUserId(int $userId): ?string
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        return self::usableStoredPath("signatures/{$userId}_processed.png");
     }
 
     /**

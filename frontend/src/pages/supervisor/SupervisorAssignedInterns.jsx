@@ -10,6 +10,7 @@ import { formatStudentName } from '../../utils/formatName'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { openOfficialFo30 } from '../../utils/officialForm'
+import AppModal from '../../components/modals/AppModal'
 
 function statusBadge(status) {
   const s = status === 'ongoing' ? 'active' : status
@@ -176,47 +177,44 @@ function SupervisorAssignedInterns() {
         downloading={downloading}
       />
 
-      {endingId && (
-        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.45)' }} role="dialog">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">End supervision of this intern?</h5>
-                <button type="button" className="btn-close" onClick={() => setEndingId(null)} aria-label="Close"></button>
-              </div>
-              <div className="modal-body">
-                <p className="text-muted" style={{ fontSize: '0.9rem' }}>
-                  This only unlinks you from this intern. Your account and any other assigned internships stay intact. The student can invite a new supervisor.
-                </p>
-                <label className="form-label small fw-semibold">Reason (optional)</label>
-                <textarea maxLength={500} className="form-control" rows={3} value={endReason} onChange={(e) => setEndReason(e.target.value)} />
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={() => setEndingId(null)} disabled={ending}>Cancel</button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  disabled={ending}
-                  onClick={async () => {
-                    setEnding(true)
-                    try {
-                      await api.post(`/supervisor/internships/${endingId}/end-supervision`, { reason: endReason || null })
-                      setEndingId(null)
-                      load()
-                    } catch (err) {
-                      alert(err.response?.data?.message || 'Failed to end supervision.')
-                    } finally {
-                      setEnding(false)
-                    }
-                  }}
-                >
-                  {ending ? 'Ending…' : 'End supervision'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppModal
+        open={!!endingId}
+        onClose={() => setEndingId(null)}
+        size="md"
+        title="End supervision of this intern?"
+        icon="fa-user-minus"
+        busy={ending}
+        footer={(
+          <>
+            <button type="button" className="btn btn-outline-secondary" onClick={() => setEndingId(null)} disabled={ending}>Cancel</button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={ending}
+              onClick={async () => {
+                setEnding(true)
+                try {
+                  await api.post(`/supervisor/internships/${endingId}/end-supervision`, { reason: endReason || null })
+                  setEndingId(null)
+                  load()
+                } catch (err) {
+                  alert(err.response?.data?.message || 'Failed to end supervision.')
+                } finally {
+                  setEnding(false)
+                }
+              }}
+            >
+              {ending ? 'Ending…' : 'End supervision'}
+            </button>
+          </>
+        )}
+      >
+        <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+          This only unlinks you from this intern. Your account and any other assigned internships stay intact. The student can invite a new supervisor.
+        </p>
+        <label className="form-label small fw-semibold" htmlFor="end-supervision-reason">Reason (optional)</label>
+        <textarea maxLength={500} id="end-supervision-reason" className="form-control" rows={3} value={endReason} onChange={(e) => setEndReason(e.target.value)} />
+      </AppModal>
     </Layout>
   )
 }

@@ -21,6 +21,7 @@ use App\Services\JournalPeriodValidator;
 use App\Services\ProgramRequirementService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
+use App\Support\EvaluationSignature;
 use App\Support\EvaluationVisibility;
 use App\Support\PlacementEligibility;
 use App\Support\InternshipProvisioning;
@@ -305,6 +306,26 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * Guard for new attendance activity. A completed internship answers 409 so
+     * no row is created or changed even if the client sends the request
+     * directly; placement/supervisor locks keep their existing 403.
+     */
+    private function newAttendanceBlocked(Internship $internship): ?\Illuminate\Http\JsonResponse
+    {
+        if ($internship->isCompleted()) {
+            return response()->json([
+                'message' => Internship::ATTENDANCE_COMPLETED_MESSAGE,
+                'code' => 'internship_completed',
+            ], 409);
+        }
+        if ($reason = $internship->attendanceLockReason()) {
+            return response()->json(['message' => $reason], 403);
+        }
+
+        return null;
+    }
+
     /** GET /api/v1/student/attendance */
     public function attendance(Request $request)
     {
@@ -346,6 +367,12 @@ class StudentController extends Controller
             'pending_schedule' => $this->dtr->serializeSchedule($this->dtr->pendingScheduleFor($internship)),
             'schedule_history' => $this->dtr->scheduleHistory($internship)->map(fn ($s) => $this->dtr->serializeSchedule($s))->values(),
             'incomplete_dtr_days' => $this->dtr->incompleteDays($internship),
+            'internship_status' => InternshipStatuses::normalize($internship->status),
+            'internship_completed' => $internship->isCompleted(),
+            'new_attendance_allowed' => $internship->newAttendanceLockReason() === null,
+            'new_attendance_lock_reason' => $internship->newAttendanceLockReason(),
+            'hours_rendered' => (float) $internship->total_hours_rendered,
+            'target_hours' => InternshipProgressService::targetHoursForInternship($internship),
             'server_now' => $manilaNow->toIso8601String(),
             'server_now_display' => ManilaTime::clockDisplay($manilaNow),
             'server_timezone' => ManilaTime::TZ,
@@ -356,8 +383,8 @@ class StudentController extends Controller
     public function clockIn(Request $request)
     {
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
 
         try {
@@ -389,8 +416,8 @@ class StudentController extends Controller
         ]);
 
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
         $today = $this->dtr->manilaToday();
         try {
@@ -438,8 +465,8 @@ class StudentController extends Controller
     public function breakStart(Request $request)
     {
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
         $today = $this->dtr->manilaToday();
 
@@ -477,8 +504,8 @@ class StudentController extends Controller
     public function breakEnd(Request $request)
     {
         $internship = $this->internship($request);
-        if ($reason = $internship->attendanceLockReason()) {
-            return response()->json(['message' => $reason], 403);
+        if ($blocked = $this->newAttendanceBlocked($internship)) {
+            return $blocked;
         }
         $today = $this->dtr->manilaToday();
 
@@ -963,7 +990,10 @@ class StudentController extends Controller
     public function evaluations(Request $request)
     {
         $internship = $this->internship($request);
-        $evaluations = $internship->evaluations()->with('evaluator')->get();
+        $evaluations = $internship->evaluations()->with(EvaluationSignature::evaluatorRelations())->get();
+        // Released forms carry the submitting evaluator's signature (the
+        // student-safe filter below strips it from unreleased ones).
+        EvaluationSignature::present($evaluations);
 
         // Unreleased FO-24 (Faculty release) and FO-03 (Director release) are
         // reduced to completion status before they leave the server.

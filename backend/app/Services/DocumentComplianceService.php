@@ -411,7 +411,7 @@ class DocumentComplianceService
         return [
             'rows' => $rows,
             'required_types' => array_keys($unionTypes),
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ];
     }
 

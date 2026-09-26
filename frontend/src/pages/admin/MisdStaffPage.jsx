@@ -6,6 +6,7 @@ import { unwrapList } from '../../utils/apiList'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 
 /**
  * Shared staff roster for Directors and Coordinators.
@@ -300,7 +301,7 @@ function MisdStaffPage({ role }) {
                         {row.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-muted">{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
+                    <td className="px-3 py-3 text-muted">{row.last_login_at ? formatManilaDateTime(row.last_login_at) : 'Never'}</td>
                     <td className="px-4 py-3 text-center">
                       <div className="btn-group btn-group-sm">
                         <button className="btn btn-outline-success" title="Sync from MISD" onClick={() => sync(row)}>

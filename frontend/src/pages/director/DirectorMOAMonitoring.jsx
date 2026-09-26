@@ -6,6 +6,7 @@ import { unwrapList } from '../../utils/apiList'
 import ReportExportModal from '../../components/modals/ReportExportModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatDisplayDate } from '../../utils/manilaTime'
 
 function DirectorMOAMonitoring({ embedded = false }) {
   const { loading, seed, run } = useCachedPage('director:moa-monitoring')
@@ -51,6 +52,7 @@ function DirectorMOAMonitoring({ embedded = false }) {
     setExportPreview({
       title: 'MOA Monitoring Report',
       filename: 'moa-monitoring',
+      statusColumns: ['Status'],
       rows: companies.map(c => ({
         Company: c.company_name, Status: c.moa_status, 'Expiry Date': c.moa_expiry_date ?? '—',
         'Urgency (days)': c.expires_in_days ?? '—', Contact: c.contact_person ?? '—', Slots: c.slots_available,
@@ -74,7 +76,7 @@ function DirectorMOAMonitoring({ embedded = false }) {
           <div className="stat-card"><div className="stat-icon amber"><i className="fa fa-clock"></i></div><div><div className="stat-value">{forRenew}</div><div className="stat-label">For Renewal</div></div></div>
         </div>
         <div className="col-sm-4">
-          <div className="stat-card"><div className="stat-icon blue"><i className="fa fa-triangle-exclamation"></i></div><div><div className="stat-value">{expired}</div><div className="stat-label">Expired</div></div></div>
+          <div className="stat-card"><div className="stat-icon red"><i className="fa fa-triangle-exclamation"></i></div><div><div className="stat-value">{expired}</div><div className="stat-label">Expired</div></div></div>
         </div>
       </div>
 
@@ -99,7 +101,7 @@ function DirectorMOAMonitoring({ embedded = false }) {
                     <tr key={c.id}>
                       <td className="fw-semibold">{c.company_name}</td>
                       <td><span className={`badge-status ${moaBadge[c.moa_status] ?? 'badge-pending'}`}>{c.moa_status?.replace('_',' ').replace(/\b\w/g, l => l.toUpperCase())}</span></td>
-                      <td style={{fontSize:'0.82rem'}}>{c.moa_expiry_date ?? '—'}</td>
+                      <td style={{fontSize:'0.82rem'}}>{formatDisplayDate(c.moa_expiry_date, { month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
                       <td>
                         <span style={{fontSize:'0.82rem',fontWeight:600,color:urgencyColor(c.expires_in_days)}}>
                           <i className="fa fa-circle me-1" style={{fontSize:'0.6rem'}}></i>

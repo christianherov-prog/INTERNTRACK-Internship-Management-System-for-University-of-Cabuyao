@@ -7,6 +7,7 @@ import { unwrapList } from '../../utils/apiList'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 
 const ROLES = ['', 'student', 'faculty', 'coordinator', 'director', 'supervisor', 'admin']
 
@@ -209,7 +210,7 @@ function MisdUsers() {
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-3 text-muted" style={{ whiteSpace: 'nowrap' }}>{row.last_login_at ? new Date(row.last_login_at).toLocaleString() : 'Never'}</td>
+                      <td className="px-3 py-3 text-muted" style={{ whiteSpace: 'nowrap' }}>{row.last_login_at ? formatManilaDateTime(row.last_login_at) : 'Never'}</td>
                       <td className="px-4 py-3 text-center" style={{ whiteSpace: 'nowrap' }}>
                         <div className="btn-group btn-group-sm">
                           {row.is_locked ? (

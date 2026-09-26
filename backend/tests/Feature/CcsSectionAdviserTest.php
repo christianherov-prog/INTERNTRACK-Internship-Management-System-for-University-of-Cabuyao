@@ -144,7 +144,7 @@ class CcsSectionAdviserTest extends TestCase
 
         // ADV-02: authorized reassignment — the Coordinator places Nathan and
         // explicitly chooses Arcelito as Faculty adviser (a section exception).
-        $supervisor = User::where('faculty_number', 'SUP-CCSDEMO-NTTD')->firstOrFail();
+        $supervisor = User::where('role', 'supervisor')->where('email', 'katrina.mendoza@interntrack.test')->firstOrFail();
         $company = Company::where('company_name', 'NTT DATA Philippines')->firstOrFail();
         Sanctum::actingAs($this->arcelito);
         $this->postJson("/api/v1/coordinator/internships/{$nathanInternship->id}/place", [

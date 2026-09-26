@@ -86,9 +86,9 @@ class DatabaseSeeder extends Seeder
         // ─── 2. Staff faculty profiles ────────────────────────────────────────
         FacultyProfile::updateOrCreate(['user_id' => $admin->id], [
             'faculty_number'    => 'ADMIN-MISD-001',
-            'first_name'        => 'MISD',
+            'first_name'        => 'Alon Isagani',
             'middle_name'       => null,
-            'last_name'         => 'Administrator',
+            'last_name'         => 'Dimaculangan',
             'email'             => 'misd.admin@uc.edu.ph',
             'contact_number'    => '09175557800',
             'department_id'     => $misdDepartmentId,

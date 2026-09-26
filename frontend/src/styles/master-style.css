@@ -22403,7 +22403,7 @@ textarea:focus-visible {
   justify-content: center;
 }
 
-.modal-content {
+.modal-overlay .modal-content {
   background: var(--white);
   border-radius: var(--radius-md);
   padding: 2rem;
@@ -22425,7 +22425,7 @@ textarea:focus-visible {
   }
 }
 
-.modal-header {
+.modal-overlay .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -22434,7 +22434,7 @@ textarea:focus-visible {
   border-bottom: 1px solid rgba(26, 122, 63, 0.1);
 }
 
-.modal-header h3 {
+.modal-overlay .modal-header h3 {
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--text-dark);
@@ -22460,17 +22460,17 @@ textarea:focus-visible {
   color: var(--text-dark);
 }
 
-.modal-body {
+.modal-overlay .modal-body {
   margin-bottom: 1.5rem;
 }
 
-.modal-body p {
+.modal-overlay .modal-body p {
   margin: 0.5rem 0;
   color: var(--text-mid);
   line-height: 1.6;
 }
 
-.modal-footer {
+.modal-overlay .modal-footer {
   display: flex;
   gap: 1rem;
   justify-content: flex-end;
@@ -22553,7 +22553,7 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .modal-content {
+  .modal-overlay .modal-content {
     width: 95%;
     padding: 1.5rem;
   }

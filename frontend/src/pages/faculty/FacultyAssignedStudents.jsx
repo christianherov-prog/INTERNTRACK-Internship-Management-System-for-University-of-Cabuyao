@@ -14,7 +14,8 @@ import { loadFacultyFo31Preview, openOfficialFo30, openOfficialFo31 } from "../.
 import { useConfirm } from '../../contexts/ConfirmContext'
 import AsyncButton from '../../components/AsyncButton'
 import JournalDeadlineManager from '../../components/faculty/JournalDeadlineManager'
-import { formatDisplayDate } from '../../utils/manilaTime'
+import { formatDisplayDate, formatClock12 } from '../../utils/manilaTime'
+import AppModal from '../../components/modals/AppModal'
 
 function studentSection(row) {
   const p = row?.student?.student_profile || row?.student?.studentProfile
@@ -406,46 +407,43 @@ function TabJournals() {
       <JournalDeadlineManager />
       {error && <PageError message={error} onRetry={fetchJournals} />}
       {message && <div className={`alert alert-${message.type} alert-dismissible mb-3`}>{message.text}<button className="btn-close" onClick={() => setMessage(null)}></button></div>}
-      {historyModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: "rgba(0,0,0,0.45)" }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Journal History — {historyModal.studentName}</h5>
-                <button className="btn-close" onClick={() => setHistoryModal(null)}></button>
-              </div>
-              <div className="modal-body p-0">
-                {loadingHistory ? (
-                  <div className="p-5 text-center"><InternTrackLoader /></div>
-                ) : historyData.length === 0 ? (
-                  <div className="p-4 text-center text-muted">No past journals found.</div>
-                ) : (
-                  <ul className="list-group list-group-flush">
-                    {historyData.map(h => (
-                      <li key={h.id} className="list-group-item p-3">
-                        <div className="d-flex justify-content-between">
-                          <div className="fw-semibold text-primary">Week {h.week_number ?? h.entry_number}</div>
-                          <span className={`badge ${journalStatusClass(h.status)}`}>{h.status}</span>
-                        </div>
-                        <div className="text-muted small mb-2">{h.date}{h.end_date ? ` — ${h.end_date}` : ""}</div>
-                        {h.score != null && h.score !== "" && <div className="text-success small fw-bold"><i className="fa fa-check-circle me-1"></i>Score: {h.score}/100</div>}
-                        {h.faculty_feedback && (
-                          <div className="bg-light p-2 rounded small mt-2">
-                            <strong>Feedback:</strong> {h.faculty_feedback}
-                          </div>
-                        )}
-                        <button className="btn btn-sm btn-outline-secondary mt-2" onClick={() => handlePreviewJournal({ ...h, internship: h.internship || reviewJournal?.internship })}>
-                          <i className="fa fa-eye me-1"></i>Preview Form
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+      <AppModal
+        open={!!historyModal}
+        onClose={() => setHistoryModal(null)}
+        size="lg"
+        title={`Journal History — ${historyModal?.studentName ?? ''}`}
+        icon="fa-clock-rotate-left"
+        closeOnBackdrop
+        bodyClassName="p-0"
+        footer={<button type="button" className="btn btn-secondary" onClick={() => setHistoryModal(null)}>Close</button>}
+      >
+        {loadingHistory ? (
+          <div className="p-5 text-center"><InternTrackLoader /></div>
+        ) : historyData.length === 0 ? (
+          <div className="it-modal__empty">No past journals found.</div>
+        ) : (
+          <ul className="list-group list-group-flush">
+            {historyData.map(h => (
+              <li key={h.id} className="list-group-item p-3">
+                <div className="d-flex flex-wrap justify-content-between gap-2">
+                  <div className="fw-semibold text-primary">Week {h.week_number ?? h.entry_number}</div>
+                  <span className={`badge ${journalStatusClass(h.status)}`}>{h.status}</span>
+                </div>
+                <div className="text-muted small mb-2">{formatDisplayDate(h.date, { month: 'short', day: 'numeric', year: 'numeric' })}{h.end_date ? ` — ${formatDisplayDate(h.end_date, { month: 'short', day: 'numeric', year: 'numeric' })}` : ""}</div>
+                {h.score != null && h.score !== "" && <div className="text-success small fw-bold"><i className="fa fa-check-circle me-1"></i>Score: {h.score}/100</div>}
+                {h.faculty_feedback && (
+                  <div className="bg-light p-2 rounded small mt-2" style={{ overflowWrap: 'anywhere' }}>
+                    <strong>Feedback:</strong> {h.faculty_feedback}
+                  </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                <button type="button" className="btn btn-sm btn-outline-secondary mt-2" onClick={() => handlePreviewJournal({ ...h, internship: h.internship || reviewJournal?.internship })}>
+                  <i className="fa fa-eye me-1"></i>Preview Form
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AppModal>
       <div className="content-card">
         <div className="content-card-header">
           <i className="fa fa-book"></i><h6>Pending Journal Reviews</h6>
@@ -588,7 +586,7 @@ function TabAttendance() {
     const verb = action === 'approved' ? 'Approve' : 'Reject'
     await confirm({
       title: `${verb} attendance correction?`,
-      message: `${verb} the correction request for ${student} on ${formatDisplayDate(correction.date) || correction.date || '—'}? Original ${correction.original_clock_in || '—'}–${correction.original_clock_out || '—'}; requested ${correction.requested_clock_in || '—'}–${correction.requested_clock_out || '—'}.`,
+      message: `${verb} the correction request for ${student} on ${formatDisplayDate(correction.date) || correction.date || '—'}? Original ${formatClock12(correction.original_clock_in_display)}–${formatClock12(correction.original_clock_out_display)}; requested ${formatClock12(correction.requested_clock_in_display)}–${formatClock12(correction.requested_clock_out_display)}.`,
       confirmLabel: verb,
       variant: action === 'approved' ? 'primary' : 'danger',
       run: async () => {
@@ -628,8 +626,8 @@ function TabAttendance() {
                   <tr key={c.id}>
                     <td className="fw-semibold">{c.student_name || "—"}</td>
                     <td>{formatDisplayDate(c.date) || c.date || "—"}</td>
-                    <td>{c.original_clock_in || "—"} – {c.original_clock_out || "—"}</td>
-                    <td>{c.requested_clock_in || "—"} – {c.requested_clock_out || "—"}</td>
+                    <td>{formatClock12(c.original_clock_in_display)} – {formatClock12(c.original_clock_out_display)}</td>
+                    <td>{formatClock12(c.requested_clock_in_display)} – {formatClock12(c.requested_clock_out_display)}</td>
                     <td>{c.status_label || c.status}</td>
                     <td className="text-center">
                       <AsyncButton className="btn btn-sm btn-success me-2" busy={processing === c.id} busyLabel="…" onClick={() => reviewCorrection(c, "approved")}>Approve</AsyncButton>
@@ -740,9 +738,9 @@ function TabAttendance() {
                                 </td>
                               </>
                             )}
-                            <td>{log.date ? String(log.date).slice(0, 10) : "—"}</td>
-                            <td>{log.clock_in_display || log.clock_in || "—"}</td>
-                            <td>{log.clock_out_display || log.clock_out || "—"}</td>
+                            <td>{formatDisplayDate(log.date_display || log.date, { month: 'short', day: 'numeric', year: 'numeric' }) || "—"}</td>
+                            <td>{formatClock12(log.clock_in_display)}</td>
+                            <td>{formatClock12(log.clock_out_display)}</td>
                             <td>{log.hours_rendered != null ? Number(log.hours_rendered).toFixed(2) : "—"}</td>
                             <td>{attStatusBadge(log.status)}</td>
                             <td>{log.correction_status_label || "—"}</td>
@@ -786,19 +784,24 @@ function FacultyAssignedStudents({ embedded = false }) {
   return (
     <Wrapper {...wrapperProps}>
       {/* Tab bar */}
-      <ul className="nav nav-tabs mb-4">
-        {TABS.map(t => (
-          <li key={t.key} className="nav-item">
-            <button
-              className={`nav-link d-flex align-items-center gap-2 ${tab === t.key ? "active" : ""}`}
-              onClick={() => setTab(t.key)}
-            >
-              <i className={`fa ${t.icon}`}></i>
-              {t.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="nav-tabs-wrapper mb-4">
+        <ul className="nav nav-tabs custom-tabs" role="tablist">
+          {TABS.map(t => (
+            <li key={t.key} className="nav-item" role="presentation">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === t.key}
+                className={`nav-link ${tab === t.key ? "active" : ""}`}
+                onClick={() => setTab(t.key)}
+              >
+                <i className={`fa ${t.icon}`}></i>
+                {t.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div hidden={tab !== "students"}><TabStudents /></div>
       <div hidden={tab !== "journals"}><TabJournals /></div>

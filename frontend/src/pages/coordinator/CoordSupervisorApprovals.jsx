@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Layout from '../../components/Layout'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
@@ -6,7 +7,9 @@ import { AuthenticatedFileDownload, AuthenticatedFileLink, AuthenticatedFilePrev
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { cacheDelete } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import useModalLayer from '../../components/modals/useModalLayer'
 import '../../assets/css/supervisor-registration-review.css'
+import { formatManilaDate, formatManilaDateTime } from '../../utils/manilaTime'
 
 function studentLabel(inv) {
   if (inv.inviting_student_name) return inv.inviting_student_name
@@ -101,6 +104,16 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
     setRemarks('')
     setConfirmAction(null)
   }
+
+  // Shared overlay behaviour (portal, scroll lock, focus, Escape). Escape
+  // backs out of the approve/reject confirmation first, then the dialog.
+  const reviewDialogRef = useRef(null)
+  useModalLayer({
+    open: !!reviewTarget,
+    onClose: () => (confirmAction ? setConfirmAction(null) : closeReview()),
+    busy: !!actionLoading,
+    dialogRef: reviewDialogRef,
+  })
 
   const requestApprove = () => {
     if (!reviewTarget || actionLoading) return
@@ -226,7 +239,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                             ? <span className="badge bg-success-subtle text-success border">{formCount} file{formCount === 1 ? '' : 's'}</span>
                             : <small className="text-muted">None uploaded</small>}
                         </td>
-                        <td><small>{new Date(inv.updated_at).toLocaleDateString('en-PH')}</small></td>
+                        <td><small>{formatManilaDate(inv.updated_at)}</small></td>
                         <td className="text-center">
                           <button
                             type="button"
@@ -246,9 +259,9 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
         </div>
       </div>
 
-      {reviewTarget && (
-        <div className="sup-reg-review-overlay" role="dialog" aria-modal="true" aria-labelledby="sup-reg-review-title">
-          <div className="sup-reg-review-dialog">
+      {reviewTarget && createPortal(
+        <div className="sup-reg-review-overlay" role="presentation">
+          <div className="sup-reg-review-dialog" ref={reviewDialogRef} role="dialog" aria-modal="true" aria-labelledby="sup-reg-review-title" tabIndex={-1}>
             <div className="sup-reg-review-header">
               <div className="sup-reg-review-title-wrap">
                 <div className="sup-reg-review-icon" aria-hidden="true">
@@ -290,7 +303,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                   <SummaryField
                     label="Submission Date"
                     value={reviewTarget.submitted_at || reviewTarget.updated_at
-                      ? new Date(reviewTarget.submitted_at || reviewTarget.updated_at).toLocaleString('en-PH')
+                      ? formatManilaDateTime(reviewTarget.submitted_at || reviewTarget.updated_at)
                       : null}
                   />
                 </div>
@@ -436,7 +449,8 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {history.length > 0 && (
@@ -478,7 +492,7 @@ function CoordSupervisorApprovals({ apiBase = '/faculty', bodyClass = 'faculty-p
                       </td>
                       <td>{statusBadge(inv)}</td>
                       <td>{reviewerLabel(inv)}</td>
-                      <td>{inv.reviewed_at ? new Date(inv.reviewed_at).toLocaleDateString('en-PH') : '—'}</td>
+                      <td>{formatManilaDate(inv.reviewed_at)}</td>
                       <td>{inv.review_remarks || '—'}</td>
                     </tr>
                   ))}

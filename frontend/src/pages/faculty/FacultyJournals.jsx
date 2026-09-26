@@ -12,6 +12,7 @@ import { loadFacultyFo31Preview, openOfficialFo31 } from '../../utils/officialFo
 import { formatFo31DateRange } from '../../utils/fo31DateRange'
 import { formatManilaDateTime } from '../../utils/manilaTime'
 import JournalDeadlineManager from '../../components/faculty/JournalDeadlineManager'
+import AppModal from '../../components/modals/AppModal'
 
 function journalStudentNumber(journal) {
   const student = journal?.internship?.student
@@ -130,61 +131,59 @@ function FacultyJournals() {
           onSubmit: (action, feedback) => handleReview(reviewJournal.id, action, feedback),
         } : null}
       />
-      {historyModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Journal History — {historyModal.studentName}</h5>
-                <button className="btn-close" onClick={() => setHistoryModal(null)}></button>
-              </div>
-              <div className="modal-body p-0">
-                {loadingHistory ? (
-                  <div className="p-5 text-center"><InternTrackLoader /></div>
-                ) : historyError ? (
-                  <div className="p-4 text-center text-danger">{historyError}</div>
-                ) : historyData.length === 0 ? (
-                  <div className="p-4 text-center text-muted">No past journals found.</div>
-                ) : (
-                  <ul className="list-group list-group-flush">
-                    {historyData.map(h => (
-                      <li key={h.id} className="list-group-item p-3">
-                        <div className="d-flex justify-content-between">
-                          <div className="fw-semibold text-primary">Week {h.week_number ?? h.entry_number}</div>
-                          <span className={`badge ${h.status === 'approved' ? 'bg-success' : h.status === 'needs_revision' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
-                            {h.status}
-                          </span>
-                        </div>
-                        <div className="text-muted small mb-2">{formatFo31DateRange(h.date, h.end_date) || h.date}</div>
-                        {h.faculty_reviewed_at ? (
-                          <div className="text-muted small mb-2">Reviewed {formatManilaDateTime(h.faculty_reviewed_at)}</div>
-                        ) : null}
-                        {h.score != null && <div className="text-success small fw-bold"><i className="fa fa-check-circle me-1"></i>Score: {h.score}/100</div>}
-                        {h.faculty_feedback && (
-                          <div className="bg-light p-2 rounded small mt-2">
-                            <strong>Feedback:</strong> {h.faculty_feedback}
-                          </div>
-                        )}
-                        <button
-                          className="btn btn-sm btn-outline-secondary mt-2"
-                          onClick={() => handlePreview({
-                            ...h,
-                            student_display_name: historyModal.studentName,
-                            internship_id: h.internship_id || h.internship?.id,
-                            internship: h.internship || reviewJournal?.internship,
-                          })}
-                        >
-                          <i className="fa fa-eye me-1"></i>Preview Form
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+      <AppModal
+        open={!!historyModal}
+        onClose={() => setHistoryModal(null)}
+        size="lg"
+        title={`Journal History — ${historyModal?.studentName ?? ''}`}
+        icon="fa-clock-rotate-left"
+        closeOnBackdrop
+        bodyClassName="p-0"
+        footer={<button type="button" className="btn btn-secondary" onClick={() => setHistoryModal(null)}>Close</button>}
+      >
+        {loadingHistory ? (
+          <div className="p-5 text-center"><InternTrackLoader /></div>
+        ) : historyError ? (
+          <div className="p-4 text-center text-danger">{historyError}</div>
+        ) : historyData.length === 0 ? (
+          <div className="it-modal__empty">No past journals found.</div>
+        ) : (
+          <ul className="list-group list-group-flush">
+            {historyData.map(h => (
+              <li key={h.id} className="list-group-item p-3">
+                <div className="d-flex flex-wrap justify-content-between gap-2">
+                  <div className="fw-semibold text-primary">Week {h.week_number ?? h.entry_number}</div>
+                  <span className={`badge ${h.status === 'approved' ? 'bg-success' : h.status === 'needs_revision' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
+                    {h.status}
+                  </span>
+                </div>
+                <div className="text-muted small mb-2">{formatFo31DateRange(h.date, h.end_date) || h.date}</div>
+                {h.faculty_reviewed_at ? (
+                  <div className="text-muted small mb-2">Reviewed {formatManilaDateTime(h.faculty_reviewed_at)}</div>
+                ) : null}
+                {h.score != null && <div className="text-success small fw-bold"><i className="fa fa-check-circle me-1"></i>Score: {h.score}/100</div>}
+                {h.faculty_feedback && (
+                  <div className="bg-light p-2 rounded small mt-2" style={{ overflowWrap: 'anywhere' }}>
+                    <strong>Feedback:</strong> {h.faculty_feedback}
+                  </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary mt-2"
+                  onClick={() => handlePreview({
+                    ...h,
+                    student_display_name: historyModal.studentName,
+                    internship_id: h.internship_id || h.internship?.id,
+                    internship: h.internship || reviewJournal?.internship,
+                  })}
+                >
+                  <i className="fa fa-eye me-1"></i>Preview Form
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AppModal>
 
       <div className="content-card">
         <div className="content-card-header">

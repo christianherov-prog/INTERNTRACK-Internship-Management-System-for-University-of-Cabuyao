@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -69,7 +70,10 @@ import MisdSettings from './pages/admin/MisdSettings'
 import MisdAuditLogs from './pages/admin/MisdAuditLogs'
 import SupervisorRegisterPage from './pages/public/SupervisorRegisterPage'
 import ChangePasswordConfirmPage from './pages/public/ChangePasswordConfirmPage'
-import DemoApp from './demo/DemoApp'
+import { DEV_TOOLS_ENABLED } from './config/devTools'
+
+// Static module preview used during development only; not routed unless enabled.
+const DemoApp = lazy(() => import('./demo/DemoApp'))
 import StudentMessages from './pages/student/StudentMessages'
 import SupervisorMessages from './pages/supervisor/SupervisorMessages'
 import FacultyMessages from './pages/faculty/FacultyMessages'
@@ -89,7 +93,9 @@ function App() {
               <Route path="/supervisor/login" element={<LoginPage supervisorMode />} />
               <Route path="/register/supervisor" element={<SupervisorRegisterPage />} />
               <Route path="/change-password-confirm" element={<ChangePasswordConfirmPage />} />
-              <Route path="/demo/*" element={<DemoApp />} />
+              {DEV_TOOLS_ENABLED && (
+                <Route path="/demo/*" element={<Suspense fallback={null}><DemoApp /></Suspense>} />
+              )}
 
               <Route path="/student/dashboard" element={<ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>} />
               <Route path="/student/attendance" element={<ProtectedRoute role="student"><StudentAttendanceHub /></ProtectedRoute>} />

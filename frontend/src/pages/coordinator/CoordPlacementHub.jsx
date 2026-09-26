@@ -10,12 +10,15 @@ function CoordPlacementHub() {
 
   return (
     <Layout title="Internship Management" subtitle={currentTerm} icon="fa-briefcase" bodyClass="coordinator-page">
-      <div className="card shadow-sm mb-4 border-0">
-        <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-          <ul className="nav nav-tabs border-bottom-0">
+      <div className="nav-tabs-wrapper mb-4">
+        <div>
+          <ul className="nav nav-tabs custom-tabs" role="tablist">
             <li className="nav-item">
               <button
-                className={`nav-link ${activeTab === 'placements' ? 'active fw-bold text-primary border-bottom-0' : 'text-muted border-0'}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'placements'}
+                className={`nav-link ${activeTab === 'placements' ? 'active' : ''}`}
                 onClick={() => setActiveTab('placements')}
               >
                 <i className="fa fa-paper-plane me-2"></i>Applications & Placements
@@ -23,7 +26,10 @@ function CoordPlacementHub() {
             </li>
             <li className="nav-item">
               <button
-                className={`nav-link ${activeTab === 'hte' ? 'active fw-bold text-primary border-bottom-0' : 'text-muted border-0'}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'hte'}
+                className={`nav-link ${activeTab === 'hte' ? 'active' : ''}`}
                 onClick={() => setActiveTab('hte')}
               >
                 <i className="fa fa-handshake me-2"></i>HTE Requests

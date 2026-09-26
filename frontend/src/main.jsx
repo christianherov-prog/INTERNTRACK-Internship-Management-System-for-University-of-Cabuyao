@@ -6,6 +6,7 @@ import './styles/director-enhancements.css'
 import './styles/coordinator-fix.css'
 import './styles/styles.css'
 import './styles/portfolio-builder.css'
+import './styles/modal-system.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

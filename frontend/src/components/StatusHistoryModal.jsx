@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 import InternTrackLoader from './InternTrackLoader'
+import AppModal from './modals/AppModal'
+import { formatManilaDateTime } from '../utils/manilaTime'
 
 /**
  * Simple timeline of internship status changes.
@@ -25,66 +27,58 @@ function StatusHistoryModal({ internshipId, studentName, apiBase = 'coordinator'
   }, [internshipId, apiBase])
 
   return (
-    <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">
-              Status History — {studentName || internship?.student_name || 'Intern'}
-            </h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            {loading && (
-              <div className="text-center py-4">
-                <InternTrackLoader />
-              </div>
-            )}
-            {error && <div className="alert alert-danger">{error}</div>}
-            {!loading && !error && (
-              <>
-                {internship && (
-                  <p className="text-muted small mb-3">
-                    Current: <strong>{internship.status_label || internship.status}</strong>
-                    {internship.company_name ? ` · ${internship.company_name}` : ''}
-                    {internship.status_reason ? ` — ${internship.status_reason}` : ''}
-                  </p>
-                )}
-                {history.length === 0 ? (
-                  <p className="text-muted text-center py-3">No status changes recorded yet.</p>
-                ) : (
-                  <ul className="list-group list-group-flush">
-                    {history.map((h) => (
-                      <li key={h.id} className="list-group-item px-0">
-                        <div className="d-flex justify-content-between gap-3">
-                          <div>
-                            <div className="fw-semibold">
-                              {(h.from_label || h.from_status || '—')}
-                              {' → '}
-                              {(h.to_label || h.to_status || '—')}
-                            </div>
-                            {h.reason && <div className="small text-muted mt-1">{h.reason}</div>}
-                            {h.changed_by && (
-                              <div className="small text-muted">By {h.changed_by}</div>
-                            )}
-                          </div>
-                          <div className="text-muted small text-nowrap">
-                            {h.changed_at ? new Date(h.changed_at).toLocaleString() : '—'}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            )}
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
-          </div>
+    <AppModal
+      onClose={onClose}
+      size="lg"
+      title={`Status History — ${studentName || internship?.student_name || 'Intern'}`}
+      icon="fa-clock-rotate-left"
+      closeOnBackdrop
+      footer={<button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>}
+    >
+      {loading && (
+        <div className="text-center py-4">
+          <InternTrackLoader />
         </div>
-      </div>
-    </div>
+      )}
+      {error && <div className="alert alert-danger">{error}</div>}
+      {!loading && !error && (
+        <>
+          {internship && (
+            <p className="text-muted small mb-3">
+              Current: <strong>{internship.status_label || internship.status}</strong>
+              {internship.company_name ? ` · ${internship.company_name}` : ''}
+              {internship.status_reason ? ` — ${internship.status_reason}` : ''}
+            </p>
+          )}
+          {history.length === 0 ? (
+            <div className="it-modal__empty">No status changes recorded yet.</div>
+          ) : (
+            <ul className="list-group list-group-flush">
+              {history.map((h) => (
+                <li key={h.id} className="list-group-item px-0">
+                  <div className="d-flex flex-wrap justify-content-between gap-2">
+                    <div className="min-w-0" style={{ overflowWrap: 'anywhere' }}>
+                      <div className="fw-semibold">
+                        {(h.from_label || h.from_status || '—')}
+                        {' → '}
+                        {(h.to_label || h.to_status || '—')}
+                      </div>
+                      {h.reason && <div className="small text-muted mt-1">{h.reason}</div>}
+                      {h.changed_by && (
+                        <div className="small text-muted">By {h.changed_by}</div>
+                      )}
+                    </div>
+                    <div className="text-muted small text-nowrap">
+                      {formatManilaDateTime(h.changed_at)}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </AppModal>
   )
 }
 

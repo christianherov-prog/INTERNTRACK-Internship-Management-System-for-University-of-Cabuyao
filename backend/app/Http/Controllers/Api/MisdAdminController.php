@@ -12,6 +12,7 @@ use App\Services\FacultySectionAssignmentService;
 use App\Services\MisdIntegrationService;
 use App\Services\StaffAssignmentService;
 use App\Support\ApiResponse;
+use App\Support\ManilaTime;
 use App\Support\DepartmentScope;
 use App\Models\Program;
 use Illuminate\Http\JsonResponse;
@@ -62,8 +63,13 @@ class MisdAdminController extends Controller
 
         $todayCount = 0;
         try {
+            // "Today" is the Asia/Manila calendar day, bounded in stored (app) time.
+            $manilaToday = ManilaTime::now()->startOfDay();
             $todayCount = AuditLog::query()
-                ->whereDate('created_at', now()->toDateString())
+                ->whereBetween('created_at', [
+                    $manilaToday->copy()->timezone(config('app.timezone')),
+                    $manilaToday->copy()->endOfDay()->timezone(config('app.timezone')),
+                ])
                 ->count();
         } catch (\Throwable) {
             $todayCount = 0;
@@ -674,7 +680,7 @@ class MisdAdminController extends Controller
                 ->get();
 
             foreach ($logs as $log) {
-                $time = optional($log->created_at)->format('Y-m-d H:i:s') ?? now()->format('Y-m-d H:i:s');
+                $time = optional($log->created_at)?->copy()->timezone(ManilaTime::TZ)->format('Y-m-d H:i:s') ?? ManilaTime::now()->format('Y-m-d H:i:s');
                 $actor = $log->user ? $log->user->username : 'System Admin';
 
                 switch ($log->action) {
@@ -686,7 +692,7 @@ class MisdAdminController extends Controller
                     case 'misd.directory_fetched':
                         $type = $log->new_values['type'] ?? 'records';
                         $count = $log->new_values['count'] ?? 0;
-                        $entries[] = "[{$time}] [MISD-DIRECTORY] Successfully queried {$count} {$type} from mock MISD directory repository.";
+                        $entries[] = "[{$time}] [MISD-DIRECTORY] Successfully queried {$count} {$type} from the iEnroll directory.";
                         break;
                     case 'staff.created':
                     case 'staff.synced':
@@ -720,8 +726,8 @@ class MisdAdminController extends Controller
 
         if (count($entries) < 5) {
             $status = $this->misd->status();
-            $nowStr = now()->format('Y-m-d H:i:s');
-            $entries[] = "[{$nowStr}] [MISD-STATUS] " . ($status['note'] ?? 'MISD simulation repository connected and operating in Mock Engine mode.');
+            $nowStr = ManilaTime::now()->format('Y-m-d H:i:s');
+            $entries[] = "[{$nowStr}] [MISD-STATUS] " . ($status['note'] ?? 'iEnroll directory status unavailable.');
         }
 
         return response()->json(['data' => $entries]);
@@ -983,8 +989,9 @@ class MisdAdminController extends Controller
                     ?: $log->user->student_number
                     ?: ($log->user->login_username ?: $log->user->email),
             ] : null,
-            'created_at' => optional($log->created_at)?->timezone(config('app.timezone', 'Asia/Manila'))->toIso8601String(),
-            'created_at_display' => optional($log->created_at)?->timezone(config('app.timezone', 'Asia/Manila'))->format('M j, Y g:i A'),
+            // Stored in the app timezone (UTC); business display is Asia/Manila.
+            'created_at' => optional($log->created_at)?->copy()->timezone(ManilaTime::TZ)->toIso8601String(),
+            'created_at_display' => optional($log->created_at)?->copy()->timezone(ManilaTime::TZ)->format('M j, Y g:i A'),
         ];
     }
 

@@ -28,6 +28,7 @@ use App\Services\SupervisorDirectoryService;
 use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
+use App\Support\EvaluationSignature;
 use App\Support\InternshipStatuses;
 use App\Support\NameParts;
 use App\Support\RequiredDocuments;
@@ -663,7 +664,7 @@ class CoordinatorController extends Controller
             'counts_by_status' => $countsByStatus,
             'total_students' => $totalStudents,
             'pending_docs' => $pendingDocs,
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -710,7 +711,7 @@ class CoordinatorController extends Controller
                 'program' => $request->input('program'),
                 'industry' => $request->input('industry'),
             ],
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -788,7 +789,7 @@ class CoordinatorController extends Controller
                 'program' => $request->input('program'),
                 'industry' => $request->input('industry'),
             ],
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -852,7 +853,8 @@ class CoordinatorController extends Controller
                 'supervisor.supervisorProfile',
                 'faculty.facultyProfile',
                 'evaluations' => function ($q) use ($formTypes) {
-                    $q->whereIn('form_type', $formTypes);
+                    $q->whereIn('form_type', $formTypes)
+                        ->with(EvaluationSignature::evaluatorRelations());
                 },
             ])
             ->whereHas('evaluations', function ($q) use ($formTypes) {
@@ -888,6 +890,7 @@ class CoordinatorController extends Controller
         }
 
         $internships = $query->orderByDesc('created_at')->paginate(40);
+        EvaluationSignature::present($internships->getCollection());
 
         // Faculty options for filter dropdown
         $facultyOptions = User::inStaffDepartment()

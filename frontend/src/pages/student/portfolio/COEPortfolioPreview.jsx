@@ -425,7 +425,7 @@ function COEPortfolioPreview({ preloadedData = null, backTo = '/student/portfoli
             <i className="fa fa-file-signature fa-3x text-warning mb-3"></i>
             <h6 className="fw-bold text-dark">Approval Sheet Not Uploaded Yet</h6>
             <p className="small text-muted mb-0" style={{ maxWidth: "450px", margin: "0 auto" }}>
-              [ Draft Preview Mode: Upload your signed Approval Sheet in the Portfolio Builder to replace this placeholder. ]
+              Upload your signed Approval Sheet in the Portfolio Builder to include it on this page.
             </p>
           </div>
         </Page>
@@ -542,7 +542,7 @@ function COEPortfolioPreview({ preloadedData = null, backTo = '/student/portfoli
                 Line of Business
               </td>
               <td style={{ border: '1px solid #000000', padding: '15px 10px', textAlign: 'center', fontStyle: 'italic', verticalAlign: 'middle' }}>
-                {custom.line_of_business || 'Development, manufacturing, and sales of small precision motors, automotive motors, home appliance motors, commercial and industrial motors, motors for machinery, electronic and optical components, and other related products.'}
+                {custom.line_of_business || ''}
               </td>
             </tr>
 

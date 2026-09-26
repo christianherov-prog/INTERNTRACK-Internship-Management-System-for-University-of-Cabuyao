@@ -5,11 +5,13 @@ import RoleSummaryPanel from '../../components/RoleSummaryPanel'
 import PageError from '../../components/PageError'
 import api from '../../services/api'
 import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import AppModal from '../../components/modals/AppModal'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import AcceptanceFormPicker, { validateAcceptanceForm } from '../../components/AcceptanceFormPicker'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import AsyncButton from '../../components/AsyncButton'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 
 function SupervisorDashboard() {
   const confirm = useConfirm()
@@ -153,7 +155,7 @@ function SupervisorDashboard() {
                             {inv.company_address ? ` — ${inv.company_address}` : ''}
                           </div>
                           {inv.term && <div>Term: {inv.term}</div>}
-                          {inv.expires_at && <div>Invite expires: {inv.expires_at}</div>}
+                          {inv.expires_at && <div>Invite expires: {formatManilaDateTime(inv.expires_at)}</div>}
                         </div>
                       </div>
                       <div className="d-flex gap-2">
@@ -278,7 +280,7 @@ function SupervisorDashboard() {
                             </p>
                             <small className="text-muted">
                               {act.action_at
-                                ? new Date(act.action_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                                ? new Date(act.action_at).toLocaleString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                                 : '—'}
                             </small>
                           </div>
@@ -403,56 +405,58 @@ function SupervisorDashboard() {
         </>
       )}
 
-      {acceptInvite && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.45)' }} role="dialog">
-          <div className="modal-dialog modal-dialog-centered">
-            <form className="modal-content" onSubmit={submitAccept}>
-              <div className="modal-header">
-                <h5 className="modal-title">Submit for Faculty Approval</h5>
-                <button type="button" className="btn-close" onClick={closeAcceptModal} aria-label="Close" disabled={!!inviteBusy}></button>
-              </div>
-              <div className="modal-body">
-                <div className="alert alert-light border mb-3 py-2 px-3">
-                  <div className="fw-semibold">{acceptInvite.student_name}</div>
-                  <div className="text-muted small mt-1">
-                    {acceptInvite.student_number && <div>Student No.: {acceptInvite.student_number}</div>}
-                    {(acceptInvite.program || acceptInvite.section) && (
-                      <div>{[acceptInvite.program, acceptInvite.section].filter(Boolean).join(' · ')}</div>
-                    )}
-                    <div>
-                      Company: {acceptInvite.company_name || 'Company TBD'}
-                      {acceptInvite.company_address ? ` — ${acceptInvite.company_address}` : ''}
-                    </div>
-                    {acceptInvite.term && <div>Term: {acceptInvite.term}</div>}
-                  </div>
+      <AppModal
+        open={!!acceptInvite}
+        onClose={closeAcceptModal}
+        size="md"
+        title="Submit for Faculty Approval"
+        icon="fa-file-signature"
+        busy={!!inviteBusy}
+        onSubmit={submitAccept}
+        footer={acceptInvite && (
+          <>
+            <button type="button" className="btn btn-outline-secondary" onClick={closeAcceptModal} disabled={!!inviteBusy}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-green" disabled={!!inviteBusy || !acceptanceForm}>
+              {inviteBusy === `accept-${acceptInvite.id}` ? 'Submitting…' : 'Submit for Faculty Approval'}
+            </button>
+          </>
+        )}
+      >
+        {acceptInvite && (
+          <>
+            <div className="alert alert-light border mb-3 py-2 px-3" style={{ overflowWrap: 'anywhere' }}>
+              <div className="fw-semibold">{acceptInvite.student_name}</div>
+              <div className="text-muted small mt-1">
+                {acceptInvite.student_number && <div>Student No.: {acceptInvite.student_number}</div>}
+                {(acceptInvite.program || acceptInvite.section) && (
+                  <div>{[acceptInvite.program, acceptInvite.section].filter(Boolean).join(' · ')}</div>
+                )}
+                <div>
+                  Company: {acceptInvite.company_name || 'Company TBD'}
+                  {acceptInvite.company_address ? ` — ${acceptInvite.company_address}` : ''}
                 </div>
-                <AcceptanceFormPicker
-                  id="supervisor-accept-form"
-                  file={acceptanceForm}
-                  onChange={(file) => {
-                    setAcceptanceForm(file)
-                    setAcceptError(file ? (validateAcceptanceForm(file) || '') : 'Acceptance Form is required.')
-                  }}
-                  onClear={() => {
-                    setAcceptanceForm(null)
-                    setAcceptError('Acceptance Form is required.')
-                  }}
-                  disabled={!!inviteBusy}
-                  error={acceptError}
-                />
+                {acceptInvite.term && <div>Term: {acceptInvite.term}</div>}
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline-secondary" onClick={closeAcceptModal} disabled={!!inviteBusy}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-green" disabled={!!inviteBusy || !acceptanceForm}>
-                  {inviteBusy === `accept-${acceptInvite.id}` ? 'Submitting…' : 'Submit for Faculty Approval'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <AcceptanceFormPicker
+              id="supervisor-accept-form"
+              file={acceptanceForm}
+              onChange={(file) => {
+                setAcceptanceForm(file)
+                setAcceptError(file ? (validateAcceptanceForm(file) || '') : 'Acceptance Form is required.')
+              }}
+              onClear={() => {
+                setAcceptanceForm(null)
+                setAcceptError('Acceptance Form is required.')
+              }}
+              disabled={!!inviteBusy}
+              error={acceptError}
+            />
+          </>
+        )}
+      </AppModal>
     </Layout>
   )
 }

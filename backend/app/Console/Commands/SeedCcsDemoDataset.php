@@ -15,9 +15,11 @@ use App\Models\StudentPortfolio;
 use App\Models\StudentProfile;
 use App\Models\SupervisorProfile;
 use App\Models\User;
+use App\Services\ControlledAttendanceWriter;
 use App\Services\DocumentComplianceService;
 use App\Services\JournalPeriodValidator;
 use App\Support\InternshipProvisioning;
+use App\Support\SupervisorIds;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -175,7 +177,7 @@ class SeedCcsDemoDataset extends Command
                 'moa_start_date' => $company->moa_start_date ?: '2026-01-05',
                 'moa_expiry_date' => '2028-01-05',
                 'contact_person' => $company->contact_person ?: 'HR Partnerships Office',
-                'contact_email' => $company->contact_email ?: strtolower(preg_replace('/[^a-z0-9]/', '', strtolower($row['name']))).'@partners.demo.test',
+                'contact_email' => $company->contact_email ?: strtolower(preg_replace('/[^a-z0-9]/', '', strtolower($row['name']))).'@partners.interntrack.test',
                 'contact_number' => $company->contact_number ?: '028-'.random_int(1000000, 9999999),
             ]);
 
@@ -212,12 +214,23 @@ class SeedCcsDemoDataset extends Command
 
         foreach ($defs as $companyName => $def) {
             $company = $companies[$companyName];
-            $facultyNumber = 'SUP-CCSDEMO-'.$def['code'];
-            $email = strtolower($def['first'].'.'.$def['last']).'@'.strtolower($def['code']).'-demo.test';
+            // Supervisor IDs follow the system's own SUP-#### sequence. Re-runs find
+            // the account by its stable email (or its pre-rename legacy ID) and keep
+            // the ID it already has; only a brand-new account draws the next number.
+            $email = strtolower($def['first'].'.'.$def['last']).'@interntrack.test';
+            $existing = User::withTrashed()
+                ->where('role', 'supervisor')
+                ->where(fn ($q) => $q->where('email', $email)
+                    ->orWhere('faculty_number', 'SUP-CCSDEMO-'.$def['code']))
+                ->first();
+            $facultyNumber = $existing && ! str_starts_with((string) $existing->faculty_number, 'SUP-CCSDEMO-')
+                ? $existing->faculty_number
+                : SupervisorIds::nextFacultyNumber();
 
             $user = User::withTrashed()->updateOrCreate(
-                ['faculty_number' => $facultyNumber],
+                ['id' => $existing?->id],
                 [
+                    'faculty_number' => $facultyNumber,
                     'email' => $email,
                     'password' => $password,
                     'role' => 'supervisor',
@@ -419,7 +432,7 @@ class SeedCcsDemoDataset extends Command
                 'internship_id' => $internship->id,
                 'from_status' => $from,
                 'to_status' => $toStatus,
-                'reason' => 'CCS controlled demo dataset',
+                'reason' => 'Status recorded during internship record setup.',
                 'changed_by' => $internship->coordinator_id ?? $internship->faculty_id,
             ]);
         }
@@ -469,7 +482,7 @@ class SeedCcsDemoDataset extends Command
 
         InternshipApplication::updateOrCreate(
             ['student_id' => $student->id, 'company_id' => $company->id],
-            ['status' => 'approved', 'coordinator_remarks' => 'Approved for CCS controlled demo placement.']
+            ['status' => 'approved', 'coordinator_remarks' => 'Approved for placement.']
         );
 
         $internship = $this->transitionStatus($internship, $company, 'active', [
@@ -578,9 +591,20 @@ class SeedCcsDemoDataset extends Command
     // Attendance
     // ─────────────────────────────────────────────────────────────────
 
-    /** Returns the date string of the last attendance day written. */
+    /**
+     * Returns the date string of the last attendance day written.
+     *
+     * Every day is written through ControlledAttendanceWriter: an approved
+     * Asia/Manila 08:00–17:00 schedule, realistic clock times stored in the
+     * same representation as live clock-in, a recorded lunch break, and
+     * credited hours computed by the DTR service (8.00 per full day; the
+     * final partial morning makes up any remainder of the program target).
+     */
     private function seedAttendance(Internship $internship, User $supervisor, string $startDate, ?string $capEndDate, float $targetHours): string
     {
+        $writer = app(ControlledAttendanceWriter::class);
+        $writer->ensureStandardSchedule($internship, $supervisor->id, Carbon::parse($startDate)->toDateString());
+
         $existing = (float) $internship->attendance()->where('status', 'validated')->sum('hours_rendered');
         $fullDays = (int) floor($targetHours / 8);
         $leftover = round($targetHours - ($fullDays * 8), 2);
@@ -588,15 +612,15 @@ class SeedCcsDemoDataset extends Command
         $today = Carbon::now('Asia/Manila')->startOfDay();
         $cap = $capEndDate ? Carbon::parse($capEndDate) : $today;
 
-        $clockInVariants = ['07:55:00', '07:58:00', '08:00:00', '08:03:00', '08:07:00'];
-        $clockOutVariants = ['16:58:00', '17:00:00', '17:02:00', '17:04:00'];
-
         $date = Carbon::parse($startDate)->startOfDay();
         $written = 0;
         $lastDate = $date->copy();
 
         // Only (re)generate if not already fully seeded — keeps re-runs idempotent.
+        // Rows left by the earlier generator (Manila times stored as UTC, no
+        // break) are rewritten in place so totals and dates stay the same.
         if ($existing >= $targetHours - 0.01) {
+            $writer->repairLegacyRows($internship, $supervisor->id);
             $internship->refreshTotalHours();
             $lastLog = $internship->attendance()->where('status', 'validated')->orderByDesc('date')->first();
 
@@ -616,7 +640,8 @@ class SeedCcsDemoDataset extends Command
                 continue;
             }
 
-            AttendanceLogFactoryHelper::create($internship->id, $date, $clockInVariants[array_rand($clockInVariants)], $clockOutVariants[array_rand($clockOutVariants)], 8.0, $supervisor->id);
+            $day = $date->toDateString();
+            $writer->writeDay($internship, $day, $writer->dayTimes($internship->id, $day, false), $supervisor->id);
             $lastDate = $date->copy();
             $written++;
             $date->addDay();
@@ -626,7 +651,9 @@ class SeedCcsDemoDataset extends Command
             while ($date->isWeekend() || $date->gt($cap) || $date->gt($today)) {
                 $date->addDay();
             }
-            AttendanceLogFactoryHelper::create($internship->id, $date, '08:00:00', '12:00:00', $leftover, $supervisor->id);
+            $day = $date->toDateString();
+            // Controlled leftovers are 4 h (500 = 62 × 8 + 4; 300 = 37 × 8 + 4): one morning session.
+            $writer->writeDay($internship, $day, $writer->dayTimes($internship->id, $day, true), $supervisor->id);
             $lastDate = $date->copy();
         }
 
@@ -782,7 +809,7 @@ class SeedCcsDemoDataset extends Command
                     'reviewed_by' => $baseStatus === 'approved' ? $facultyId : null,
                     'reviewed_at' => $baseStatus === 'approved' ? now()->subDays(random_int(1, 10)) : null,
                     'remarks' => $baseStatus === 'rejected' ? 'Please resubmit with the correct signatory.' : null,
-                    'drive_link' => 'https://drive.google.com/demo-placeholder/'.\Illuminate\Support\Str::slug($template->name),
+                    'drive_link' => null,
                 ]
             );
         }
@@ -911,26 +938,5 @@ class SeedCcsDemoDataset extends Command
         $this->info('   BSIT fresh:    2300500 Mark Joseph V. Taduran, 2300501 Ellie Williams, 2300502 Leon Kennedy');
         $this->info('   BSCS:          2300613 Terrence John Manlapaz (finished, Cognizant), 2300611 Ada Wong (ongoing, NTT DATA, 216h), 2300612 Nathan Drake (fresh)');
         $this->info('   Sections:      4IT-A/4IT-D/4CS-A → FAC-1001 Marvin Bicua; 4IT-B/4CS-B → COR-CCS-001 Arcelito Quiatchon');
-    }
-}
-
-/**
- * Tiny internal helper so AttendanceLog rows are created with a single,
- * explicit call site (keeps seedAttendance() readable).
- */
-class AttendanceLogFactoryHelper
-{
-    public static function create(int $internshipId, Carbon $date, string $clockIn, string $clockOut, float $hours, int $supervisorId): void
-    {
-        \App\Models\AttendanceLog::create([
-            'internship_id' => $internshipId,
-            'date' => $date->toDateString(),
-            'clock_in' => $clockIn,
-            'clock_out' => $clockOut,
-            'hours_rendered' => $hours,
-            'status' => 'validated',
-            'validated_by' => $supervisorId,
-            'validated_at' => $date->copy()->addDay(),
-        ]);
     }
 }

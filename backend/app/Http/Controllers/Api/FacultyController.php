@@ -23,6 +23,7 @@ use App\Services\SupervisorFeedbackService;
 use App\Support\ApiResponse;
 use App\Support\DepartmentScope;
 use App\Support\EvaluationPeriod;
+use App\Support\EvaluationSignature;
 use App\Support\InternshipAccess;
 use App\Support\InternshipStatuses;
 use App\Support\NameParts;
@@ -600,7 +601,8 @@ class FacultyController extends Controller
                 'supervisor.supervisorProfile',
                 'faculty.facultyProfile',
                 'evaluations' => function ($q) {
-                    $q->whereIn('form_type', ['FO-24', 'faculty_eval']);
+                    $q->whereIn('form_type', ['FO-24', 'faculty_eval'])
+                        ->with(EvaluationSignature::evaluatorRelations());
                 },
             ]);
 
@@ -622,6 +624,8 @@ class FacultyController extends Controller
         $internships = $query->get()->each(
             fn (Internship $i) => $i->setAttribute('evaluation_period', EvaluationPeriod::state($i))
         );
+        // FO-24 preview: the submitting supervisor's signature, as in the Student Portfolio.
+        EvaluationSignature::present($internships);
 
         return response()->json([
             'internships' => $internships,
@@ -1139,7 +1143,7 @@ class FacultyController extends Controller
         return response()->json([
             'students' => $students->sortBy('status')->values(),
             'docs_total' => null,
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -1206,7 +1210,7 @@ class FacultyController extends Controller
         return response()->json([
             'by_program' => $byProgram,
             'eval_averages' => $evalAvg,
-            'generated_at' => now()->toDateTimeString(),
+            'generated_at' => now()->toIso8601String(),
         ]);
     }
 

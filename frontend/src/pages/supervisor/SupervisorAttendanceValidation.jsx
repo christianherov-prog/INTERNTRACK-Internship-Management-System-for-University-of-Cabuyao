@@ -11,12 +11,11 @@ import { invalidateStudentPortfolio } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { useConfirm } from '../../contexts/ConfirmContext'
 import AsyncButton from '../../components/AsyncButton'
-import { formatDisplayDate } from '../../utils/manilaTime'
+import { formatDisplayDate, formatClock12 } from '../../utils/manilaTime'
+import AppModal from '../../components/modals/AppModal'
 
-function fmtTime(t) {
-  if (!t) return '—'
-  return String(t).slice(0, 5)
-}
+// Manila wall-clock values (already resolved by the API) in 12-hour form.
+const fmtTime = (t) => formatClock12(t)
 
 function SupervisorAttendanceValidation() {
   const confirm = useConfirm()
@@ -172,42 +171,39 @@ function SupervisorAttendanceValidation() {
         </div>
       )}
 
-      {rejectModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">{rejectModal.bulk ? `Reject ${selected.length} Record(s)` : 'Reject Attendance'}</h5>
-                <button type="button" className="btn-close" onClick={() => setRejectModal(null)}></button>
-              </div>
-              <div className="modal-body">
-                {!rejectModal.bulk && (
-                  <p className="text-muted mb-2" style={{ fontSize: '0.88rem' }}>
-                    Date: <strong>{formatDisplayDate(rejectModal.date) || rejectModal.date || '—'}</strong> · Student: <strong>{rejectModal.studentName}</strong>
-                  </p>
-                )}
-                <label className="form-label fw-semibold">Reason for Rejection</label>
-                <textarea maxLength={500} className="form-control" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Reason" />
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setRejectModal(null)}>Cancel</button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => (rejectModal.bulk ? bulkValidate('rejected', remark) : validate({ id: rejectModal.id, date: rejectModal.date }, 'rejected', remark))}
-                  disabled={processing === (rejectModal.bulk ? 'bulk' : rejectModal.id)}
-                >
-                  {processing === (rejectModal.bulk ? 'bulk' : rejectModal.id) ? (
-                    <><i className="fa fa-spinner fa-spin me-2"></i>Rejecting…</>
-                  ) : (
-                    <><i className="fa fa-times me-2"></i>Reject {rejectModal.bulk ? 'Selected' : ''}</>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppModal
+        open={!!rejectModal}
+        onClose={() => setRejectModal(null)}
+        size="md"
+        title={rejectModal?.bulk ? `Reject ${selected.length} Record(s)` : 'Reject Attendance'}
+        icon="fa-circle-xmark"
+        busy={!!rejectModal && processing === (rejectModal.bulk ? 'bulk' : rejectModal.id)}
+        footer={rejectModal && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setRejectModal(null)}>Cancel</button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => (rejectModal.bulk ? bulkValidate('rejected', remark) : validate({ id: rejectModal.id, date: rejectModal.date }, 'rejected', remark))}
+              disabled={processing === (rejectModal.bulk ? 'bulk' : rejectModal.id)}
+            >
+              {processing === (rejectModal.bulk ? 'bulk' : rejectModal.id) ? (
+                <><i className="fa fa-spinner fa-spin me-2"></i>Rejecting…</>
+              ) : (
+                <><i className="fa fa-times me-2"></i>Reject {rejectModal.bulk ? 'Selected' : ''}</>
+              )}
+            </button>
+          </>
+        )}
+      >
+        {rejectModal && !rejectModal.bulk && (
+          <p className="text-muted mb-2" style={{ fontSize: '0.88rem' }}>
+            Date: <strong>{formatDisplayDate(rejectModal.date) || rejectModal.date || '—'}</strong> · Student: <strong>{rejectModal.studentName}</strong>
+          </p>
+        )}
+        <label className="form-label fw-semibold" htmlFor="attendance-reject-reason">Reason for Rejection</label>
+        <textarea maxLength={500} id="attendance-reject-reason" className="form-control" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Reason" />
+      </AppModal>
 
       {/* Filters */}
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
@@ -394,8 +390,8 @@ function SupervisorAttendanceValidation() {
                   <tr key={c.id}>
                     <td className="fw-semibold">{c.student_name || formatStudentName(c.internship)}</td>
                     <td>{formatDisplayDate(c.date) || '—'}</td>
-                    <td>{fmtTime(c.original_clock_in)}–{fmtTime(c.original_clock_out)}</td>
-                    <td>{fmtTime(c.requested_clock_in)}–{fmtTime(c.requested_clock_out)}</td>
+                    <td>{fmtTime(c.original_clock_in_display)}–{fmtTime(c.original_clock_out_display)}</td>
+                    <td>{fmtTime(c.requested_clock_in_display)}–{fmtTime(c.requested_clock_out_display)}</td>
                     <td>{c.status_label || c.status}</td>
                     <td className="text-center">
                       <AsyncButton type="button" className="btn btn-sm btn-success me-2" busy={processing === `corrections-${c.id}`} busyLabel="…" onClick={() => reviewDtr('corrections', c, 'approved')}>Approve</AsyncButton>

@@ -97,6 +97,32 @@ class Internship extends Model
         return 'Attendance tracking is locked until your HTE Supervisor is approved.';
     }
 
+    public const ATTENDANCE_COMPLETED_MESSAGE = 'You have completed your required internship hours. New attendance entries are no longer available.';
+
+    /**
+     * Completion is the official internship status set through the staff
+     * status workflow — not a derived hours check. Reaching the target hours
+     * alone leaves an internship open until it is formally completed.
+     */
+    public function isCompleted(): bool
+    {
+        return InternshipStatuses::normalize($this->status) === 'completed';
+    }
+
+    /**
+     * Reason new attendance activity (clock in/out, break, resume, schedule and
+     * correction requests) is refused, or null when allowed. History stays
+     * readable for completed internships; only new entries are closed.
+     */
+    public function newAttendanceLockReason(): ?string
+    {
+        if ($this->isCompleted()) {
+            return self::ATTENDANCE_COMPLETED_MESSAGE;
+        }
+
+        return $this->attendanceLockReason();
+    }
+
     public function faculty()
     {
         return $this->belongsTo(User::class, 'faculty_id');

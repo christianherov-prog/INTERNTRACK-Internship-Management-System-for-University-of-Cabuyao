@@ -17,6 +17,7 @@ import { UPLOAD_MAX_MB } from '../../config/uploads'
 import { uploadErrorMessage } from '../../utils/uploadValidation'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatManilaDate } from '../../utils/manilaTime'
 
 function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator-page' }) {
   const { loading, seed, run } = useCachedPage(`announcements:${apiBase}`)
@@ -312,7 +313,7 @@ function CoordAnnouncements({ apiBase = '/coordinator', bodyClass = 'coordinator
                       <span className="badge bg-danger ms-1" style={{fontSize:'0.7rem'}}>Policy Update</span>
                     )}
                     <span className={`badge ${roleBadge[a.target_role] ?? 'bg-secondary'} ms-1`} style={{fontSize:'0.7rem'}}>{a.target_role}</span>
-                    <span className="ms-auto text-muted" style={{fontSize:'0.75rem'}}>{new Date(a.created_at).toLocaleDateString()}</span>
+                    <span className="ms-auto text-muted" style={{fontSize:'0.75rem'}}>{formatManilaDate(a.created_at)}</span>
                   </div>
                   <p className="text-muted mb-0" style={{fontSize:'0.87rem'}}>{a.content}</p>
                   {a.attachment && (

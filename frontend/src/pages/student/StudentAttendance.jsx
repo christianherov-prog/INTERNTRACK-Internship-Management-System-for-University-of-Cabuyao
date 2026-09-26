@@ -9,12 +9,11 @@ import { useConfirm } from '../../contexts/ConfirmContext'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import { cacheDelete, invalidateStudentAttendance } from '../../utils/pageCache'
 import InternTrackLoader from '../../components/InternTrackLoader'
-import { formatManilaTime } from '../../utils/manilaTime'
+import { formatManilaTime, formatDisplayDate, formatClock12 } from '../../utils/manilaTime'
+import AppModal from '../../components/modals/AppModal'
 
-function fmtTime(t) {
-  if (!t) return '—'
-  return String(t).slice(0, 5)
-}
+// Manila wall-clock values (already resolved by the API) in 12-hour form.
+const fmtTime = (t) => formatClock12(t)
 
 function fmtHours(value) {
   if (value == null || value === '') return '—'
@@ -297,6 +296,9 @@ function StudentAttendance({ embedded = false }) {
   const undoStillOpen = data?.can_undo_clock_out && data?.undo_expires_at && new Date(data.undo_expires_at).getTime() > nowTick
   const incompleteDays = data?.incomplete_dtr_days ?? []
   const activeCorrectionType = CORRECTION_TYPES.find((t) => t.value === correctionForm?.correction_type)
+  // Authoritative completion comes from the internship status (backend also
+  // refuses new attendance with 409); history, schedule and FO-30 stay readable.
+  const internshipCompleted = data?.internship_completed === true
 
   const statusBadge = (s) => {
     if (s === 'validated') return <span className="badge-status badge-active">Validated</span>
@@ -323,19 +325,21 @@ function StudentAttendance({ embedded = false }) {
               <strong>Active Schedule:</strong> {fmtTime(data.active_schedule.start_time)}–{fmtTime(data.active_schedule.end_time)}
               {data.active_schedule.effective_from && (
                 <span className="text-muted ms-2" style={{ fontSize: '0.85rem' }}>
-                  since {data.active_schedule.effective_from}
+                  since {formatDisplayDate(data.active_schedule.effective_from, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               )}
             </p>
+          ) : internshipCompleted ? (
+            <p className="text-muted mb-2">No active schedule on record.</p>
           ) : (
             <p className="text-muted mb-2">No active schedule yet. Propose your working hours for supervisor approval.</p>
           )}
-          {data?.pending_schedule && (
+          {!internshipCompleted && data?.pending_schedule && (
             <div className="alert alert-info py-2 mb-3">
               Pending proposal: {fmtTime(data.pending_schedule.start_time)}–{fmtTime(data.pending_schedule.end_time)}. Your current active schedule stays in effect until this is approved.
             </div>
           )}
-          {!data?.pending_schedule && (
+          {!internshipCompleted && !data?.pending_schedule && (
             <form className="wh-schedule-row" onSubmit={handleProposeSchedule}>
               <div className="wh-schedule-field">
                 <label className="form-label mb-1" htmlFor="wh-start" style={{ fontSize: '0.8rem' }}>Start</label>
@@ -375,7 +379,7 @@ function StudentAttendance({ embedded = false }) {
               {data.schedule_history.map((s) => (
                 <span key={s.id} className="me-2">
                   {fmtTime(s.start_time)}–{fmtTime(s.end_time)}
-                  {s.effective_from ? ` (${s.effective_from}${s.effective_to ? ` to ${s.effective_to}` : ''})` : ''}
+                  {s.effective_from ? ` (${formatDisplayDate(s.effective_from, { month: 'short', day: 'numeric', year: 'numeric' })}${s.effective_to ? ` to ${formatDisplayDate(s.effective_to, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''})` : ''}
                 </span>
               ))}
             </p>
@@ -397,6 +401,23 @@ function StudentAttendance({ embedded = false }) {
         <div className="p-4 text-center">
           {message && <div className={`alert alert-${message.type} mb-3`}>{message.text}</div>}
 
+          {internshipCompleted ? (
+            <div className="attendance-completed-state" role="status">
+              <span className="attendance-completed-state__icon" aria-hidden="true">
+                <i className="fa fa-flag-checkered"></i>
+              </span>
+              <h6 className="attendance-completed-state__title">Internship Completed</h6>
+              <p className="attendance-completed-state__text mb-2">
+                You have completed your required internship hours. New attendance entries are no longer available.
+              </p>
+              {data?.target_hours > 0 && (
+                <span className="attendance-completed-state__hours">
+                  {Number(data.hours_rendered ?? 0)} / {Number(data.target_hours)} hours rendered
+                </span>
+              )}
+            </div>
+          ) : (
+          <>
           {todayStatus === 'not_clocked_in' && (
             <button type="button" className="btn btn-success px-5 py-2" onClick={handleClockIn} disabled={clocking}>
               <i className="fa fa-play-circle me-2"></i>{clocking ? 'Processing…' : 'Clock In'}
@@ -439,6 +460,8 @@ function StudentAttendance({ embedded = false }) {
               )}
             </div>
           )}
+          </>
+          )}
         </div>
       </div>
 
@@ -446,15 +469,17 @@ function StudentAttendance({ embedded = false }) {
         <div className="content-card-header">
           <i className="fa fa-history"></i>
           <h6>Attendance History</h6>
-          <button type="button" className="btn btn-sm btn-outline-primary ms-auto" onClick={() => openCorrection(incompleteDays[0] || { date: '' })}>
-            Request time correction
-          </button>
+          {!internshipCompleted && (
+            <button type="button" className="btn btn-sm btn-outline-primary ms-auto" onClick={() => openCorrection(incompleteDays[0] || { date: '' })}>
+              Request time correction
+            </button>
+          )}
         </div>
         <div className="table-card">
           {loading && !data ? (
             <div className="text-center py-4"><InternTrackLoader /></div>
           ) : logs.length === 0 && !error ? (
-            <EmptyState icon="fa-clock" title="No attendance yet" message="Use Clock In when you start your shift." />
+            <EmptyState icon="fa-clock" title="No attendance yet" message={internshipCompleted ? 'No attendance records were logged for this internship.' : 'Use Clock In when you start your shift.'} />
           ) : logs.length === 0 ? null : (
             <div className="table-responsive">
               <table className="table table-hover mb-0 align-middle">
@@ -516,10 +541,10 @@ function StudentAttendance({ embedded = false }) {
               <tbody>
                 {corrections.map((c) => (
                   <tr key={c.id}>
-                    <td>{c.date}</td>
+                    <td>{formatDisplayDate(c.date, { month: 'short', day: 'numeric', year: 'numeric' }) || '—'}</td>
                     <td>{c.correction_type || '—'}</td>
-                    <td>{fmtTime(c.original_clock_in)}–{fmtTime(c.original_clock_out)}</td>
-                    <td>{fmtTime(c.requested_clock_in)}–{fmtTime(c.requested_clock_out)}</td>
+                    <td>{fmtTime(c.original_clock_in_display)}–{fmtTime(c.original_clock_out_display)}</td>
+                    <td>{fmtTime(c.requested_clock_in_display)}–{fmtTime(c.requested_clock_out_display)}</td>
                     <td>{c.status_label || c.status}</td>
                   </tr>
                 ))}
@@ -529,23 +554,36 @@ function StudentAttendance({ embedded = false }) {
         </div>
       )}
 
-      {correctionForm && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <form className="modal-content" onSubmit={submitCorrection}>
-              <div className="modal-header">
-                <h5 className="modal-title">Correction request</h5>
-                <button type="button" className="btn-close" onClick={() => setCorrectionForm(null)}></button>
+      <AppModal
+        open={!!correctionForm}
+        onClose={() => setCorrectionForm(null)}
+        size="md"
+        title="Correction request"
+        icon="fa-pen-to-square"
+        busy={savingCorrection}
+        onSubmit={submitCorrection}
+        footer={(
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setCorrectionForm(null)} disabled={savingCorrection}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={savingCorrection}>{savingCorrection ? 'Submitting…' : 'Submit request'}</button>
+          </>
+        )}
+      >
+        {correctionForm && (
+          <>
+            <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+              Choose one correction type. This does not change the official DTR until supervisor and faculty both approve.
+            </p>
+            <div className="it-form-grid">
+              <div>
+                <label className="form-label" htmlFor="correction-date">Date</label>
+                <input id="correction-date" type="date" className="form-control" value={correctionForm.date} onChange={(e) => setCorrectionForm({ ...correctionForm, date: e.target.value })} required />
               </div>
-              <div className="modal-body">
-                <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  Choose one correction type. This does not change the official DTR until supervisor and faculty both approve.
-                </p>
-                <label className="form-label">Date</label>
-                <input type="date" className="form-control mb-2" value={correctionForm.date} onChange={(e) => setCorrectionForm({ ...correctionForm, date: e.target.value })} required />
-                <label className="form-label">Correction Type</label>
+              <div>
+                <label className="form-label" htmlFor="correction-type">Correction Type</label>
                 <select
-                  className="form-select mb-2"
+                  id="correction-type"
+                  className="form-select"
                   value={correctionForm.correction_type}
                   onChange={(e) => setCorrectionForm({ ...correctionForm, correction_type: e.target.value })}
                   required
@@ -554,59 +592,96 @@ function StudentAttendance({ embedded = false }) {
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
-                {activeCorrectionType && (
-                  <>
-                    <label className="form-label">{activeCorrectionType.label} time</label>
-                    <input
-                      type="time"
-                      className="form-control"
-                      value={correctionForm[activeCorrectionType.field]}
-                      onChange={(e) => setCorrectionForm({ ...correctionForm, [activeCorrectionType.field]: e.target.value })}
-                      required
-                    />
-                  </>
-                )}
-                <label className="form-label mt-2">Reason</label>
-                <textarea maxLength={500} className="form-control" rows={2} value={correctionForm.reason} onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })} />
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setCorrectionForm(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={savingCorrection}>{savingCorrection ? 'Submitting…' : 'Submit request'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {clockOutOpen && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Clock Out</h5>
-                <button type="button" className="btn-close" onClick={cancelClockOut} disabled={clocking}></button>
-              </div>
-              <div className="modal-body text-center">
-                <p className="mb-3">Choose what you want to do.</p>
-                <div className="text-muted" style={{ fontSize: '0.82rem' }}>Current Time</div>
-                <div className="fw-semibold mb-3" style={{ fontSize: '1.15rem' }}>{formatManilaTime(nowTick)}</div>
-                {clockOutError && <div className="alert alert-danger py-2">{clockOutError}</div>}
-              </div>
-              <div className="modal-footer flex-wrap justify-content-center gap-2">
-                <button type="button" className="btn btn-secondary" onClick={cancelClockOut} disabled={clocking}>Cancel</button>
-                <button type="button" className="btn btn-warning" onClick={confirmTakeBreak} disabled={clocking}>
-                  {clocking ? 'Working…' : 'Take a Break'}
-                </button>
-                <button type="button" className="btn btn-danger" onClick={confirmEndDay} disabled={clocking}>
-                  {clocking ? 'Working…' : 'End Attendance for the Day'}
-                </button>
+              {activeCorrectionType && (
+                <div>
+                  <label className="form-label" htmlFor="correction-time">{activeCorrectionType.label} time</label>
+                  <input
+                    id="correction-time"
+                    type="time"
+                    className="form-control"
+                    value={correctionForm[activeCorrectionType.field]}
+                    onChange={(e) => setCorrectionForm({ ...correctionForm, [activeCorrectionType.field]: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              <div className="it-span-2">
+                <label className="form-label" htmlFor="correction-reason">Reason</label>
+                <textarea maxLength={500} id="correction-reason" className="form-control" rows={2} value={correctionForm.reason} onChange={(e) => setCorrectionForm({ ...correctionForm, reason: e.target.value })} />
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AppModal>
+
+      <AppModal
+        open={clockOutOpen}
+        onClose={cancelClockOut}
+        size="sm"
+        title="Clock Out"
+        icon="fa-right-from-bracket"
+        busy={clocking}
+        className="text-center"
+        footer={(
+          <>
+            <button type="button" className="btn btn-secondary" onClick={cancelClockOut} disabled={clocking}>Cancel</button>
+            <button type="button" className="btn btn-warning" onClick={confirmTakeBreak} disabled={clocking}>
+              {clocking ? 'Working…' : 'Take a Break'}
+            </button>
+            <button type="button" className="btn btn-danger" onClick={confirmEndDay} disabled={clocking}>
+              {clocking ? 'Working…' : 'End Attendance for the Day'}
+            </button>
+          </>
+        )}
+      >
+        <p className="mb-3">Choose what you want to do.</p>
+        <div className="text-muted" style={{ fontSize: '0.82rem' }}>Current Time</div>
+        <div className="fw-semibold mb-3" style={{ fontSize: '1.15rem' }}>{formatManilaTime(nowTick)}</div>
+        {clockOutError && <div className="alert alert-danger py-2">{clockOutError}</div>}
+      </AppModal>
 
       <style>{`
+        .attendance-completed-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.35rem;
+          max-width: 34rem;
+          margin: 0 auto;
+          padding: 1.25rem 1rem;
+          border: 1px solid var(--green-tint, #d0f0dc);
+          border-radius: 14px;
+          background: var(--green-pale, #e8f7ee);
+        }
+        .attendance-completed-state__icon {
+          display: grid;
+          place-items: center;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: var(--green-main, #1a7a3f);
+          color: #fff;
+          font-size: 1.2rem;
+        }
+        .attendance-completed-state__title {
+          margin: 0.35rem 0 0;
+          color: var(--green-dark, #0a5c2e);
+          font-weight: 800;
+        }
+        .attendance-completed-state__text {
+          color: var(--text-mid, #3d5c46);
+          font-size: 0.9rem;
+        }
+        .attendance-completed-state__hours {
+          display: inline-block;
+          padding: 0.2rem 0.7rem;
+          border-radius: 999px;
+          background: #fff;
+          color: var(--green-dark, #0a5c2e);
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
         .wh-schedule-row {
           display: grid;
           grid-template-columns: minmax(8.5rem, 1fr) minmax(8.5rem, 1fr) auto;

@@ -9,6 +9,8 @@ import { formatStudentName } from '../../utils/formatName'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import { invalidateStudentDocuments } from '../../utils/pageCache'
+import AppModal from '../../components/modals/AppModal'
+import { formatManilaDate } from '../../utils/manilaTime'
 
 function CoordDocApprovals() {
   const { loading, seed, run } = useCachedPage('coordinator:doc-approvals')
@@ -154,68 +156,62 @@ function CoordDocApprovals() {
       />
 
       {/* Approve modal */}
-      {approveModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Forward to Faculty</h5>
-                <button className="btn-close" onClick={() => setApproveModal(null)}></button>
-              </div>
-              <div className="modal-body">
-                <p className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  Confirm this document passed coordinator review and should go to faculty verification.
-                </p>
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Remarks (optional)</label>
-                  <textarea maxLength={1000}
-                    className="form-control"
-                    rows={2}
-                    value={remarks}
-                    onChange={e => setRemarks(e.target.value)}
-                    placeholder="Note"
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setApproveModal(null)}>Cancel</button>
-                <button
-                  className="btn btn-primary"
-                  onClick={submitApprove}
-                  disabled={processing === approveModal.id}
-                >
-                  <i className={`fa fa-${processing === approveModal.id ? 'spinner fa-spin' : 'check'} me-2`}></i>
-                  Forward to Faculty
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppModal
+        open={!!approveModal}
+        onClose={() => setApproveModal(null)}
+        size="md"
+        title="Forward to Faculty"
+        icon="fa-share"
+        busy={!!approveModal && processing === approveModal.id}
+        footer={approveModal && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setApproveModal(null)} disabled={processing === approveModal.id}>Cancel</button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={submitApprove}
+              disabled={processing === approveModal.id}
+            >
+              <i className={`fa fa-${processing === approveModal.id ? 'spinner fa-spin' : 'check'} me-2`}></i>
+              Forward to Faculty
+            </button>
+          </>
+        )}
+      >
+        <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+          Confirm this document passed coordinator review and should go to faculty verification.
+        </p>
+        <label className="form-label fw-semibold" htmlFor="coord-forward-remarks">Remarks (optional)</label>
+        <textarea maxLength={1000}
+          id="coord-forward-remarks"
+          className="form-control"
+          rows={2}
+          value={remarks}
+          onChange={e => setRemarks(e.target.value)}
+          placeholder="Note"
+        ></textarea>
+      </AppModal>
 
       {/* Reject Modal (single or bulk) */}
-      {remarkModal && (
-        <div className="modal show d-block" tabIndex="-1" style={{background:'rgba(0,0,0,0.4)'}}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">{remarkModal.bulk ? `Reject ${selected.length} Document(s)` : 'Reject Document'}</h5>
-                <button className="btn-close" onClick={() => setRemarkModal(null)}></button>
-              </div>
-              <div className="modal-body">
-                <label className="form-label fw-semibold">Remarks / Reason for Rejection <span className="text-danger">*</span></label>
-                <textarea maxLength={1000} className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Feedback"></textarea>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
-                <button className="btn btn-danger" onClick={submitReject} disabled={!remark.trim() || processing === (remarkModal.bulk ? 'bulk' : remarkModal.id)}>
-                  <i className="fa fa-times me-2"></i>Reject {remarkModal.bulk ? 'Selected' : 'Document'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppModal
+        open={!!remarkModal}
+        onClose={() => setRemarkModal(null)}
+        size="md"
+        title={remarkModal?.bulk ? `Reject ${selected.length} Document(s)` : 'Reject Document'}
+        icon="fa-circle-xmark"
+        busy={!!remarkModal && processing === (remarkModal.bulk ? 'bulk' : remarkModal.id)}
+        footer={remarkModal && (
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setRemarkModal(null)}>Cancel</button>
+            <button type="button" className="btn btn-danger" onClick={submitReject} disabled={!remark.trim() || processing === (remarkModal.bulk ? 'bulk' : remarkModal.id)}>
+              <i className="fa fa-times me-2"></i>Reject {remarkModal.bulk ? 'Selected' : 'Document'}
+            </button>
+          </>
+        )}
+      >
+        <label className="form-label fw-semibold" htmlFor="coord-reject-remarks">Remarks / Reason for Rejection <span className="text-danger">*</span></label>
+        <textarea maxLength={1000} id="coord-reject-remarks" className="form-control" rows={3} value={remark} onChange={e => setRemark(e.target.value)} placeholder="Feedback"></textarea>
+      </AppModal>
 
       {/* Filters */}
       <div className="d-flex flex-wrap gap-3 align-items-center mb-4 p-3 bg-white rounded border shadow-sm">
@@ -243,7 +239,7 @@ function CoordDocApprovals() {
 
         {/* Bulk Action Bar */}
         {selected.length > 0 && (
-          <div className="d-flex align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
+          <div className="d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom" style={{ background: '#f0f9ff' }}>
             <span className="fw-semibold" style={{ fontSize: '0.85rem' }}>{selected.length} selected</span>
             <button className="btn btn-sm btn-outline-primary ms-auto" onClick={downloadSelected} disabled={downloading}>
               <i className={`fa fa-${downloading ? 'spinner fa-spin' : 'file-zipper'} me-1`}></i>Download ZIP
@@ -308,7 +304,7 @@ function CoordDocApprovals() {
                           <a href={doc.drive_link} target="_blank" rel="noreferrer" className="text-primary" style={{fontSize:'0.82rem'}}>Drive link</a>
                         ) : '—'}
                       </td>
-                      <td style={{fontSize:'0.82rem',color:'#64748b'}}>{doc.submitted_at ? new Date(doc.submitted_at).toLocaleDateString() : '—'}</td>
+                      <td style={{fontSize:'0.82rem',color:'#64748b'}}>{formatManilaDate(doc.submitted_at)}</td>
                       <td className="text-center">
                         {(doc.attachments?.[0]?.file_path || doc.file_path) && (
                           <AuthenticatedFileLink

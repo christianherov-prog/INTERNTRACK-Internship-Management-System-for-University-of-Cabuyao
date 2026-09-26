@@ -426,15 +426,20 @@ class MisdIntegrationService
             $count = count($this->mock->allFaculty());
             $latencyMs = (int) round((microtime(true) - $started) * 1000);
 
+            // Truthful, user-facing wording: records come from the directory bundled
+            // with this application; no external iEnroll service is contacted.
             return [
-                'use_mock'   => true,
-                'base_url'   => 'in-process://MockMisdRepository',
-                'cache_ttl'  => $this->cacheTtl,
-                'reachable'  => true,
-                'latency_ms' => $latencyMs,
-                'error'      => null,
-                'checked_at' => now()->toIso8601String(),
-                'note'       => "Mock mode ({$count} faculty samples). No HTTP self-call.",
+                'use_mock'     => true,
+                'mode'         => 'local',
+                'mode_label'   => 'Local Directory',
+                'source_label' => 'In-application iEnroll directory',
+                'base_url'     => null,
+                'cache_ttl'    => $this->cacheTtl,
+                'reachable'    => true,
+                'latency_ms'   => $latencyMs,
+                'error'        => null,
+                'checked_at'   => now()->toIso8601String(),
+                'note'         => "Directory records are served locally by this application ({$count} staff records). No external iEnroll connection is used.",
             ];
         }
 
@@ -455,7 +460,10 @@ class MisdIntegrationService
         }
 
         return [
-            'use_mock'   => false,
+            'use_mock'     => false,
+            'mode'         => 'external',
+            'mode_label'   => 'External API',
+            'source_label' => parse_url($this->baseUrl, PHP_URL_HOST) ?: 'Configured iEnroll endpoint',
             'base_url'   => $this->baseUrl,
             'cache_ttl'  => $this->cacheTtl,
             'reachable'  => $reachable,

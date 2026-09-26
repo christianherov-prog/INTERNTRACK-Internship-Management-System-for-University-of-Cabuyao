@@ -11,6 +11,7 @@ import { formatStudentName } from '../../utils/formatName'
 import { displayLabel } from '../../utils/displayLabel'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import AppModal from '../../components/modals/AppModal'
 
 function AssignPlacementModal({ student, onClose, onAssigned }) {
   const [loading, setLoading] = useState(true)
@@ -54,52 +55,49 @@ function AssignPlacementModal({ student, onClose, onAssigned }) {
   }
 
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <form onSubmit={handleSubmit}>
-            <div className="modal-header">
-              <h5 className="modal-title">Assign Placement: {student.student_profile?.first_name} {student.student_profile?.last_name}</h5>
-              <button type="button" className="btn-close" onClick={onClose}></button>
-            </div>
-            <div className="modal-body">
-              {error && <div className="alert alert-danger">{error}</div>}
+    <AppModal
+      onClose={onClose}
+      size="md"
+      title={`Assign Placement: ${student.student_profile?.first_name ?? ''} ${student.student_profile?.last_name ?? ''}`}
+      icon="fa-building-user"
+      busy={saving}
+      onSubmit={handleSubmit}
+      footer={(
+        <>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={loading || saving}>
+            {saving ? 'Assigning...' : 'Authorize Deployment'}
+          </button>
+        </>
+      )}
+    >
+      {error && <div className="alert alert-danger">{error}</div>}
 
-              {loading ? (
-                <div className="text-center py-3"><InternTrackLoader /></div>
-              ) : (
-                <>
-                  <div className="mb-3">
-                    <label className="form-label">Host Training Establishment (Company)</label>
-                    <select className="form-select" value={form.company_id} onChange={e => setForm({ ...form, company_id: e.target.value })} required>
-                      {options.companies.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Faculty Supervisor</label>
-                    <select className="form-select" value={form.faculty_id} onChange={e => setForm({ ...form, faculty_id: e.target.value })} required>
-                      {options.faculty.map(f => <option key={f.id} value={f.id}>{f.faculty_profile?.first_name} {f.faculty_profile?.last_name}</option>)}
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Industry Supervisor</label>
-                    <select className="form-select" value={form.supervisor_id} onChange={e => setForm({ ...form, supervisor_id: e.target.value })} required>
-                      {options.supervisors.map(s => <option key={s.id} value={s.id}>{s.supervisor_profile?.first_name} {s.supervisor_profile?.last_name}</option>)}
-                    </select>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading || saving}>
-                {saving ? 'Assigning...' : 'Authorize Deployment'}
-              </button>
-            </div>
-          </form>
+      {loading ? (
+        <div className="text-center py-3"><InternTrackLoader /></div>
+      ) : (
+        <div className="it-form-grid">
+          <div className="it-span-2">
+            <label className="form-label" htmlFor="placement-company">Host Training Establishment (Company)</label>
+            <select id="placement-company" className="form-select" value={form.company_id} onChange={e => setForm({ ...form, company_id: e.target.value })} required>
+              {options.companies.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label" htmlFor="placement-faculty">Faculty Supervisor</label>
+            <select id="placement-faculty" className="form-select" value={form.faculty_id} onChange={e => setForm({ ...form, faculty_id: e.target.value })} required>
+              {options.faculty.map(f => <option key={f.id} value={f.id}>{f.faculty_profile?.first_name} {f.faculty_profile?.last_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label" htmlFor="placement-supervisor">Industry Supervisor</label>
+            <select id="placement-supervisor" className="form-select" value={form.supervisor_id} onChange={e => setForm({ ...form, supervisor_id: e.target.value })} required>
+              {options.supervisors.map(s => <option key={s.id} value={s.id}>{s.supervisor_profile?.first_name} {s.supervisor_profile?.last_name}</option>)}
+            </select>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </AppModal>
   )
 }
 

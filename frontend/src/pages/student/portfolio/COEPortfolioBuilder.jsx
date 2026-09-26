@@ -10,6 +10,7 @@ import { safeUploadError } from '../../../utils/safeApiError'
 import { validateUploadFiles, uploadErrorMessage } from '../../../utils/uploadValidation'
 import { useCachedPage } from '../../../hooks/useCachedPage'
 import InternTrackLoader from '../../../components/InternTrackLoader'
+import { DEV_TOOLS_ENABLED } from '../../../config/devTools'
 
 /** Per-field limit for Chapter III text areas. */
 const CHAPTER3_MAX = 5000
@@ -339,6 +340,7 @@ function COEPortfolioBuilder() {
               </div>
             </div>
             <div className="d-flex align-items-center gap-2">
+              {DEV_TOOLS_ENABLED && (
               <button
                 type="button"
                 className="btn btn-outline-secondary btn-sm px-3"
@@ -363,6 +365,7 @@ function COEPortfolioBuilder() {
               >
                 <i className="fa fa-wand-magic-sparkles me-1"></i>Fill Sample
               </button>
+              )}
               <Link to="/student/portfolio/preview" className="btn btn-primary btn-sm px-3 shadow-sm">
                 <i className="fa fa-eye me-1"></i>Preview Portfolio
               </Link>

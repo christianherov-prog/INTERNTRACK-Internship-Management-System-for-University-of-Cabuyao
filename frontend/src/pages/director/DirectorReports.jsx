@@ -7,6 +7,7 @@ import api from '../../services/api'
 import { CURRENT_TERM } from '../../config/term'
 import { displayLabel } from '../../utils/displayLabel'
 import ReportExportModal from '../../components/modals/ReportExportModal'
+import StatusChip from '../../components/StatusChip'
 import { reportPrintOptions } from '../../utils/reportPrint'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
@@ -50,7 +51,7 @@ function InternshipSummaryTable({ data }) {
     <div className="table-responsive">
       <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
-          <tr><th>Program</th><th>Ongoing</th><th>Completed</th><th>Other</th><th>Total</th></tr>
+          <tr><th>Program</th><th className="it-col-num">Ongoing</th><th className="it-col-num">Completed</th><th className="it-col-num">Other</th><th className="it-col-num">Total</th></tr>
         </thead>
         <tbody>
           {data.map((r, i) => (
@@ -76,7 +77,7 @@ function CompanyPartnershipsTable({ data }) {
     <div className="table-responsive">
       <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
-          <tr><th>#</th><th>Company</th><th>Industry</th><th>MOA Status</th><th>Interns</th></tr>
+          <tr><th className="it-col-num">#</th><th>Company</th><th>Industry</th><th className="it-col-status">MOA Status</th><th className="it-col-num">Interns</th></tr>
         </thead>
         <tbody>
           {data.map((r, i) => (
@@ -85,9 +86,7 @@ function CompanyPartnershipsTable({ data }) {
               <td className="fw-semibold">{r.company_name}</td>
               <td>{r.industry ?? '—'}</td>
               <td>
-                <span className={`badge ${r.moa_status === 'active' ? 'bg-success' : r.moa_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
-                  {r.moa_status ? r.moa_status.toUpperCase() : '—'}
-                </span>
+                <StatusChip status={r.moa_status} />
               </td>
               <td>{r.internships_count ?? 0}</td>
             </tr>
@@ -107,12 +106,12 @@ function MoaStatusTable({ data }) {
     <div className="table-responsive">
       <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
-          <tr><th>MOA Status</th><th>Count</th></tr>
+          <tr><th>MOA Status</th><th className="it-col-num">Count</th></tr>
         </thead>
         <tbody>
           {entries.map(([status, count], i) => (
             <tr key={i}>
-              <td className="fw-semibold text-uppercase">{status}</td>
+              <td><StatusChip status={status} /></td>
               <td>{count}</td>
             </tr>
           ))}
@@ -131,14 +130,14 @@ function ChedAnnualTable({ data }) {
       <table className="table table-sm table-bordered align-middle" style={{ fontSize: '0.82rem' }}>
         <thead className="table-light">
           <tr>
-            <th>#</th>
+            <th className="it-col-num">#</th>
             <th>Company / HTE</th>
             <th>Address</th>
             <th>Industry</th>
-            <th>MOA Status</th>
-            <th>Total Interns</th>
-            <th>Ongoing</th>
-            <th>Completed</th>
+            <th className="it-col-status">MOA Status</th>
+            <th className="it-col-num">Total Interns</th>
+            <th className="it-col-num">Ongoing</th>
+            <th className="it-col-num">Completed</th>
           </tr>
         </thead>
         <tbody>
@@ -149,9 +148,7 @@ function ChedAnnualTable({ data }) {
               <td className="text-muted text-truncate" style={{ maxWidth: '200px' }} title={r.address}>{r.address || '—'}</td>
               <td>{r.industry || '—'}</td>
               <td>
-                <span className={`badge ${r.moa_status === 'active' ? 'bg-success' : r.moa_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
-                  {r.moa_status ? r.moa_status.toUpperCase() : '—'}
-                </span>
+                <StatusChip status={r.moa_status} />
               </td>
               <td className="fw-bold">{r.total_interns ?? 0}</td>
               <td>{r.ongoing ?? 0}</td>
@@ -245,6 +242,7 @@ function DirectorReports({ embedded = false }) {
     setExportPreview({
       title: REPORT_TYPES.find((r) => r.key === activeReport)?.title || 'Director report',
       filename: `${activeReport}-export`,
+      statusColumns: ['MOA Status', 'Status'],
       rows,
     })
   }
@@ -283,7 +281,7 @@ function DirectorReports({ embedded = false }) {
             {REPORT_TYPES.map((r) => (
               <div key={r.key} className="col-md-6 col-lg-3">
                 <div 
-                  className={`content-card h-100 d-flex flex-column ${activeReport === r.key ? 'border-2 border-primary' : ''}`}
+                  className={`content-card h-100 d-flex flex-column ${activeReport === r.key ? 'report-card--active' : ''}`}
                   style={{ cursor: 'pointer' }} 
                   onClick={() => generateReport(r.key)}
                 >
@@ -294,7 +292,7 @@ function DirectorReports({ embedded = false }) {
                     <div className="fw-semibold mb-1">{r.title}</div>
                     <p className="text-muted mb-3 flex-grow-1" style={{ fontSize: '0.82rem' }}>{r.desc}</p>
                     <button
-                      className={`btn btn-sm mt-auto ${activeReport === r.key ? 'btn-primary' : 'btn-outline-primary'}`}
+                      className={`btn btn-sm mt-auto ${activeReport === r.key ? 'btn-success' : 'btn-outline-success'}`}
                       onClick={(e) => { e.stopPropagation(); generateReport(r.key) }}
                       disabled={generating && activeReport === r.key}
                     >

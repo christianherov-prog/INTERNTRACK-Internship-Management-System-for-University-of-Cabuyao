@@ -11,6 +11,7 @@ use App\Models\OvertimeEntry;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Support\DepartmentScope;
+use App\Support\ManilaAttendanceClock;
 use App\Support\ManilaTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -378,30 +379,24 @@ class DtrWorkflowService
         }
 
         $clockOutTime = $clockOut->format('H:i:s');
-        $clockIn = $this->combineDateAndTime($log->date, $log->clock_in);
         $schedule = $this->activeScheduleFor($log->internship, $log->date);
 
-        $fullMinutes = $this->minutesBetween($clockIn, $clockOut);
-        $baseMinutes = $fullMinutes;
         $excessMinutes = 0;
-
         if ($schedule) {
-            $schedStart = $this->scheduleDateAndTime($log->date, $schedule->start_time);
             $schedEnd = $this->scheduleDateAndTime($log->date, $schedule->end_time);
-            $overlapStart = $clockIn->greaterThan($schedStart) ? $clockIn->copy() : $schedStart;
-            $overlapEnd = $clockOut->lessThan($schedEnd) ? $clockOut->copy() : $schedEnd;
-            $baseMinutes = $overlapEnd->greaterThan($overlapStart)
-                ? $this->minutesBetween($overlapStart, $overlapEnd)
-                : 0;
             if ($clockOut->greaterThan($schedEnd)) {
                 $excessMinutes = $this->minutesBetween($schedEnd, $clockOut);
             }
         }
 
-        $breakMinutes = $this->breakMinutesFor($log);
-        $baseMinutes = max(0, $baseMinutes - $breakMinutes);
-
-        $hoursRendered = round($baseMinutes / 60, 2);
+        $hoursRendered = $this->creditedHoursFor(
+            $log->internship,
+            $log->date,
+            $log->clock_in,
+            $clockOutTime,
+            $log->break_start,
+            $log->break_end
+        );
 
         $log->update([
             'clock_out' => $clockOutTime,
@@ -732,10 +727,12 @@ class DtrWorkflowService
             ]);
         }
 
-        $in = $requestedClockIn ? $this->normalizeTime($requestedClockIn) : null;
-        $out = $requestedClockOut ? $this->normalizeTime($requestedClockOut) : null;
-        $breakStart = $requestedBreakStart ? $this->combineDateAndTime($day, $requestedBreakStart) : null;
-        $breakEnd = $requestedBreakEnd ? $this->combineDateAndTime($day, $requestedBreakEnd) : null;
+        // Requested times are Asia/Manila wall-clock input; store them exactly
+        // like live clock events (app-timezone times / instants).
+        $in = $requestedClockIn ? ManilaAttendanceClock::storedTime($this->normalizeTime($requestedClockIn)) : null;
+        $out = $requestedClockOut ? ManilaAttendanceClock::storedTime($this->normalizeTime($requestedClockOut)) : null;
+        $breakStart = $requestedBreakStart ? ManilaAttendanceClock::storedInstant($day, $this->normalizeTime($requestedBreakStart)) : null;
+        $breakEnd = $requestedBreakEnd ? ManilaAttendanceClock::storedInstant($day, $this->normalizeTime($requestedBreakEnd)) : null;
 
         $requiredField = match ($correctionType) {
             'clock_in' => ['value' => $in, 'key' => 'requested_clock_in', 'label' => 'clock-in'],
@@ -1264,33 +1261,68 @@ class DtrWorkflowService
         mixed $breakStart = null,
         mixed $breakEnd = null
     ): ?float {
+        return $this->creditedHoursFor($internship, $date, $clockIn, $clockOut, $breakStart, $breakEnd);
+    }
+
+    /**
+     * Credited hours for one attendance day — the single calculation used by
+     * clock-out, approved corrections and controlled data.
+     *
+     * Inputs are STORED values (clock times in the app timezone, breaks as
+     * instants); every comparison happens on real instants, and the approved
+     * schedule is read as Asia/Manila wall-clock time. With an approved
+     * schedule only the part of the day inside it is credited, so arriving
+     * early or leaving late adds nothing (overtime has its own approval flow).
+     * The break is deducted only where it overlaps the credited window.
+     */
+    public function creditedHoursFor(
+        Internship $internship,
+        Carbon|string $date,
+        mixed $clockIn,
+        mixed $clockOut,
+        mixed $breakStart = null,
+        mixed $breakEnd = null
+    ): ?float {
         if (! $clockIn || ! $clockOut) {
             return null;
         }
 
-        $in = $this->combineDateAndTime($date, $clockIn);
-        $out = $this->combineDateAndTime($date, $clockOut);
-        $schedule = $this->activeScheduleFor($internship, $date);
-
-        if (! $schedule) {
-            $minutes = $this->minutesBetween($in, $out);
-        } else {
-            $schedStart = $this->scheduleDateAndTime($date, $schedule->start_time);
-            $schedEnd = $this->scheduleDateAndTime($date, $schedule->end_time);
-            $overlapStart = $in->greaterThan($schedStart) ? $in : $schedStart;
-            $overlapEnd = $out->lessThan($schedEnd) ? $out : $schedEnd;
-            $minutes = $overlapEnd->greaterThan($overlapStart)
-                ? $this->minutesBetween($overlapStart, $overlapEnd)
-                : 0;
+        $dateStr = Carbon::parse($date)->toDateString();
+        $windowStart = $this->combineDateAndTime($dateStr, $clockIn);
+        $windowEnd = $this->combineDateAndTime($dateStr, $clockOut);
+        if ($windowEnd->lessThan($windowStart)) {
+            $windowEnd = $windowEnd->copy()->addDay();
         }
 
-        if ($breakStart && $breakEnd) {
-            $bStart = $breakStart instanceof Carbon ? $breakStart->copy() : Carbon::parse($breakStart);
-            $bEnd = $breakEnd instanceof Carbon ? $breakEnd->copy() : Carbon::parse($breakEnd);
-            $minutes = max(0, $minutes - $this->minutesBetween($bStart, $bEnd));
+        $schedule = $this->activeScheduleFor($internship, $dateStr);
+        if ($schedule) {
+            $schedStart = $this->scheduleDateAndTime($dateStr, $schedule->start_time);
+            $schedEnd = $this->scheduleDateAndTime($dateStr, $schedule->end_time);
+            if ($schedStart->greaterThan($windowStart)) {
+                $windowStart = $schedStart;
+            }
+            if ($schedEnd->lessThan($windowEnd)) {
+                $windowEnd = $schedEnd;
+            }
         }
 
-        return round($minutes / 60, 2);
+        if (! $windowEnd->greaterThan($windowStart)) {
+            return 0.0;
+        }
+
+        $minutes = $this->minutesBetween($windowStart, $windowEnd);
+
+        $bStart = ManilaAttendanceClock::resolveEventAt($dateStr, $breakStart);
+        $bEnd = ManilaAttendanceClock::resolveEventAt($dateStr, $breakEnd);
+        if ($bStart && $bEnd && $bEnd->greaterThan($bStart)) {
+            $overlapStart = $bStart->greaterThan($windowStart) ? $bStart : $windowStart;
+            $overlapEnd = $bEnd->lessThan($windowEnd) ? $bEnd : $windowEnd;
+            if ($overlapEnd->greaterThan($overlapStart)) {
+                $minutes -= $this->minutesBetween(Carbon::instance($overlapStart), Carbon::instance($overlapEnd));
+            }
+        }
+
+        return round(max(0, $minutes) / 60, 2);
     }
 
     private function detectExcessMinutes(AttendanceLog $log): int

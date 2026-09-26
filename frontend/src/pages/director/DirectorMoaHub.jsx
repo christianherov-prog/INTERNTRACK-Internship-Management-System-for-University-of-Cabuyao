@@ -10,12 +10,15 @@ function DirectorMoaHub() {
 
   return (
     <Layout title="MOA Management" subtitle={currentTerm} icon="fa-file-signature" bodyClass="director-page">
-      <div className="card shadow-sm mb-4 border-0">
-        <div className="card-header bg-white border-bottom-0 pt-3 pb-0">
-          <ul className="nav nav-tabs border-bottom-0">
+      <div className="nav-tabs-wrapper mb-4">
+        <div>
+          <ul className="nav nav-tabs custom-tabs" role="tablist">
             <li className="nav-item">
               <button
-                className={`nav-link ${activeTab === 'monitoring' ? 'active fw-bold text-primary border-bottom-0' : 'text-muted border-0'}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'monitoring'}
+                className={`nav-link ${activeTab === 'monitoring' ? 'active' : ''}`}
                 onClick={() => setActiveTab('monitoring')}
               >
                 <i className="fa fa-chart-line me-2"></i>MOA Notary Monitoring
@@ -23,7 +26,10 @@ function DirectorMoaHub() {
             </li>
             <li className="nav-item">
               <button
-                className={`nav-link ${activeTab === 'management' ? 'active fw-bold text-primary border-bottom-0' : 'text-muted border-0'}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'management'}
+                className={`nav-link ${activeTab === 'management' ? 'active' : ''}`}
                 onClick={() => setActiveTab('management')}
               >
                 <i className="fa fa-handshake me-2"></i>MOA Updates & Management

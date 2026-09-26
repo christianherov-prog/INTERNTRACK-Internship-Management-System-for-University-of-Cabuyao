@@ -18,8 +18,8 @@ class Company extends Model
     ];
 
     protected $casts = [
-        'moa_start_date' => 'date',
-        'moa_expiry_date' => 'date',
+        'moa_start_date' => 'date:Y-m-d',
+        'moa_expiry_date' => 'date:Y-m-d',
         'is_active' => 'boolean',
     ];
 

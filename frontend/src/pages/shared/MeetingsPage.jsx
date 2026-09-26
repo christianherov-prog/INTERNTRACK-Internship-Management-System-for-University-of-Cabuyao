@@ -6,6 +6,7 @@ import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCachedPage } from '../../hooks/useCachedPage'
 import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatManilaDateTime } from '../../utils/manilaTime'
 
 const TYPES = [
   { value: 'orientation', label: 'Orientation' },
@@ -157,7 +158,7 @@ function MeetingsPage({ bodyClass = '', canCreate = false }) {
                 {meetings.map((m) => (
                   <tr key={m.id}>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {m.starts_at ? new Date(m.starts_at).toLocaleString() : '—'}
+                      {formatManilaDateTime(m.starts_at)}
                     </td>
                     <td>
                       <div className="fw-semibold">{m.title}</div>
