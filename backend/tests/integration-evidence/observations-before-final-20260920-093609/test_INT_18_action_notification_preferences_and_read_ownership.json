@@ -1,0 +1,8 @@
+{
+    "notification_id": 275,
+    "recipient": 683,
+    "type": "meeting_invite",
+    "read": true,
+    "outsider_count": 0,
+    "opt_out_count": 0
+}

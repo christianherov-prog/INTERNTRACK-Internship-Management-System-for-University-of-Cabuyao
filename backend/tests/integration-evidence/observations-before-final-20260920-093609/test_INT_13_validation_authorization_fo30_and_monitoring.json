@@ -1,0 +1,21 @@
+{
+    "fo30": {
+        "id": 56,
+        "date": "2026-09-18",
+        "timezone": "Asia/Manila",
+        "am_time_in": "08:00",
+        "am_time_out": null,
+        "pm_time_in": null,
+        "pm_time_out": "12:00",
+        "am_absent": false,
+        "day_absent": false,
+        "hours_rendered": 4,
+        "status": "validated",
+        "validated": true,
+        "validated_at": "2026-09-18T12:00:00+08:00",
+        "hte_signature_path": null,
+        "student_signature_path": null,
+        "hte_signed_name": "Industry Reviewer",
+        "student_signed_name": "STUDENT, TEST"
+    }
+}

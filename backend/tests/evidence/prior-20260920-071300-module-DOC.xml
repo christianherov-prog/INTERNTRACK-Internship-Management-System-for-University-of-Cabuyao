@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.xml" tests="12" assertions="40" errors="0" failures="1" skipped="0" time="8.339742">
+    <testsuite name="Unit" tests="5" assertions="10" errors="0" failures="0" skipped="0" time="1.469524">
+      <testsuite name="Tests\Unit\ChapterIV\DOCUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\DOCUnitTest.php" tests="5" assertions="10" errors="0" failures="0" skipped="0" time="1.469524">
+        <testcase name="test_UT_DOC_05_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\DOCUnitTest.php" line="13" class="Tests\Unit\ChapterIV\DOCUnitTest" classname="Tests.Unit.ChapterIV.DOCUnitTest" assertions="2" time="1.145578"/>
+        <testcase name="test_UT_DOC_07_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\DOCUnitTest.php" line="18" class="Tests\Unit\ChapterIV\DOCUnitTest" classname="Tests.Unit.ChapterIV.DOCUnitTest" assertions="2" time="0.095260"/>
+        <testcase name="test_UT_DOC_08_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\DOCUnitTest.php" line="23" class="Tests\Unit\ChapterIV\DOCUnitTest" classname="Tests.Unit.ChapterIV.DOCUnitTest" assertions="2" time="0.060234"/>
+        <testcase name="test_UT_DOC_06_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\DOCUnitTest.php" line="28" class="Tests\Unit\ChapterIV\DOCUnitTest" classname="Tests.Unit.ChapterIV.DOCUnitTest" assertions="2" time="0.078209"/>
+        <testcase name="test_UT_DOC_APPROVAL_PRIORITY" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\DOCUnitTest.php" line="33" class="Tests\Unit\ChapterIV\DOCUnitTest" classname="Tests.Unit.ChapterIV.DOCUnitTest" assertions="2" time="0.090243"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="7" assertions="30" errors="0" failures="1" skipped="0" time="6.870217">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="3" assertions="14" errors="0" failures="1" skipped="0" time="2.580998">
+        <testcase name="test_UT_DOC_09_10" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="100" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="7" time="1.110625"/>
+        <testcase name="test_UT_DOC_EVAL_SCOPE" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="105" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="3" time="0.936807">
+          <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIV\FocusedComponentsTest::test_UT_DOC_EVAL_SCOPE&#13;
+FO-24 must not complete a different official evaluation requirement.
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'missing'
++'approved'
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php:107</failure>
+        </testcase>
+        <testcase name="test_UT_DOC_15" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="183" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="4" time="0.533566"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\ComplianceConsistencyAcrossRolesTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ComplianceConsistencyAcrossRolesTest.php" tests="1" assertions="3" errors="0" failures="0" skipped="0" time="1.931138">
+        <testcase name="test_complete_label_requires_all_applicable_requirements" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ComplianceConsistencyAcrossRolesTest.php" line="150" class="Tests\Feature\ComplianceConsistencyAcrossRolesTest" classname="Tests.Feature.ComplianceConsistencyAcrossRolesTest" assertions="3" time="1.931138"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\DocumentComplianceAndRequirementsRepairTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DocumentComplianceAndRequirementsRepairTest.php" tests="2" assertions="9" errors="0" failures="0" skipped="0" time="0.809772">
+        <testcase name="test_faculty_can_edit_system_application_letter_without_targets" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DocumentComplianceAndRequirementsRepairTest.php" line="127" class="Tests\Feature\DocumentComplianceAndRequirementsRepairTest" classname="Tests.Feature.DocumentComplianceAndRequirementsRepairTest" assertions="5" time="0.282371"/>
+        <testcase name="test_coordinator_list_hides_standard_requirements_but_keeps_customs" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DocumentComplianceAndRequirementsRepairTest.php" line="148" class="Tests\Feature\DocumentComplianceAndRequirementsRepairTest" classname="Tests.Feature.DocumentComplianceAndRequirementsRepairTest" assertions="4" time="0.527402"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\StudentRequirementDocumentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\StudentRequirementDocumentsTest.php" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="1.548310">
+        <testcase name="test_student_sees_only_matching_program_and_section_requirements" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\StudentRequirementDocumentsTest.php" line="25" class="Tests\Feature\StudentRequirementDocumentsTest" classname="Tests.Feature.StudentRequirementDocumentsTest" assertions="4" time="1.548310"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

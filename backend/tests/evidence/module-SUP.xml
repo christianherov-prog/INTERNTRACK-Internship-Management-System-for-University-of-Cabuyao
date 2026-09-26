@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="9" assertions="39" errors="0" failures="0" skipped="0" time="3.762758">
+    <testsuite name="Unit" tests="2" assertions="2" errors="0" failures="0" skipped="0" time="0.610252">
+      <testsuite name="Tests\Unit\ChapterIV\SUPUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\SUPUnitTest.php" tests="2" assertions="2" errors="0" failures="0" skipped="0" time="0.610252">
+        <testcase name="test_UT_SUP_12_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\SUPUnitTest.php" line="13" class="Tests\Unit\ChapterIV\SUPUnitTest" classname="Tests.Unit.ChapterIV.SUPUnitTest" assertions="1" time="0.571900"/>
+        <testcase name="test_UT_SUP_13_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\SUPUnitTest.php" line="18" class="Tests\Unit\ChapterIV\SUPUnitTest" classname="Tests.Unit.ChapterIV.SUPUnitTest" assertions="1" time="0.038352"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="7" assertions="37" errors="0" failures="0" skipped="0" time="3.152506">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="2" assertions="13" errors="0" failures="0" skipped="0" time="1.751203">
+        <testcase name="test_UT_SUP_07_10" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="175" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="7" time="1.266715"/>
+        <testcase name="test_UT_SUP_11" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="180" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="6" time="0.484488"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\SupervisorAccountRestructureTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorAccountRestructureTest.php" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="0.565793">
+        <testcase name="test_existing_supervisor_registration_does_not_duplicate_the_account" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorAccountRestructureTest.php" line="249" class="Tests\Feature\SupervisorAccountRestructureTest" classname="Tests.Feature.SupervisorAccountRestructureTest" assertions="4" time="0.565793"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\SupervisorAuthenticationAndIdsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorAuthenticationAndIdsTest.php" tests="1" assertions="2" errors="0" failures="0" skipped="0" time="0.105772">
+        <testcase name="test_faculty_number_is_rejected_when_already_assigned" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorAuthenticationAndIdsTest.php" line="107" class="Tests\Feature\SupervisorAuthenticationAndIdsTest" classname="Tests.Feature.SupervisorAuthenticationAndIdsTest" assertions="2" time="0.105772"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\SupervisorInviteFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" tests="3" assertions="18" errors="0" failures="0" skipped="0" time="0.729739">
+        <testcase name="test_rejection_requires_remarks" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" line="523" class="Tests\Feature\SupervisorInviteFlowTest" classname="Tests.Feature.SupervisorInviteFlowTest" assertions="7" time="0.334457"/>
+        <testcase name="test_acceptance_form_required_and_invalid_file_rejected" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" line="595" class="Tests\Feature\SupervisorInviteFlowTest" classname="Tests.Feature.SupervisorInviteFlowTest" assertions="6" time="0.188071"/>
+        <testcase name="test_unauthorized_faculty_cannot_approve_foreign_advisee_invite" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\SupervisorInviteFlowTest.php" line="829" class="Tests\Feature\SupervisorInviteFlowTest" classname="Tests.Feature.SupervisorInviteFlowTest" assertions="5" time="0.207211"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

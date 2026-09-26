@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_96|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_90|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_85|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_80|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_75|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_74|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_04_MIXED|Tests\\\\Unit\\\\ChapterIV\\\\EVALUnitTest\\:\\:test_UT_EVAL_06_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_EVAL_03|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_EVAL_02|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_EVAL_05|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_EVAL_07|Tests\\\\Unit\\\\ChapterIV\\\\SupplementalUnitTest\\:\\:test_UT_EVAL_04_WEIGHTED)$/",
+        "--log-junit",
+        "tests/evidence/module-EVAL.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 13
+}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="81.992803">
+    <testsuite name="Feature" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="81.992803">
+      <testsuite name="Tests\Feature\AuthTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AuthTest.php" tests="1" assertions="4" errors="0" failures="0" skipped="0" time="81.992803">
+        <testcase name="test_login_success_returns_token" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\AuthTest.php" line="26" class="Tests\Feature\AuthTest" classname="Tests.Feature.AuthTest" assertions="4" time="81.992803">
+          <system-out>
+🔄 Backfilling placements for 5 internships...
+  ⚠ Skipping internship #1: No HTE requirements for program BSN
+  ⚠ Skipping internship #2: No HTE requirements for program BSPSY
+  ⚠ Skipping internship #3: No HTE requirements for program BSBAMM
+  ⚠ Skipping internship #4: No HTE requirements for program BSBAFM
+  ⚠ Skipping internship #5: No HTE requirements for program BSA
+
+✅ Backfill complete: 0 successful, 5 skipped
+
+⚠️  COE or COED department not found. Skipping migration.
+</system-out>
+        </testcase>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

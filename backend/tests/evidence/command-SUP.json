@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\SUPUnitTest\\:\\:test_UT_SUP_12_U|Tests\\\\Unit\\\\ChapterIV\\\\SUPUnitTest\\:\\:test_UT_SUP_13_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_SUP_07_10|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_SUP_11|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_SUP_FACULTY_ONLY|Tests\\\\Feature\\\\SupervisorAuthenticationAndIdsTest\\:\\:test_faculty_number_is_rejected_when_already_assigned|Tests\\\\Feature\\\\SupervisorInviteFlowTest\\:\\:test_rejection_requires_remarks|Tests\\\\Feature\\\\SupervisorInviteFlowTest\\:\\:test_acceptance_form_required_and_invalid_file_rejected|Tests\\\\Feature\\\\SupervisorInviteFlowTest\\:\\:test_unauthorized_faculty_cannot_approve_foreign_advisee_invite|Tests\\\\Feature\\\\SupervisorAccountRestructureTest\\:\\:test_existing_supervisor_registration_does_not_duplicate_the_account)$/",
+        "--log-junit",
+        "tests/evidence/module-SUP.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 10
+}

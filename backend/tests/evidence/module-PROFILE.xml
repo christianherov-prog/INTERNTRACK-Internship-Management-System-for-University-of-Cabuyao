@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="9" assertions="35" errors="0" failures="0" skipped="0" time="3.599903">
+    <testsuite name="Unit" tests="3" assertions="5" errors="0" failures="0" skipped="0" time="0.983574">
+      <testsuite name="Tests\Unit\ChapterIV\PROFILEUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PROFILEUnitTest.php" tests="3" assertions="5" errors="0" failures="0" skipped="0" time="0.983574">
+        <testcase name="test_UT_PROFILE_03_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PROFILEUnitTest.php" line="13" class="Tests\Unit\ChapterIV\PROFILEUnitTest" classname="Tests.Unit.ChapterIV.PROFILEUnitTest" assertions="3" time="0.851854"/>
+        <testcase name="test_UT_PROFILE_02_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PROFILEUnitTest.php" line="18" class="Tests\Unit\ChapterIV\PROFILEUnitTest" classname="Tests.Unit.ChapterIV.PROFILEUnitTest" assertions="1" time="0.045362"/>
+        <testcase name="test_UT_PROFILE_08_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PROFILEUnitTest.php" line="23" class="Tests\Unit\ChapterIV\PROFILEUnitTest" classname="Tests.Unit.ChapterIV.PROFILEUnitTest" assertions="1" time="0.086358"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="6" assertions="30" errors="0" failures="0" skipped="0" time="2.616329">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="1" assertions="5" errors="0" failures="0" skipped="0" time="0.925816">
+        <testcase name="test_UT_PROFILE_06" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="150" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.925816"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\DepartmentOwnershipRepairTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DepartmentOwnershipRepairTest.php" tests="2" assertions="6" errors="0" failures="0" skipped="0" time="0.623639">
+        <testcase name="test_ccs_student_resolves_ccs_department_from_program" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DepartmentOwnershipRepairTest.php" line="35" class="Tests\Feature\DepartmentOwnershipRepairTest" classname="Tests.Feature.DepartmentOwnershipRepairTest" assertions="4" time="0.364687"/>
+        <testcase name="test_no_first_faculty_fallback_on_user_resource" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DepartmentOwnershipRepairTest.php" line="264" class="Tests\Feature\DepartmentOwnershipRepairTest" classname="Tests.Feature.DepartmentOwnershipRepairTest" assertions="2" time="0.258952"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\FunctionalAuditRegressionTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\FunctionalAuditRegressionTest.php" tests="1" assertions="5" errors="0" failures="0" skipped="0" time="0.398679">
+        <testcase name="test_student_can_update_contact_without_changing_identity" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\FunctionalAuditRegressionTest.php" line="18" class="Tests\Feature\FunctionalAuditRegressionTest" classname="Tests.Feature.FunctionalAuditRegressionTest" assertions="5" time="0.398679"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\InternshipProgressConsistencyTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\InternshipProgressConsistencyTest.php" tests="1" assertions="7" errors="0" failures="0" skipped="0" time="0.389828">
+        <testcase name="test_program_requirements_are_looked_up_from_hte_configuration" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\InternshipProgressConsistencyTest.php" line="19" class="Tests\Feature\InternshipProgressConsistencyTest" classname="Tests.Feature.InternshipProgressConsistencyTest" assertions="7" time="0.389828"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\UserResourceDepartmentCoordinatorTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\UserResourceDepartmentCoordinatorTest.php" tests="1" assertions="7" errors="0" failures="0" skipped="0" time="0.278368">
+        <testcase name="test_student_department_is_a_structured_object" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\UserResourceDepartmentCoordinatorTest.php" line="19" class="Tests\Feature\UserResourceDepartmentCoordinatorTest" classname="Tests.Feature.UserResourceDepartmentCoordinatorTest" assertions="7" time="0.278368"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,438 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AttendanceLog;
+use App\Models\SupervisorProfile;
+use App\Services\OfficialFormDataService;
+use App\Services\OneWeekOjtDemoService;
+use App\Support\ManilaTime;
+use App\Support\OfficialFormAsset;
+use App\Support\SignatureCapture;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Sanctum;
+use Tests\Support\CreatesInternshipFixtures;
+use Tests\TestCase;
+
+class OfficialFormConsistencyTest extends TestCase
+{
+    use CreatesInternshipFixtures;
+    use RefreshDatabase;
+
+    private function png(): string
+    {
+        return base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+    }
+
+    private function party(): array
+    {
+        $coordinator = $this->makeUser('coordinator');
+        $faculty = $this->makeUser('faculty');
+        $this->mapFacultyForSection($faculty);
+        $director = $this->makeUser('director');
+        $supervisor = $this->makeUser('supervisor', 'SUP-0002');
+        SupervisorProfile::create([
+            'user_id' => $supervisor->id,
+            'first_name' => 'Adrian',
+            'last_name' => 'Reyes',
+            'position' => 'Industry Supervisor',
+            'email' => $supervisor->email,
+        ]);
+        $otherSupervisor = $this->makeUser('supervisor', 'SUP-OTHER');
+        SupervisorProfile::create([
+            'user_id' => $otherSupervisor->id,
+            'first_name' => 'Other',
+            'last_name' => 'Supervisor',
+            'email' => $otherSupervisor->email,
+        ]);
+        $student = $this->makeStudentWithSection();
+        $student->studentProfile->update([
+            'first_name' => 'Clarence',
+            'last_name' => 'Montealegre',
+            'student_number' => '2300592',
+        ]);
+        $student->update(['student_number' => '2300592']);
+        $otherStudent = $this->makeStudentWithSection('4ITA');
+        $otherStudent->studentProfile->update([
+            'first_name' => 'Angel',
+            'last_name' => 'Taac',
+            'student_number' => '2300590',
+        ]);
+        $otherStudent->update(['student_number' => '2300590']);
+        $company = $this->makeEligibleCompany(['company_name' => 'Accenture PH']);
+        $otherCompany = $this->makeEligibleCompany(['company_name' => 'TechCorp PH']);
+        $internship = $this->makeActiveInternship($student, $company, $supervisor, $faculty, $coordinator);
+        $internship->update(['status' => 'ongoing']);
+        $otherInternship = $this->makeActiveInternship($otherStudent, $otherCompany, $otherSupervisor, $faculty, $coordinator);
+        $otherInternship->update(['status' => 'ongoing']);
+
+        return compact(
+            'coordinator',
+            'faculty',
+            'director',
+            'supervisor',
+            'otherSupervisor',
+            'student',
+            'otherStudent',
+            'company',
+            'otherCompany',
+            'internship',
+            'otherInternship'
+        );
+    }
+
+    private function uploadLogo($student, string $name): string
+    {
+        Sanctum::actingAs($student);
+        $res = $this->post('/api/v1/student/portfolio/photos', [
+            'type' => 'company_logo',
+            'file' => UploadedFile::fake()->image($name, 40, 40),
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        return (string) $res->json('document.file_path');
+    }
+
+    public function test_hte_logo_comes_from_this_internship_only(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        $logoA = $this->uploadLogo($party['student'], 'accenture.png');
+        $logoB = $this->uploadLogo($party['otherStudent'], 'techcorp.png');
+        $this->assertNotSame($logoA, $logoB);
+
+        Sanctum::actingAs($party['student']);
+        $a = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        Sanctum::actingAs($party['otherStudent']);
+        $b = $this->getJson('/api/v1/official-forms/'.$party['otherInternship']->id)->assertOk()->json();
+
+        $this->assertSame($logoA, $a['company_logo_path']);
+        $this->assertSame($logoA, $a['fo30']['company_logo_path']);
+        $this->assertSame($logoA, $a['identity']['company_logo_path']);
+        $this->assertSame('Accenture PH', $a['fo30']['company_name']);
+        $this->assertSame($logoB, $b['company_logo_path']);
+        $this->assertSame('TechCorp PH', $b['fo30']['company_name']);
+        $this->assertNotSame($logoB, $a['company_logo_path']);
+        $this->assertNotSame($logoA, $b['company_logo_path']);
+    }
+
+    public function test_roles_receive_the_same_fo30_payload(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        $logo = $this->uploadLogo($party['student'], 'accenture.png');
+        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
+        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', $this->png());
+        app(OneWeekOjtDemoService::class)->syncAttendance($party['internship'], $party['supervisor']);
+
+        $ids = [];
+        foreach (['student', 'faculty', 'coordinator', 'supervisor', 'director'] as $role) {
+            Sanctum::actingAs($party[$role]);
+            $json = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+            $ids[$role] = [
+                'name' => $json['fo30']['student_name'],
+                'program' => $json['fo30']['program'],
+                'company' => $json['fo30']['company_name'],
+                'logo' => $json['fo30']['company_logo_path'],
+                'supervisor' => $json['fo30']['supervisor_name'],
+                'hours' => collect($json['fo30']['logs'])->sum('hours_rendered'),
+                'am' => $json['fo30']['logs'][0]['am_time_in'] ?? null,
+                'pm' => $json['fo30']['logs'][0]['pm_time_out'] ?? null,
+                'hte' => $json['fo30']['logs'][0]['hte_signature_path'] ?? null,
+                'tz' => $json['timezone'],
+            ];
+        }
+
+        foreach (['faculty', 'coordinator', 'supervisor', 'director'] as $role) {
+            $this->assertSame($ids['student'], $ids[$role], $role.' FO-30 diverged from student payload');
+        }
+        $this->assertSame($logo, $ids['student']['logo']);
+        $this->assertSame(ManilaTime::TZ, $ids['student']['tz']);
+        $this->assertSame('08:00', $ids['student']['am']);
+        $this->assertSame('17:00', $ids['student']['pm']);
+        $this->assertEquals(80.0, $ids['student']['hours']);
+        $this->assertSame('signatures/'.$party['supervisor']->id.'_processed.png', $ids['student']['hte']);
+        $this->assertStringContainsString('MONTEALEGRE', strtoupper($ids['student']['name']));
+        $this->assertStringContainsString('REYES', strtoupper($ids['student']['supervisor']));
+    }
+
+    public function test_unverified_attendance_does_not_receive_hte_signature(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', $this->png());
+        AttendanceLog::create([
+            'internship_id' => $party['internship']->id,
+            'date' => '2026-08-24',
+            'clock_in' => '00:00:00',
+            'clock_out' => '09:00:00',
+            'hours_rendered' => 8,
+            'status' => 'pending',
+        ]);
+
+        Sanctum::actingAs($party['student']);
+        $log = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json('fo30.logs.0');
+        $this->assertFalse($log['validated']);
+        $this->assertNull($log['hte_signature_path']);
+        $this->assertSame('08:00', $log['am_time_in']);
+        $this->assertSame('17:00', $log['pm_time_out']);
+    }
+
+    public function test_faculty_and_student_fo30_share_logo_and_manila_times(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        $logo = $this->uploadLogo($party['student'], 'accenture.png');
+        app(OneWeekOjtDemoService::class)->syncAttendance($party['internship'], $party['supervisor']);
+
+        Sanctum::actingAs($party['faculty']);
+        $roster = collect($this->getJson('/api/v1/faculty/assigned-students')->assertOk()->json('data'))
+            ->first(fn ($row) => ($row['student']['student_number'] ?? null) === '2300592');
+        $this->assertNotNull($roster);
+        $this->assertSame($logo, $roster['company']['company_logo_path'] ?? null);
+        $this->assertSame('08:00', $roster['attendance_logs'][0]['am_time_in']);
+        $this->assertNotSame('00:00', $roster['attendance_logs'][0]['am_time_in']);
+        $this->assertTrue($roster['attendance_logs'][0]['validated']);
+
+        Sanctum::actingAs($party['student']);
+        $student = $this->getJson('/api/v1/student/portfolio')->assertOk()->json();
+        $this->assertSame($logo, $student['identity']['company_logo_path']);
+        $this->assertSame($roster['attendance_logs'][0]['am_time_in'], $student['internship']['attendance'][0]['am_time_in']);
+    }
+
+    public function test_unauthorized_roles_cannot_read_another_interns_form(): void
+    {
+        $party = $this->party();
+        Sanctum::actingAs($party['otherSupervisor']);
+        $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertForbidden();
+        Sanctum::actingAs($party['otherStudent']);
+        $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertForbidden();
+    }
+
+    public function test_missing_logo_and_signature_stay_blank(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        Sanctum::actingAs($party['student']);
+        $json = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        $this->assertNull($json['company_logo_path']);
+        $this->assertNull($json['identity']['student_signature_path']);
+        $this->assertNull($json['identity']['supervisor_signature_path']);
+
+        $pdfData = app(OfficialFormDataService::class)->pdfDtr($party['internship']);
+        // FO-30 no longer carries an HTE logo or its "Logo of HTE" placeholder.
+        $this->assertArrayNotHasKey('company_logo', $pdfData);
+        $this->assertNull($pdfData['student_signature']);
+        $html = view('pdf.form30_dtr', $pdfData)->render();
+        $this->assertStringNotContainsString('Logo<br>of<br>HTE', $html);
+        $this->assertStringContainsString('logo-slot', $html);
+        $this->assertStringContainsString('HTE<br>Signature', $html);
+    }
+
+    public function test_logo_replace_and_remove_update_every_role_preview(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        $first = $this->uploadLogo($party['student'], 'logo-a.png');
+        $second = $this->uploadLogo($party['student'], 'logo-b.png');
+        $this->assertNotSame($first, $second);
+
+        Sanctum::actingAs($party['faculty']);
+        $this->assertSame($second, $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->json('company_logo_path'));
+        Sanctum::actingAs($party['coordinator']);
+        $this->assertSame($second, $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->json('company_logo_path'));
+
+        Sanctum::actingAs($party['student']);
+        $photos = collect($this->getJson('/api/v1/student/portfolio')->json('internship.portfolio.photos'));
+        $logo = $photos->first(fn ($p) => ($p['type'] ?? '') === 'company_logo');
+        $this->assertNotNull($logo);
+        $this->deleteJson('/api/v1/student/portfolio/photos/'.$logo['id'])->assertOk();
+        $this->assertEmpty($this->getJson('/api/v1/official-forms/'.$party['internship']->id)->json('company_logo_path'));
+    }
+
+    public function test_fo31_and_fo24_use_canonical_signatures(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
+        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', $this->png());
+
+        Sanctum::actingAs($party['student']);
+        $this->postJson('/api/v1/student/logbook', [
+            'week_number' => 1,
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
+            'activities_summary' => 'Configured interntrack DTR mapping',
+            'challenges' => 'Timezone conversion',
+            'learnings' => 'Use Asia/Manila explicitly',
+        ])->assertCreated();
+
+        // Faculty must unlock the evaluation period before FO-24 can be submitted.
+        $party['internship']->update([
+            'evaluation_period_status' => 'approved',
+            'evaluation_period_approved_by' => $party['faculty']->id,
+            'evaluation_period_approved_at' => now(),
+            'target_hours' => 40,
+        ]);
+        \App\Services\InternshipProgressService::synchronize($party['internship']->fresh());
+
+        Sanctum::actingAs($party['supervisor']);
+        $this->postJson('/api/v1/supervisor/evaluations/'.$party['internship']->id, [
+            'evaluation_period' => 'final',
+            'form_type' => 'FO-24',
+            'responses' => [
+                'c1' => 100, 'c2' => 80, 'c3' => 80, 'c4' => 80, 'c5' => 80,
+                'c6' => 80, 'c7' => 80, 'c8' => 80, 'c9' => 80, 'c10' => 80,
+                'recommendations' => 'Keep documenting work',
+            ],
+            'general_comments' => 'Solid intern',
+        ])->assertCreated();
+
+        // FO-24 details reach the student only after the assigned faculty releases them.
+        Sanctum::actingAs($party['student']);
+        $lockedFo24 = collect($this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json('evaluations'))->firstWhere('form_type', 'FO-24');
+        $this->assertTrue($lockedFo24['details_locked']);
+        $this->assertArrayNotHasKey('signature_path', $lockedFo24);
+        Sanctum::actingAs($party['faculty']);
+        $this->postJson('/api/v1/faculty/evaluations/'.$party['internship']->id.'/release-performance')->assertOk();
+
+        Sanctum::actingAs($party['student']);
+        $bundle = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        $this->assertSame('signatures/'.$party['student']->id.'_processed.png', $bundle['identity']['student_signature_path']);
+        $this->assertSame('signatures/'.$party['supervisor']->id.'_processed.png', $bundle['identity']['supervisor_signature_path']);
+        $this->assertNotEmpty($bundle['journals']);
+        $fo24 = collect($bundle['evaluations'])->firstWhere('form_type', 'FO-24');
+        $this->assertNotNull($fo24);
+        $this->assertSame('signatures/'.$party['supervisor']->id.'_processed.png', $fo24['signature_path']);
+        $this->assertSame($party['supervisor']->id, (int) $fo24['evaluated_by']);
+        $this->assertSame($party['internship']->supervisor_id, $party['internship']->fresh()->supervisor_id);
+    }
+
+    public function test_server_pdf_embeds_logo_and_manila_times(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+        $this->uploadLogo($party['student'], 'accenture.png');
+        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
+        Storage::disk('local')->put('signatures/'.$party['supervisor']->id.'_processed.png', $this->png());
+        app(OneWeekOjtDemoService::class)->syncAttendance($party['internship'], $party['supervisor']);
+
+        $html = view('pdf.form30_dtr', app(OfficialFormDataService::class)->pdfDtr($party['internship']))->render();
+        $this->assertStringContainsString('data:image', $html);
+        $this->assertStringContainsString('8:00 AM', $html);
+        $this->assertStringContainsString('5:00 PM', $html);
+        $this->assertStringContainsString('Accenture PH', $html);
+        $this->assertStringNotContainsString('12:00 AM', $html);
+        $this->assertSame('8:00 AM', OfficialFormAsset::clockLabel('08:00'));
+
+        Sanctum::actingAs($party['faculty']);
+        $pdf = $this->get('/api/v1/official-forms/'.$party['internship']->id.'/dtr.pdf');
+        $pdf->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $pdf->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $pdf->getContent());
+
+        Sanctum::actingAs($party['student']);
+        $this->postJson('/api/v1/student/logbook', [
+            'week_number' => 1,
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
+            'activities_summary' => 'A',
+            'challenges' => 'B',
+            'learnings' => 'C',
+        ])->assertCreated();
+        $journalPdf = $this->get('/api/v1/official-forms/'.$party['internship']->id.'/journal.pdf');
+        $journalPdf->assertOk();
+        $this->assertStringStartsWith('%PDF', $journalPdf->getContent());
+    }
+
+    public function test_frontend_previews_use_shared_official_form_endpoint(): void
+    {
+        $faculty = file_get_contents(base_path('../frontend/src/pages/faculty/FacultyAssignedStudents.jsx'));
+        // Student Roster row action is "Preview Portfolio"; FO-30 is previewed from the
+        // Attendance Monitor tab through the shared official-form endpoint.
+        $this->assertStringNotContainsString('DTR Preview (FO-30)', $faculty);
+        $this->assertStringContainsString('Preview Portfolio', $faculty);
+        $this->assertStringContainsString('openOfficialFo30(internshipId', $faculty);
+        $this->assertStringContainsString('Preview DTR FO-30', $faculty);
+        $this->assertStringContainsString('/faculty/assigned-students/${row.student.id}/portfolio', $faculty);
+        $supervisorPage = file_get_contents(base_path('../frontend/src/pages/supervisor/SupervisorAssignedInterns.jsx'));
+        $this->assertStringContainsString('openOfficialFo30', $supervisorPage);
+        $this->assertStringContainsString('loadFacultyFo31Preview', $faculty);
+        $this->assertStringContainsString('openReview', $faculty);
+        $this->assertStringNotContainsString('Review Journal — Week', $faculty);
+        $this->assertStringNotContainsString("onPreview={() => handlePreviewJournal(modal)}", $faculty);
+        $this->assertStringNotContainsString("companyLogoPath: row.company?.company_logo_path || ''", $faculty);
+        $this->assertStringNotContainsString('defaultScore', $faculty);
+        $preview = file_get_contents(base_path('../frontend/src/components/portfolio/FormPreviewModal.jsx'));
+        $this->assertIsString($preview);
+        $this->assertStringNotContainsString('Score (Optional)', $preview);
+        $this->assertStringNotContainsString('scoreRequired', $preview);
+        $this->assertStringContainsString('review.onSubmit(action, feedback)', $preview);
+        $official = file_get_contents(base_path('../frontend/src/utils/officialForm.js'));
+        $this->assertStringContainsString('identity.student_signature', $official);
+        $authFile = file_get_contents(base_path('../frontend/src/components/AuthenticatedFile.jsx'));
+        $this->assertStringContainsString('isInlineImageSrc', $authFile);
+        $this->assertStringContainsString("value.startsWith('data:')", $authFile);
+        $coord = file_get_contents(base_path('../frontend/src/pages/coordinator/CoordRecords.jsx'));
+        $this->assertStringContainsString('openOfficialFo30', $coord);
+        $dtr = file_get_contents(base_path('../frontend/src/components/portfolio/DailyTimeRecord.jsx'));
+        $this->assertStringContainsString("log?.status === 'validated'", $dtr);
+        $this->assertStringContainsString('objectFit: "contain"', $dtr);
+    }
+
+    public function test_angel_faculty_relationship_is_the_assigned_section_faculty(): void
+    {
+        $party = $this->party();
+        $this->assertSame($party['faculty']->id, $party['otherInternship']->faculty_id);
+        $this->assertSame('2300590', $party['otherStudent']->student_number);
+        $this->assertSame($party['faculty']->id, $party['internship']->faculty_id);
+    }
+
+    public function test_faculty_fo31_preview_uses_saved_signature_and_stays_blank_without_one(): void
+    {
+        Storage::fake('local');
+        $party = $this->party();
+
+        Sanctum::actingAs($party['student']);
+        $this->postJson('/api/v1/student/logbook', [
+            'week_number' => 1,
+            'date' => '2026-08-24',
+            'end_date' => '2026-08-28',
+            'activities_summary' => 'Configured interntrack DTR mapping',
+            'challenges' => 'Timezone conversion',
+            'learnings' => 'Use Asia/Manila explicitly',
+        ])->assertCreated();
+
+        Sanctum::actingAs($party['faculty']);
+        $blank = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        $this->assertNull($blank['identity']['student_signature_path']);
+        $this->assertNull($blank['identity']['student_signature'] ?? null);
+        $blankPdf = app(OfficialFormDataService::class)->pdfJournal($party['internship']);
+        $this->assertNull($blankPdf['student_signature']);
+        $blankHtml = view('pdf.form31_journal', $blankPdf)->render();
+        $this->assertStringContainsString('(signature over printed name)', $blankHtml);
+        $this->assertDoesNotMatchRegularExpression('/class="mark">\s*<img/', $blankHtml);
+
+        Storage::disk('local')->put('signatures/'.$party['student']->id.'_processed.png', $this->png());
+
+        $signed = $this->getJson('/api/v1/official-forms/'.$party['internship']->id)->assertOk()->json();
+        $path = $signed['identity']['student_signature_path'];
+        $this->assertSame('signatures/'.$party['student']->id.'_processed.png', $path);
+        $this->assertIsString($signed['identity']['student_signature'] ?? null);
+        $this->assertStringStartsWith('data:image', (string) ($signed['identity']['student_signature'] ?? ''));
+        $this->get('/api/v1/files/download?path='.urlencode($path))->assertOk();
+
+        $journals = $this->getJson('/api/v1/faculty/journals')->assertOk()->json();
+        $items = $journals['data'] ?? $journals['items'] ?? $journals;
+        $row = collect(is_array($items) ? $items : [])->first();
+        $this->assertNotNull($row);
+        $this->assertSame($path, $row['student_signature_path'] ?? null);
+
+        $signedPdf = app(OfficialFormDataService::class)->pdfJournal($party['internship']);
+        $this->assertNotNull($signedPdf['student_signature']);
+        $signedHtml = view('pdf.form31_journal', $signedPdf)->render();
+        $this->assertStringContainsString('data:image', $signedHtml);
+        $this->assertStringContainsString('(signature over printed name)', $signedHtml);
+    }
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="6" assertions="119" errors="0" failures="0" skipped="0" time="88.595816">
+    <testsuite name="Feature" tests="6" assertions="119" errors="0" failures="0" skipped="0" time="88.595816">
+      <testsuite name="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" tests="6" assertions="119" errors="0" failures="0" skipped="0" time="88.595816">
+        <testcase name="test_INT_01_login_role_workspace_and_api_scope" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="122" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="37" time="85.101054">
+          <system-out>
+🔄 Backfilling placements for 5 internships...
+  ⚠ Skipping internship #1: No HTE requirements for program BSN
+  ⚠ Skipping internship #2: No HTE requirements for program BSPSY
+  ⚠ Skipping internship #3: No HTE requirements for program BSBAMM
+  ⚠ Skipping internship #4: No HTE requirements for program BSBAFM
+  ⚠ Skipping internship #5: No HTE requirements for program BSA
+
+✅ Backfill complete: 0 successful, 5 skipped
+
+⚠️  COE or COED department not found. Skipping migration.
+</system-out>
+        </testcase>
+        <testcase name="test_INT_02_profile_internship_and_placement_ids" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="141" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="16" time="0.389450"/>
+        <testcase name="test_INT_04_clock_break_validation_and_progress" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="165" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="19" time="0.850500"/>
+        <testcase name="test_INT_06_schedule_absence_afternoon_and_history" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="191" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="24" time="0.898129"/>
+        <testcase name="test_INT_07_journal_review_history_and_denials" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="224" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="11" time="0.687077"/>
+        <testcase name="test_INT_07_COORD_coordinator_review_propagation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="242" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="12" time="0.669607"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

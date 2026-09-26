@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\NOTIFUnitTest\\:\\:test_UT_NOTIF_02_U|Tests\\\\Unit\\\\ChapterIV\\\\NOTIFUnitTest\\:\\:test_UT_NOTIF_PREF|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_NOTIF_01|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_NOTIF_03|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_NOTIF_04|Tests\\\\Feature\\\\NotificationPreferenceTest\\:\\:test_opted_out_preference_suppresses_notification|Tests\\\\Feature\\\\NotificationPreferenceTest\\:\\:test_opted_in_preference_allows_notification)$/",
+        "--log-junit",
+        "tests/evidence/module-NOTIF.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 7
+}

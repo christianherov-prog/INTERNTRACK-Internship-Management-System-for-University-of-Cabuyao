@@ -1,0 +1,15 @@
+{
+    "pending_portfolio_evaluation": {
+        "id": 267,
+        "internship_id": 306,
+        "form_type": "FO-24",
+        "evaluator_type": "supervisor",
+        "evaluation_period": "final",
+        "submitted_at": null,
+        "status": "pending",
+        "release_authority": "faculty",
+        "released": false,
+        "details_locked": true,
+        "locked_message": "Not yet completed by the industry supervisor."
+    }
+}

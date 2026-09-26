@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="7" assertions="22" errors="0" failures="0" skipped="0" time="1.075599">
+    <testsuite name="Unit" tests="2" assertions="4" errors="0" failures="0" skipped="0" time="0.320916">
+      <testsuite name="Tests\Unit\ChapterIV\NOTIFUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\NOTIFUnitTest.php" tests="2" assertions="4" errors="0" failures="0" skipped="0" time="0.320916">
+        <testcase name="test_UT_NOTIF_02_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\NOTIFUnitTest.php" line="13" class="Tests\Unit\ChapterIV\NOTIFUnitTest" classname="Tests.Unit.ChapterIV.NOTIFUnitTest" assertions="2" time="0.291704"/>
+        <testcase name="test_UT_NOTIF_PREF" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\NOTIFUnitTest.php" line="18" class="Tests\Unit\ChapterIV\NOTIFUnitTest" classname="Tests.Unit.ChapterIV.NOTIFUnitTest" assertions="2" time="0.029212"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="5" assertions="18" errors="0" failures="0" skipped="0" time="0.754683">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="3" assertions="14" errors="0" failures="0" skipped="0" time="0.522693">
+        <testcase name="test_UT_NOTIF_01" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="55" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.222081"/>
+        <testcase name="test_UT_NOTIF_03" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="60" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="5" time="0.135529"/>
+        <testcase name="test_UT_NOTIF_04" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="65" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="4" time="0.165083"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\NotificationPreferenceTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\NotificationPreferenceTest.php" tests="2" assertions="4" errors="0" failures="0" skipped="0" time="0.231990">
+        <testcase name="test_opted_out_preference_suppresses_notification" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\NotificationPreferenceTest.php" line="27" class="Tests\Feature\NotificationPreferenceTest" classname="Tests.Feature.NotificationPreferenceTest" assertions="2" time="0.107596"/>
+        <testcase name="test_opted_in_preference_allows_notification" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\NotificationPreferenceTest.php" line="49" class="Tests\Feature\NotificationPreferenceTest" classname="Tests.Feature.NotificationPreferenceTest" assertions="2" time="0.124394"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

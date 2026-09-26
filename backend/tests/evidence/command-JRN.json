@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\JRNUnitTest\\:\\:test_UT_JRN_02_U|Tests\\\\Unit\\\\ChapterIV\\\\JRNUnitTest\\:\\:test_UT_JRN_05_U|Tests\\\\Unit\\\\ChapterIV\\\\JRNUnitTest\\:\\:test_UT_JRN_WEEK|Tests\\\\Unit\\\\ChapterIV\\\\JRNUnitTest\\:\\:test_UT_JRN_13_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_JRN_08|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_JRN_09|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_JRN_10|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_JRN_11|Tests\\\\Feature\\\\JournalPeriodBoundaryTest\\:\\:test_journal_exactly_on_internship_start_accepted|Tests\\\\Feature\\\\JournalPeriodBoundaryTest\\:\\:test_overlap_still_rejected_and_non_overlap_accepted|Tests\\\\Feature\\\\JournalPeriodBoundaryTest\\:\\:test_approved_journal_remains_locked|Tests\\\\Feature\\\\JournalPeriodBoundaryTest\\:\\:test_future_journal_rejected_in_asia_manila)$/",
+        "--log-junit",
+        "tests/evidence/module-JRN.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 12
+}

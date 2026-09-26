@@ -1,0 +1,51 @@
+{
+    "evaluation": {
+        "id": 2,
+        "internship_id": 13,
+        "evaluator_type": "supervisor",
+        "evaluated_by": 44,
+        "evaluation_period": "final",
+        "form_type": "FO-24",
+        "responses": {
+            "c1": 80,
+            "c2": 80,
+            "c3": 80,
+            "c4": 80,
+            "c5": 80,
+            "c6": 80,
+            "c7": 80,
+            "c8": 80,
+            "c9": 80,
+            "c10": 80
+        },
+        "total_score": "80.00",
+        "average_score": "80.00",
+        "rating": "Fair",
+        "general_comments": "Integration evaluation",
+        "submitted_at": "2026-09-18T00:00:00.000000Z",
+        "signer_name": "Industry Reviewer",
+        "signature_path": null,
+        "signed_at": null,
+        "created_at": "2026-09-18T00:00:00.000000Z",
+        "updated_at": "2026-09-18T00:00:00.000000Z",
+        "deleted_at": null,
+        "signature_url": null,
+        "evaluator": {
+            "id": 44,
+            "student_number": null,
+            "faculty_number": "SUPERVISOR-0701",
+            "login_username": null,
+            "email": "ernie37@example.org",
+            "sex": null,
+            "is_active": true,
+            "must_change_password": false,
+            "avatar_path": null,
+            "notification_preferences": null,
+            "last_login_at": null,
+            "role": "supervisor",
+            "created_at": "2026-09-18T00:00:00.000000Z",
+            "updated_at": "2026-09-18T00:00:00.000000Z",
+            "deleted_at": null
+        }
+    }
+}

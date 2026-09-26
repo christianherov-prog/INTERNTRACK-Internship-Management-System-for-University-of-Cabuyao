@@ -1,0 +1,225 @@
+import { useEffect, useState } from 'react'
+import api from '../services/api'
+import InternTrackLoader from './InternTrackLoader'
+
+const urlCache = new Map()
+const pendingRequests = new Map()
+
+function isInlineImageSrc(path) {
+  const value = String(path || '')
+  return value.startsWith('data:') || value.startsWith('blob:')
+}
+
+export async function fetchBlobUrl(path) {
+  if (!path) return ''
+  if (isInlineImageSrc(path)) return path
+  if (urlCache.has(path)) {
+    return urlCache.get(path)
+  }
+  if (pendingRequests.has(path)) {
+    return pendingRequests.get(path)
+  }
+  const promise = api.get('/files/download', {
+    params: { path },
+    responseType: 'blob',
+  }).then(async (res) => {
+    const type = String(res.headers['content-type'] || '')
+    if (type.includes('application/json')) {
+      pendingRequests.delete(path)
+      throw new Error('File download failed.')
+    }
+    const blob = res.data
+    if (!blob || blob.size < 24) {
+      pendingRequests.delete(path)
+      throw new Error('File download failed.')
+    }
+    const url = URL.createObjectURL(blob)
+    urlCache.set(path, url)
+    pendingRequests.delete(path)
+    return url
+  }).catch((err) => {
+    pendingRequests.delete(path)
+    throw err
+  })
+  pendingRequests.set(path, promise)
+  return promise
+}
+
+export function invalidateAuthenticatedFileCache(pathPrefix = '') {
+  const prefix = String(pathPrefix || '')
+  for (const [path, url] of urlCache.entries()) {
+    if (prefix && !String(path).startsWith(prefix)) continue
+    if (typeof url === 'string' && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
+    }
+    urlCache.delete(path)
+  }
+}
+
+/** Opens a private storage file in a new tab using the Sanctum token. */
+export function AuthenticatedFileLink({ path, children, className, style, title }) {
+  const [busy, setBusy] = useState(false)
+
+  const open = async (e) => {
+    e.preventDefault()
+    if (!path || busy) return
+    setBusy(true)
+    try {
+      const url = await fetchBlobUrl(path)
+      const opened = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!opened) {
+        const link = document.createElement('a')
+        link.href = url
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      }
+    } catch {
+      alert('Unable to open this file. You may not have access, or it was removed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <a href="#" onClick={open} className={className} style={style} title={title} aria-busy={busy}>
+      {children}
+    </a>
+  )
+}
+
+/** Downloads a private storage file without exposing the raw storage path. */
+export function AuthenticatedFileDownload({ path, filename, children, className, style, title }) {
+  const [busy, setBusy] = useState(false)
+
+  const download = async (e) => {
+    e.preventDefault()
+    if (!path || busy) return
+    setBusy(true)
+    try {
+      const url = await fetchBlobUrl(path)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename || (path ? path.split('/').pop() : 'download')
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch {
+      alert('Unable to download this file. You may not have access, or it was removed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button type="button" onClick={download} className={className} style={style} title={title} aria-busy={busy} disabled={busy}>
+      {children}
+    </button>
+  )
+}
+
+/** Loads a private image via authenticated download (Bearer token). */
+export function AuthenticatedFileImage({ path, alt = '', className, style, fallback = null }) {
+  const [src, setSrc] = useState(() => {
+    if (path && isInlineImageSrc(path)) return path
+    return path && urlCache.has(path) ? urlCache.get(path) : ''
+  })
+
+  useEffect(() => {
+    let active = true
+    if (!path) {
+      setSrc('')
+      return undefined
+    }
+    if (isInlineImageSrc(path)) {
+      setSrc(path)
+      return undefined
+    }
+    if (urlCache.has(path)) {
+      setSrc(urlCache.get(path))
+      return undefined
+    }
+    fetchBlobUrl(path)
+      .then((url) => {
+        if (!active) return
+        setSrc(url)
+      })
+      .catch(() => {
+        if (active) setSrc('')
+      })
+    return () => {
+      active = false
+    }
+  }, [path])
+
+  if (!src) return fallback || null
+  return <img src={src} alt={alt} className={className} style={style} onError={() => setSrc('')} />
+}
+
+/** Image or PDF preview for private storage files (faculty review). */
+export function AuthenticatedFilePreview({ path, mime, name, height = 480, errorMessage }) {
+  const [src, setSrc] = useState(() => (path && urlCache.has(path) ? urlCache.get(path) : ''))
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    if (!path) {
+      setSrc('')
+      return undefined
+    }
+    if (urlCache.has(path)) {
+      setSrc(urlCache.get(path))
+      return undefined
+    }
+    fetchBlobUrl(path)
+      .then((url) => {
+        if (!active) return
+        setSrc(url)
+        setFailed(false)
+      })
+      .catch(() => {
+        if (active) {
+          setSrc('')
+          setFailed(true)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [path])
+
+  const label = name || (path ? path.split('/').pop() : 'file')
+  const isImage = (mime && String(mime).startsWith('image/')) || /\.(png|jpe?g|gif|webp)$/i.test(label)
+  const isPdf = (mime && String(mime).includes('pdf')) || /\.pdf$/i.test(label)
+
+  if (!path) return <p className="text-muted mb-0">No file.</p>
+  if (failed) {
+    return (
+      <p className="text-danger mb-0">
+        {errorMessage || 'Unable to load this file. You may not have access, or it was removed.'}
+      </p>
+    )
+  }
+  if (!src) {
+    return <div className="text-center text-muted py-4"><InternTrackLoader label={`Loading ${label}`} /></div>
+  }
+  if (isImage) {
+    return <img src={src} alt={label} style={{ maxWidth: '100%', maxHeight: height, objectFit: 'contain' }} />
+  }
+  if (isPdf) {
+    return (
+      <iframe
+        title={label}
+        src={src}
+        style={{ width: '100%', height, border: '0', borderRadius: 8, background: '#fff' }}
+      />
+    )
+  }
+  return (
+    <AuthenticatedFileLink path={path} className="btn btn-sm btn-outline-primary">
+      <i className="fa fa-download me-1"></i>Open {label}
+    </AuthenticatedFileLink>
+  )
+}

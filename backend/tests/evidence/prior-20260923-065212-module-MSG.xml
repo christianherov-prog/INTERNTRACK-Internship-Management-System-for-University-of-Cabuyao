@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="4" assertions="22" errors="0" failures="0" skipped="0" time="1.327355">
+    <testsuite name="Unit" tests="1" assertions="2" errors="0" failures="0" skipped="0" time="0.286837">
+      <testsuite name="Tests\Unit\ChapterIV\MSGUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\MSGUnitTest.php" tests="1" assertions="2" errors="0" failures="0" skipped="0" time="0.286837">
+        <testcase name="test_UT_MSG_02_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\MSGUnitTest.php" line="13" class="Tests\Unit\ChapterIV\MSGUnitTest" classname="Tests.Unit.ChapterIV.MSGUnitTest" assertions="2" time="0.286837"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="3" assertions="20" errors="0" failures="0" skipped="0" time="1.040517">
+      <testsuite name="Tests\Feature\MessagingFlowTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" tests="2" assertions="15" errors="0" failures="0" skipped="0" time="0.736056">
+        <testcase name="test_outsider_cannot_send_or_read_thread" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" line="148" class="Tests\Feature\MessagingFlowTest" classname="Tests.Feature.MessagingFlowTest" assertions="3" time="0.256404"/>
+        <testcase name="test_archive_is_per_user_and_reversible" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingFlowTest.php" line="270" class="Tests\Feature\MessagingFlowTest" classname="Tests.Feature.MessagingFlowTest" assertions="12" time="0.479652"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\MessagingMeetingEsignTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingMeetingEsignTest.php" tests="1" assertions="5" errors="0" failures="0" skipped="0" time="0.304461">
+        <testcase name="test_party_can_send_flat_dm_and_read_thread" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\MessagingMeetingEsignTest.php" line="18" class="Tests\Feature\MessagingMeetingEsignTest" classname="Tests.Feature.MessagingMeetingEsignTest" assertions="5" time="0.304461"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

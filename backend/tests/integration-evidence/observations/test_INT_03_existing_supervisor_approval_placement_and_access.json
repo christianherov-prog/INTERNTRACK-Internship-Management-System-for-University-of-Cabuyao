@@ -1,0 +1,39 @@
+{
+    "invite_status": "approved",
+    "placement_supervisor": 816,
+    "internship_supervisor": 816,
+    "student": {
+        "id": 307,
+        "term": "AY 2024-2025, Sem 2",
+        "status": "active",
+        "status_label": "Active",
+        "status_reason": null,
+        "company_name": "Integration HTE",
+        "supervisor_name": "Industry Reviewer",
+        "supervisor_faculty_number": "SUPERVISOR-5901",
+        "start_date": "2026-09-01",
+        "placements": [
+            {
+                "id": 508,
+                "sequence_order": 1,
+                "label": "Primary",
+                "required_hours": 360,
+                "accumulated_hours": 0,
+                "progress_percent": 0,
+                "status": "active",
+                "company_name": "Integration HTE",
+                "supervisor_name": "Industry Reviewer",
+                "is_current": true
+            }
+        ],
+        "current_placement": {
+            "id": 508,
+            "label": "Primary",
+            "required_hours": 360,
+            "accumulated_hours": 0,
+            "progress_percent": 0
+        }
+    },
+    "supervisor_account_count_before": 1,
+    "supervisor_account_count_after_approval": 1
+}

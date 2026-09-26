@@ -1,0 +1,66 @@
+{
+    "faculty_requirements": [
+        {
+            "template_id": 292,
+            "system_code": "host_evaluation",
+            "name": "Host Evaluation",
+            "is_system": true,
+            "status": "missing",
+            "status_label": "Missing",
+            "source": "upload",
+            "document_id": null,
+            "approved": false,
+            "pending": false,
+            "missing": true,
+            "rejected": false
+        }
+    ],
+    "coordinator_requirements": [
+        {
+            "template_id": 292,
+            "system_code": "host_evaluation",
+            "name": "Host Evaluation",
+            "is_system": true,
+            "status": "missing",
+            "status_label": "Missing",
+            "source": "upload",
+            "document_id": null,
+            "approved": false,
+            "pending": false,
+            "missing": true,
+            "rejected": false
+        }
+    ],
+    "compliance": {
+        "student": {
+            "approved": 0,
+            "total": 1,
+            "pct": 0
+        },
+        "student_documents": {
+            "approved": 0,
+            "total": 1,
+            "pct": 0
+        },
+        "faculty": {
+            "approved": 0,
+            "total": 1,
+            "pct": 0
+        },
+        "faculty_report": {
+            "approved": 0,
+            "total": 1,
+            "pct": 0
+        },
+        "coordinator": {
+            "approved": 0,
+            "total": 1,
+            "pct": 0
+        },
+        "coordinator_report": {
+            "approved": 0,
+            "total": 1,
+            "pct": 0
+        }
+    }
+}

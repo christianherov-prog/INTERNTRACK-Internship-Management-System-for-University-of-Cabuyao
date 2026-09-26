@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\DOCUnitTest\\:\\:test_UT_DOC_05_U|Tests\\\\Unit\\\\ChapterIV\\\\DOCUnitTest\\:\\:test_UT_DOC_07_U|Tests\\\\Unit\\\\ChapterIV\\\\DOCUnitTest\\:\\:test_UT_DOC_08_U|Tests\\\\Unit\\\\ChapterIV\\\\DOCUnitTest\\:\\:test_UT_DOC_06_U|Tests\\\\Unit\\\\ChapterIV\\\\DOCUnitTest\\:\\:test_UT_DOC_APPROVAL_PRIORITY|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_DOC_09_10|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_DOC_EVAL_SCOPE|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_DOC_15|Tests\\\\Feature\\\\StudentRequirementDocumentsTest\\:\\:test_student_sees_only_matching_program_and_section_requirements|Tests\\\\Feature\\\\ComplianceConsistencyAcrossRolesTest\\:\\:test_complete_label_requires_all_applicable_requirements|Tests\\\\Feature\\\\DocumentComplianceAndRequirementsRepairTest\\:\\:test_faculty_can_edit_system_application_letter_without_targets|Tests\\\\Feature\\\\DocumentComplianceAndRequirementsRepairTest\\:\\:test_coordinator_list_hides_standard_requirements_but_keeps_customs|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_DOC_02_04|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_DOC_03|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_DOC_13)$/",
+        "--log-junit",
+        "tests/evidence/module-DOC.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 15
+}

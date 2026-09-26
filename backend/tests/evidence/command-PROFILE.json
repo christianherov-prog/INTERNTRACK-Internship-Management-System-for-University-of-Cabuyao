@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\PROFILEUnitTest\\:\\:test_UT_PROFILE_03_U|Tests\\\\Unit\\\\ChapterIV\\\\PROFILEUnitTest\\:\\:test_UT_PROFILE_02_U|Tests\\\\Unit\\\\ChapterIV\\\\PROFILEUnitTest\\:\\:test_UT_PROFILE_08_U|Tests\\\\Feature\\\\UserResourceDepartmentCoordinatorTest\\:\\:test_student_department_is_a_structured_object|Tests\\\\Feature\\\\FunctionalAuditRegressionTest\\:\\:test_student_can_update_contact_without_changing_identity|Tests\\\\Feature\\\\DepartmentOwnershipRepairTest\\:\\:test_ccs_student_resolves_ccs_department_from_program|Tests\\\\Feature\\\\DepartmentOwnershipRepairTest\\:\\:test_no_first_faculty_fallback_on_user_resource|Tests\\\\Feature\\\\InternshipProgressConsistencyTest\\:\\:test_program_requirements_are_looked_up_from_hte_configuration|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_PROFILE_06)$/",
+        "--log-junit",
+        "tests/evidence/module-PROFILE.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 9
+}

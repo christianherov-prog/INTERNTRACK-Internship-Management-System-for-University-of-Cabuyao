@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\ADMUnitTest\\:\\:test_UT_ADM_01_U|Tests\\\\Unit\\\\ChapterIV\\\\ADMUnitTest\\:\\:test_UT_ADM_04_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_ADM_02|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_ADM_05|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_ADM_06|Tests\\\\Unit\\\\ChapterIV\\\\SupplementalUnitTest\\:\\:test_UT_ADM_03_U|Tests\\\\Feature\\\\ChapterIV\\\\FocusedComponentsTest\\:\\:test_UT_ADM_04)$/",
+        "--log-junit",
+        "tests/evidence/module-ADM.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 7
+}

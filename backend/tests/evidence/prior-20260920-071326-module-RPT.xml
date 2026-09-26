@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.xml" tests="7" assertions="21" errors="0" failures="0" skipped="0" time="4.486493">
+    <testsuite name="Unit" tests="5" assertions="5" errors="0" failures="0" skipped="0" time="2.466484">
+      <testsuite name="Tests\Unit\ChapterIV\RPTUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\RPTUnitTest.php" tests="5" assertions="5" errors="0" failures="0" skipped="0" time="2.466484">
+        <testcase name="test_UT_RPT_01_500_80" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\RPTUnitTest.php" line="13" class="Tests\Unit\ChapterIV\RPTUnitTest" classname="Tests.Unit.ChapterIV.RPTUnitTest" assertions="1" time="1.999484"/>
+        <testcase name="test_UT_RPT_01_500_550" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\RPTUnitTest.php" line="18" class="Tests\Unit\ChapterIV\RPTUnitTest" classname="Tests.Unit.ChapterIV.RPTUnitTest" assertions="1" time="0.120033"/>
+        <testcase name="test_UT_RPT_01_0_80" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\RPTUnitTest.php" line="23" class="Tests\Unit\ChapterIV\RPTUnitTest" classname="Tests.Unit.ChapterIV.RPTUnitTest" assertions="1" time="0.117763"/>
+        <testcase name="test_UT_RPT_05_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\RPTUnitTest.php" line="28" class="Tests\Unit\ChapterIV\RPTUnitTest" classname="Tests.Unit.ChapterIV.RPTUnitTest" assertions="1" time="0.105693"/>
+        <testcase name="test_UT_RPT_06_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\RPTUnitTest.php" line="33" class="Tests\Unit\ChapterIV\RPTUnitTest" classname="Tests.Unit.ChapterIV.RPTUnitTest" assertions="1" time="0.123511"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="2" assertions="16" errors="0" failures="0" skipped="0" time="2.020010">
+      <testsuite name="Tests\Feature\ChapterIV\FocusedComponentsTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" tests="1" assertions="3" errors="0" failures="0" skipped="0" time="0.648568">
+        <testcase name="test_UT_RPT_03" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIV\FocusedComponentsTest.php" line="188" class="Tests\Feature\ChapterIV\FocusedComponentsTest" classname="Tests.Feature.ChapterIV.FocusedComponentsTest" assertions="3" time="0.648568"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\DocumentComplianceAndRequirementsRepairTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DocumentComplianceAndRequirementsRepairTest.php" tests="1" assertions="13" errors="0" failures="0" skipped="0" time="1.371442">
+        <testcase name="test_faculty_compliance_report_uses_satisfied_counts" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DocumentComplianceAndRequirementsRepairTest.php" line="229" class="Tests\Feature\DocumentComplianceAndRequirementsRepairTest" classname="Tests.Feature.DocumentComplianceAndRequirementsRepairTest" assertions="13" time="1.371442"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,66 @@
+{
+    "faculty_requirements": [
+        {
+            "template_id": 191,
+            "system_code": "host_evaluation",
+            "name": "Host Evaluation",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Completed",
+            "source": "evaluation",
+            "document_id": null,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        }
+    ],
+    "coordinator_requirements": [
+        {
+            "template_id": 191,
+            "system_code": "host_evaluation",
+            "name": "Host Evaluation",
+            "is_system": true,
+            "status": "approved",
+            "status_label": "Completed",
+            "source": "evaluation",
+            "document_id": null,
+            "approved": true,
+            "pending": false,
+            "missing": false,
+            "rejected": false
+        }
+    ],
+    "compliance": {
+        "student": {
+            "approved": 1,
+            "total": 1,
+            "pct": 100
+        },
+        "student_documents": {
+            "approved": 1,
+            "total": 1,
+            "pct": 100
+        },
+        "faculty": {
+            "approved": 1,
+            "total": 1,
+            "pct": 100
+        },
+        "faculty_report": {
+            "approved": 1,
+            "total": 1,
+            "pct": 100
+        },
+        "coordinator": {
+            "approved": 1,
+            "total": 1,
+            "pct": 100
+        },
+        "coordinator_report": {
+            "approved": 1,
+            "total": 1,
+            "pct": 100
+        }
+    }
+}

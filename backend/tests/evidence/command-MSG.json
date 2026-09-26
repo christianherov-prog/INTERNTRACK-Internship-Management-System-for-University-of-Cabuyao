@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\MSGUnitTest\\:\\:test_UT_MSG_02_U|Tests\\\\Feature\\\\MessagingFlowTest\\:\\:test_outsider_cannot_send_or_read_thread|Tests\\\\Feature\\\\MessagingFlowTest\\:\\:test_archive_is_per_user_and_reversible|Tests\\\\Feature\\\\MessagingMeetingEsignTest\\:\\:test_party_can_send_flat_dm_and_read_thread)$/",
+        "--log-junit",
+        "tests/evidence/module-MSG.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 4
+}

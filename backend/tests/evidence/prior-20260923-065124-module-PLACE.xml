@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\phpunit.evidence.xml" tests="7" assertions="11" errors="0" failures="0" skipped="0" time="1.422240">
+    <testsuite name="Unit" tests="3" assertions="4" errors="0" failures="0" skipped="0" time="0.373174">
+      <testsuite name="Tests\Unit\ChapterIV\PLACEUnitTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PLACEUnitTest.php" tests="3" assertions="4" errors="0" failures="0" skipped="0" time="0.373174">
+        <testcase name="test_UT_PLACE_02_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PLACEUnitTest.php" line="13" class="Tests\Unit\ChapterIV\PLACEUnitTest" classname="Tests.Unit.ChapterIV.PLACEUnitTest" assertions="2" time="0.318444"/>
+        <testcase name="test_UT_PLACE_04_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PLACEUnitTest.php" line="18" class="Tests\Unit\ChapterIV\PLACEUnitTest" classname="Tests.Unit.ChapterIV.PLACEUnitTest" assertions="1" time="0.030565"/>
+        <testcase name="test_UT_PLACE_06_U" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Unit\ChapterIV\PLACEUnitTest.php" line="23" class="Tests\Unit\ChapterIV\PLACEUnitTest" classname="Tests.Unit.ChapterIV.PLACEUnitTest" assertions="1" time="0.024165"/>
+      </testsuite>
+    </testsuite>
+    <testsuite name="Feature" tests="4" assertions="7" errors="0" failures="0" skipped="0" time="1.049066">
+      <testsuite name="Tests\Feature\DuplicateCurrentInternshipTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DuplicateCurrentInternshipTest.php" tests="1" assertions="3" errors="0" failures="0" skipped="0" time="0.487196">
+        <testcase name="test_create_pending_if_none_does_not_duplicate_open_internships" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\DuplicateCurrentInternshipTest.php" line="20" class="Tests\Feature\DuplicateCurrentInternshipTest" classname="Tests.Feature.DuplicateCurrentInternshipTest" assertions="3" time="0.487196"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\PlacementTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PlacementTest.php" tests="3" assertions="4" errors="0" failures="0" skipped="0" time="0.561870">
+        <testcase name="test_rejects_expired_moa_company" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PlacementTest.php" line="17" class="Tests\Feature\PlacementTest" classname="Tests.Feature.PlacementTest" assertions="2" time="0.203375"/>
+        <testcase name="test_rejects_zero_slots" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PlacementTest.php" line="40" class="Tests\Feature\PlacementTest" classname="Tests.Feature.PlacementTest" assertions="1" time="0.212192"/>
+        <testcase name="test_rejects_non_supervisor" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\PlacementTest.php" line="59" class="Tests\Feature\PlacementTest" classname="Tests.Feature.PlacementTest" assertions="1" time="0.146303"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

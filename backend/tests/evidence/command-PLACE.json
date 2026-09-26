@@ -1,0 +1,17 @@
+{
+    "args": [
+        "C:\\php82\\php.exe",
+        "vendor/phpunit/phpunit/phpunit",
+        "--configuration",
+        "phpunit.evidence.xml",
+        "--bootstrap",
+        "tests/evidence-bootstrap.php",
+        "--filter",
+        "/^(?:Tests\\\\Unit\\\\ChapterIV\\\\PLACEUnitTest\\:\\:test_UT_PLACE_02_U|Tests\\\\Unit\\\\ChapterIV\\\\PLACEUnitTest\\:\\:test_UT_PLACE_04_U|Tests\\\\Unit\\\\ChapterIV\\\\PLACEUnitTest\\:\\:test_UT_PLACE_06_U|Tests\\\\Feature\\\\PlacementTest\\:\\:test_rejects_expired_moa_company|Tests\\\\Feature\\\\PlacementTest\\:\\:test_rejects_zero_slots|Tests\\\\Feature\\\\PlacementTest\\:\\:test_rejects_non_supervisor|Tests\\\\Feature\\\\DuplicateCurrentInternshipTest\\:\\:test_create_pending_if_none_does_not_duplicate_open_internships)$/",
+        "--log-junit",
+        "tests/evidence/module-PLACE.xml",
+        "--colors=never"
+    ],
+    "exit": 0,
+    "selected": 7
+}

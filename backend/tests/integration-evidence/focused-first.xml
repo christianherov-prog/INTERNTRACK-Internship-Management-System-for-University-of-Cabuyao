@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="21" assertions="286" errors="0" failures="9" skipped="0" time="7.631664">
+    <testsuite name="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" tests="21" assertions="286" errors="0" failures="9" skipped="0" time="7.631664">
+      <testcase name="test_INT_01_login_role_workspace_and_api_scope" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="122" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="37" time="1.724074"/>
+      <testcase name="test_INT_02_profile_internship_and_placement_ids" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="141" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="16" time="0.533528"/>
+      <testcase name="test_INT_04_clock_break_validation_and_progress" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="165" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="19" time="0.658809"/>
+      <testcase name="test_INT_06_schedule_absence_afternoon_and_history" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="191" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="8" time="0.204801">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_06_schedule_absence_afternoon_and_history&#13;
+Failed asserting that null is not null.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:204</failure>
+      </testcase>
+      <testcase name="test_INT_07_journal_review_history_and_denials" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="223" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="11" time="0.272068"/>
+      <testcase name="test_INT_07_COORD_coordinator_review_propagation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="241" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="7" time="0.226758">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_07_COORD_coordinator_review_propagation&#13;
+{"http":200,"database":{"status":"approved","faculty_reviewed_by":432},"student":{"id":10,"internship_id":127,"entry_number":1,"week_number":1,"date":"2026-09-07","end_date":"2026-09-11","activities_summary":"Integration journal 2026-09-07","learnings":"Authoritative IDs","challenges":"Mapping","status":"approved","score":null,"file_path":null,"notes":null,"supervisor_feedback":null,"supervisor_reviewed_by":null,"supervisor_reviewed_at":null,"faculty_feedback":null,"faculty_reviewed_by":432,"faculty_reviewed_at":"2026-09-18T00:00:00.000000Z","created_at":"2026-09-18T00:00:00.000000Z","updated_at":"2026-09-18T00:00:00.000000Z","deleted_at":null,"editable":false,"lock_reason":"Approved journals cannot be edited.","student_name":"Student, Test","program":"Bachelor of Science in Information Technology","company_name":"Integration HTE","company_logo_path":null,"student_signature_path":null},"fo31":{"id":10,"week_number":1,"week":1,"date":"2026-09-07","end_date":"2026-09-11","activities_summary":"Integration journal 2026-09-07","accomplishment":"Integration journal 2026-09-07","challenges":"Mapping","difficulties":"Mapping","learnings":"Authoritative IDs","insights":"Authoritative IDs","file_path":null,"status":"approved"},"portfolio":{"id":10,"week_number":1,"week":1,"date":"2026-09-07","end_date":"2026-09-11","activities_summary":"Integration journal 2026-09-07","accomplishment":"Integration journal 2026-09-07","challenges":"Mapping","difficulties":"Mapping","learnings":"Authoritative IDs","insights":"Authoritative IDs","file_path":null,"status":"approved"}}
+Failed asserting that 200 is identical to 403.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:252</failure>
+      </testcase>
+      <testcase name="test_INT_08_approved_journal_to_fo31" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="256" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="14" time="0.216643"/>
+      <testcase name="test_INT_09_portfolio_excludes_unapproved_journals" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="269" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="8" time="0.222336">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_09_portfolio_excludes_unapproved_journals&#13;
+Unapproved academic journal leaked into portfolio: [{"id":12,"week_number":1,"week":1,"date":"2026-09-07","end_date":"2026-09-11","activities_summary":"Integration journal 2026-09-07","accomplishment":"Integration journal 2026-09-07","challenges":"Mapping","difficulties":"Mapping","learnings":"Authoritative IDs","insights":"Authoritative IDs","file_path":null,"status":"approved"},{"id":13,"week_number":2,"week":2,"date":"2026-09-14","end_date":"2026-09-18","activities_summary":"Integration journal 2026-09-14","accomplishment":"Integration journal 2026-09-14","challenges":"Mapping","difficulties":"Mapping","learnings":"Authoritative IDs","insights":"Authoritative IDs","file_path":null,"status":"submitted"}]
+Failed asserting that true is false.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:275</failure>
+      </testcase>
+      <testcase name="test_INT_10_upload_approval_all_compliance_views" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="278" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="35" time="0.560289"/>
+      <testcase name="test_INT_11_mixed_status_report_denominator" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="292" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="19" time="0.749944"/>
+      <testcase name="test_INT_11_SCOPE_fo24_does_not_satisfy_host_evaluation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="302" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="13" time="0.308679">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_11_SCOPE_fo24_does_not_satisfy_host_evaluation&#13;
+student incorrectly satisfied Host Evaluation; {"student":{"approved":1,"total":1,"pct":100},"student_documents":{"approved":1,"total":1,"pct":100},"faculty":{"approved":1,"total":1,"pct":100},"faculty_report":{"approved":1,"total":1,"pct":100},"coordinator":{"approved":1,"total":1,"pct":100},"coordinator_report":{"approved":1,"total":1,"pct":100}}
+Failed asserting that 1 is identical to 0.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:307</failure>
+      </testcase>
+      <testcase name="test_INT_12_COORD_coordinator_approval_access_propagation" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="310" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="5" time="0.215982">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_12_COORD_coordinator_approval_access_propagation&#13;
+{"http":200,"invite_status":"approved","assigned_supervisor":458,"supervisor_list":{"data":[{"id":133,"term":"AY 2024-2025, Sem 2","status":"active","status_label":"Active","status_reason":null,"target_hours":360,"total_hours_rendered":0,"remaining_hours":360,"progress_pct":0,"company":{"id":116,"company_name":"Integration HTE","company_logo_path":null},"student":{"id":457,"username":"2058-77292","student_profile":{"first_name":"Test","last_name":"Student","student_number":"2058-77292","course_name":"Bachelor of Science in Information Technology","program":"Bachelor of Science in Information Technology"}},"supervisor_name":"REVIEWER, INDUSTRY","student_signature_path":null,"supervisor_signature_path":null,"attendance_logs":[],"evaluation_eligibility":{"progress_pct":0,"hours_rendered":0,"target_hours":360,"remaining_hours":360,"midterm_eligible":false,"final_eligible":false,"status":"not_yet_eligible","label":"Not Yet Eligible","reason":"Not yet eligible for midterm evaluation (0 \/ 360 hours = 0%; 50% required)."}}],"meta":{"current_page":1,"last_page":1,"per_page":20,"total":1}},"student":{"id":133,"term":"AY 2024-2025, Sem 2","status":"active","status_label":"Active","status_reason":null,"company_name":"Integration HTE","supervisor_name":"Industry Reviewer","supervisor_faculty_number":"SUPERVISOR-1520","start_date":"2026-09-01","placements":[],"current_placement":null}}
+Failed asserting that 200 is identical to 403.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:320</failure>
+      </testcase>
+      <testcase name="test_INT_13_validation_authorization_fo30_and_monitoring" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="324" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="14" time="0.244495"/>
+      <testcase name="test_INT_14_evaluation_submission_student_record" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="344" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="13" time="0.142237"/>
+      <testcase name="test_INT_15_pending_evaluation_not_completed" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="357" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="6" time="0.135856"/>
+      <testcase name="test_INT_17_authorized_meeting_student_view" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="372" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="3" time="0.116585">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_17_authorized_meeting_student_view&#13;
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.&#13;
+&#13;
+The following errors occurred during the last request:
+
+{
+    "message": "Validation failed.",
+    "errors": {
+        "type": [
+            "The selected type is invalid."
+        ]
+    }
+}
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:175
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:26
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:375</failure>
+      </testcase>
+      <testcase name="test_INT_17_ATOMIC_denied_meeting_downstream_visibility" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="389" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="5" time="0.216746">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_17_ATOMIC_denied_meeting_downstream_visibility&#13;
+Failed asserting that 422 is identical to 403.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:398</failure>
+      </testcase>
+      <testcase name="test_INT_18_action_notification_preferences_and_read_ownership" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="402" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="3" time="0.127393">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_18_action_notification_preferences_and_read_ownership&#13;
+Expected response status code [201] but received 422.
+Failed asserting that 422 is identical to 201.&#13;
+&#13;
+The following errors occurred during the last request:
+
+{
+    "message": "Validation failed.",
+    "errors": {
+        "type": [
+            "The selected type is invalid."
+        ]
+    }
+}
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:175
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:26
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:406</failure>
+      </testcase>
+      <testcase name="test_INT_19_broad_portfolio_authoritative_sources" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="421" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="18" time="0.321925"/>
+      <testcase name="test_INT_20_reports_match_authoritative_sources" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="444" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="17" time="0.238634">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest::test_INT_20_reports_match_authoritative_sources&#13;
+Failed asserting that 0 matches expected 8.
+&#13;
+D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php:454</failure>
+      </testcase>
+      <testcase name="test_INT_21_admin_account_change_login_and_audit" file="D:\Clarence\System Thesis\INTERNTRACK-Internship-Management-System-for-University-of-Cabuyao\backend\tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest.php" line="465" class="Tests\Feature\ChapterIVIntegration\WorkflowIntegrationTest" classname="Tests.Feature.ChapterIVIntegration.WorkflowIntegrationTest" assertions="15" time="0.193881"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,312 @@
+[
+  {
+    "module": "APP",
+    "id": "UT-APP-01",
+    "fn": "MeetingController::store",
+    "scenario": "Faculty creates a valid unscoped meeting",
+    "expected": "201; scheduled meeting saved with Faculty creator ID",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_APP_01"
+  },
+  {
+    "module": "APP",
+    "id": "UT-APP-02",
+    "fn": "MeetingController::store",
+    "scenario": "Required title/type/start omitted",
+    "expected": "422 with all three field errors",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_APP_02"
+  },
+  {
+    "module": "APP",
+    "id": "UT-APP-03",
+    "fn": "MeetingController::store",
+    "scenario": "End precedes start",
+    "expected": "422 ends_at error; no meeting saved",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_APP_03"
+  },
+  {
+    "module": "APP",
+    "id": "UT-APP-04-ATOMIC",
+    "fn": "MeetingController::store",
+    "scenario": "Other Coordinator attaches unmanaged internship",
+    "expected": "403 and no unauthorized meeting persists",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_APP_04_ATOMIC"
+  },
+  {
+    "module": "NOTIF",
+    "id": "UT-NOTIF-01",
+    "fn": "NotificationController::index",
+    "scenario": "Two users have private notifications",
+    "expected": "Only current user notification returned",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_NOTIF_01"
+  },
+  {
+    "module": "NOTIF",
+    "id": "UT-NOTIF-03",
+    "fn": "NotificationController::markRead",
+    "scenario": "Owner reads stored unread notification",
+    "expected": "200 and read_at changes from null to a timestamp",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_NOTIF_03"
+  },
+  {
+    "module": "NOTIF",
+    "id": "UT-NOTIF-04",
+    "fn": "NotificationController::markRead",
+    "scenario": "Unrelated user attempts to read private notification",
+    "expected": "404 and read_at stays null",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_NOTIF_04"
+  },
+  {
+    "module": "FDBK",
+    "id": "UT-FDBK-03",
+    "fn": "SupervisorController::feedback",
+    "scenario": "Assigned Supervisor submits empty feedback",
+    "expected": "422 feedback validation error",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_FDBK_03"
+  },
+  {
+    "module": "FDBK",
+    "id": "UT-FDBK-01",
+    "fn": "SupervisorFeedbackService::upsert",
+    "scenario": "Assigned Supervisor saves one feedback note",
+    "expected": "Note persisted as supervisor_note with reviewer and text",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_FDBK_01"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-03",
+    "fn": "SupervisorController::submitEvaluation",
+    "scenario": "Required evaluation fields omitted",
+    "expected": "422 evaluation_period/form_type/responses errors",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_EVAL_03"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-02",
+    "fn": "SupervisorController::submitEvaluation",
+    "scenario": "Assigned evaluator but period not approved",
+    "expected": "403 Faculty approval message and no evaluation created",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_EVAL_02"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-05",
+    "fn": "SupervisorController::submitEvaluation",
+    "scenario": "Assigned evaluator with approved period and complete FO-24",
+    "expected": "201; submitted record has correct evaluator and average 90",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_EVAL_05"
+  },
+  {
+    "module": "EVAL",
+    "id": "UT-EVAL-07",
+    "fn": "SupervisorController::submitEvaluation",
+    "scenario": "Unrelated Supervisor with valid form payload",
+    "expected": "404; no evaluation record saved",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_EVAL_07"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-09-10",
+    "fn": "DocumentComplianceService::evaluateStudent",
+    "scenario": "Three applicable customs; approved, pending, missing",
+    "expected": "Denominator 3; approved numerator 1; pending 1; missing 1; 33%",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_DOC_09_10"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-EVAL-SCOPE",
+    "fn": "DocumentComplianceService::resolveTemplateState",
+    "scenario": "Host-evaluation requirement with only submitted FO-24 performance evaluation",
+    "expected": "Unrelated form must not satisfy Host Evaluation",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_DOC_EVAL_SCOPE"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-08",
+    "fn": "FacultyController::reviewJournal",
+    "scenario": "Assigned Faculty reviews submitted weekly journal",
+    "expected": "200; approved record has Faculty reviewer ID",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_JRN_08"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-09",
+    "fn": "FacultyController::reviewJournal",
+    "scenario": "Unrelated Faculty reviews submitted journal",
+    "expected": "404; journal remains submitted",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_JRN_09"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-10",
+    "fn": "FacultyController::reviewJournal",
+    "scenario": "Industry Supervisor calls journal review endpoint",
+    "expected": "403; journal remains submitted",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_JRN_10"
+  },
+  {
+    "module": "JRN",
+    "id": "UT-JRN-11",
+    "fn": "FacultyController::reviewJournal",
+    "scenario": "Coordinator occupies faculty_id relationship",
+    "expected": "Faculty-only requirement denies Coordinator",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_JRN_11"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-02",
+    "fn": "MisdAdminController::updateStaff",
+    "scenario": "Admin supplies nonboolean account status",
+    "expected": "422 is_active error; active status unchanged",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_ADM_02"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-05",
+    "fn": "MisdAdminController::auditLog",
+    "scenario": "Student requests Admin audit log",
+    "expected": "403 backend denial",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_ADM_05"
+  },
+  {
+    "module": "ADM",
+    "id": "UT-ADM-06",
+    "fn": "MisdAdminController::storeSectionAssignment",
+    "scenario": "Admin omits required section assignment fields",
+    "expected": "422 validation response",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_ADM_06"
+  },
+  {
+    "module": "PORT",
+    "id": "UT-PORT-03-04",
+    "fn": "StudentPortfolioController::uploadPhoto",
+    "scenario": "Upload PNG then replace singleton company logo",
+    "expected": "Both uploads return 201; new file exists; old file removed; one active logo document",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_PORT_03_04"
+  },
+  {
+    "module": "PORT",
+    "id": "UT-PORT-05",
+    "fn": "StudentPortfolioController::deletePhoto",
+    "scenario": "Delete own stored portfolio image fixture",
+    "expected": "200; stored file and active document removed",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_PORT_05"
+  },
+  {
+    "module": "PORT",
+    "id": "UT-PORT-11",
+    "fn": "StudentPortfolioController::deletePhoto",
+    "scenario": "Student tries deleting another student image fixture",
+    "expected": "403; document and file remain",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_PORT_11"
+  },
+  {
+    "module": "ATT",
+    "id": "UT-ATT-13",
+    "fn": "DtrWorkflowController::submitCorrection",
+    "scenario": "Submit clock-out correction for yesterday",
+    "expected": "201 pending_supervisor; original clock_out stays null; audit exists",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_ATT_13"
+  },
+  {
+    "module": "SUP",
+    "id": "UT-SUP-07-10",
+    "fn": "SupervisorRegistrationController::approve",
+    "scenario": "Assigned Faculty approves registered Supervisor fixture",
+    "expected": "200; approved invite; Supervisor active and assigned; account count unchanged",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_SUP_07_10"
+  },
+  {
+    "module": "SUP",
+    "id": "UT-SUP-11",
+    "fn": "SupervisorRegistrationController::reject",
+    "scenario": "Assigned Faculty rejects registered Supervisor with remarks",
+    "expected": "200; rejected invite; inactive Supervisor not assigned",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_SUP_11"
+  },
+  {
+    "module": "SUP",
+    "id": "UT-SUP-FACULTY-ONLY",
+    "fn": "SupervisorRegistrationController::approve",
+    "scenario": "Same-department Coordinator attempts approval",
+    "expected": "Faculty-only requirement denies Coordinator",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_SUP_FACULTY_ONLY"
+  },
+  {
+    "module": "DOC",
+    "id": "UT-DOC-15",
+    "fn": "RequirementTemplateController authorization",
+    "scenario": "Student attempts to modify Faculty template",
+    "expected": "403",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_DOC_15"
+  },
+  {
+    "module": "RPT",
+    "id": "UT-RPT-03",
+    "fn": "Internship::computeTotalHours",
+    "scenario": "Validated 8h and pending 4h attendance",
+    "expected": "Returns 8h from validated records",
+    "scope": "Narrow component test (Laravel HTTP/database; RefreshDatabase)",
+    "class": "Tests\\Feature\\ChapterIV\\FocusedComponentsTest",
+    "method": "test_UT_RPT_03"
+  }
+]

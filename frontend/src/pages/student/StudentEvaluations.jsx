@@ -1,0 +1,384 @@
+import { useState, useEffect } from 'react'
+import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
+import api from '../../services/api'
+import { unwrapList } from '../../utils/apiList'
+import { useCurrentTerm } from '../../hooks/useCurrentTerm'
+import { HostTrainingEstEvaluationForm } from '../../components/evaluations/HostTrainingEstEvaluationForm'
+import { InternshipProgramEvaluationForm } from '../../components/evaluations/InternshipProgramEvaluationForm'
+import FormPreviewModal from '../../components/portfolio/FormPreviewModal'
+import AppModal from '../../components/modals/AppModal'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import { invalidateStudentPortfolio } from '../../utils/pageCache'
+import InternTrackLoader from '../../components/InternTrackLoader'
+import { useConfirm } from '../../contexts/ConfirmContext'
+
+function SubmitEvalModal({ internship, activeForm, onClose, onSubmit, processing }) {
+  return (
+    <AppModal
+      onClose={onClose}
+      size="lg"
+      title={activeForm === 'FO-22' ? 'HTE Evaluation (FO-22)' : 'Program Evaluation (FO-23)'}
+      icon="fa-clipboard-check"
+      busy={processing}
+      bodyClassName="bg-light"
+    >
+      {activeForm === 'FO-22' ? (
+        <HostTrainingEstEvaluationForm
+          internship={internship}
+          onSubmit={onSubmit}
+          processing={processing}
+        />
+      ) : (
+        <InternshipProgramEvaluationForm
+          internship={internship}
+          onSubmit={onSubmit}
+          processing={processing}
+        />
+      )}
+    </AppModal>
+  )
+}
+
+function StudentEvaluations() {
+  const currentTerm = useCurrentTerm()
+  const confirm = useConfirm()
+  const { loading, seed, run } = useCachedPage('student:evaluations')
+  const [evaluations, setEvaluations] = useState(() => seed?.evaluations ?? [])
+  const [error, setError] = useState(null)
+  const [showSubmitModal, setShowSubmitModal] = useState(null)
+  const [processing, setProcessing] = useState(false)
+  const [internship, setInternship] = useState(() => seed?.internship ?? null)
+  const [previewEval, setPreviewEval] = useState(null)
+  // Authoritative evaluation-period state from the API (EvaluationPeriod on the
+  // server). The banner and form locks read ONLY this object, and only after it
+  // was fetched during this visit — never from a stale cache or a missing value.
+  const [period, setPeriod] = useState(null)
+  const periodApproved = Boolean(period?.approved)
+
+  const load = () => {
+    setError(null)
+    run(async () => {
+      let nextInternship = null
+      try {
+        const res = await api.get('/student/records')
+        const items = unwrapList(res.data).items
+        const profile = res.data?.profile
+        if (items.length > 0) {
+          nextInternship = {
+            ...items[0],
+            student: items[0].student || { student_profile: profile },
+          }
+        }
+      } catch {
+        // evaluations can still load without records
+      }
+      const evalRes = await api.get('/student/evaluations')
+      return {
+        internship: nextInternship,
+        evaluations: unwrapList(evalRes.data).items,
+        period: evalRes.data?.evaluation_period || null,
+      }
+    })
+      .then((next) => {
+        if (next) {
+          if (next.internship) setInternship(next.internship)
+          setEvaluations(next.evaluations)
+          setPeriod(next.period || null)
+        }
+      })
+      .catch(err => {
+        setError(err.response?.data?.message || 'Failed to load evaluations.')
+        setEvaluations([])
+      })
+  }
+
+  useEffect(() => { load() }, [])
+
+  // Approval (or a reset) can happen while this page is open: re-fetch whenever
+  // the tab regains focus, and every 30 s while the period is not yet approved.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') load() }
+    const timer = periodApproved ? null : window.setInterval(refresh, 30000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      if (timer) window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [periodApproved])
+
+  const getRatingBg = (avg) => {
+    const n = parseFloat(avg ?? 0)
+    if (n >= 4.5) return { bg: '#dcfce7', color: '#15803d' }
+    if (n >= 3.5) return { bg: '#e0f2fe', color: '#075985' }
+    if (n >= 2.5) return { bg: '#fef9c3', color: '#854d0e' }
+    return { bg: '#fee2e2', color: '#991b1b' }
+  }
+
+  const handleLocalSubmit = async (data) => {
+    const formLabel = data?.form_type || showSubmitModal || 'evaluation'
+    const ok = await confirm({
+      title: 'Submit evaluation?',
+      message: `Submit ${formLabel}? You will not be able to edit it after submission.`,
+      confirmLabel: 'Submit Evaluation',
+      variant: 'primary',
+    })
+    if (!ok) return
+
+    setProcessing(true)
+    setError(null)
+    try {
+      await api.post(`/student/evaluations`, data)
+      invalidateStudentPortfolio()
+      setShowSubmitModal(null)
+      load()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to submit evaluation.')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const supervisor = evaluations.filter(e => e.evaluator_type === 'supervisor')
+  const faculty = evaluations.filter(e => e.evaluator_type === 'faculty')
+  const studentEvals = evaluations.filter(e => e.evaluator_type === 'student')
+  const hasFO22 = studentEvals.some(e => e.form_type === 'FO-22')
+  const hasFO23 = studentEvals.some(e => e.form_type === 'FO-23')
+
+  // Get specific evaluation objects for direct preview
+  const fo24 = evaluations.find(e => e.form_type === 'FO-24')
+  const fo03 = evaluations.find(e => e.form_type === 'FO-03')
+  const fo22 = studentEvals.find(e => e.form_type === 'FO-22')
+  const fo23 = studentEvals.find(e => e.form_type === 'FO-23')
+
+  const FORM_STATUS = [
+    { key: 'FO-24', label: 'FO-24', title: 'Performance Evaluation', source: 'By: Company Supervisor', eval: fo24, color: 'primary' },
+    { key: 'FO-03', label: 'FO-03', title: 'HTE Evaluation', source: 'By: Company Supervisor', eval: fo03, color: 'success' },
+    { key: 'FO-22', label: 'FO-22', title: 'HTE Evaluation', source: 'By: You (Student)', eval: fo22, color: 'info', canSubmit: periodApproved && !hasFO22, submitKey: 'FO-22' },
+    { key: 'FO-23', label: 'FO-23', title: 'Program Evaluation', source: 'By: You (Student)', eval: fo23, color: 'warning', canSubmit: periodApproved && !hasFO23, submitKey: 'FO-23' },
+  ]
+
+  // Unreleased FO-24 / FO-03 arrive without scores (details_locked) and are not averaged.
+  const scoredEvaluations = evaluations.filter(e => !e.details_locked)
+  const totalAvg = scoredEvaluations.length > 0
+    ? (scoredEvaluations.reduce((sum, e) => sum + parseFloat(e.average_score ?? 0), 0) / scoredEvaluations.length).toFixed(2)
+    : null
+
+  return (
+    <Layout title="Evaluations" subtitle={currentTerm} icon="fa-star" bodyClass="student-page">
+
+
+      {/* Summary stats */}
+      <div className="row g-3 mb-4">
+        <div className="col-sm-4">
+          <div className="stat-card">
+            <div className="stat-icon blue"><i className="fa fa-clipboard-check"></i></div>
+            <div>
+              <div className="stat-value">{evaluations.length}</div>
+              <div className="stat-label">Total Submitted</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-4">
+          <div className="stat-card">
+            <div className="stat-icon green"><i className="fa fa-star"></i></div>
+            <div>
+              <div className="stat-value">{totalAvg ?? '—'}</div>
+              <div className="stat-label">Overall Average</div>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-4">
+          <div className="stat-card">
+            <div className="stat-icon amber"><i className="fa fa-clock"></i></div>
+            <div>
+              {/* The four required forms (FO-24, FO-03, FO-22, FO-23) not yet completed.
+                  Counting all evaluations went negative once a Faculty evaluation existed. */}
+              <div className="stat-value" data-testid="pending-forms-count">{FORM_STATUS.filter(f => !f.eval || f.eval.status === 'pending').length}</div>
+              <div className="stat-label">Pending Forms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      {error && <PageError message={error} onRetry={load} />}
+      {period?.status === 'pending_faculty_approval' && (
+        <div className="alert alert-warning d-flex align-items-center gap-2 mb-4" data-testid="evaluation-period-pending">
+          <i className="fa fa-lock"></i>
+          <span>{period.message || 'Waiting for Faculty approval of the evaluation period. Your forms stay locked until then.'}</span>
+        </div>
+      )}
+      {(period?.status === 'not_yet_eligible' || period?.status === 'closed') && (
+        <div className="alert alert-secondary d-flex align-items-center gap-2 mb-4" data-testid="evaluation-period-info">
+          <i className="fa fa-circle-info"></i>
+          <span>{period.message}</span>
+        </div>
+      )}
+      {!!showSubmitModal && <SubmitEvalModal internship={internship} activeForm={showSubmitModal} onClose={() => setShowSubmitModal(null)} onSubmit={handleLocalSubmit} processing={processing} />}
+      <FormPreviewModal
+        isOpen={!!previewEval}
+        onClose={() => setPreviewEval(null)}
+        type={previewEval?.form_type || 'FO-22'}
+        data={{ evalData: previewEval, internship: internship }}
+      />
+
+      {loading && evaluations.length === 0 && !internship ? (
+        <div className="text-center py-5"><InternTrackLoader /></div>
+      ) : (
+        <>
+          {/* 4-Form Evaluation Status Cards */}
+          <div className="row g-3 mb-4">
+            {FORM_STATUS.map(form => (
+              <div key={form.key} className="col-sm-6 col-xl-3">
+                <div className={`content-card h-100 border-start border-3 border-${form.color}`} style={{ padding: '1rem 1.25rem' }}>
+                  <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <span className={`badge bg-${form.color} mb-1`}>{form.label}</span>
+                      <div className="fw-bold" style={{ fontSize: '0.9rem' }}>{form.title}</div>
+                      <div className="text-muted" style={{ fontSize: '0.78rem' }}>{form.source}</div>
+                    </div>
+                    {form.eval && form.eval.status === 'pending' ? (
+                      <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>Not Yet Completed</span>
+                    ) : form.eval ? (
+                      <span className="badge bg-success"><i className="fa fa-check me-1"></i>{form.eval.details_locked ? 'Completed' : 'Submitted'}</span>
+                    ) : (
+                      <span className="badge bg-warning text-dark"><i className="fa fa-clock me-1"></i>{form.submitKey ? 'Pending' : 'Not Yet Completed'}</span>
+                    )}
+                  </div>
+
+                  {form.eval?.details_locked && (
+                    <div className="mb-2 text-muted" style={{ fontSize: '0.8rem' }} data-testid={`eval-locked-${form.key}`}>
+                      <i className="fa fa-lock me-1"></i>{form.eval.locked_message}
+                    </div>
+                  )}
+
+                  {form.eval && !form.eval.details_locked && (
+                    <div className="mb-2" style={{ fontSize: '0.82rem' }}>
+                      <span className="text-muted">Score: </span>
+                      <strong>{parseFloat(form.eval.average_score ?? 0).toFixed(2)}</strong>
+                      {form.eval.rating && <span className={`ms-2 badge bg-${form.color}`}>{form.eval.rating}</span>}
+                    </div>
+                  )}
+
+                  <div className="d-flex gap-2 mt-auto">
+                    {form.eval && !form.eval.details_locked && (
+                      <button
+                        className={`btn btn-sm btn-outline-${form.color} flex-fill`}
+                        onClick={() => setPreviewEval(form.eval)}
+                      >
+                        <i className="fa fa-eye me-1"></i>Preview {form.label}
+                      </button>
+                    )}
+                    {form.canSubmit && (
+                      <button
+                        className={`btn btn-sm btn-${form.color} flex-fill`}
+                        onClick={() => setShowSubmitModal(form.submitKey)}
+                      >
+                        <i className="fa fa-plus me-1"></i>Submit
+                      </button>
+                    )}
+                    {form.submitKey && !form.eval && period && !periodApproved && (
+                      <span className="text-muted small"><i className="fa fa-lock me-1"></i>{period.status === 'pending_faculty_approval' ? 'Waiting for Faculty approval' : period.label}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Received evaluations (from supervisor/faculty) */}
+          {(supervisor.length > 0 || faculty.length > 0) && (
+            <div className="content-card mb-4">
+              <div className="content-card-header">
+                <i className="fa fa-building text-primary"></i>
+                <h6>Received Evaluations (from Supervisor &amp; Faculty)</h6>
+              </div>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead><tr><th>Form</th><th>Period</th><th>Evaluator</th><th>Average</th><th>Rating</th><th className="text-center">Preview</th></tr></thead>
+                  <tbody>
+                    {[...supervisor, ...faculty].map(ev => {
+                      const { bg, color } = getRatingBg(ev.average_score)
+                      if (ev.details_locked) {
+                        return (
+                          <tr key={ev.id}>
+                            <td><span className="badge bg-primary">{ev.form_type}</span></td>
+                            <td><span className="badge bg-secondary text-capitalize">{ev.evaluation_period}</span></td>
+                            <td className="text-capitalize">{ev.evaluator_type} supervisor</td>
+                            <td colSpan={3} className="text-muted small">
+                              <span className={`badge ${ev.status === 'pending' ? 'bg-warning text-dark' : 'bg-success'} me-2`}>{ev.status === 'pending' ? 'Not Yet Completed' : 'Completed'}</span>
+                              <i className="fa fa-lock me-1"></i>{ev.locked_message}
+                            </td>
+                          </tr>
+                        )
+                      }
+                      return (
+                        <tr key={ev.id}>
+                          <td><span className="badge bg-primary">{ev.form_type}</span></td>
+                          <td><span className="badge bg-secondary text-capitalize">{ev.evaluation_period}</span></td>
+                          <td className="text-capitalize">{ev.evaluator_type} supervisor</td>
+                          <td><strong style={{ color }}>{parseFloat(ev.average_score ?? 0).toFixed(2)}</strong></td>
+                          <td><span className="badge" style={{ background: bg, color }}>{ev.rating ?? '—'}</span></td>
+                          <td className="text-center">
+                            <button className="btn btn-sm btn-outline-primary" onClick={() => setPreviewEval(ev)}>
+                              <i className="fa fa-eye me-1"></i>Preview {ev.form_type}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Student's own submitted evaluations */}
+          {studentEvals.length > 0 && (
+            <div className="content-card">
+              <div className="content-card-header">
+                <i className="fa fa-user-graduate text-info"></i>
+                <h6>My Submitted Evaluations</h6>
+              </div>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead><tr><th>Form</th><th>Average</th><th>Rating</th><th className="text-center">Preview</th></tr></thead>
+                  <tbody>
+                    {studentEvals.map(ev => {
+                      const { bg, color } = getRatingBg(ev.average_score)
+                      return (
+                        <tr key={ev.id}>
+                          <td><span className="badge bg-info text-dark">{ev.form_type}</span></td>
+                          <td><strong style={{ color }}>{parseFloat(ev.average_score ?? 0).toFixed(2)}</strong></td>
+                          <td><span className="badge" style={{ background: bg, color }}>{ev.rating ?? '—'}</span></td>
+                          <td className="text-center">
+                            <button className="btn btn-sm btn-outline-info" onClick={() => setPreviewEval(ev)}>
+                              <i className="fa fa-eye me-1"></i>Preview {ev.form_type}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {evaluations.length === 0 && !error && (
+            <div className="content-card p-4 text-center text-muted">
+              <i className="fa fa-hourglass-half fa-2x mb-3 d-block"></i>
+              No evaluations submitted yet. Your supervisor and faculty will submit evaluations during midterm and final periods.
+            </div>
+          )}
+        </>
+      )}
+    </Layout>
+  )
+}
+
+export default StudentEvaluations

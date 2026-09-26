@@ -1,0 +1,270 @@
+import { useEffect, useState } from 'react'
+import Layout from '../../components/Layout'
+import PageError from '../../components/PageError'
+import api from '../../services/api'
+import { unwrapList } from '../../utils/apiList'
+import { useCachedPage } from '../../hooks/useCachedPage'
+import InternTrackLoader from '../../components/InternTrackLoader'
+import { formatManilaDateTime } from '../../utils/manilaTime'
+
+function MisdSyncMonitor() {
+  const { loading, seed, run } = useCachedPage('admin:sync')
+  const [status, setStatus] = useState(() => seed?.status ?? null)
+  const [audit, setAudit] = useState(() => seed?.audit ?? [])
+  const [provisionLog, setProvisionLog] = useState(() => seed?.provisionLog ?? [])
+  const [directory, setDirectory] = useState(null)
+  const [error, setError] = useState(null)
+  const [message, setMessage] = useState(null)
+  const [studentNumber, setStudentNumber] = useState('')
+  const [preview, setPreview] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const load = () => {
+    setError(null)
+    run(async () => {
+      const [s, a, p] = await Promise.all([
+        api.get('/admin/misd/status'),
+        api.get('/admin/audit-log', { params: { per_page: 20 } }),
+        api.get('/admin/provisioning-log'),
+      ])
+      return {
+        status: s.data,
+        audit: unwrapList(a.data).items,
+        provisionLog: p.data?.data || [],
+      }
+    })
+      .then((next) => {
+        if (next) {
+          setStatus(next.status)
+          setAudit(next.audit)
+          setProvisionLog(next.provisionLog)
+        }
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Failed to load sync monitor.'))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const lookupStudent = async (e) => {
+    e.preventDefault()
+    const sn = studentNumber.trim().toUpperCase()
+    if (!sn) return
+    setBusy(true)
+    setMessage(null)
+    setPreview(null)
+    try {
+      const res = await api.get(`/admin/misd/students/${encodeURIComponent(sn)}`)
+      setPreview(res.data)
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Student not found in MISD.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const syncStudent = async () => {
+    if (!preview?.local?.id) {
+      setMessage({ type: 'warning', text: 'Student must already exist in INTERNTRACK to sync.' })
+      return
+    }
+    setBusy(true)
+    setMessage(null)
+    try {
+      const res = await api.post(`/admin/misd/sync/student/${preview.local.id}`)
+      setMessage({ type: 'success', text: res.data.message + (res.data.changed ? ' (profile changed)' : ' (no changes)') })
+      const refreshed = await api.get(`/admin/misd/students/${encodeURIComponent(studentNumber.trim().toUpperCase())}`)
+      setPreview(refreshed.data)
+      load()
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Sync failed.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const loadDirectory = async (type) => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const res = await api.post('/admin/misd/directory', { type })
+      setDirectory(res.data)
+      setMessage({ type: 'success', text: `Loaded ${res.data.count} ${type} from MISD directory.` })
+    } catch (err) {
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Directory fetch failed.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Layout title="MISD Sync" subtitle="Integration health, enrollment sync & logs" icon="fa-sync" bodyClass="admin-page">
+      {error && <PageError message={error} onRetry={load} />}
+      {message && (
+        <div className={`alert alert-${message.type} alert-dismissible mb-3`}>
+          {message.text}
+          <button className="btn-close" onClick={() => setMessage(null)}></button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-5"><InternTrackLoader /></div>
+      ) : (
+        <>
+          <div className="row g-3 mb-4">
+            <div className="col-lg-4">
+              <div className="content-card h-100">
+                <div className="content-card-header"><i className="fa fa-heartbeat"></i><h6>Health</h6></div>
+                <div className="p-3">
+                  <div className="mb-2 d-flex justify-content-between"><span>Source</span><span className="fw-semibold">{status?.mode_label || '—'}</span></div>
+                  <div className="mb-2 d-flex justify-content-between"><span>Status</span><span className={`badge ${status?.reachable ? 'bg-success' : 'bg-danger'}`}>{status?.reachable ? 'Available' : 'Unavailable'}</span></div>
+                  <div className="mb-2 d-flex justify-content-between"><span>Response time</span><span>{status?.latency_ms != null ? `${status.latency_ms} ms` : '—'}</span></div>
+                  <div className="mb-2 d-flex justify-content-between"><span>Profile cache</span><span>{status?.cache_ttl ? `${status.cache_ttl} s` : '—'}</span></div>
+                  {status?.source_label && <div className="text-muted" style={{ fontSize: '0.78rem', overflowWrap: 'anywhere' }}>{status.source_label}</div>}
+                  {status?.note && <div className="text-muted mt-1" style={{ fontSize: '0.78rem' }}>{status.note}</div>}
+                  <button className="btn btn-sm btn-outline-secondary mt-3" onClick={load}><i className="fa fa-redo me-1"></i>Recheck</button>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-lg-8">
+              <div className="content-card h-100">
+                <div className="content-card-header"><i className="fa fa-user-graduate"></i><h6>Sync Student Profile</h6></div>
+                <form className="p-3" onSubmit={lookupStudent}>
+                  <div className="input-group">
+                    <input maxLength={50}
+                      className="form-control"
+                      placeholder="Student Number"
+                      value={studentNumber}
+                      onChange={(e) => setStudentNumber(e.target.value)}
+                    />
+                    <button className="btn btn-primary" type="submit" disabled={busy}>Lookup</button>
+                  </div>
+                </form>
+                {preview && (
+                  <div className="px-3 pb-3">
+                    <div className="row g-2" style={{ fontSize: '0.9rem' }}>
+                      <div className="col-md-6">
+                        <div className="border rounded p-2 h-100">
+                          <div className="fw-semibold mb-1">MISD</div>
+                          <div>{preview.misd?.first_name} {preview.misd?.last_name}</div>
+                          <div>Section: <code>{preview.misd?.section || '—'}</code></div>
+                          <div>Program: {(typeof preview.misd?.program === 'string' ? preview.misd?.program : preview.misd?.program?.name || preview.misd?.program?.code) || '—'}</div>
+                          <div>AY: {preview.misd?.academic_year || '—'} · Sem {preview.misd?.semester || '—'}</div>
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="border rounded p-2 h-100">
+                          <div className="fw-semibold mb-1">Local</div>
+                          {preview.local ? (
+                            <>
+                              <div>Username: <code>{preview.local.username}</code></div>
+                              <div>Section: <code>{preview.local.section || '—'}</code></div>
+                              <div>Program: {(typeof preview.local.program === 'string' ? preview.local.program : preview.local.program?.name || preview.local.program?.code) || '—'}</div>
+                              <div>Synced: {preview.local.synced_at ? formatManilaDateTime(preview.local.synced_at) : 'Never'}</div>
+                            </>
+                          ) : (
+                            <div className="text-muted">Not provisioned in INTERNTRACK yet.</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {preview.drift && (preview.drift.section_changed || preview.drift.program_changed) && (
+                      <div className="alert alert-warning mt-2 mb-0 py-2">
+                        Enrollment drift detected
+                        {preview.drift.section_changed ? ' (section)' : ''}
+                        {preview.drift.program_changed ? ' (program)' : ''}.
+                      </div>
+                    )}
+                    <button className="btn btn-success btn-sm mt-3" onClick={syncStudent} disabled={busy || !preview.local}>
+                      <i className="fa fa-sync me-1"></i>Sync from MISD
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="content-card mb-4">
+            <div className="content-card-header d-flex justify-content-between align-items-center">
+              <div className="d-flex align-items-center gap-2"><i className="fa fa-list"></i><h6 className="mb-0">MISD Directory Preview</h6></div>
+              <div className="btn-group btn-group-sm">
+                <button className="btn btn-outline-primary" disabled={busy} onClick={() => loadDirectory('students')}>Students</button>
+                <button className="btn btn-outline-primary" disabled={busy} onClick={() => loadDirectory('faculty')}>Faculty</button>
+              </div>
+            </div>
+            <div className="p-3">
+              {!directory ? (
+                <p className="text-muted mb-0">
+                  Click <strong>Students</strong> or <strong>Faculty</strong> to load the iEnroll directory.
+                </p>
+              ) : (
+                <>
+                  <p className="mb-2">
+                    <strong>{directory.count}</strong> {directory.type} returned
+                  </p>
+                  {directory.count > 0 ? (
+                    <div className="table-responsive border rounded" style={{ maxHeight: 260 }}>
+                      <table className="table table-sm mb-0" style={{ fontSize: '0.8rem' }}>
+                        <thead className="table-light">
+                          <tr><th>ID</th><th>Name</th><th>{directory.type === 'faculty' ? 'Department' : 'Program'}</th><th>{directory.type === 'faculty' ? 'Position' : 'Section'}</th></tr>
+                        </thead>
+                        <tbody>
+                          {(Array.isArray(directory.data) ? directory.data.slice(0, 8) : []).map((rec, idx) => (
+                            <tr key={rec.student_number || rec.faculty_number || idx}>
+                              <td className="text-nowrap">{rec.student_number || rec.faculty_number || '—'}</td>
+                              <td>{[rec.first_name, rec.middle_name, rec.last_name].filter(Boolean).join(' ') || '—'}</td>
+                              <td>{(directory.type === 'faculty' ? rec.department : rec.program) || '—'}</td>
+                              <td>{(directory.type === 'faculty' ? rec.position : rec.section) || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="alert alert-warning mb-0 py-2">
+                      No directory records were returned.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="row g-3">
+            <div className="col-lg-6">
+              <div className="content-card h-100">
+                <div className="content-card-header"><i className="fa fa-history"></i><h6>Admin Audit Log</h6></div>
+                <div className="table-responsive" style={{ maxHeight: 320, overflow: 'auto' }}>
+                  <table className="table table-sm mb-0" style={{ fontSize: '0.8rem' }}>
+                    <thead className="table-light"><tr><th>When</th><th>Action</th><th>Actor</th></tr></thead>
+                    <tbody>
+                      {audit.length === 0 ? (
+                        <tr><td colSpan={3} className="text-center text-muted py-3">No entries.</td></tr>
+                      ) : audit.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.created_at_display || formatManilaDateTime(row.created_at)}</td>
+                          <td><code>{row.action}</code></td>
+                          <td>{row.actor?.username || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div className="col-lg-6">
+              <div className="content-card h-100">
+                <div className="content-card-header"><i className="fa fa-file-alt"></i><h6>Provisioning Log</h6></div>
+                <pre className="bg-light border-0 p-3 mb-0" style={{ maxHeight: 320, overflow: 'auto', fontSize: '0.72rem' }}>
+                  {provisionLog.length === 0 ? 'No MISD/provision lines found in laravel.log.' : provisionLog.join('\n')}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </Layout>
+  )
+}
+
+export default MisdSyncMonitor
