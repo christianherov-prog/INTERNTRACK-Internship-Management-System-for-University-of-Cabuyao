@@ -158,7 +158,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/portfolio', [StudentPortfolioController::class, 'update']);
             Route::get('/portfolio/builder', [StudentPortfolioController::class, 'show']);
             Route::post('/portfolio/builder', [StudentPortfolioController::class, 'update']);
+            Route::put('/portfolio/sections', [StudentPortfolioController::class, 'saveSections']);
             Route::post('/portfolio/photos', [StudentPortfolioController::class, 'uploadPhoto']);
+            Route::post('/portfolio/photos/reorder', [StudentPortfolioController::class, 'reorderPhotos']);
+            Route::patch('/portfolio/photos/{id}', [StudentPortfolioController::class, 'updatePhoto'])->whereNumber('id');
             Route::delete('/portfolio/photos/{id}', [StudentPortfolioController::class, 'deletePhoto']);
         });
 

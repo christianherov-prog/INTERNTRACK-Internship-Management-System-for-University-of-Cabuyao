@@ -339,12 +339,19 @@ function CoordReports() {
             </button>
           </div>
 
-          {/* Print Header */}
-          <div className="d-none d-print-block p-3 mb-3 border-bottom">
-            <img src="/interntrack-mark.png" alt="INTERNTRACK" className="print-app-mark" />
-            <h5 className="mb-0">INTERNTRACK — {REPORT_TYPES.find(r => r.key === activeReport)?.title}</h5>
-            <small className="text-muted">{`University of Cabuyao · ${CURRENT_TERM} · Generated: ${generatedAt}`}</small>
-          </div>
+           <div style={{ position: 'relative', textAlign: 'center', marginBottom: '12px', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ position: 'absolute', top: '50%', left: '200px', transform: 'translateY(-50%)', width: '75px', height: '75px' }}>
+          <img src="/images/pnc-logo.png" alt="University of Cabuyao Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        </div>
+        <div style={{ fontSize: '9.5pt', lineHeight: '1' }}>Republic of the Philippines</div>
+        <div style={{ fontSize: '22pt', fontWeight: 'bold', fontFamily: '"Old English Text MT", serif', color: '#004d00', lineHeight: '1', margin: '2px 0' }}>
+          University of Cabuyao
+        </div>
+        <div style={{ fontSize: '11.5pt', fontFamily: 'Arial, sans-serif', margin: '2px 0', lineHeight: '1' }}>(PAMANTASAN NG CABUYAO)</div>
+        <div style={{ fontSize: '10.5pt', fontWeight: 'bold', fontStyle: 'italic', margin: '2px 0', lineHeight: '1' }}>Placement, Alumni, & Linkages Department</div>
+        <div style={{ fontSize: '8.5pt', lineHeight: '1' }}>Katapatan Mutual Homes, Brgy. Banay-banay, City of Cabuyao, Laguna, Phillippines 4025</div>
+      </div>
+      
 
           <div className="p-3">
             {loading ? (

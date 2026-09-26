@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\Internship;
+use App\Models\PortfolioSection;
 use App\Models\StudentPortfolio;
 use App\Services\PortfolioDataService;
 use App\Support\InternshipAccess;
 use App\Support\InternshipProvisioning;
+use App\Support\PortfolioHtml;
 use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -130,7 +132,7 @@ class StudentPortfolioController extends Controller
                 $incoming = [];
             }
             $mergedSpecial = false;
-            foreach (['psychology', 'nursing'] as $bucket) {
+            foreach (['psychology', 'nursing', 'cbaa'] as $bucket) {
                 if (isset($incoming[$bucket])) {
                     $customFields[$bucket] = $incoming[$bucket];
                     $mergedSpecial = true;
@@ -176,6 +178,122 @@ class StudentPortfolioController extends Controller
             'message' => 'Portfolio details saved successfully!',
             'portfolio' => $portfolio,
         ]);
+    }
+
+    /**
+     * Save one or more student-authored rich-text portfolio sections.
+     * PUT /v1/student/portfolio/sections  { sections: { bio_sketch: "<p>…</p>", … } }
+     *
+     * Used by both explicit "Save Draft" and editor autosave. HTML is sanitized
+     * server-side to an allow-list before it is stored.
+     */
+    public function saveSections(Request $request)
+    {
+        $request->validate([
+            'internship_id' => 'nullable|exists:internships,id',
+            'sections' => 'required|array|min:1|max:'.count(PortfolioSection::KEYS),
+            'sections.*' => 'nullable|string|max:60000',
+        ]);
+
+        $sections = $request->input('sections', []);
+        $unknown = array_diff(array_keys($sections), PortfolioSection::KEYS);
+        if ($unknown !== []) {
+            abort(422, 'Unknown portfolio section: '.implode(', ', $unknown));
+        }
+
+        $internship = $this->getInternship($request);
+        $user = $request->user();
+
+        $saved = DB::transaction(function () use ($internship, $sections, $user) {
+            $portfolio = StudentPortfolio::firstOrCreate(
+                ['internship_id' => $internship->id],
+                [
+                    'user_id' => $internship->student_id,
+                    'company_name' => $internship->company?->company_name ?? 'Host Establishment',
+                ]
+            );
+
+            $out = [];
+            foreach ($sections as $key => $html) {
+                $clean = PortfolioHtml::sanitize($html);
+                $section = PortfolioSection::updateOrCreate(
+                    ['student_portfolio_id' => $portfolio->id, 'section_key' => $key],
+                    ['content' => $clean, 'updated_by' => $user->id]
+                );
+                $out[$key] = [
+                    'content' => $section->content,
+                    'updated_at' => $section->updated_at?->toIso8601String(),
+                ];
+            }
+
+            return $out;
+        });
+
+        return response()->json([
+            'message' => 'Portfolio sections saved.',
+            'sections' => $saved,
+        ]);
+    }
+
+    /**
+     * Update the caption of an uploaded portfolio file.
+     * PATCH /v1/student/portfolio/photos/{id}
+     */
+    public function updatePhoto(Request $request, $id)
+    {
+        $request->validate([
+            'label' => 'required|string|max:255',
+        ]);
+
+        $document = $this->ownedPortfolioDocument((int) $id);
+        $document->update(['remarks' => trim((string) $request->input('label'))]);
+
+        return response()->json([
+            'message' => 'Caption updated.',
+            'document' => ['id' => $document->id, 'label' => $document->remarks],
+        ]);
+    }
+
+    /**
+     * Persist the display order of portfolio photos.
+     * POST /v1/student/portfolio/photos/reorder  { ids: [3, 1, 2] }
+     */
+    public function reorderPhotos(Request $request)
+    {
+        $request->validate([
+            'internship_id' => 'nullable|exists:internships,id',
+            'ids' => 'required|array|min:1|max:200',
+            'ids.*' => 'integer|distinct',
+        ]);
+
+        $internship = $this->getInternship($request);
+        $ids = array_map('intval', $request->input('ids'));
+
+        $owned = Document::where('internship_id', $internship->id)->whereIn('id', $ids)->pluck('id')->all();
+        if (count($owned) !== count($ids)) {
+            abort(403, 'One or more files do not belong to your portfolio.');
+        }
+
+        DB::transaction(function () use ($ids) {
+            foreach ($ids as $position => $docId) {
+                Document::whereKey($docId)->update(['sort_order' => $position + 1]);
+            }
+        });
+
+        return response()->json(['message' => 'Photo order saved.']);
+    }
+
+    private function ownedPortfolioDocument(int $id): Document
+    {
+        $user = auth()->user();
+        $document = Document::with('internship')->findOrFail($id);
+        $internship = $document->internship;
+
+        if (! $internship || (int) $internship->student_id !== (int) $user->id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        return $document;
     }
 
     /**
@@ -225,9 +343,14 @@ class StudentPortfolioController extends Controller
                     ->each(fn (Document $old) => $this->purgePortfolioDocument($old));
             }
 
+            $nextOrder = $this->allowsMultiple($docType)
+                ? ((int) $internship->documents()->where('document_type', $docType)->max('sort_order')) + 1
+                : null;
+
             $document = $internship->documents()->create([
                 'document_type' => $docType,
                 'week_number' => $weekNumber,
+                'sort_order' => $nextOrder,
                 'status' => 'approved',
                 'current_stage' => 'completed',
                 'remarks' => $label,
@@ -313,6 +436,7 @@ class StudentPortfolioController extends Controller
             'work_samples', 'experience_photos', 'lesson_plan',
             'org_chart',
             'training_certificate', 'training_test_result', 'exam_certificate', 'exam_test_result',
+            'cbaa_hte_photo', 'cbaa_app_work_samples',
         ], true);
     }
 

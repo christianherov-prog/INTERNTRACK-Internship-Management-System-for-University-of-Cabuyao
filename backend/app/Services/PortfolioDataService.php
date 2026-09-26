@@ -9,6 +9,8 @@ use App\Models\HteRequest;
 use App\Models\Internship;
 use App\Models\InternshipApplication;
 use App\Models\JournalEntry;
+use App\Models\PortfolioSection;
+use App\Models\StudentPortfolio;
 use App\Models\User;
 use App\Support\EvaluationVisibility;
 use App\Support\ManilaAttendanceClock;
@@ -34,7 +36,7 @@ class PortfolioDataService
 
         $internship->loadMissing([
             'company',
-            'portfolio',
+            'portfolio.sections',
             'supervisor.supervisorProfile',
             'faculty.facultyProfile',
             'coordinator.facultyProfile',
@@ -110,6 +112,7 @@ class PortfolioDataService
         $portfolioData['photos'] = $photos->values();
         $portfolioData['company_name'] = $companyName;
         $portfolioData['company_address'] = $companyAddress;
+        $portfolioData['sections'] = $this->sections($portfolio);
 
         $identity = $this->identity($internship, ['company_logo_path' => $logoPath]);
         $journals = JournalEntry::where('internship_id', $internship->id)
@@ -145,6 +148,7 @@ class PortfolioDataService
         $internshipData['attendance_logs'] = $attendance;
         $internshipData['company'] = $company;
         $internshipData['evaluations'] = $evaluations;
+        $internshipData['record_status'] = $this->recordStatus($internship);
 
         $studentPayload = $student
             ? $student->loadMissing(['studentProfile.program', 'studentProfile.department'])
@@ -426,6 +430,8 @@ class PortfolioDataService
             ->where(function ($q) {
                 $q->whereNull('status')->orWhere('status', '!=', 'rejected');
             })
+            ->orderByRaw('CASE WHEN sort_order IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('sort_order')
             ->orderByDesc('created_at')
             ->get()
             ->map(function (Document $doc) use ($typeMap) {
@@ -450,12 +456,74 @@ class PortfolioDataService
                     'label' => $doc->remarks ?? $fileName,
                     'remarks' => $doc->remarks,
                     'week_number' => $doc->week_number,
+                    'sort_order' => $doc->sort_order,
+                    'mime_type' => $attachment?->mime_type,
                     'created_at' => $doc->created_at,
                     'status' => $doc->status,
                 ];
             })
             ->filter()
             ->values();
+    }
+
+    /**
+     * Student-authored rich-text sections keyed by section_key.
+     *
+     * @return array<string, array{content: string, updated_at: ?string}>
+     */
+    private function sections(?StudentPortfolio $portfolio): array
+    {
+        if (! $portfolio) {
+            return [];
+        }
+
+        return $portfolio->sections
+            ->mapWithKeys(fn (PortfolioSection $section) => [
+                $section->section_key => [
+                    'content' => (string) $section->content,
+                    'updated_at' => $section->updated_at?->toIso8601String(),
+                ],
+            ])
+            ->all();
+    }
+
+    /**
+     * Workflow state of records that feed the portfolio but are not yet final,
+     * so the builder can show "Awaiting Approval" instead of "Missing".
+     * Only document type names and statuses are exposed — never unapproved files.
+     */
+    private function recordStatus(Internship $internship): array
+    {
+        $documents = Document::where('internship_id', $internship->id)
+            ->whereNotIn('status', ['approved', 'completed'])
+            ->where(function ($q) {
+                $q->whereNull('current_stage')->orWhere('current_stage', '!=', 'completed');
+            })
+            ->get(['document_type', 'status'])
+            ->map(fn (Document $d) => ['document_type' => $d->document_type, 'status' => $d->status])
+            ->values()
+            ->all();
+
+        $journals = JournalEntry::where('internship_id', $internship->id)
+            ->academic()
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
+        $attendance = AttendanceLog::where('internship_id', $internship->id)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+
+        return [
+            'documents' => $documents,
+            'journals' => $journals,
+            'attendance' => $attendance,
+        ];
     }
 
     private function resolveMoa(Internship $internship): ?array

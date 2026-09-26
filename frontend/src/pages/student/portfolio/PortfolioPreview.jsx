@@ -1,5 +1,6 @@
 import { useAuth } from '../../../contexts/AuthContext';
 import CCSPortfolioPreview from './CCSPortfolioPreview';
+import CBAAPortfolioPreview from './CBAAPortfolioPreview';
 import COEPortfolioPreview from './COEPortfolioPreview';
 import COEDPortfolioPreview from './COEDPortfolioPreview';
 import PsychologyPortfolioPreview from './PsychologyPortfolioPreview';
@@ -17,6 +18,9 @@ const PortfolioPreview = () => {
   }
   if (variant === 'psychology') {
     return <PsychologyPortfolioPreview />;
+  }
+  if (variant === 'cbaa') {
+    return <CBAAPortfolioPreview />;
   }
   if (variant === 'coed') {
     return <COEDPortfolioPreview />;

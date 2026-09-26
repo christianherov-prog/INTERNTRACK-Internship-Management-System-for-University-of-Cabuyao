@@ -12,6 +12,9 @@ export function resolvePortfolioVariant(user) {
   if (haystack.includes('psychology') || haystack.includes('bspsy')) {
     return 'psychology'
   }
+  if (haystack.includes('business') || haystack.includes('accountancy') || /cbaa/.test(haystack) || /bsba/.test(haystack) || /bsa/.test(haystack)) {
+    return 'cbaa'
+  }
   if (haystack.includes('education') || haystack.includes('coed') || haystack.includes('elementary') || haystack.includes('secondary education')) {
     return 'coed'
   }

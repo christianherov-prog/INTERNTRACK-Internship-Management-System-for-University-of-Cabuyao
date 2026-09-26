@@ -10,7 +10,7 @@ function isInlineImageSrc(path) {
   return value.startsWith('data:') || value.startsWith('blob:')
 }
 
-async function fetchBlobUrl(path) {
+export async function fetchBlobUrl(path) {
   if (!path) return ''
   if (isInlineImageSrc(path)) return path
   if (urlCache.has(path)) {

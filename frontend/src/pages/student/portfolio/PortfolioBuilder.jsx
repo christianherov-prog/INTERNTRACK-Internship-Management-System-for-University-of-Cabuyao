@@ -1,5 +1,6 @@
 import React from 'react';
 import CCSPortfolioBuilder from './CCSPortfolioBuilder';
+import CBAAPortfolioBuilder from './CBAAPortfolioBuilder';
 import COEPortfolioBuilder from './COEPortfolioBuilder';
 import COEDPortfolioBuilder from './COEDPortfolioBuilder';
 import PsychologyPortfolioBuilder from './PsychologyPortfolioBuilder';
@@ -28,6 +29,9 @@ const PortfolioBuilder = () => {
   }
   if (variant === 'psychology') {
     return <PsychologyPortfolioBuilder />;
+  }
+  if (variant === 'cbaa') {
+    return <CBAAPortfolioBuilder />;
   }
   if (variant === 'coed') {
     return <COEDPortfolioBuilder />;

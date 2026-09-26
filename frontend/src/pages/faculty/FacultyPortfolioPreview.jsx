@@ -4,6 +4,7 @@ import api from '../../services/api'
 import PageError from '../../components/PageError'
 import InternTrackLoader from '../../components/InternTrackLoader'
 import CCSPortfolioPreview from '../student/portfolio/CCSPortfolioPreview'
+import CBAAPortfolioPreview from '../student/portfolio/CBAAPortfolioPreview'
 import COEPortfolioPreview from '../student/portfolio/COEPortfolioPreview'
 import COEDPortfolioPreview from '../student/portfolio/COEDPortfolioPreview'
 import PsychologyPortfolioPreview from '../student/portfolio/PsychologyPortfolioPreview'
@@ -17,6 +18,7 @@ const MODE_LABEL = 'Read-only Faculty Preview'
 const VARIANTS = {
   nursing: NursingPortfolioPreview,
   psychology: PsychologyPortfolioPreview,
+  cbaa: CBAAPortfolioPreview,
   coed: COEDPortfolioPreview,
   coe: COEPortfolioPreview,
   ccs: CCSPortfolioPreview,

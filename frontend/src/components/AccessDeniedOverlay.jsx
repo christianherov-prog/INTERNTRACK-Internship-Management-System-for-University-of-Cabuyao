@@ -47,9 +47,8 @@ export default function AccessDeniedOverlay() {
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 20px',
-          fontSize: '32px'
         }}>
-          <i className="bi bi-shield-lock-fill"></i>
+          <i className="fa fa-shield-alt"></i>
         </div>
         <h2 style={{ margin: '0 0 16px', fontSize: '24px', fontWeight: '600' }}>Access Restricted</h2>
         <p style={{ margin: '0 0 24px', color: '#94a3b8', lineHeight: '1.6' }}>{deniedMessage}</p>

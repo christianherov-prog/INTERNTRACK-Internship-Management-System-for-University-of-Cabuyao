@@ -1,0 +1,108 @@
+/* ==========================================================
+   CBAA Internship Portfolio — additions on top of the shared
+   portfolio-builder.css / portfolio-print.css templates.
+   ========================================================== */
+
+/* ---------- Status pills ---------- */
+.cbaa-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 600; line-height: 1;
+  padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+}
+.cbaa-pill.tone-success { background: #e7f6ec; color: #17803d; }
+.cbaa-pill.tone-warning { background: #fff5dc; color: #9a6400; }
+.cbaa-pill.tone-info { background: #e6f1fc; color: #1d5fa8; }
+.cbaa-pill.tone-purple { background: #f1ebfd; color: #6b3fc4; }
+.cbaa-pill.tone-danger { background: #fdecec; color: #b42323; }
+.cbaa-pill.tone-secondary { background: #eef0f3; color: #5b6472; }
+
+/* ---------- Builder ---------- */
+.cbaa-builder .min-w-0 { min-width: 0; }
+.cbaa-save-state { font-size: 12px; color: #6b7280; margin-right: 4px; }
+.cbaa-save-state.state-dirty { color: #9a6400; }
+.cbaa-save-state.state-error { color: #b42323; }
+.cbaa-save-state.state-saved { color: #17803d; }
+
+.cbaa-tabs-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cbaa-tabs-wrap .placement-tabs-bar { flex-wrap: nowrap; }
+.cbaa-tabs-wrap .placement-tab-btn { white-space: nowrap; }
+.cbaa-tabs-wrap .placement-tab-btn .cbaa-pill { padding: 3px 5px; font-size: 10px; margin-left: 2px; }
+
+.cbaa-tile-note { font-size: 11.5px; color: #6b7280; margin: 6px 0 0; line-height: 1.4; }
+
+.cbaa-toc-builder { display: flex; flex-direction: column; border: 1px solid #eef0f3; border-radius: 10px; overflow: hidden; }
+.cbaa-toc-builder-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0;
+  border: 0; border-bottom: 1px solid #f1f3f5; background: #fff; padding: 8px 12px;
+  text-align: left; font-size: 13.5px; color: #1f2937;
+}
+.cbaa-toc-builder-row:last-child { border-bottom: 0; }
+.cbaa-toc-builder-row:hover { background: #f6f8fa; }
+.cbaa-toc-builder-row:focus-visible { outline: 2px solid #1d5fa8; outline-offset: -2px; }
+.cbaa-toc-builder-row.bold { font-weight: 700; background: #fafbfc; }
+.cbaa-toc-builder-row.level-1 { padding-left: 32px; }
+.cbaa-toc-builder-row.level-2 { padding-left: 52px; color: #4b5563; }
+
+.cbaa-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.cbaa-photo-card { margin: 0; border: 1px solid #e6e8ec; border-radius: 10px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+.cbaa-photo-thumb { position: relative; aspect-ratio: 4 / 3; background: #f3f5f7; }
+.cbaa-photo-index { position: absolute; top: 8px; left: 8px; background: rgba(17,24,39,.75); color: #fff; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; }
+.cbaa-photo-card figcaption { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.cbaa-photo-actions { display: flex; gap: 4px; }
+
+/* ---------- Rich text editor ---------- */
+.rte { border: 1px solid #d6dae0; border-radius: 10px; background: #fff; }
+.rte:focus-within { border-color: #0b8a3e; box-shadow: 0 0 0 3px rgba(11,138,62,.12); }
+.rte-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 6px; border-bottom: 1px solid #eef0f3; background: #fafbfc; border-radius: 10px 10px 0 0; }
+.rte-btn { border: 0; background: transparent; min-width: 32px; height: 32px; border-radius: 6px; color: #374151; }
+.rte-btn:hover { background: #e9ecf0; }
+.rte-btn:focus-visible { outline: 2px solid #1d5fa8; }
+.rte-sep { width: 1px; height: 20px; background: #d6dae0; margin: 0 4px; }
+.rte-content { padding: 14px 16px; outline: none; font-size: 15px; line-height: 1.65; color: #111827; overflow-wrap: anywhere; }
+.rte-content:empty::before { content: attr(data-placeholder); color: #9aa1ab; }
+.rte-content p { margin: 0 0 .75em; }
+.rte-content h2 { font-size: 1.35rem; font-weight: 700; margin: .6em 0 .4em; }
+.rte-content h3 { font-size: 1.15rem; font-weight: 700; margin: .6em 0 .4em; }
+.rte-content ul, .rte-content ol { padding-left: 1.5em; margin: 0 0 .75em; }
+.rte-count { text-align: right; font-size: 11px; color: #9aa1ab; padding: 0 10px 6px; }
+.rte-count.warn { color: #b42323; }
+
+@media (max-width: 575.98px) {
+  .cbaa-gallery { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Preview (template additions) ---------- */
+.cbaa-tb-btn { background: #2d2d4a; color: #fff; border: 0; border-radius: 6px; padding: 6px 10px; font-size: 13px; min-height: 32px; }
+.cbaa-tb-btn:disabled { opacity: .4; }
+.cbaa-tb-btn:focus-visible { outline: 2px solid #93c5fd; }
+.cbaa-tb-zoom { min-width: 56px; font-variant-numeric: tabular-nums; }
+.cbaa-tb-page { font-size: 13px; min-width: 96px; text-align: center; font-variant-numeric: tabular-nums; }
+
+.cbaa-preview .a4-page { scroll-margin-top: 64px; }
+.cbaa-anchor { height: 0; overflow: hidden; }
+.cbaa-measure { position: absolute; left: -99999px; top: 0; visibility: hidden; pointer-events: none; }
+
+/* Rich-text pages follow the template typography (Arial 11pt, justified, 0.5in indent). */
+.cbaa-page .cbaa-page-body { margin-top: 20px; }
+.portfolio-document .cbaa-heading { text-align: left; font-weight: bold; margin: 24px 0 10px; }
+.cbaa-page-body > .cbaa-heading:first-child { margin-top: 0; }
+.portfolio-document .cbaa-h3 { font-size: 14pt; }
+.portfolio-document .cbaa-h4 { font-size: 12pt; }
+.portfolio-document .cbaa-h5 { font-size: 11pt; margin-top: 16px; }
+.cbaa-rich p { margin: 0 0 14px; text-align: justify; text-indent: .5in; }
+.cbaa-rich p.cbaa-cont, .cbaa-rich p.cbaa-kv,
+.cbaa-rich p[style*="center"], .cbaa-rich p[style*="right"] { text-indent: 0; }
+.cbaa-rich p.cbaa-kv { text-align: left; margin-bottom: 4px; }
+.cbaa-rich h2, .cbaa-rich h3, .cbaa-rich h4 { text-align: left; font-weight: bold; margin: 16px 0 8px; }
+.cbaa-rich h2 { font-size: 13pt; }
+.cbaa-rich h3, .cbaa-rich h4 { font-size: 11.5pt; }
+.cbaa-rich ul, .cbaa-rich ol { margin: 0 0 14px; padding-left: .5in; }
+.cbaa-rich li { margin-bottom: 3px; text-align: justify; }
+.cbaa-empty { color: #777; font-style: italic; text-indent: 0 !important; }
+
+.cbaa-doc-placeholder { text-align: center; border: 2px dashed #bbb; background: #f8f9fa; border-radius: 12px; padding: 36px 20px; width: 85%; margin: 20px auto 0; }
+.cbaa-pdf-page-img { max-width: 98%; max-height: 215mm; object-fit: contain; display: block; border: 1px solid #ddd; }
+
+@media print {
+  .cbaa-measure { display: none !important; }
+}

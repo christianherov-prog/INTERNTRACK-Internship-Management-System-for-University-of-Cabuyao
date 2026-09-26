@@ -196,7 +196,7 @@ class FacultySectionAssignmentSeeder extends Seeder
         ];
 
         FacultySectionAssignment::query()
-            ->where(function ($q) use ($dummy) {
+            ->where(function ($q) use ($dummy, $ownerBySection) {
                 $q->where('faculty_user_id', $dummy->id)
                     ->orWhereIn('section', array_keys($ownerBySection));
             })

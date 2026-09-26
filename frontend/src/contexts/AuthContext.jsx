@@ -113,6 +113,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     sessionStorage.removeItem('interntrack_session')
     sessionStorage.removeItem('interntrack_staff_workspace')
+    sessionStorage.removeItem('interntrack_active_internship')
     broadcastAuthEvent('logout')
   }
 
